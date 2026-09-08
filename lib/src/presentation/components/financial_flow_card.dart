@@ -4,8 +4,14 @@ import 'package:inout/src/presentation/theme/inout_theme.dart';
 enum FinancialFlow { income, expense }
 
 final class FinancialFlowCard extends StatelessWidget {
-  const FinancialFlowCard({required this.flow, super.key});
+  const FinancialFlowCard({
+    required this.flow,
+    this.onTap,
+    super.key,
+  });
+
   final FinancialFlow flow;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -17,29 +23,47 @@ final class FinancialFlowCard extends StatelessWidget {
     final color = isIncome ? palette.inPrimary : palette.outPrimary;
     final container = isIncome ? palette.inContainer : palette.outContainer;
 
+    final content = Padding(
+      padding: const EdgeInsets.all(16),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: color),
+          const SizedBox(width: 12),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                label,
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      color: palette.textPrimary,
+                    ),
+              ),
+              Text(
+                description,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: palette.textSecondary,
+                    ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+
     return Semantics(
-      label: '$label. $description.', button: true,
+      label: '$label. $description.',
+      button: onTap != null,
       child: Card(
         color: container,
-        child: InkWell(
-          onTap: () {}, borderRadius: BorderRadius.circular(12),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(mainAxisSize: MainAxisSize.min, children: [
-              Icon(icon, color: color),
-              const SizedBox(width: 12),
-              Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-                Text(
-                  label,
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: palette.textPrimary,
-                      ),
-                ),
-                Text(description, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: palette.textSecondary)),
-              ]),
-            ]),
-          ),
-        ),
+        child: onTap == null
+            ? content
+            : InkWell(
+                onTap: onTap,
+                borderRadius: BorderRadius.circular(12),
+                child: content,
+              ),
       ),
     );
   }

@@ -24,5 +24,26 @@ void main() {
     expect(find.text('Out · Saídas'), findsOneWidget);
     expect(find.byIcon(Icons.arrow_downward), findsOneWidget);
     expect(find.byIcon(Icons.arrow_upward), findsOneWidget);
+    expect(find.byType(InkWell), findsNothing);
+  });
+
+  testWidgets('only becomes interactive when an action is provided',
+      (tester) async {
+    var tapped = false;
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: InOutTheme.light,
+        home: Scaffold(
+          body: FinancialFlowCard(
+            flow: FinancialFlow.income,
+            onTap: () => tapped = true,
+          ),
+        ),
+      ),
+    );
+
+    expect(find.byType(InkWell), findsOneWidget);
+    await tester.tap(find.byType(FinancialFlowCard));
+    expect(tapped, isTrue);
   });
 }
