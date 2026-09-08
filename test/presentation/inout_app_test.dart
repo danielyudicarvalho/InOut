@@ -9,6 +9,7 @@ void main() {
 
     expect(find.text('InOut'), findsOneWidget);
     expect(find.text('Nossa casa'), findsOneWidget);
+    expect(find.text('Saldo inicial: R\$ 0,00'), findsOneWidget);
     expect(find.text('In · Entradas'), findsOneWidget);
     expect(find.text('Out · Saídas'), findsOneWidget);
   });

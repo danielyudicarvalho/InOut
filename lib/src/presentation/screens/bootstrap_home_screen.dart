@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:inout/src/presentation/formatters/money_formatter.dart';
 import 'package:inout/src/presentation/providers/household_providers.dart';
 import 'package:inout/src/presentation/theme/inout_theme.dart';
 
@@ -24,7 +25,7 @@ final class BootstrapHomeScreen extends ConsumerWidget {
                   Text(value.name, style: Theme.of(context).textTheme.titleLarge),
                   const SizedBox(height: 8),
                   Text(
-                    'Saldo inicial: R\$ ${(value.balanceInCents / 100).toStringAsFixed(2)}',
+                    'Saldo inicial: ${MoneyFormatter.formatBrl(value.balanceInCents)}',
                     style: Theme.of(context).textTheme.headlineSmall,
                   ),
                   const SizedBox(height: 24),
