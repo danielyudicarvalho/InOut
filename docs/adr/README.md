@@ -27,5 +27,5 @@ Quais benefícios, custos, riscos e próximos passos surgem?
 
 - ADR-001: arquitetura como monólito modular.
 - ADR-002: ledger balanceado e movimentos contabilizados imutáveis.
-- ADR-003: stack de aplicação e hospedagem (a decidir no Dia 1).
+- [ADR-003: stack multiplataforma e hospedagem do MVP](ADR-003-application-stack-and-hosting.md) — aceita.
 - ADR-004: estratégia de autenticação e isolamento por casa (a decidir no Dia 1).
