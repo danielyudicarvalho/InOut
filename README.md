@@ -23,6 +23,7 @@ Registrar entradas, saídas e transferências; organizar categorias e subcategor
 - [Domínio financeiro e integridade](docs/03-financial-domain.md)
 - [Plano de entrega em sete dias](docs/04-one-week-plan.md)
 - [Qualidade, segurança e operação](docs/05-quality-security-operations.md)
+- [Design visual e sistema de cores](docs/06-visual-design.md)
 - [Registro de decisões arquiteturais](docs/adr/README.md)
 
 ## Escopo do MVP
