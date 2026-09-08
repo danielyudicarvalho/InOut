@@ -24,7 +24,21 @@ Registrar entradas, saídas e transferências; organizar categorias e subcategor
 - [Plano de entrega em sete dias](docs/04-one-week-plan.md)
 - [Qualidade, segurança e operação](docs/05-quality-security-operations.md)
 - [Design visual e sistema de cores](docs/06-visual-design.md)
+- [Estrutura inicial do projeto Flutter](docs/07-project-structure.md)
 - [Registro de decisões arquiteturais](docs/adr/README.md)
+
+## Desenvolvimento
+
+O aplicativo usa Flutter para Android, iOS e Web/PWA. A experiência desktop do MVP é a PWA responsiva; executáveis desktop nativos estão fora do escopo inicial.
+
+```bash
+flutter pub get
+flutter analyze
+flutter test
+flutter run -d chrome
+```
+
+Consulte a [estrutura inicial](docs/07-project-structure.md) e o [ADR da stack](docs/adr/ADR-003-application-stack-and-hosting.md) antes de adicionar novos módulos ou dependências.
 
 ## Escopo do MVP
 
