@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:inout/src/domain/transaction/financial_flow.dart';
 import 'package:inout/src/presentation/components/financial_flow_card.dart';
 import 'package:inout/src/presentation/theme/inout_theme.dart';
 

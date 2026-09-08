@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:inout/src/domain/transaction/financial_flow.dart';
 import 'package:inout/src/presentation/theme/inout_theme.dart';
-
-enum FinancialFlow { income, expense }
 
 final class FinancialFlowCard extends StatelessWidget {
   const FinancialFlowCard({
