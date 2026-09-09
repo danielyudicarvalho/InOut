@@ -5,8 +5,9 @@ import 'package:inout/src/presentation/components/financial_flow_card.dart';
 import 'package:inout/src/presentation/theme/inout_theme.dart';
 
 void main() {
-  testWidgets('identifies financial flows with labels and distinct icons',
-      (tester) async {
+  testWidgets('identifies financial flows with labels and distinct icons', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       MaterialApp(
         theme: InOutTheme.light,
@@ -28,8 +29,9 @@ void main() {
     expect(find.byType(InkWell), findsNothing);
   });
 
-  testWidgets('only becomes interactive when an action is provided',
-      (tester) async {
+  testWidgets('only becomes interactive when an action is provided', (
+    tester,
+  ) async {
     var tapped = false;
     await tester.pumpWidget(
       MaterialApp(

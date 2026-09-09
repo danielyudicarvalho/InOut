@@ -3,10 +3,7 @@
 /// This type deliberately depends only on Dart so the financial domain remains
 /// independent from Flutter, persistence, and provider SDKs.
 final class HouseholdSummary {
-  const HouseholdSummary({
-    required this.name,
-    required this.balanceInCents,
-  });
+  const HouseholdSummary({required this.name, required this.balanceInCents});
 
   final String name;
   final int balanceInCents;

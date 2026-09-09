@@ -17,15 +17,15 @@ const destinations = [
 ];
 
 Widget buildSubject() => MaterialApp(
-      theme: InOutTheme.light,
-      home: InOutAdaptiveScaffold(
-        title: 'InOut',
-        body: const Text('Conteúdo'),
-        destinations: destinations,
-        selectedIndex: 0,
-        onDestinationSelected: (_) {},
-      ),
-    );
+  theme: InOutTheme.light,
+  home: InOutAdaptiveScaffold(
+    title: 'InOut',
+    body: const Text('Conteúdo'),
+    destinations: destinations,
+    selectedIndex: 0,
+    onDestinationSelected: (_) {},
+  ),
+);
 
 void main() {
   testWidgets('uses bottom navigation on compact screens', (tester) async {

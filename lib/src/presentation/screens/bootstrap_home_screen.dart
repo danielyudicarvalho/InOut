@@ -58,9 +58,8 @@ final class BootstrapHomeScreen extends ConsumerWidget {
               ),
             ],
           ),
-          error: (error, stackTrace) => const Text(
-            'Não foi possível carregar os dados da casa.',
-          ),
+          error: (error, stackTrace) =>
+              const Text('Não foi possível carregar os dados da casa.'),
           loading: () => const CircularProgressIndicator(),
         ),
       ),

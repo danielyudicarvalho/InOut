@@ -16,8 +16,6 @@ void main() {
 
 final class _RepositoryStub implements HouseholdSummaryRepository {
   @override
-  Future<HouseholdSummary> load() async => const HouseholdSummary(
-        name: 'Casa de teste',
-        balanceInCents: 1250,
-      );
+  Future<HouseholdSummary> load() async =>
+      const HouseholdSummary(name: 'Casa de teste', balanceInCents: 1250);
 }

@@ -10,8 +10,6 @@ final class DemoHouseholdSummaryRepository
   const DemoHouseholdSummaryRepository();
 
   @override
-  Future<HouseholdSummary> load() async => const HouseholdSummary(
-        name: 'Nossa casa',
-        balanceInCents: 0,
-      );
+  Future<HouseholdSummary> load() async =>
+      const HouseholdSummary(name: 'Nossa casa', balanceInCents: 0);
 }

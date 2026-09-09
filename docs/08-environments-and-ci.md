@@ -26,7 +26,7 @@ privadas e credenciais administrativas nunca pertencem ao aplicativo Flutter.
 A workflow `CI` executa em pull requests, em pushes para `main` e manualmente:
 
 1. restaura a versão fixada do Flutter;
-2. instala dependências;
+2. instala exatamente as dependências registradas no lockfile;
 3. verifica formatação, limites arquiteturais e possíveis segredos;
 4. executa `flutter analyze --fatal-infos`;
 5. executa os testes com cobertura;
