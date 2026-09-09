@@ -56,19 +56,24 @@ final class _HouseholdAccessScreenState
               actions: [
                 IconButton(
                   tooltip: 'Criar convite',
-                  onPressed: () => _run(() async {
-                    final code = await ref
-                        .read(householdRepositoryProvider)
-                        .createInvite(items.first.id);
-                    await Clipboard.setData(ClipboardData(text: code));
-                    if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Código copiado. Válido por 24 horas.'),
-                        ),
-                      );
-                    }
-                  }),
+                  onPressed: () {
+                    final messenger = ScaffoldMessenger.of(context);
+                    return _run(() async {
+                      final code = await ref
+                          .read(householdRepositoryProvider)
+                          .createInvite(items.first.id);
+                      await Clipboard.setData(ClipboardData(text: code));
+                      if (mounted) {
+                        messenger.showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'Código copiado. Válido por 24 horas.',
+                            ),
+                          ),
+                        );
+                      }
+                    });
+                  },
                   icon: const Icon(Icons.person_add_alt_1),
                 ),
                 IconButton(
