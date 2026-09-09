@@ -3,11 +3,7 @@ import 'package:inout/src/domain/transaction/financial_flow.dart';
 import 'package:inout/src/presentation/theme/inout_theme.dart';
 
 final class FinancialFlowCard extends StatelessWidget {
-  const FinancialFlowCard({
-    required this.flow,
-    this.onTap,
-    super.key,
-  });
+  const FinancialFlowCard({required this.flow, this.onTap, super.key});
 
   final FinancialFlow flow;
   final VoidCallback? onTap;
@@ -35,15 +31,15 @@ final class FinancialFlowCard extends StatelessWidget {
             children: [
               Text(
                 label,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: palette.textPrimary,
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(color: palette.textPrimary),
               ),
               Text(
                 description,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: palette.textSecondary,
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: palette.textSecondary),
               ),
             ],
           ),
