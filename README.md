@@ -26,6 +26,7 @@ Registrar entradas, saídas e transferências; organizar categorias e subcategor
 - [Design visual e sistema de cores](docs/06-visual-design.md)
 - [Estrutura inicial do projeto Flutter](docs/07-project-structure.md)
 - [Ambientes, dependências e integração contínua](docs/08-environments-and-ci.md)
+- [Banco de dados e isolamento por residência](docs/09-database-security.md)
 - [Registro de decisões arquiteturais](docs/adr/README.md)
 
 ## Desenvolvimento
