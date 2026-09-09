@@ -1,6 +1,6 @@
 # ADR-003: Stack multiplataforma e hospedagem do MVP
 
-- Status: aceita
+- Status: parcialmente substituída pela ADR-005
 - Data: 2026-09-08
 - Issue: [GOM-75](https://linear.app/gomi/issue/GOM-75/decidir-e-registrar-stack-multiplataforma-do-mvp)
 
@@ -63,6 +63,8 @@ A base inicial usará:
 Dependências adicionais somente serão aceitas quando eliminarem complexidade concreta. As versões serão fixadas em `pubspec.lock`; o ADR registra responsabilidades, não números de versão transitórios.
 
 ### Backend e dados
+
+> A responsabilidade por casos de uso e regras de negócio desta seção foi substituída pela [ADR-005](ADR-005-dedicated-aspnet-backend.md). PostgreSQL e Supabase Auth permanecem.
 
 Usaremos **Supabase hospedado**:
 
@@ -133,7 +135,7 @@ Não fazem parte desta decisão ou do MVP:
 - aplicações desktop nativas;
 - edição financeira offline-first;
 - sincronização por arquivos JSON no Google Drive;
-- backend próprio em servidor ou container;
+- backend próprio em servidor ou container; *(substituído pela ADR-005)*
 - microsserviços, filas, Kubernetes ou service mesh;
 - Firebase Auth, Firestore ou Realtime Database;
 - abstrações genéricas para múltiplos provedores antes de existir necessidade;
