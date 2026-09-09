@@ -6,6 +6,7 @@
 - Java 17 (Temurin) para o build Android;
 - Gradle Wrapper `8.14` versionado;
 - Android Gradle Plugin `8.11.1`;
+- Kotlin Gradle Plugin `2.2.20`;
 - dependências Dart travadas pelo `pubspec.lock` da aplicação.
 
 Mudanças de versão devem ocorrer em PR própria, incluindo atualização do
