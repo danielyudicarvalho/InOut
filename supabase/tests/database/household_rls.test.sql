@@ -3,7 +3,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = public, extensions, pg_catalog;
 
-select plan(18);
+select plan(24);
 
 select has_table('public', 'households', 'households table exists');
 select has_table('public', 'household_members', 'household_members table exists');
@@ -41,7 +41,6 @@ insert into public.households (id, name, created_by) values
 
 insert into public.household_members (household_id, user_id, role) values
   ('aaaaaaaa-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000001', 'owner'),
-  ('aaaaaaaa-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000002', 'member'),
   ('bbbbbbbb-0000-0000-0000-000000000002', '30000000-0000-0000-0000-000000000003', 'owner');
 
 insert into public.accounts (id, household_id, name, kind, created_by) values
@@ -103,20 +102,61 @@ select results_eq(
 );
 
 select throws_ok(
+  $$ select public.create_household_invite(
+    'bbbbbbbb-0000-0000-0000-000000000002'
+  ) $$,
+  '42501',
+  'only a household owner can create an invite',
+  'an owner cannot manage membership in another household'
+);
+
+select throws_ok(
   $$
     insert into public.household_members (household_id, user_id, role)
     values (
-      'bbbbbbbb-0000-0000-0000-000000000002',
-      '20000000-0000-0000-0000-000000000002',
+      'aaaaaaaa-0000-0000-0000-000000000001',
+      '30000000-0000-0000-0000-000000000003',
       'member'
     )
   $$,
   '42501',
-  'new row violates row-level security policy for table "household_members"',
-  'an owner cannot manage membership in another household'
+  'permission denied for table household_members',
+  'membership cannot be inserted directly by a client'
+);
+
+select ok(
+  length(public.create_household_invite(
+    'aaaaaaaa-0000-0000-0000-000000000001'
+  )) = 48,
+  'an owner receives an opaque invite code'
+);
+
+create temporary table captured_invite (code text not null);
+insert into captured_invite
+select public.create_household_invite(
+  'aaaaaaaa-0000-0000-0000-000000000001'
 );
 
 set local request.jwt.claim.sub = '20000000-0000-0000-0000-000000000002';
+
+select results_eq(
+  $$
+    select name
+    from public.accept_household_invite((select code from captured_invite))
+  $$,
+  array['Household A'::text],
+  'an authenticated user can accept a valid invite'
+);
+
+select results_eq(
+  $$
+    select count(*)
+    from public.household_members
+    where household_id = 'aaaaaaaa-0000-0000-0000-000000000001'
+  $$,
+  array[2::bigint],
+  'an accepted invite associates exactly two household members'
+);
 
 select results_eq(
   $$
@@ -127,6 +167,22 @@ select results_eq(
   $$,
   $$ select 1 where false $$,
   'a regular member cannot remove the household owner'
+);
+
+select throws_ok(
+  $$ select public.create_household_invite(
+    'aaaaaaaa-0000-0000-0000-000000000001'
+  ) $$,
+  '42501',
+  'only a household owner can create an invite',
+  'a regular member cannot create invites'
+);
+
+select throws_ok(
+  $$ select public.accept_household_invite('not-a-valid-code') $$,
+  '22023',
+  'invalid or expired invite',
+  'invalid invite codes fail closed'
 );
 
 set local request.jwt.claim.sub = '10000000-0000-0000-0000-000000000001';

@@ -29,7 +29,10 @@ O domínio não pode importar Flutter, Riverpod, Supabase, HTTP ou persistência
 
 ## Bootstrap executável
 
-O adaptador `DemoHouseholdSummaryRepository` mantém a primeira tela executável sem antecipar banco ou autenticação. Ele será substituído pelo adaptador Supabase quando o schema e as políticas RLS forem implementados.
+O adaptador `DemoHouseholdSummaryRepository` mantém a tela demonstrativa e os
+testes executáveis sem configuração externa. Quando URL e chave publicável são
+fornecidas, o bootstrap usa adaptadores Supabase para autenticação, restauração
+de sessão, criação da residência e entrada por convite.
 
 ## Comandos de validação
 

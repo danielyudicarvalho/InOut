@@ -35,6 +35,29 @@ uma transação da residência A a uma conta ou categoria da residência B.
   e seu primeiro proprietário atomicamente;
 - uma constraint operacional impede a remoção do último proprietário.
 
+## Entrada do segundo membro
+
+O cliente não pode inserir diretamente em `household_members`. O proprietário
+gera pela RPC `create_household_invite(uuid)` um código aleatório de 48
+caracteres, válido por 24 horas. O banco persiste somente seu hash e invalida o
+convite anterior ainda aberto. A segunda pessoa, já autenticada, aceita o código
+por `accept_household_invite(text)`.
+
+A aceitação bloqueia a linha da residência durante a operação, limita a casa a
+duas pessoas e registra como membro o próprio `auth.uid()`. Assim, UUID informado
+pelo cliente nunca decide quem entra e duas aceitações concorrentes não excedem
+o limite do MVP.
+
+Todas as entidades financeiras, inclusive `entries`, registram `household_id` e
+autoria. Campos de autoria e residência são imutáveis depois da criação.
+
+## Sessão no cliente
+
+O Flutter inicializa o Supabase somente quando recebe `SUPABASE_URL` e
+`SUPABASE_PUBLISHABLE_KEY` por `--dart-define`. O SDK restaura a sessão persistida
+e o gate de sessão reage a login, logout e renovação. Nenhuma chave secreta ou
+`service_role` pertence ao aplicativo.
+
 As funções auxiliares de RLS ficam no schema não exposto `private`, usam
 `security definer` com `search_path` vazio, possuem referências qualificadas e
 execução restrita. Nenhuma decisão usa `raw_user_meta_data` ou outro campo que
