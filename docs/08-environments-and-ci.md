@@ -4,7 +4,7 @@
 
 - Flutter `3.47.2` stable;
 - Java 17 (Temurin) para o build Android;
-- Gradle Wrapper `8.12` versionado;
+- Gradle Wrapper `8.14` versionado;
 - dependências Dart travadas pelo `pubspec.lock` da aplicação.
 
 Mudanças de versão devem ocorrer em PR própria, incluindo atualização do
