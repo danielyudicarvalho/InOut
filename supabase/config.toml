@@ -11,9 +11,5 @@ major_version = 17
 [studio]
 enabled = false
 
-[inbucket]
-enabled = false
-
 [storage]
 enabled = false
-

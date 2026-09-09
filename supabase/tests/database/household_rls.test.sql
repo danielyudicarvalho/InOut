@@ -86,6 +86,8 @@ select throws_ok(
       '10000000-0000-0000-0000-000000000001'
     )
   $$,
+  '42501',
+  'new row violates row-level security policy for table "accounts"',
   'cross-household inserts are rejected'
 );
 
@@ -109,6 +111,8 @@ select throws_ok(
       'member'
     )
   $$,
+  '42501',
+  'new row violates row-level security policy for table "household_members"',
   'an owner cannot manage membership in another household'
 );
 
@@ -133,6 +137,8 @@ select throws_ok(
     where household_id = 'aaaaaaaa-0000-0000-0000-000000000001'
       and user_id = '10000000-0000-0000-0000-000000000001'
   $$,
+  '23514',
+  'a household must retain at least one owner',
   'the final owner cannot remove themselves'
 );
 
