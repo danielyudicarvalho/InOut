@@ -14,4 +14,10 @@ if rg --line-number 'src/(infrastructure|presentation)/' lib/src/domain lib/src/
   exit 1
 fi
 
+if rg --line-number 'Color\(0x' lib/src/presentation \
+  --glob '!**/theme/inout_theme.dart'; then
+  echo "Design-system violation: literal colors must live in semantic theme tokens." >&2
+  exit 1
+fi
+
 echo "Architecture boundaries: ok"

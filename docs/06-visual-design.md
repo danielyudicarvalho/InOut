@@ -113,7 +113,13 @@ systemWarning
 systemSuccess
 ```
 
-Os valores hexadecimais ainda não fazem parte desta decisão. Eles deverão ser escolhidos e testados separadamente para os temas claro e escuro.
+Os valores foram implementados como `InOutPalette`, uma `ThemeExtension` com
+instâncias independentes para os temas claro e escuro. Componentes devem obter
+esses tokens pelo tema corrente e não declarar cores financeiras literais.
+
+Os breakpoints canônicos são centralizados em `InOutBreakpoints`: navegação
+inferior abaixo de 600 px, `NavigationRail` a partir de 600 px e rail expandido
+a partir de 1024 px. O conteúdo principal fica limitado a 960 px em telas largas.
 
 ## 7. Aplicação responsiva
 
