@@ -25,6 +25,7 @@ Registrar entradas, saídas e transferências; organizar categorias e subcategor
 - [Qualidade, segurança e operação](docs/05-quality-security-operations.md)
 - [Design visual e sistema de cores](docs/06-visual-design.md)
 - [Estrutura inicial do projeto Flutter](docs/07-project-structure.md)
+- [Ambientes, dependências e integração contínua](docs/08-environments-and-ci.md)
 - [Registro de decisões arquiteturais](docs/adr/README.md)
 
 ## Desenvolvimento
