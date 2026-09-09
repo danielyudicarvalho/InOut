@@ -36,6 +36,9 @@ jobs:
       - name: Rebuild database from migrations
         run: supabase db reset
 
+      - name: Lint database functions
+        run: supabase db lint --schema public,private --level warning --fail-on error
+
       - name: Test schema and RLS policies
         run: supabase test db
 

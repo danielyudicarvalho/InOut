@@ -48,11 +48,11 @@ As mudanças vivem em `supabase/migrations` e os testes pgTAP em
 ```bash
 supabase start
 supabase db reset
+supabase db lint --schema public,private --level warning --fail-on error
 supabase test db
 supabase stop
 ```
 
-A CI recria o banco a partir das migrações e valida estrutura, RLS, leitura
+A CI recria e analisa o banco a partir das migrações e valida estrutura, RLS, leitura
 isolada, escrita permitida dentro da residência e tentativas cruzadas de
 inserção e atualização.
-
