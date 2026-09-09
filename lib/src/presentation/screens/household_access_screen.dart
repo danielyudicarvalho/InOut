@@ -58,7 +58,7 @@ final class _HouseholdAccessScreenState
                   tooltip: 'Criar convite',
                   onPressed: () {
                     final messenger = ScaffoldMessenger.of(context);
-                    return _run(() async {
+                    _run(() async {
                       final code = await ref
                           .read(householdRepositoryProvider)
                           .createInvite(items.first.id);
