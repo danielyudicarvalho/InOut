@@ -1,6 +1,7 @@
 using InOut.Application;
 using InOut.Domain;
 using InOut.Infrastructure;
+using Xunit;
 
 namespace InOut.ArchitectureTests;
 
