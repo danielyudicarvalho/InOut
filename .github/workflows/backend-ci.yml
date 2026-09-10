@@ -1,0 +1,55 @@
+name: Backend CI
+
+on:
+  pull_request:
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend-ci.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backend-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Restore, analyze, test and publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: backend/global.json
+
+      - name: Restore
+        run: dotnet restore InOut.sln
+
+      - name: Verify formatting
+        run: dotnet format InOut.sln --no-restore --verify-no-changes
+
+      - name: Build
+        run: dotnet build InOut.sln --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test InOut.sln --configuration Release --no-build --logger "console;verbosity=normal"
+
+      - name: Publish API
+        run: dotnet publish src/InOut.Api/InOut.Api.csproj --configuration Release --no-build --output artifacts/api
