@@ -16,7 +16,7 @@ public sealed class DependencyDirectionTests
     ];
 
     [Fact]
-    public void Domain_does_not_reference_framework_or_outer_layers()
+    public void DomainDoesNotReferenceFrameworkOrOuterLayers()
     {
         AssertDoesNotReference(
             typeof(DomainAssembly).Assembly,
@@ -24,7 +24,7 @@ public sealed class DependencyDirectionTests
     }
 
     [Fact]
-    public void Application_references_domain_but_not_infrastructure_or_api()
+    public void ApplicationReferencesDomainButNotInfrastructureOrApi()
     {
         var references = ReferenceNames(typeof(ApplicationAssembly).Assembly);
 
@@ -35,7 +35,7 @@ public sealed class DependencyDirectionTests
     }
 
     [Fact]
-    public void Infrastructure_may_reference_application_and_domain()
+    public void InfrastructureMayReferenceApplicationAndDomain()
     {
         var references = ReferenceNames(typeof(InfrastructureAssembly).Assembly);
 
