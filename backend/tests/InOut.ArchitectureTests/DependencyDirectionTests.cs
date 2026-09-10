@@ -24,24 +24,19 @@ public sealed class DependencyDirectionTests
     }
 
     [Fact]
-    public void ApplicationReferencesDomainButNotInfrastructureOrApi()
+    public void ApplicationDoesNotReferenceInfrastructureApiOrFrameworks()
     {
-        var references = ReferenceNames(typeof(ApplicationAssembly).Assembly);
-
-        Assert.Contains("InOut.Domain", references);
-        Assert.DoesNotContain("InOut.Infrastructure", references);
-        Assert.DoesNotContain("InOut.Api", references);
-        Assert.DoesNotContain(references, IsFrameworkDependency);
+        AssertDoesNotReference(
+            typeof(ApplicationAssembly).Assembly,
+            [.. FrameworkDependencies, "InOut.Infrastructure", "InOut.Api"]);
     }
 
     [Fact]
-    public void InfrastructureMayReferenceApplicationAndDomain()
+    public void InfrastructureDoesNotReferenceApi()
     {
-        var references = ReferenceNames(typeof(InfrastructureAssembly).Assembly);
-
-        Assert.Contains("InOut.Application", references);
-        Assert.Contains("InOut.Domain", references);
-        Assert.DoesNotContain("InOut.Api", references);
+        AssertDoesNotReference(
+            typeof(InfrastructureAssembly).Assembly,
+            ["InOut.Api"]);
     }
 
     private static void AssertDoesNotReference(
@@ -54,11 +49,6 @@ public sealed class DependencyDirectionTests
                 name.Equals(item, StringComparison.Ordinal) ||
                 name.StartsWith($"{item}.", StringComparison.Ordinal)));
     }
-
-    private static bool IsFrameworkDependency(string name) =>
-        FrameworkDependencies.Any(dependency =>
-            name.Equals(dependency, StringComparison.Ordinal) ||
-            name.StartsWith($"{dependency}.", StringComparison.Ordinal));
 
     private static string[] ReferenceNames(System.Reflection.Assembly assembly) =>
         assembly.GetReferencedAssemblies()
