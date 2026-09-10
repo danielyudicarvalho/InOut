@@ -9,15 +9,15 @@ public sealed class CorrelationIdMiddleware(
     public const string HeaderName = "X-Correlation-ID";
     private const int MaximumLength = 128;
 
+    private static readonly Func<ILogger, string, IDisposable?> BeginCorrelationScope =
+        LoggerMessage.DefineScope<string>("CorrelationId: {CorrelationId}");
+
     public async Task InvokeAsync(HttpContext context)
     {
         var correlationId = ResolveCorrelationId(context);
         context.Response.Headers[HeaderName] = correlationId;
 
-        using var scope = logger.BeginScope(
-            "CorrelationId: {CorrelationId}",
-            correlationId);
-
+        using var scope = BeginCorrelationScope(logger, correlationId);
         await next(context);
     }
 
