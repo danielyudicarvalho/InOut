@@ -14,13 +14,11 @@ public sealed class CorrelationIdMiddleware(
         var correlationId = ResolveCorrelationId(context);
         context.Response.Headers[HeaderName] = correlationId;
 
-        using (logger.BeginScope(new Dictionary<string, object>
-               {
-                   ["CorrelationId"] = correlationId
-               }))
-        {
-            await next(context);
-        }
+        using var scope = logger.BeginScope(
+            "CorrelationId: {CorrelationId}",
+            correlationId);
+
+        await next(context);
     }
 
     private static string ResolveCorrelationId(HttpContext context)
