@@ -3,5 +3,6 @@
     <ProjectReference Include="../InOut.Application/InOut.Application.csproj" />
     <ProjectReference Include="../InOut.Infrastructure/InOut.Infrastructure.csproj" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+    <PackageReference Include="Microsoft.OpenApi" />
   </ItemGroup>
 </Project>
