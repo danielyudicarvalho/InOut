@@ -1,4 +1,5 @@
 using InOut.Domain;
+using Xunit;
 
 namespace InOut.Domain.Tests;
 
