@@ -10,8 +10,8 @@ Registrar entradas, saídas e transferências; organizar categorias e subcategor
 
 - Simples para usar todos os dias.
 - Correto antes de sofisticado.
-- Um monólito modular, sem microsserviços.
-- Regras financeiras independentes da interface e do banco.
+- Um monólito modular ASP.NET, sem microsserviços.
+- Regras financeiras implementadas no domínio C#, independentes da interface e do banco.
 - Histórico auditável: correções por estorno e relançamento.
 - Segurança e privacidade proporcionais a dados financeiros pessoais.
 - Entregas pequenas, testadas e reproduzíveis.
@@ -27,11 +27,12 @@ Registrar entradas, saídas e transferências; organizar categorias e subcategor
 - [Estrutura inicial do projeto Flutter](docs/07-project-structure.md)
 - [Ambientes, dependências e integração contínua](docs/08-environments-and-ci.md)
 - [Banco de dados e isolamento por residência](docs/09-database-security.md)
+- [Inventário dos limites Supabase e plano de migração](docs/10-supabase-boundary-inventory.md)
 - [Registro de decisões arquiteturais](docs/adr/README.md)
 
 ## Desenvolvimento
 
-O aplicativo usa Flutter para Android, iOS e Web/PWA. A experiência desktop do MVP é a PWA responsiva; executáveis desktop nativos estão fora do escopo inicial.
+O cliente usa Flutter para Android, iOS e Web/PWA. Os casos de uso são publicados por uma API ASP.NET Core; Supabase fornece PostgreSQL e Auth. O Flutter não implementa regras financeiras nem cria novas dependências de RPCs de negócio.
 
 ```bash
 flutter pub get
@@ -40,7 +41,7 @@ flutter test
 flutter run -d chrome
 ```
 
-Consulte a [estrutura inicial](docs/07-project-structure.md) e o [ADR da stack](docs/adr/ADR-003-application-stack-and-hosting.md) antes de adicionar novos módulos ou dependências.
+Consulte a [estrutura inicial](docs/07-project-structure.md) e o [ADRs da stack e do backend](docs/adr/README.md) antes de adicionar novos módulos ou dependências.
 
 ## Escopo do MVP
 

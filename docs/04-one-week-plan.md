@@ -1,3 +1,17 @@
+> **Plano rebaselined em 2026-09-09:** a introdução do backend ASP.NET invalida a sequência original como calendário rígido. As fases abaixo substituem a execução imediata dos Dias 2–7; o conteúdo antigo permanece como referência de escopo.
+
+## Sequência prioritária para o backend dedicado
+
+1. **Decisão e inventário:** congelar novas RPCs de negócio; mapear RPCs, acesso direto do Flutter, contratos e privilégios.
+2. **Fundação ASP.NET:** criar `InOut.sln`, projetos Api/Application/Domain/Infrastructure, testes, OpenAPI, Problem Details, health checks, logs e CI.
+3. **Segurança e persistência:** validar JWT do Supabase Auth; resolver residência no servidor; configurar EF Core/Npgsql, menor privilégio, transações e testes de RLS.
+4. **Primeira fatia vertical:** migrar Identity & Household, preservando convite opaco, limite de membros, expiração, idempotência e auditoria.
+5. **Ledger:** implementar Money, contas, receitas, despesas, saldo derivado, transferências, estornos e concorrência no domínio C#.
+6. **Demais módulos:** categorias, orçamento, metas, relatórios e CSV.
+7. **Corte:** trocar adaptadores Flutter, reconciliar dados, observar e somente então desativar RPCs/caminhos diretos e revogar permissões.
+
+**Gate de migração:** nenhum fluxo antigo é removido antes de testes de caracterização, paridade funcional, testes de contrato, observabilidade e rollback.
+
 # Plano de entrega em sete dias
 
 ## Definição de pronto

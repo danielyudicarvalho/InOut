@@ -1,26 +1,32 @@
+> **Atualização arquitetural — 2026-09-09:** o backend dedicado ASP.NET Core passa a ser a única porta para casos de uso de negócio. Supabase permanece como PostgreSQL gerenciado, Auth e defesa em profundidade por RLS/constraints. Consulte [ADR-005](adr/ADR-005-dedicated-aspnet-backend.md).
+
 # Arquitetura e decisões
 
 ## Resumo da solução
 
-O InOut começa como um **monólito modular** com um único banco relacional e uma única unidade de entrega. Essa escolha é coerente com dois usuários, prazo de sete dias e baixa escala. O livro *Full Cycle* reforça que monólitos não são inerentemente ruins e que decisões devem responder ao contexto e às restrições.
+O InOut adota um **monólito modular ASP.NET Core**, um cliente Flutter e um único banco PostgreSQL. Essa escolha é coerente com dois usuários, prazo de sete dias e baixa escala. O livro *Full Cycle* reforça que monólitos não são inerentemente ruins e que decisões devem responder ao contexto e às restrições.
 
 Aplicamos arquitetura limpa de modo pragmático: dependências apontam para as regras de negócio, enquanto interface, autenticação e persistência permanecem substituíveis.
 
 ## Limites internos
 
 ```text
-presentation -> application -> domain
-                         ^
-                         |
-                 infrastructure
+Flutter -> HTTPS API
+API -> application -> domain
+              ^          ^
+              |          |
+          infrastructure
 ```
 
 - **domain**: dinheiro, contas, movimentos, categorias, orçamento, metas, estorno e invariantes.
 - **application**: casos de uso, autorização da casa, transações e portas.
 - **infrastructure**: banco, autenticação, relógio, IDs, logs e exportação.
-- **presentation**: telas, estado de UI, validação de formato e navegação.
+- **api**: endpoints, contratos HTTP, autenticação e mapeamento de erros.
+- **presentation Flutter**: telas, estado de UI, validação de formato e navegação.
 
-O domínio não importa bibliotecas de UI, SDK de banco, HTTP ou autenticação.
+O Flutter obtém sessão no Supabase Auth e envia o JWT à API. A API valida o token, resolve usuário e residência, executa o caso de uso C# e persiste via EF Core/Npgsql.
+
+Domain e Application não importam ASP.NET, EF Core, Supabase SDK, Flutter ou detalhes HTTP.
 
 ## Módulos do monólito
 
@@ -31,7 +37,7 @@ O domínio não importa bibliotecas de UI, SDK de banco, HTTP ou autenticação.
 - **Reporting**: consultas, painel e exportação.
 - **Operations**: auditoria, logs, backup e configuração.
 
-No MVP, são módulos de código e esquema, não serviços independentes.
+No MVP, são módulos internos do mesmo processo ASP.NET e do mesmo banco, não serviços independentes.
 
 ## Fluxo de um caso de uso
 
@@ -95,6 +101,26 @@ docs/
 ```
 
 A estrutura final pode seguir as convenções do framework escolhido, desde que preserve essas direções de dependência.
+
+## Política de RPCs e acesso direto
+
+- Novos casos de uso de negócio não serão implementados como RPC Supabase.
+- RPCs e acessos diretos existentes serão inventariados, caracterizados e migrados incrementalmente.
+- O Flutter não gravará tabelas financeiras diretamente após a migração do fluxo.
+- RLS e constraints permanecem como defesa em profundidade.
+- Nenhum caminho antigo será removido antes de paridade, observabilidade e rollback comprovados.
+
+## Estrutura do backend
+
+```text
+backend/
+  InOut.sln
+  src/InOut.Api/
+  src/InOut.Application/
+  src/InOut.Domain/
+  src/InOut.Infrastructure/
+  tests/
+```
 
 ## Evolução intencional
 
