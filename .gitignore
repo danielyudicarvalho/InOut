@@ -24,3 +24,11 @@ ios/.symlinks/
 ios/Flutter/Generated.xcconfig
 ios/Flutter/flutter_export_environment.sh
 **/xcuserdata/
+
+# .NET
+**/bin/
+**/obj/
+**/TestResults/
+backend/artifacts/
+*.user
+*.suo
