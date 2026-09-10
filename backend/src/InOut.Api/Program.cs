@@ -18,10 +18,10 @@ if (app.Environment.IsDevelopment())
 }
 
 app.MapGet("/api/v1/system/info", () => Results.Ok(new
-    {
-        service = "InOut.Api",
-        status = "ready"
-    }))
+{
+    service = "InOut.Api",
+    status = "ready"
+}))
     .WithName("GetSystemInfo");
 
 app.MapHealthChecks(
