@@ -34,6 +34,8 @@ Registrar entradas, saídas e transferências; organizar categorias e subcategor
 
 O cliente usa Flutter para Android, iOS e Web/PWA. Os casos de uso são publicados por uma API ASP.NET Core; Supabase fornece PostgreSQL e Auth. O Flutter não implementa regras financeiras nem cria novas dependências de RPCs de negócio.
 
+### Flutter
+
 ```bash
 flutter pub get
 flutter analyze
@@ -41,7 +43,17 @@ flutter test
 flutter run -d chrome
 ```
 
-Consulte a [estrutura inicial](docs/07-project-structure.md) e o [ADRs da stack e do backend](docs/adr/README.md) antes de adicionar novos módulos ou dependências.
+### Backend
+
+```bash
+cd backend
+dotnet restore InOut.sln
+dotnet build InOut.sln --configuration Release --no-restore
+dotnet test InOut.sln --configuration Release --no-build
+dotnet run --project src/InOut.Api/InOut.Api.csproj
+```
+
+Consulte a [estrutura inicial](docs/07-project-structure.md), os [ADRs da stack e do backend](docs/adr/README.md) e o [guia do backend](backend/README.md) antes de adicionar módulos ou dependências.
 
 ## Escopo do MVP
 
