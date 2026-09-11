@@ -19,9 +19,15 @@ Copie `.env.example` para `.env` e preencha apenas no ambiente local. Arquivos
 versionados. No CI e nos ambientes publicados, valores devem vir do mecanismo
 de secrets/configuração da plataforma.
 
-O MVP ainda não consome Supabase. Quando a integração for adicionada, somente
-a URL e a chave pública/anon podem chegar ao cliente. `service_role`, chaves
-privadas e credenciais administrativas nunca pertencem ao aplicativo Flutter.
+O Flutter recebe somente a URL e a chave publicável do Supabase. Ele envia o
+JWT da sessão à API ASP.NET, que valida o JWKS, emissor, audiência e expiração.
+`service_role`, chaves privadas e credenciais PostgreSQL nunca pertencem ao
+aplicativo Flutter.
+
+O backend recebe a conexão PostgreSQL por secret e usa o papel dedicado
+`inout_api_runtime`, sem `BYPASSRLS`. A autorização de residência sempre consulta
+`household_members` com o `sub` validado do JWT; um `household_id` enviado pelo
+cliente é apenas o recurso solicitado, nunca prova de acesso.
 
 ## Pipeline
 
