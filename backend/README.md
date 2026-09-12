@@ -56,6 +56,18 @@ Cada consulta de autorização define `request.jwt.claim.sub` apenas dentro da
 transação. A política RLS exige que esse sujeito coincida com `user_id`, e a
 consulta repete explicitamente o par `(household_id, user_id)`.
 
+## Identity & Household API
+
+- `GET /api/v1/households`
+- `POST /api/v1/households`
+- `POST /api/v1/households/{householdId}/invitations`
+- `POST /api/v1/household-invitations/accept`
+
+Todos exigem `Authorization: Bearer <Supabase access token>`. Convites contêm 24
+bytes aleatórios, são persistidos somente como SHA-256, expiram em 24 horas e
+são consumidos uma única vez. Escritas, auditoria e locks ocorrem na mesma
+transação PostgreSQL.
+
 ## Limites
 
 Domain e Application não podem depender de ASP.NET Core, EF Core, Npgsql, Supabase ou Flutter. Os testes de arquitetura bloqueiam violações básicas dessa direção.
