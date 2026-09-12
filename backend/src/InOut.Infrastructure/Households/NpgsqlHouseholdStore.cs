@@ -317,7 +317,7 @@ public sealed class NpgsqlHouseholdStore(NpgsqlDataSource dataSource) : IHouseho
             command.Parameters.AddWithValue(value);
         }
 
-        var value = await command.ExecuteScalarAsync(cancellationToken);
-        return value is null or DBNull ? default! : (T)value;
+        var result = await command.ExecuteScalarAsync(cancellationToken);
+        return result is null or DBNull ? default! : (T)result;
     }
 }
