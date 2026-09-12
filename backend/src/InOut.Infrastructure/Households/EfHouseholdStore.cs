@@ -155,12 +155,12 @@ public sealed class EfHouseholdStore(InOutDbContext dbContext) : IHouseholdStore
             await dbContext.SaveChangesAsync(cancellationToken);
         }
         catch (DbUpdateException exception) when (exception.InnerException is PostgresException
-            { SqlState: PostgresErrorCodes.UniqueViolation })
+        { SqlState: PostgresErrorCodes.UniqueViolation })
         {
             throw new HouseholdRuleException("already_member", "User is already a household member.");
         }
         catch (DbUpdateException exception) when (exception.InnerException is PostgresException
-            { SqlState: PostgresErrorCodes.CheckViolation })
+        { SqlState: PostgresErrorCodes.CheckViolation })
         {
             throw new HouseholdRuleException("household_full", "Household already has two members.");
         }
