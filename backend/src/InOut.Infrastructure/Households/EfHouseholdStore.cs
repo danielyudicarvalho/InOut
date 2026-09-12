@@ -183,7 +183,7 @@ public sealed class EfHouseholdStore(InOutDbContext dbContext) : IHouseholdStore
         return transaction;
     }
 
-    private Task LockHouseholdAsync(Guid householdId, CancellationToken cancellationToken) =>
+    private Task<int> LockHouseholdAsync(Guid householdId, CancellationToken cancellationToken) =>
         dbContext.Database.ExecuteSqlInterpolatedAsync(
             $"select id from public.households where id = {householdId} for update",
             cancellationToken);
