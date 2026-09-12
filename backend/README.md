@@ -12,6 +12,11 @@ Monólito modular ASP.NET Core responsável pelos casos de uso e regras de negó
 - `InOut.ArchitectureTests`: direção das dependências.
 - `InOut.Api.Tests`: autenticação e autorização HTTP.
 
+`InOut.Infrastructure` usa EF Core para mapeamento relacional, consultas e
+persistência comum. SQL parametrizado permanece somente nas fronteiras
+específicas do PostgreSQL: contexto transacional de RLS e locks de linha nos
+fluxos concorrentes de convite.
+
 ## Executar
 
 ```bash
@@ -55,6 +60,18 @@ alter role inout_api_runtime login password '<secret-from-secret-manager>';
 Cada consulta de autorização define `request.jwt.claim.sub` apenas dentro da
 transação. A política RLS exige que esse sujeito coincida com `user_id`, e a
 consulta repete explicitamente o par `(household_id, user_id)`.
+
+## Identity & Household API
+
+- `GET /api/v1/households`
+- `POST /api/v1/households`
+- `POST /api/v1/households/{householdId}/invitations`
+- `POST /api/v1/household-invitations/accept`
+
+Todos exigem `Authorization: Bearer <Supabase access token>`. Convites contêm 24
+bytes aleatórios, são persistidos somente como SHA-256, expiram em 24 horas e
+são consumidos uma única vez. Escritas, auditoria e locks ocorrem na mesma
+transação PostgreSQL.
 
 ## Limites
 
