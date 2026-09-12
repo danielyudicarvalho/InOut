@@ -12,6 +12,11 @@ Monólito modular ASP.NET Core responsável pelos casos de uso e regras de negó
 - `InOut.ArchitectureTests`: direção das dependências.
 - `InOut.Api.Tests`: autenticação e autorização HTTP.
 
+`InOut.Infrastructure` usa EF Core para mapeamento relacional, consultas e
+persistência comum. SQL parametrizado permanece somente nas fronteiras
+específicas do PostgreSQL: contexto transacional de RLS e locks de linha nos
+fluxos concorrentes de convite.
+
 ## Executar
 
 ```bash

@@ -3,5 +3,6 @@
     <ProjectReference Include="../InOut.Application/InOut.Application.csproj" />
     <ProjectReference Include="../InOut.Domain/InOut.Domain.csproj" />
     <PackageReference Include="Npgsql" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
   </ItemGroup>
 </Project>

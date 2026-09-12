@@ -4,8 +4,10 @@ using InOut.Api.Security;
 using InOut.Application.Households;
 using InOut.Application.Security;
 using InOut.Infrastructure.Households;
+using InOut.Infrastructure.Persistence;
 using InOut.Infrastructure.Security;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.EntityFrameworkCore;
 using Npgsql;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -24,8 +26,9 @@ builder.Services.AddCors(options => options.AddDefaultPolicy(policy =>
 var databaseConnection = builder.Configuration.GetConnectionString("InOut")
     ?? throw new InvalidOperationException("ConnectionStrings:InOut is required.");
 builder.Services.AddSingleton(_ => new NpgsqlDataSourceBuilder(databaseConnection).Build());
-builder.Services.AddScoped<IHouseholdMembershipReader, NpgsqlHouseholdMembershipReader>();
-builder.Services.AddScoped<IHouseholdStore, NpgsqlHouseholdStore>();
+builder.Services.AddDbContext<InOutDbContext>(options => options.UseNpgsql(databaseConnection));
+builder.Services.AddScoped<IHouseholdMembershipReader, EfHouseholdMembershipReader>();
+builder.Services.AddScoped<IHouseholdStore, EfHouseholdStore>();
 builder.Services.AddScoped<HouseholdService>();
 builder.Services.AddSingleton(TimeProvider.System);
 
