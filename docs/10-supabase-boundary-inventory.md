@@ -27,6 +27,12 @@ Estabelecer o baseline anterior à introdução da API ASP.NET Core. O inventár
 | `create_household_invite(uuid)` | `SupabaseHouseholdRepository.createInvite` na PR #8 | autoriza owner, limita dois membros, invalida convite anterior, gera segredo de 48 caracteres e persiste hash com expiração de 24h | `POST /api/households/{id}/invitations` e `CreateHouseholdInvitation` | manter somente durante migração |
 | `accept_household_invite(text)` | `SupabaseHouseholdRepository.acceptInvite` na PR #8 | valida sessão e convite, bloqueia concorrência, impede terceiro membro, adiciona o usuário e consome convite | `POST /api/household-invitations/accept` e `AcceptHouseholdInvitation` | manter somente durante migração |
 
+Na GOM-99, os quatro fluxos de residência passam por padrão pela API ASP.NET e
+pelo `ApiHouseholdRepository`. O adaptador RPC permanece temporariamente atrás
+de `--dart-define=USE_LEGACY_HOUSEHOLD_RPC=true`, que constitui o rollback da
+janela de compatibilidade. A remoção das permissões e RPCs ocorre somente na
+GOM-101.
+
 As três funções são `SECURITY DEFINER`, têm `search_path` vazio e concedem execução a `authenticated` e `service_role`. `anon` e `PUBLIC` não possuem execução. Elas continuam protegidas enquanto forem compatibilidade, mas não recebem novas regras.
 
 ## Funções privadas técnicas

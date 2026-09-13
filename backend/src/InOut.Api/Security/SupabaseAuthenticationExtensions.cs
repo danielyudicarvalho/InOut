@@ -27,6 +27,18 @@ public static class SupabaseAuthenticationExtensions
                 options.RequireHttpsMetadata = true;
                 options.MapInboundClaims = false;
                 options.TokenValidationParameters = CreateTokenValidationParameters(issuer, audience);
+                options.Events = new JwtBearerEvents
+                {
+                    OnTokenValidated = context =>
+                    {
+                        if (!Guid.TryParse(context.Principal?.FindFirst("sub")?.Value, out _))
+                        {
+                            context.Fail("A valid subject claim is required.");
+                        }
+
+                        return Task.CompletedTask;
+                    }
+                };
             });
 
         return services;
