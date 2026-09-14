@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace InOut.Infrastructure.Persistence;
 
-public sealed class InOutDbContext(DbContextOptions<InOutDbContext> options) : DbContext(options)
+public sealed partial class InOutDbContext(DbContextOptions<InOutDbContext> options) : DbContext(options)
 {
     internal DbSet<HouseholdRecord> Households => Set<HouseholdRecord>();
     internal DbSet<HouseholdMemberRecord> HouseholdMembers => Set<HouseholdMemberRecord>();
@@ -11,6 +11,7 @@ public sealed class InOutDbContext(DbContextOptions<InOutDbContext> options) : D
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        ConfigureFinancial(modelBuilder);
         modelBuilder.Entity<HouseholdRecord>(entity =>
         {
             entity.ToTable("households", "public");
