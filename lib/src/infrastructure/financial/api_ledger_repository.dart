@@ -29,18 +29,15 @@ final class ApiLedgerRepository implements LedgerRepository {
     required DateTime occurredOn,
     required String idempotencyKey,
     String? description,
-  }) => _post(
-    '/api/v1/households/$householdId/ledger/income',
-    {
+  }) => _post('/api/v1/households/$householdId/ledger/income', {
       'accountId': accountId,
       'categoryId': categoryId,
       'amountCents': amountCents,
       'currency': currency,
       'occurredOn': _date(occurredOn),
       'idempotencyKey': idempotencyKey,
-      'description': description,
-    },
-  );
+    'description': description,
+  });
 
   @override
   Future<LedgerWriteResult> postExpense({
@@ -52,18 +49,15 @@ final class ApiLedgerRepository implements LedgerRepository {
     required DateTime occurredOn,
     required String idempotencyKey,
     String? description,
-  }) => _post(
-    '/api/v1/households/$householdId/ledger/expenses',
-    {
+  }) => _post('/api/v1/households/$householdId/ledger/expenses', {
       'accountId': accountId,
       'categoryId': categoryId,
       'amountCents': amountCents,
       'currency': currency,
       'occurredOn': _date(occurredOn),
       'idempotencyKey': idempotencyKey,
-      'description': description,
-    },
-  );
+    'description': description,
+  });
 
   @override
   Future<LedgerWriteResult> postTransfer({
@@ -75,18 +69,15 @@ final class ApiLedgerRepository implements LedgerRepository {
     required DateTime occurredOn,
     required String idempotencyKey,
     String? description,
-  }) => _post(
-    '/api/v1/households/$householdId/ledger/transfers',
-    {
+  }) => _post('/api/v1/households/$householdId/ledger/transfers', {
       'sourceAccountId': sourceAccountId,
       'destinationAccountId': destinationAccountId,
       'amountCents': amountCents,
       'currency': currency,
       'occurredOn': _date(occurredOn),
       'idempotencyKey': idempotencyKey,
-      'description': description,
-    },
-  );
+    'description': description,
+  });
 
   @override
   Future<LedgerWriteResult> reverse({
