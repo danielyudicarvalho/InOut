@@ -47,42 +47,53 @@ void main() {
     });
   });
 
-  test('maps balances and reconciliation without recalculating values', () async {
-    final repository = ApiLedgerRepository(
-      baseUrl: Uri.parse('https://api.inout.test'),
-      accessToken: () async => 'token',
-      client: MockClient((request) async {
-        if (request.url.path.endsWith('/balances')) {
+  test(
+    'maps balances and reconciliation without recalculating values',
+    () async {
+      final repository = ApiLedgerRepository(
+        baseUrl: Uri.parse('https://api.inout.test'),
+        accessToken: () async => 'token',
+        client: MockClient((request) async {
+          if (request.url.path.endsWith('/balances')) {
+            return http.Response(
+              jsonEncode([
+                {
+                  'accountId': 'account-1',
+                  'currency': 'BRL',
+                  'balanceCents': -250,
+                },
+              ]),
+              200,
+            );
+          }
           return http.Response(
-            jsonEncode([
-              {'accountId': 'account-1', 'currency': 'BRL', 'balanceCents': -250},
-            ]),
+            jsonEncode({
+              'isConsistent': true,
+              'postedTransactionCount': 2,
+              'entryTransactionCount': 2,
+              'balances': [
+                {
+                  'accountId': 'account-1',
+                  'currency': 'BRL',
+                  'balanceCents': -250,
+                },
+              ],
+            }),
             200,
           );
-        }
-        return http.Response(
-          jsonEncode({
-            'isConsistent': true,
-            'postedTransactionCount': 2,
-            'entryTransactionCount': 2,
-            'balances': [
-              {'accountId': 'account-1', 'currency': 'BRL', 'balanceCents': -250},
-            ],
-          }),
-          200,
-        );
-      }),
-    );
+        }),
+      );
 
-    final balances = await repository.getBalances('household-1');
-    final reconciliation = await repository.reconcile('household-1');
+      final balances = await repository.getBalances('household-1');
+      final reconciliation = await repository.reconcile('household-1');
 
-    expect(balances.single.balanceCents, -250);
-    expect(reconciliation.isConsistent, isTrue);
-    expect(reconciliation.postedTransactionCount, 2);
-    expect(reconciliation.entryTransactionCount, 2);
-    expect(reconciliation.balances.single.balanceCents, -250);
-  });
+      expect(balances.single.balanceCents, -250);
+      expect(reconciliation.isConsistent, isTrue);
+      expect(reconciliation.postedTransactionCount, 2);
+      expect(reconciliation.entryTransactionCount, 2);
+      expect(reconciliation.balances.single.balanceCents, -250);
+    },
+  );
 
   test('maps the stable financial API error code', () async {
     final repository = ApiLedgerRepository(
