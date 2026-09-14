@@ -104,21 +104,25 @@ public sealed class EfLedgerStore(InOutDbContext dbContext) : ILedgerStore
         Guid householdId,
         CancellationToken cancellationToken)
     {
-        var balances = await (
+        var rows = await (
             from account in dbContext.Accounts.AsNoTracking()
             where account.HouseholdId == householdId && account.ArchivedAt == null
             join entry in dbContext.Entries.AsNoTracking()
                 on new { account.HouseholdId, AccountId = account.Id }
                 equals new { entry.HouseholdId, AccountId = entry.AccountId }
                 into accountEntries
-            select new AccountBalance(
-                account.Id,
+            select new
+            {
+                AccountId = account.Id,
                 account.Currency,
-                accountEntries.Sum(entry =>
-                    entry.Direction == "credit" ? entry.AmountCents : -entry.AmountCents)))
+                BalanceCents = accountEntries.Sum(entry =>
+                    (long?)(entry.Direction == "credit" ? entry.AmountCents : -entry.AmountCents)) ?? 0,
+            })
             .OrderBy(item => item.AccountId)
             .ToListAsync(cancellationToken);
-        return balances;
+        return rows
+            .Select(item => new AccountBalance(item.AccountId, item.Currency, item.BalanceCents))
+            .ToArray();
     }
 
     public async Task<LedgerReconciliation> ReconcileAsync(
