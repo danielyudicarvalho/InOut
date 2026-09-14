@@ -1,9 +1,11 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:inout/src/application/financial/ledger_repository.dart';
 import 'package:inout/src/application/household/household_repository.dart';
 import 'package:inout/src/application/identity/auth_repository.dart';
 import 'package:inout/src/domain/household/household.dart';
 import 'package:inout/src/domain/identity/authenticated_user.dart';
 import 'package:inout/src/infrastructure/auth/supabase_auth_repository.dart';
+import 'package:inout/src/infrastructure/financial/api_ledger_repository.dart';
 import 'package:inout/src/infrastructure/household/api_household_repository.dart';
 import 'package:inout/src/infrastructure/household/supabase_household_repository.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -22,6 +24,16 @@ final householdRepositoryProvider = Provider<HouseholdRepository>((ref) {
   if (useLegacyRpc) return SupabaseHouseholdRepository(supabase);
 
   final repository = ApiHouseholdRepository(
+    baseUrl: ref.watch(apiBaseUrlProvider),
+    accessToken: () async => supabase.auth.currentSession?.accessToken,
+  );
+  ref.onDispose(repository.close);
+  return repository;
+});
+
+final ledgerRepositoryProvider = Provider<LedgerRepository>((ref) {
+  final supabase = Supabase.instance.client;
+  final repository = ApiLedgerRepository(
     baseUrl: ref.watch(apiBaseUrlProvider),
     accessToken: () async => supabase.auth.currentSession?.accessToken,
   );
