@@ -30,12 +30,12 @@ final class ApiLedgerRepository implements LedgerRepository {
     required String idempotencyKey,
     String? description,
   }) => _post('/api/v1/households/$householdId/ledger/income', {
-      'accountId': accountId,
-      'categoryId': categoryId,
-      'amountCents': amountCents,
-      'currency': currency,
-      'occurredOn': _date(occurredOn),
-      'idempotencyKey': idempotencyKey,
+    'accountId': accountId,
+    'categoryId': categoryId,
+    'amountCents': amountCents,
+    'currency': currency,
+    'occurredOn': _date(occurredOn),
+    'idempotencyKey': idempotencyKey,
     'description': description,
   });
 
@@ -50,12 +50,12 @@ final class ApiLedgerRepository implements LedgerRepository {
     required String idempotencyKey,
     String? description,
   }) => _post('/api/v1/households/$householdId/ledger/expenses', {
-      'accountId': accountId,
-      'categoryId': categoryId,
-      'amountCents': amountCents,
-      'currency': currency,
-      'occurredOn': _date(occurredOn),
-      'idempotencyKey': idempotencyKey,
+    'accountId': accountId,
+    'categoryId': categoryId,
+    'amountCents': amountCents,
+    'currency': currency,
+    'occurredOn': _date(occurredOn),
+    'idempotencyKey': idempotencyKey,
     'description': description,
   });
 
@@ -70,12 +70,12 @@ final class ApiLedgerRepository implements LedgerRepository {
     required String idempotencyKey,
     String? description,
   }) => _post('/api/v1/households/$householdId/ledger/transfers', {
-      'sourceAccountId': sourceAccountId,
-      'destinationAccountId': destinationAccountId,
-      'amountCents': amountCents,
-      'currency': currency,
-      'occurredOn': _date(occurredOn),
-      'idempotencyKey': idempotencyKey,
+    'sourceAccountId': sourceAccountId,
+    'destinationAccountId': destinationAccountId,
+    'amountCents': amountCents,
+    'currency': currency,
+    'occurredOn': _date(occurredOn),
+    'idempotencyKey': idempotencyKey,
     'description': description,
   });
 
@@ -90,8 +90,8 @@ final class ApiLedgerRepository implements LedgerRepository {
     '/api/v1/households/$householdId/ledger/transactions/'
     '$transactionId/reversals',
     {
-      'occurredOn': _date(occurredOn),
-      'idempotencyKey': idempotencyKey,
+    'occurredOn': _date(occurredOn),
+    'idempotencyKey': idempotencyKey,
       'description': description,
     },
   );
