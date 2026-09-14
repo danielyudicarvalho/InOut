@@ -5,6 +5,7 @@ using InOut.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using Testcontainers.PostgreSql;
+using Xunit;
 
 namespace InOut.Api.Tests;
 
