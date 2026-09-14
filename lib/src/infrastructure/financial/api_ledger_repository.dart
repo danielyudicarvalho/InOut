@@ -165,7 +165,7 @@ final class ApiLedgerRepository implements LedgerRepository {
       });
     if (body != null) request.body = jsonEncode(body);
 
-    final response = await http.Response.fromStream(await _client.send(request));
+    final response = await http.Response.fromStream(\n      await _client.send(request),\n    );
     if (response.statusCode < 200 || response.statusCode >= 300) {
       var code = 'api_error';
       try {
