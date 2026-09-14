@@ -77,7 +77,9 @@ void main() {
     final repository = ApiLedgerRepository(
       baseUrl: Uri.parse('https://api.inout.test'),
       accessToken: () async => null,
-      client: MockClient((_) async => throw StateError('must not call HTTP')),
+      client: MockClient(
+        (_) async => throw StateError('must not call HTTP'),
+      ),
     );
 
     await expectLater(
