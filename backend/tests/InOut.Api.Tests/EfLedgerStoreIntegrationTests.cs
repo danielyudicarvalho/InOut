@@ -47,7 +47,7 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
     public async Task DisposeAsync() => await postgres.DisposeAsync();
 
     [Fact]
-    public async Task Concurrent_retries_with_same_key_create_one_transaction()
+    public async Task ConcurrentRetriesWithSameKeyCreateOneTransaction()
     {
         var idempotencyKey = Guid.NewGuid();
         var first = PostIncomeAsync(idempotencyKey);
@@ -70,7 +70,7 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Concurrent_reversals_allow_only_one_reversal()
+    public async Task ConcurrentReversalsAllowOnlyOneReversal()
     {
         var posted = await PostIncomeAsync(Guid.NewGuid());
         var first = ReverseAsync(posted.TransactionId, Guid.NewGuid());
