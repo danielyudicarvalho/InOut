@@ -90,8 +90,8 @@ final class ApiLedgerRepository implements LedgerRepository {
     '/api/v1/households/$householdId/ledger/transactions/'
     '$transactionId/reversals',
     {
-    'occurredOn': _date(occurredOn),
-    'idempotencyKey': idempotencyKey,
+      'occurredOn': _date(occurredOn),
+      'idempotencyKey': idempotencyKey,
       'description': description,
     },
   );
