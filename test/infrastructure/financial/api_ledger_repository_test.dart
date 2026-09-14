@@ -86,7 +86,11 @@ void main() {
       repository.getBalances('household-id'),
       throwsA(
         isA<ApiLedgerException>()
-            .having((error) => error.statusCode, 'statusCode', 401)
+            .having(
+              (error) => error.statusCode,
+              'statusCode',
+              401,
+            )
             .having(
               (error) => error.code,
               'code',
