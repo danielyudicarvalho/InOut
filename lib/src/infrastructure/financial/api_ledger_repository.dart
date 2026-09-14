@@ -189,8 +189,7 @@ final class ApiLedgerRepository implements LedgerRepository {
     balanceCents: row['balanceCents']! as int,
   );
 
-  static String _date(DateTime value) =>
-      value.toIso8601String().substring(0, 10);
+  static String _date(DateTime value) => value.toIso8601String().substring(0, 10);
 }
 
 final class ApiLedgerException implements Exception {
