@@ -166,11 +166,12 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
         {
             var store = new EfLedgerStore(context);
             var balances = await store.GetBalancesAsync(householdId, CancellationToken.None);
-            var transferEntries = await context.Entries
-                .AsNoTracking()
+            var transferEntries = (await store.GetHistoryAsync(
+                    householdId,
+                    100,
+                    CancellationToken.None))
                 .Where(entry => entry.TransactionId == result.TransactionId)
-                .OrderBy(entry => entry.Direction)
-                .ToListAsync();
+                .ToArray();
 
             Assert.Equal(600, balances.Single(item => item.AccountId == accountId).BalanceCents);
             Assert.Equal(400, balances.Single(item => item.AccountId == destinationAccountId).BalanceCents);
@@ -222,13 +223,14 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
         {
             var balances = await new EfLedgerStore(context)
                 .GetBalancesAsync(householdId, CancellationToken.None);
-            var transactionCount = await context.FinancialTransactions.CountAsync();
-            var entryCount = await context.Entries.CountAsync();
+            var reconciliation = await new EfLedgerStore(context)
+                .ReconcileAsync(householdId, CancellationToken.None);
 
             Assert.Equal(1_000, balances.Single(item => item.AccountId == accountId).BalanceCents);
             Assert.Equal(0, balances.Single(item => item.AccountId == destinationAccountId).BalanceCents);
-            Assert.Equal(1, transactionCount);
-            Assert.Equal(1, entryCount);
+            Assert.True(reconciliation.IsConsistent);
+            Assert.Equal(1, reconciliation.PostedTransactionCount);
+            Assert.Equal(1, reconciliation.EntryTransactionCount);
         }
     }
 
