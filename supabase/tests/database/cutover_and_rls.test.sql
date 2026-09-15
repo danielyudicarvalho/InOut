@@ -9,6 +9,7 @@ select plan(24);
 -- roles. Grant only inside this transaction so SET ROLE can exercise the real
 -- runtime policies; the final rollback removes the test-only membership.
 grant inout_api_runtime to postgres;
+grant usage on schema extensions to inout_api_runtime;
 
 select has_table('public', 'households', 'households table exists');
 select has_table('public', 'household_members', 'household_members table exists');
