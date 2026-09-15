@@ -78,6 +78,19 @@ bytes aleatórios, são persistidos somente como SHA-256, expiram em 24 horas e
 são consumidos uma única vez. Escritas, auditoria e locks ocorrem na mesma
 transação PostgreSQL.
 
+## Accounts & Ledger API
+
+- `POST /api/v1/households/{householdId}/ledger/accounts`
+- `GET /api/v1/households/{householdId}/ledger/accounts`
+- `DELETE /api/v1/households/{householdId}/ledger/accounts/{accountId}` (arquiva)
+- `GET /api/v1/households/{householdId}/ledger/history`
+- `GET /api/v1/households/{householdId}/ledger/balances`
+
+O saldo inicial é persistido como `opening_balance`, não como estado mutável da
+conta. Saldos são derivados das entries contabilizadas. O runtime pode criar e
+arquivar contas, mas não recebe `DELETE`; o histórico mantém autor, data, tipo e
+as pernas de cada movimento.
+
 ## Limites
 
 Domain e Application não podem depender de ASP.NET Core, EF Core, Npgsql, Supabase ou Flutter. Os testes de arquitetura bloqueiam violações básicas dessa direção.

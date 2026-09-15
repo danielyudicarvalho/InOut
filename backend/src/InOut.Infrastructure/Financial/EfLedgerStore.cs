@@ -7,6 +7,183 @@ namespace InOut.Infrastructure.Financial;
 
 public sealed class EfLedgerStore(InOutDbContext dbContext) : ILedgerStore
 {
+    public async Task<AccountCreationResult> CreateAccountAsync(
+        Account account,
+        long initialBalanceCents,
+        DateOnly occurredOn,
+        Guid idempotencyKey,
+        Guid actorUserId,
+        CancellationToken cancellationToken)
+    {
+        await using var databaseTransaction = await BeginForUserAsync(actorUserId, cancellationToken);
+        await LockIdempotencyKeyAsync(account.HouseholdId, idempotencyKey, cancellationToken);
+
+        var existing = await dbContext.Accounts
+            .AsNoTracking()
+            .SingleOrDefaultAsync(item => item.Id == account.Id, cancellationToken);
+        if (existing is not null)
+        {
+            if (existing.HouseholdId != account.HouseholdId)
+            {
+                throw new FinancialRuleException("account_conflict", "Account identifier is already in use.");
+            }
+
+            var summary = await GetAccountSummaryAsync(existing, cancellationToken);
+            await databaseTransaction.CommitAsync(cancellationToken);
+            return new AccountCreationResult(summary, true);
+        }
+
+        if (await FindByIdempotencyKeyAsync(account.HouseholdId, idempotencyKey, cancellationToken) is not null)
+        {
+            throw new FinancialRuleException("idempotency_conflict", "Idempotency key is already in use.");
+        }
+
+        var record = new AccountRecord
+        {
+            Id = account.Id,
+            HouseholdId = account.HouseholdId,
+            Name = account.Name,
+            Kind = account.Kind.ToString().ToLowerInvariant(),
+            Currency = account.Currency,
+            CreatedBy = actorUserId,
+        };
+        dbContext.Accounts.Add(record);
+        AddAudit(account.HouseholdId, actorUserId, "financial.account.created", "account", account.Id);
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        if (initialBalanceCents > 0)
+        {
+            var openingBalance = FinancialTransaction.OpeningBalance(
+                account.HouseholdId,
+                account.Id,
+                Money.Positive(initialBalanceCents, account.Currency),
+                occurredOn,
+                idempotencyKey,
+                actorUserId);
+            AddTransaction(openingBalance);
+            AddAudit(
+                account.HouseholdId,
+                actorUserId,
+                "financial.opening_balance.posted",
+                "transaction",
+                openingBalance.Id);
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+
+        await databaseTransaction.CommitAsync(cancellationToken);
+        return new AccountCreationResult(
+            new AccountSummary(account.Id, account.Name, account.Kind, account.Currency, initialBalanceCents, null),
+            false);
+    }
+
+    public async Task<IReadOnlyList<AccountSummary>> GetAccountsAsync(
+        Guid householdId,
+        bool includeArchived,
+        CancellationToken cancellationToken)
+    {
+        var query = dbContext.Accounts.AsNoTracking().Where(item => item.HouseholdId == householdId);
+        if (!includeArchived)
+        {
+            query = query.Where(item => item.ArchivedAt == null);
+        }
+
+        var rows = await query
+            .OrderBy(item => item.Name)
+            .Select(item => new
+            {
+                item.Id,
+                item.Name,
+                item.Kind,
+                item.Currency,
+                BalanceCents = dbContext.Entries
+                    .Where(entry => entry.HouseholdId == householdId && entry.AccountId == item.Id)
+                    .Sum(entry => (long?)(entry.Direction == "credit" ? entry.AmountCents : -entry.AmountCents)) ?? 0,
+                item.ArchivedAt,
+            })
+            .ToListAsync(cancellationToken);
+        return rows
+            .Select(item => new AccountSummary(
+                item.Id,
+                item.Name,
+                ParseAccountKind(item.Kind),
+                item.Currency,
+                item.BalanceCents,
+                item.ArchivedAt))
+            .ToArray();
+    }
+
+    public async Task ArchiveAccountAsync(
+        Guid householdId,
+        Guid accountId,
+        Guid actorUserId,
+        CancellationToken cancellationToken)
+    {
+        await using var databaseTransaction = await BeginForUserAsync(actorUserId, cancellationToken);
+        var account = await dbContext.Accounts.SingleOrDefaultAsync(
+            item => item.HouseholdId == householdId && item.Id == accountId,
+            cancellationToken);
+        if (account is null)
+        {
+            throw new FinancialRuleException("account_not_found", "Account was not found.");
+        }
+
+        if (account.ArchivedAt is null)
+        {
+            account.ArchivedAt = DateTimeOffset.UtcNow;
+            AddAudit(householdId, actorUserId, "financial.account.archived", "account", accountId);
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+
+        await databaseTransaction.CommitAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<LedgerHistoryItem>> GetHistoryAsync(
+        Guid householdId,
+        int limit,
+        CancellationToken cancellationToken)
+    {
+        var rows = await (
+            from transaction in dbContext.FinancialTransactions.AsNoTracking()
+            where transaction.HouseholdId == householdId
+            from entry in transaction.Entries
+            join account in dbContext.Accounts.AsNoTracking()
+                on new { entry.HouseholdId, Id = entry.AccountId }
+                equals new { account.HouseholdId, account.Id }
+            orderby transaction.OccurredOn descending, transaction.PostedAt descending, entry.Id
+            select new
+            {
+                TransactionId = transaction.Id,
+                transaction.Kind,
+                transaction.Status,
+                transaction.Description,
+                transaction.OccurredOn,
+                transaction.PostedAt,
+                transaction.CreatedBy,
+                entry.AccountId,
+                AccountName = account.Name,
+                entry.Direction,
+                entry.AmountCents,
+                account.Currency,
+            })
+            .Take(limit)
+            .ToListAsync(cancellationToken);
+        return rows
+            .Select(item => new LedgerHistoryItem(
+                item.TransactionId,
+                ParseTransactionKind(item.Kind),
+                item.Status,
+                item.Description,
+                item.OccurredOn,
+                item.PostedAt!.Value,
+                item.CreatedBy,
+                item.AccountId,
+                item.AccountName,
+                item.Direction == "credit" ? EntryDirection.Credit : EntryDirection.Debit,
+                item.AmountCents,
+                item.Currency))
+            .ToArray();
+    }
+
     public async Task<LedgerWriteResult> PostAsync(
         FinancialTransaction transaction,
         CancellationToken cancellationToken)
@@ -30,11 +207,7 @@ public sealed class EfLedgerStore(InOutDbContext dbContext) : ILedgerStore
 
         await ValidateReferencesAsync(transaction, cancellationToken);
         AddTransaction(transaction);
-        AddAudit(
-            transaction.HouseholdId,
-            transaction.CreatedBy,
-            "financial.transaction.posted",
-            transaction.Id);
+        AddAudit(transaction.HouseholdId, transaction.CreatedBy, "financial.transaction.posted", "transaction", transaction.Id);
         await dbContext.SaveChangesAsync(cancellationToken);
         await databaseTransaction.CommitAsync(cancellationToken);
         return new LedgerWriteResult(transaction.Id, false);
@@ -94,7 +267,7 @@ public sealed class EfLedgerStore(InOutDbContext dbContext) : ILedgerStore
             description);
         AddTransaction(reversal);
         originalRecord.Status = "reversed";
-        AddAudit(householdId, actorUserId, "financial.transaction.reversed", transactionId);
+        AddAudit(householdId, actorUserId, "financial.transaction.reversed", "transaction", transactionId);
         await dbContext.SaveChangesAsync(cancellationToken);
         await databaseTransaction.CommitAsync(cancellationToken);
         return new LedgerWriteResult(reversal.Id, false);
@@ -212,7 +385,7 @@ public sealed class EfLedgerStore(InOutDbContext dbContext) : ILedgerStore
         {
             Id = transaction.Id,
             HouseholdId = transaction.HouseholdId,
-            Kind = transaction.Kind.ToString().ToLowerInvariant(),
+            Kind = ToDatabaseKind(transaction.Kind),
             Status = "posted",
             Description = transaction.Description,
             OccurredOn = transaction.OccurredOn,
@@ -235,15 +408,53 @@ public sealed class EfLedgerStore(InOutDbContext dbContext) : ILedgerStore
         dbContext.FinancialTransactions.Add(record);
     }
 
-    private void AddAudit(Guid householdId, Guid actorUserId, string action, Guid transactionId) =>
+    private void AddAudit(
+        Guid householdId,
+        Guid actorUserId,
+        string action,
+        string entityType,
+        Guid entityId) =>
         dbContext.AuditEvents.Add(new AuditEventRecord
         {
             HouseholdId = householdId,
             ActorUserId = actorUserId,
             Action = action,
-            EntityType = "transaction",
-            EntityId = transactionId,
+            EntityType = entityType,
+            EntityId = entityId,
         });
+
+    private async Task<AccountSummary> GetAccountSummaryAsync(
+        AccountRecord account,
+        CancellationToken cancellationToken)
+    {
+        var balance = await dbContext.Entries
+            .AsNoTracking()
+            .Where(entry => entry.HouseholdId == account.HouseholdId && entry.AccountId == account.Id)
+            .SumAsync(
+                entry => (long?)(entry.Direction == "credit" ? entry.AmountCents : -entry.AmountCents),
+                cancellationToken) ?? 0;
+        return new AccountSummary(
+            account.Id,
+            account.Name,
+            ParseAccountKind(account.Kind),
+            account.Currency,
+            balance,
+            account.ArchivedAt);
+    }
+
+    private static AccountKind ParseAccountKind(string value) => Enum.Parse<AccountKind>(value, true);
+
+    private static FinancialTransactionKind ParseTransactionKind(string value) => value switch
+    {
+        "opening_balance" => FinancialTransactionKind.OpeningBalance,
+        _ => Enum.Parse<FinancialTransactionKind>(value, true),
+    };
+
+    private static string ToDatabaseKind(FinancialTransactionKind kind) => kind switch
+    {
+        FinancialTransactionKind.OpeningBalance => "opening_balance",
+        _ => kind.ToString().ToLowerInvariant(),
+    };
 
     private Task<Guid?> FindByIdempotencyKeyAsync(
         Guid householdId,
@@ -280,7 +491,7 @@ public sealed class EfLedgerStore(InOutDbContext dbContext) : ILedgerStore
         FinancialTransaction.RestorePosted(
             record.Id,
             record.HouseholdId,
-            Enum.Parse<FinancialTransactionKind>(record.Kind, true),
+            ParseTransactionKind(record.Kind),
             record.Description,
             record.OccurredOn,
             record.IdempotencyKey,

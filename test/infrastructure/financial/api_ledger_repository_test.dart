@@ -6,6 +6,89 @@ import 'package:http/testing.dart';
 import 'package:inout/src/infrastructure/financial/api_ledger_repository.dart';
 
 void main() {
+  test('creates accounts with an explicit opening balance', () async {
+    late http.Request captured;
+    final repository = ApiLedgerRepository(
+      baseUrl: Uri.parse('https://api.inout.test'),
+      accessToken: () async => 'token',
+      client: MockClient((request) async {
+        captured = request;
+        return http.Response(
+          jsonEncode({
+            'account': {
+              'id': 'account-2',
+              'name': 'Reserva',
+              'kind': 'savings',
+              'currency': 'BRL',
+              'balanceCents': 25000,
+              'archivedAt': null,
+            },
+            'replayed': false,
+          }),
+          201,
+        );
+      }),
+    );
+
+    final result = await repository.createAccount(
+      householdId: 'household-1',
+      id: 'account-2',
+      name: 'Reserva',
+      kind: 'savings',
+      currency: 'BRL',
+      initialBalanceCents: 25000,
+      openingDate: DateTime(2026, 9, 15),
+      idempotencyKey: 'idempotency-account-2',
+    );
+
+    expect(result.account.balanceCents, 25000);
+    expect(result.replayed, isFalse);
+    expect(captured.url.path, '/api/v1/households/household-1/ledger/accounts');
+    expect(jsonDecode(captured.body), {
+      'id': 'account-2',
+      'name': 'Reserva',
+      'kind': 'savings',
+      'currency': 'BRL',
+      'initialBalanceCents': 25000,
+      'openingDate': '2026-09-15',
+      'idempotencyKey': 'idempotency-account-2',
+    });
+  });
+
+  test('maps ledger history with author, date, and type', () async {
+    final repository = ApiLedgerRepository(
+      baseUrl: Uri.parse('https://api.inout.test'),
+      accessToken: () async => 'token',
+      client: MockClient(
+        (_) async => http.Response(
+          jsonEncode([
+            {
+              'transactionId': 'transaction-1',
+              'kind': 'openingBalance',
+              'status': 'posted',
+              'description': 'Saldo inicial',
+              'occurredOn': '2026-09-15',
+              'postedAt': '2026-09-15T12:00:00Z',
+              'createdBy': 'user-1',
+              'accountId': 'account-1',
+              'accountName': 'Reserva',
+              'direction': 'credit',
+              'amountCents': 25000,
+              'currency': 'BRL',
+            },
+          ]),
+          200,
+        ),
+      ),
+    );
+
+    final history = await repository.getHistory('household-1');
+
+    expect(history.single.createdBy, 'user-1');
+    expect(history.single.kind, 'openingBalance');
+    expect(history.single.occurredOn, DateTime(2026, 9, 15));
+  });
+
   test('posts income through the versioned API contract', () async {
     late http.Request captured;
     final repository = ApiLedgerRepository(

@@ -1,3 +1,5 @@
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using InOut.Api.Financial;
 using InOut.Api.Households;
 using InOut.Api.Middleware;
@@ -14,6 +16,10 @@ using Microsoft.EntityFrameworkCore;
 using Npgsql;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.ConfigureHttpJsonOptions(options =>
+    options.SerializerOptions.Converters.Add(
+        new JsonStringEnumConverter(JsonNamingPolicy.CamelCase)));
 
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<HouseholdExceptionHandler>();

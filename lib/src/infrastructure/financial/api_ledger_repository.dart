@@ -20,6 +20,79 @@ final class ApiLedgerRepository implements LedgerRepository {
   void close() => _client.close();
 
   @override
+  Future<AccountCreationResult> createAccount({
+    required String householdId,
+    required String id,
+    required String name,
+    required String kind,
+    required String currency,
+    required int initialBalanceCents,
+    required DateTime openingDate,
+    required String idempotencyKey,
+  }) async {
+    final response = await _send(
+      'POST',
+      '/api/v1/households/$householdId/ledger/accounts',
+      body: {
+        'id': id,
+        'name': name,
+        'kind': kind,
+        'currency': currency,
+        'initialBalanceCents': initialBalanceCents,
+        'openingDate': _date(openingDate),
+        'idempotencyKey': idempotencyKey,
+      },
+    );
+    final body = jsonDecode(response.body) as Map<String, dynamic>;
+    return AccountCreationResult(
+      account: _account(body['account']! as Map<String, dynamic>),
+      replayed: body['replayed']! as bool,
+    );
+  }
+
+  @override
+  Future<List<AccountSummary>> getAccounts(
+    String householdId, {
+    bool includeArchived = false,
+  }) async {
+    final suffix = includeArchived ? '?includeArchived=true' : '';
+    final response = await _send(
+      'GET',
+      '/api/v1/households/$householdId/ledger/accounts$suffix',
+    );
+    return (jsonDecode(response.body) as List<dynamic>)
+        .cast<Map<String, dynamic>>()
+        .map(_account)
+        .toList(growable: false);
+  }
+
+  @override
+  Future<void> archiveAccount({
+    required String householdId,
+    required String accountId,
+  }) async {
+    await _send(
+      'DELETE',
+      '/api/v1/households/$householdId/ledger/accounts/$accountId',
+    );
+  }
+
+  @override
+  Future<List<LedgerHistoryItem>> getHistory(
+    String householdId, {
+    int limit = 100,
+  }) async {
+    final response = await _send(
+      'GET',
+      '/api/v1/households/$householdId/ledger/history?limit=$limit',
+    );
+    return (jsonDecode(response.body) as List<dynamic>)
+        .cast<Map<String, dynamic>>()
+        .map(_historyItem)
+        .toList(growable: false);
+  }
+
+  @override
   Future<LedgerWriteResult> postIncome({
     required String householdId,
     required String accountId,
@@ -179,6 +252,33 @@ final class ApiLedgerRepository implements LedgerRepository {
     currency: row['currency']! as String,
     balanceCents: row['balanceCents']! as int,
   );
+
+  static AccountSummary _account(Map<String, dynamic> row) => AccountSummary(
+    id: row['id']! as String,
+    name: row['name']! as String,
+    kind: row['kind']! as String,
+    currency: row['currency']! as String,
+    balanceCents: row['balanceCents']! as int,
+    archivedAt: row['archivedAt'] == null
+        ? null
+        : DateTime.parse(row['archivedAt']! as String),
+  );
+
+  static LedgerHistoryItem _historyItem(Map<String, dynamic> row) =>
+      LedgerHistoryItem(
+        transactionId: row['transactionId']! as String,
+        kind: row['kind']! as String,
+        status: row['status']! as String,
+        description: row['description'] as String?,
+        occurredOn: DateTime.parse(row['occurredOn']! as String),
+        postedAt: DateTime.parse(row['postedAt']! as String),
+        createdBy: row['createdBy']! as String,
+        accountId: row['accountId']! as String,
+        accountName: row['accountName']! as String,
+        direction: row['direction']! as String,
+        amountCents: row['amountCents']! as int,
+        currency: row['currency']! as String,
+      );
 
   static String _date(DateTime value) =>
       value.toIso8601String().substring(0, 10);

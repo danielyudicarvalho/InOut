@@ -48,6 +48,24 @@ public sealed class FinancialTransactionTests
     }
 
     [Fact]
+    public void OpeningBalanceIsExplicitAndHasNoCategory()
+    {
+        var transaction = FinancialTransaction.OpeningBalance(
+            HouseholdId,
+            Guid.NewGuid(),
+            new Money(500_00),
+            OccurredOn,
+            Guid.NewGuid(),
+            ActorId);
+
+        var entry = Assert.Single(transaction.Entries);
+        Assert.Equal(FinancialTransactionKind.OpeningBalance, transaction.Kind);
+        Assert.Equal(EntryDirection.Credit, entry.Direction);
+        Assert.Null(entry.CategoryId);
+        Assert.Equal(500_00, entry.Amount.Cents);
+    }
+
+    [Fact]
     public void ExpenseCreatesDebitEntry()
     {
         var transaction = FinancialTransaction.Expense(

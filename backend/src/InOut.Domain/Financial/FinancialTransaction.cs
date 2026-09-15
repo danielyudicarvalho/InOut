@@ -2,6 +2,7 @@ namespace InOut.Domain.Financial;
 
 public enum FinancialTransactionKind
 {
+    OpeningBalance,
     Income,
     Expense,
     Transfer,
@@ -79,6 +80,25 @@ public sealed class FinancialTransaction
             idempotencyKey,
             actorUserId,
             description);
+
+    public static FinancialTransaction OpeningBalance(
+        Guid householdId,
+        Guid accountId,
+        Money amount,
+        DateOnly occurredOn,
+        Guid idempotencyKey,
+        Guid actorUserId) =>
+        SingleEntry(
+            householdId,
+            FinancialTransactionKind.OpeningBalance,
+            accountId,
+            null,
+            EntryDirection.Credit,
+            amount,
+            occurredOn,
+            idempotencyKey,
+            actorUserId,
+            "Saldo inicial");
 
     public static FinancialTransaction Expense(
         Guid householdId,
@@ -195,7 +215,7 @@ public sealed class FinancialTransaction
         Guid householdId,
         FinancialTransactionKind kind,
         Guid accountId,
-        Guid categoryId,
+        Guid? categoryId,
         EntryDirection direction,
         Money amount,
         DateOnly occurredOn,

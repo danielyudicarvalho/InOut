@@ -2,6 +2,16 @@ using InOut.Domain.Financial;
 
 namespace InOut.Application.Financial;
 
+public sealed record CreateAccountCommand(
+    Guid Id,
+    Guid HouseholdId,
+    string Name,
+    AccountKind Kind,
+    string Currency,
+    long InitialBalanceCents,
+    DateOnly OpeningDate,
+    Guid IdempotencyKey);
+
 public sealed record PostIncomeCommand(
     Guid HouseholdId,
     Guid AccountId,
@@ -41,6 +51,55 @@ public sealed record ReverseTransactionCommand(
 
 public sealed class LedgerService(ILedgerStore store)
 {
+    public Task<AccountCreationResult> CreateAccountAsync(
+        Guid actorUserId,
+        CreateAccountCommand command,
+        CancellationToken cancellationToken)
+    {
+        if (command.InitialBalanceCents < 0)
+        {
+            throw new FinancialRuleException("invalid_initial_balance", "Initial balance cannot be negative.");
+        }
+
+        if (command.IdempotencyKey == Guid.Empty)
+        {
+            throw new FinancialRuleException("invalid_idempotency_key", "Idempotency key is required.");
+        }
+
+        var account = Account.Create(
+            command.Id,
+            command.HouseholdId,
+            command.Name,
+            command.Kind,
+            command.Currency);
+        return store.CreateAccountAsync(
+            account,
+            command.InitialBalanceCents,
+            command.OpeningDate,
+            command.IdempotencyKey,
+            actorUserId,
+            cancellationToken);
+    }
+
+    public Task<IReadOnlyList<AccountSummary>> GetAccountsAsync(
+        Guid householdId,
+        bool includeArchived,
+        CancellationToken cancellationToken) =>
+        store.GetAccountsAsync(householdId, includeArchived, cancellationToken);
+
+    public Task ArchiveAccountAsync(
+        Guid householdId,
+        Guid accountId,
+        Guid actorUserId,
+        CancellationToken cancellationToken) =>
+        store.ArchiveAccountAsync(householdId, accountId, actorUserId, cancellationToken);
+
+    public Task<IReadOnlyList<LedgerHistoryItem>> GetHistoryAsync(
+        Guid householdId,
+        int limit,
+        CancellationToken cancellationToken) =>
+        store.GetHistoryAsync(householdId, Math.Clamp(limit, 1, 200), cancellationToken);
+
     public Task<LedgerWriteResult> PostIncomeAsync(
         Guid actorUserId,
         PostIncomeCommand command,

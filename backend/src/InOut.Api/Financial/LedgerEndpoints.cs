@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using InOut.Api.Security;
 using InOut.Application.Financial;
+using InOut.Domain.Financial;
 
 namespace InOut.Api.Financial;
 
@@ -11,6 +12,59 @@ public static class LedgerEndpoints
         var ledger = endpoints.MapGroup("/api/v1/households/{householdId:guid}/ledger")
             .RequireAuthorization(HouseholdMemberRequirement.PolicyName)
             .WithTags("Ledger");
+
+        ledger.MapPost("/accounts", async (
+            Guid householdId,
+            CreateAccountRequest request,
+            ClaimsPrincipal principal,
+            LedgerService service,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await service.CreateAccountAsync(
+                UserId(principal),
+                new CreateAccountCommand(
+                    request.Id,
+                    householdId,
+                    request.Name,
+                    request.Kind,
+                    request.Currency,
+                    request.InitialBalanceCents,
+                    request.OpeningDate,
+                    request.IdempotencyKey),
+                cancellationToken);
+            return result.Replayed
+                ? Results.Ok(result)
+                : Results.Created(
+                    $"/api/v1/households/{householdId}/ledger/accounts/{result.Account.Id}",
+                    result);
+        }).WithName("CreateAccount");
+
+        ledger.MapGet("/accounts", async (
+            Guid householdId,
+            bool includeArchived,
+            LedgerService service,
+            CancellationToken cancellationToken) =>
+            Results.Ok(await service.GetAccountsAsync(householdId, includeArchived, cancellationToken)))
+            .WithName("GetAccounts");
+
+        ledger.MapDelete("/accounts/{accountId:guid}", async (
+            Guid householdId,
+            Guid accountId,
+            ClaimsPrincipal principal,
+            LedgerService service,
+            CancellationToken cancellationToken) =>
+        {
+            await service.ArchiveAccountAsync(householdId, accountId, UserId(principal), cancellationToken);
+            return Results.NoContent();
+        }).WithName("ArchiveAccount");
+
+        ledger.MapGet("/history", async (
+            Guid householdId,
+            int? limit,
+            LedgerService service,
+            CancellationToken cancellationToken) =>
+            Results.Ok(await service.GetHistoryAsync(householdId, limit ?? 100, cancellationToken)))
+            .WithName("GetLedgerHistory");
 
         ledger.MapPost("/income", async (
             Guid householdId,
@@ -131,6 +185,15 @@ public static class LedgerEndpoints
         DateOnly OccurredOn,
         Guid IdempotencyKey,
         string? Description);
+
+    public sealed record CreateAccountRequest(
+        Guid Id,
+        string Name,
+        AccountKind Kind,
+        string Currency,
+        long InitialBalanceCents,
+        DateOnly OpeningDate,
+        Guid IdempotencyKey);
 
     public sealed record PostExpenseRequest(
         Guid AccountId,
