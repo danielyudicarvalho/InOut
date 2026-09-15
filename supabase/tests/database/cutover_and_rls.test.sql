@@ -5,6 +5,11 @@ set local search_path = public, extensions, pg_catalog;
 
 select plan(24);
 
+-- The Supabase test runner connects as postgres without membership in custom
+-- roles. Grant only inside this transaction so SET ROLE can exercise the real
+-- runtime policies; the final rollback removes the test-only membership.
+grant inout_api_runtime to postgres;
+
 select has_table('public', 'households', 'households table exists');
 select has_table('public', 'household_members', 'household_members table exists');
 select has_table('public', 'accounts', 'accounts table exists');
