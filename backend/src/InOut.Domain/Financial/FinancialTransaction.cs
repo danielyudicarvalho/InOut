@@ -170,6 +170,27 @@ public sealed class FinancialTransaction
             postedTransaction.Entries.Select(entry => entry.Reverse()).ToArray());
     }
 
+    public static FinancialTransaction RestorePosted(
+        Guid id,
+        Guid householdId,
+        FinancialTransactionKind kind,
+        string? description,
+        DateOnly occurredOn,
+        Guid idempotencyKey,
+        Guid createdBy,
+        Guid? reversalOf,
+        IReadOnlyList<LedgerEntry> entries) =>
+        new(
+            id,
+            householdId,
+            kind,
+            description,
+            occurredOn,
+            idempotencyKey,
+            createdBy,
+            reversalOf,
+            entries);
+
     private static FinancialTransaction SingleEntry(
         Guid householdId,
         FinancialTransactionKind kind,

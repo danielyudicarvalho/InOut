@@ -1,8 +1,11 @@
+using InOut.Api.Financial;
 using InOut.Api.Households;
 using InOut.Api.Middleware;
 using InOut.Api.Security;
+using InOut.Application.Financial;
 using InOut.Application.Households;
 using InOut.Application.Security;
+using InOut.Infrastructure.Financial;
 using InOut.Infrastructure.Households;
 using InOut.Infrastructure.Persistence;
 using InOut.Infrastructure.Security;
@@ -14,6 +17,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<HouseholdExceptionHandler>();
+builder.Services.AddExceptionHandler<FinancialExceptionHandler>();
 builder.Services.AddOpenApi();
 builder.Services.AddHealthChecks();
 builder.Services.AddSupabaseAuthentication(builder.Configuration);
@@ -30,6 +34,8 @@ builder.Services.AddDbContext<InOutDbContext>(options => options.UseNpgsql(datab
 builder.Services.AddScoped<IHouseholdMembershipReader, EfHouseholdMembershipReader>();
 builder.Services.AddScoped<IHouseholdStore, EfHouseholdStore>();
 builder.Services.AddScoped<HouseholdService>();
+builder.Services.AddScoped<ILedgerStore, EfLedgerStore>();
+builder.Services.AddScoped<LedgerService>();
 builder.Services.AddSingleton(TimeProvider.System);
 
 var app = builder.Build();
@@ -59,6 +65,7 @@ app.MapGet(
     .WithName("CheckHouseholdAccess");
 
 app.MapHouseholdEndpoints();
+app.MapLedgerEndpoints();
 
 app.MapHealthChecks(
     "/health/live",
