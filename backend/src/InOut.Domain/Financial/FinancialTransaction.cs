@@ -103,7 +103,7 @@ public sealed class FinancialTransaction
     public static FinancialTransaction Expense(
         Guid householdId,
         Guid accountId,
-        Guid? categoryId,
+        Guid categoryId,
         Money amount,
         DateOnly occurredOn,
         Guid idempotencyKey,
@@ -215,7 +215,7 @@ public sealed class FinancialTransaction
         Guid householdId,
         FinancialTransactionKind kind,
         Guid accountId,
-        Guid categoryId,
+        Guid? categoryId,
         EntryDirection direction,
         Money amount,
         DateOnly occurredOn,
