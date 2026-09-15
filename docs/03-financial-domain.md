@@ -101,3 +101,21 @@ Exemplo: despesa de R$ 150 registrada como R$ 510.
 ## Auditoria e privacidade
 
 Registrar: usuário, casa, ação, entidade, identificador, instante e resultado. Não registrar senha, token, conteúdo integral de observações ou outros dados sensíveis. A trilha operacional complementa, mas não substitui, a imutabilidade dos movimentos.
+
+## Limites entre camadas
+
+- **Domain** mantém as invariantes independentes de tecnologia: abertura e
+  arquivamento de conta, saldo inicial explícito, referências pertencentes à
+  residência, conta/categoria ativa, moeda e fluxo compatíveis e elegibilidade
+  para estorno.
+- **Application** expressa a intenção dos casos de uso, cria os objetos do
+  domínio, limita entradas operacionais como paginação e chama as portas de
+  persistência.
+- **Infrastructure** carrega os dados exigidos pelas regras, converte registros
+  EF para objetos do domínio e cuida de transações PostgreSQL, locks,
+  idempotência persistida, RLS, consultas e projeções.
+
+Consultas de saldo continuam agregadas no PostgreSQL por eficiência. Isso não
+transforma a fórmula do saldo em regra de infraestrutura: a consulta apenas
+materializa a projeção definida pelo domínio, somando créditos e subtraindo
+débitos contabilizados.

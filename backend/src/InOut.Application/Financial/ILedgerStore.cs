@@ -39,10 +39,7 @@ public sealed record LedgerReconciliation(
 public interface ILedgerStore
 {
     Task<AccountCreationResult> CreateAccountAsync(
-        Account account,
-        long initialBalanceCents,
-        DateOnly occurredOn,
-        Guid idempotencyKey,
+        AccountOpening opening,
         Guid actorUserId,
         CancellationToken cancellationToken);
 

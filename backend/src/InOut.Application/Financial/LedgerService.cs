@@ -56,27 +56,23 @@ public sealed class LedgerService(ILedgerStore store)
         CreateAccountCommand command,
         CancellationToken cancellationToken)
     {
-        if (command.InitialBalanceCents < 0)
-        {
-            throw new FinancialRuleException("invalid_initial_balance", "Initial balance cannot be negative.");
-        }
-
         if (command.IdempotencyKey == Guid.Empty)
         {
             throw new FinancialRuleException("invalid_idempotency_key", "Idempotency key is required.");
         }
 
-        var account = Account.Create(
+        var opening = Account.Open(
             command.Id,
             command.HouseholdId,
             command.Name,
             command.Kind,
-            command.Currency);
-        return store.CreateAccountAsync(
-            account,
+            command.Currency,
             command.InitialBalanceCents,
             command.OpeningDate,
             command.IdempotencyKey,
+            actorUserId);
+        return store.CreateAccountAsync(
+            opening,
             actorUserId,
             cancellationToken);
     }

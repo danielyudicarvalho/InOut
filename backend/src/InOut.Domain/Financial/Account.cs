@@ -34,6 +34,40 @@ public sealed record Account(
         return new Account(id, householdId, NormalizeName(name), kind, new Money(0, currency).Currency, null);
     }
 
+    public static AccountOpening Open(
+        Guid id,
+        Guid householdId,
+        string? name,
+        AccountKind kind,
+        string currency,
+        long initialBalanceCents,
+        DateOnly openingDate,
+        Guid idempotencyKey,
+        Guid actorUserId)
+    {
+        if (initialBalanceCents < 0)
+        {
+            throw new FinancialRuleException(
+                "invalid_initial_balance",
+                "Initial balance cannot be negative.");
+        }
+
+        var account = Create(id, householdId, name, kind, currency);
+        var openingBalance = initialBalanceCents == 0
+            ? null
+            : FinancialTransaction.OpeningBalance(
+                householdId,
+                id,
+                Money.Positive(initialBalanceCents, account.Currency),
+                openingDate,
+                idempotencyKey,
+                actorUserId);
+        return new AccountOpening(account, openingBalance);
+    }
+
+    public Account Archive(DateTimeOffset archivedAt) =>
+        IsActive ? this with { ArchivedAt = archivedAt } : this;
+
     public static string NormalizeName(string? name)
     {
         var normalized = name?.Trim();
@@ -47,3 +81,7 @@ public sealed record Account(
         return normalized;
     }
 }
+
+public sealed record AccountOpening(
+    Account Account,
+    FinancialTransaction? OpeningBalance);
