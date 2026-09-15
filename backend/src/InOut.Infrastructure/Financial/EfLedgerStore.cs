@@ -229,6 +229,7 @@ public sealed class EfLedgerStore(InOutDbContext dbContext) : ILedgerStore
                 CategoryId = entry.CategoryId,
                 Direction = entry.Direction.ToString().ToLowerInvariant(),
                 AmountCents = entry.Amount.Cents,
+                CreatedBy = transaction.CreatedBy,
             }).ToList(),
         };
         dbContext.FinancialTransactions.Add(record);

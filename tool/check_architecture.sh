@@ -22,4 +22,16 @@ if grep --recursive --line-number --extended-regexp 'Color\(0x' \
   exit 1
 fi
 
+if grep --recursive --line-number --extended-regexp \
+  '\.(rpc|from)\(' lib --include='*.dart'; then
+  echo "Data-boundary violation: Flutter may use Supabase only for Auth; business data must use the API." >&2
+  exit 1
+fi
+
+if grep --recursive --line-number 'USE_LEGACY_HOUSEHOLD_RPC' \
+  lib test --include='*.dart'; then
+  echo "Cutover violation: the legacy household RPC switch must not return." >&2
+  exit 1
+fi
+
 echo "Architecture boundaries: ok"

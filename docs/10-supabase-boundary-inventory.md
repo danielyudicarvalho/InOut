@@ -27,11 +27,11 @@ Estabelecer o baseline anterior à introdução da API ASP.NET Core. O inventár
 | `create_household_invite(uuid)` | `SupabaseHouseholdRepository.createInvite` na PR #8 | autoriza owner, limita dois membros, invalida convite anterior, gera segredo de 48 caracteres e persiste hash com expiração de 24h | `POST /api/households/{id}/invitations` e `CreateHouseholdInvitation` | manter somente durante migração |
 | `accept_household_invite(text)` | `SupabaseHouseholdRepository.acceptInvite` na PR #8 | valida sessão e convite, bloqueia concorrência, impede terceiro membro, adiciona o usuário e consome convite | `POST /api/household-invitations/accept` e `AcceptHouseholdInvitation` | manter somente durante migração |
 
-Na GOM-99, os quatro fluxos de residência passam por padrão pela API ASP.NET e
-pelo `ApiHouseholdRepository`. O adaptador RPC permanece temporariamente atrás
-de `--dart-define=USE_LEGACY_HOUSEHOLD_RPC=true`, que constitui o rollback da
-janela de compatibilidade. A remoção das permissões e RPCs ocorre somente na
-GOM-101.
+Na GOM-99, os quatro fluxos de residência passaram pela API ASP.NET e pelo
+`ApiHouseholdRepository`. A GOM-101 removeu do Flutter o adaptador e a chave de
+fallback RPC. O rollback operacional agora é controlado no servidor e descrito
+em [Corte das RPCs legadas](runbooks/gom-101-legacy-cutover.md), sem republicar
+credenciais ou acesso direto a dados no cliente normal.
 
 As três funções são `SECURITY DEFINER`, têm `search_path` vazio e concedem execução a `authenticated` e `service_role`. `anon` e `PUBLIC` não possuem execução. Elas continuam protegidas enquanto forem compatibilidade, mas não recebem novas regras.
 
@@ -64,7 +64,11 @@ Após a primeira fatia vertical, o Flutter mantém o SDK Supabase somente para a
 
 O papel `authenticated` possui leitura e escrita direta em várias tabelas de negócio, incluindo `accounts`, `budgets`, `categories`, `entries`, `goals` e `transactions`, sempre condicionado pelas policies RLS. Possui acesso mais restrito em `households`, `household_members` e `audit_events`.
 
-Esses privilégios não serão revogados agora: a aplicação pode depender deles durante a transição. A GOM-101 deverá revogar escrita direta por módulo somente depois que o Flutter usar a API, a telemetria confirmar o novo caminho e o rollback estiver testado.
+A migration da GOM-101 revoga esses privilégios de `anon` e `authenticated` e
+concede ao papel `inout_api_runtime` somente as operações exigidas pelas fatias
+Identity & Household e Ledger. A aplicação da migration hospedada continua
+condicionada aos gates de deploy, telemetria, reconciliação e rollback do
+runbook.
 
 ## Contratos a caracterizar
 

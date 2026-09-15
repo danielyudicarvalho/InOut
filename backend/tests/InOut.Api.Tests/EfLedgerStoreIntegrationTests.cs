@@ -202,6 +202,7 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
           direction text not null,
           amount_cents bigint not null,
           created_at timestamptz not null default now(),
+          created_by uuid not null,
           foreign key (household_id, transaction_id) references public.transactions(household_id, id),
           foreign key (household_id, account_id) references public.accounts(household_id, id),
           foreign key (household_id, category_id) references public.categories(household_id, id)

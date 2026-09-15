@@ -72,6 +72,7 @@ public sealed partial class InOutDbContext
             entity.Property(item => item.Direction).HasColumnName("direction");
             entity.Property(item => item.AmountCents).HasColumnName("amount_cents");
             entity.Property(item => item.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("now()");
+            entity.Property(item => item.CreatedBy).HasColumnName("created_by");
         });
     }
 }
@@ -126,4 +127,5 @@ internal sealed class EntryRecord
     public string Direction { get; set; } = string.Empty;
     public long AmountCents { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
+    public Guid CreatedBy { get; set; }
 }
