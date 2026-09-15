@@ -70,6 +70,72 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task AccountLifecycleKeepsDerivedBalanceAndHistoryAfterArchive()
+    {
+        var createdAccountId = Guid.NewGuid();
+        var idempotencyKey = Guid.NewGuid();
+        await using (var context = CreateContext())
+        {
+            var service = new LedgerService(new EfLedgerStore(context));
+            var created = await service.CreateAccountAsync(
+                actorUserId,
+                new CreateAccountCommand(
+                    createdAccountId,
+                    householdId,
+                    "Reserva",
+                    AccountKind.Savings,
+                    "BRL",
+                    25_000,
+                    new DateOnly(2026, 9, 15),
+                    idempotencyKey),
+                CancellationToken.None);
+
+            Assert.False(created.Replayed);
+            Assert.Equal(25_000, created.Account.BalanceCents);
+        }
+
+        await using (var context = CreateContext())
+        {
+            var service = new LedgerService(new EfLedgerStore(context));
+            var replay = await service.CreateAccountAsync(
+                actorUserId,
+                new CreateAccountCommand(
+                    createdAccountId,
+                    householdId,
+                    "Reserva",
+                    AccountKind.Savings,
+                    "BRL",
+                    25_000,
+                    new DateOnly(2026, 9, 15),
+                    idempotencyKey),
+                CancellationToken.None);
+            Assert.True(replay.Replayed);
+
+            await service.ArchiveAccountAsync(
+                householdId,
+                createdAccountId,
+                actorUserId,
+                CancellationToken.None);
+        }
+
+        await using (var context = CreateContext())
+        {
+            var service = new LedgerService(new EfLedgerStore(context));
+            var active = await service.GetAccountsAsync(householdId, false, CancellationToken.None);
+            var all = await service.GetAccountsAsync(householdId, true, CancellationToken.None);
+            var history = await service.GetHistoryAsync(householdId, 100, CancellationToken.None);
+
+            Assert.DoesNotContain(active, item => item.Id == createdAccountId);
+            Assert.NotNull(Assert.Single(all, item => item.Id == createdAccountId).ArchivedAt);
+            var opening = Assert.Single(history, item => item.AccountId == createdAccountId);
+            Assert.Equal(FinancialTransactionKind.OpeningBalance, opening.Kind);
+            Assert.Equal(actorUserId, opening.CreatedBy);
+            Assert.Equal(new DateOnly(2026, 9, 15), opening.OccurredOn);
+            Assert.Equal(25_000, opening.AmountCents);
+        }
+    }
+
+    [Fact]
     public async Task ConcurrentReversalsAllowOnlyOneReversal()
     {
         var posted = await PostIncomeAsync(Guid.NewGuid());

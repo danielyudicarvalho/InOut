@@ -27,7 +27,7 @@ Define nome, tipo, moeda, estado ativo/arquivado e saldo inicial registrado como
 
 ### Transaction
 
-Representa receita, despesa, transferência ou estorno. É a raiz das invariantes financeiras e possui uma ou mais pernas contábeis.
+Representa saldo inicial, receita, despesa, transferência ou estorno. É a raiz das invariantes financeiras e possui uma ou mais pernas contábeis.
 
 ### Budget e Goal
 
@@ -83,7 +83,7 @@ Exemplo: despesa de R$ 150 registrada como R$ 510.
 
 ## Fórmulas canônicas
 
-- **Saldo da conta** = saldo inicial explícito + soma das entradas contabilizadas.
+- **Saldo da conta** = soma das entradas contabilizadas, incluindo o movimento explícito `opening_balance`.
 - **Patrimônio consolidado** = soma dos saldos das contas ativas incluídas.
 - **Resultado do período** = receitas externas - despesas externas.
 - **Transferências internas** não alteram resultado nem patrimônio consolidado.

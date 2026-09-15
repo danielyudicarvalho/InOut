@@ -20,6 +20,61 @@ final class AccountBalance {
   final int balanceCents;
 }
 
+final class AccountSummary {
+  const AccountSummary({
+    required this.id,
+    required this.name,
+    required this.kind,
+    required this.currency,
+    required this.balanceCents,
+    required this.archivedAt,
+  });
+
+  final String id;
+  final String name;
+  final String kind;
+  final String currency;
+  final int balanceCents;
+  final DateTime? archivedAt;
+}
+
+final class AccountCreationResult {
+  const AccountCreationResult({required this.account, required this.replayed});
+
+  final AccountSummary account;
+  final bool replayed;
+}
+
+final class LedgerHistoryItem {
+  const LedgerHistoryItem({
+    required this.transactionId,
+    required this.kind,
+    required this.status,
+    required this.description,
+    required this.occurredOn,
+    required this.postedAt,
+    required this.createdBy,
+    required this.accountId,
+    required this.accountName,
+    required this.direction,
+    required this.amountCents,
+    required this.currency,
+  });
+
+  final String transactionId;
+  final String kind;
+  final String status;
+  final String? description;
+  final DateTime occurredOn;
+  final DateTime postedAt;
+  final String createdBy;
+  final String accountId;
+  final String accountName;
+  final String direction;
+  final int amountCents;
+  final String currency;
+}
+
 final class LedgerReconciliation {
   const LedgerReconciliation({
     required this.isConsistent,
@@ -35,6 +90,32 @@ final class LedgerReconciliation {
 }
 
 abstract interface class LedgerRepository {
+  Future<AccountCreationResult> createAccount({
+    required String householdId,
+    required String id,
+    required String name,
+    required String kind,
+    required String currency,
+    required int initialBalanceCents,
+    required DateTime openingDate,
+    required String idempotencyKey,
+  });
+
+  Future<List<AccountSummary>> getAccounts(
+    String householdId, {
+    bool includeArchived = false,
+  });
+
+  Future<void> archiveAccount({
+    required String householdId,
+    required String accountId,
+  });
+
+  Future<List<LedgerHistoryItem>> getHistory(
+    String householdId, {
+    int limit = 100,
+  });
+
   Future<LedgerWriteResult> postIncome({
     required String householdId,
     required String accountId,
