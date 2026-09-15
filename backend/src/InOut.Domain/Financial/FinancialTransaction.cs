@@ -9,6 +9,14 @@ public enum FinancialTransactionKind
     Reversal
 }
 
+public enum FinancialTransactionStatus
+{
+    Draft,
+    Posted,
+    Reversed,
+    Voided
+}
+
 public sealed class FinancialTransaction
 {
     private readonly IReadOnlyList<LedgerEntry> entries;
@@ -22,6 +30,7 @@ public sealed class FinancialTransaction
         Guid idempotencyKey,
         Guid createdBy,
         Guid? reversalOf,
+        FinancialTransactionStatus status,
         IReadOnlyList<LedgerEntry> entries)
     {
         if (idempotencyKey == Guid.Empty)
@@ -29,6 +38,20 @@ public sealed class FinancialTransaction
             throw new FinancialRuleException(
                 "invalid_idempotency_key",
                 "Idempotency key is required.");
+        }
+
+        if (entries.Count == 0)
+        {
+            throw new FinancialRuleException(
+                "transaction_without_entries",
+                "A financial transaction must have at least one entry.");
+        }
+
+        if (entries.Select(entry => entry.Amount.Currency).Distinct().Count() != 1)
+        {
+            throw new FinancialRuleException(
+                "currency_mismatch",
+                "Every entry in a transaction must use the same currency.");
         }
 
         Id = id;
@@ -39,6 +62,7 @@ public sealed class FinancialTransaction
         IdempotencyKey = idempotencyKey;
         CreatedBy = createdBy;
         ReversalOf = reversalOf;
+        Status = status;
         this.entries = entries;
     }
 
@@ -57,6 +81,8 @@ public sealed class FinancialTransaction
     public Guid CreatedBy { get; }
 
     public Guid? ReversalOf { get; }
+
+    public FinancialTransactionStatus Status { get; }
 
     public IReadOnlyList<LedgerEntry> Entries => entries;
 
@@ -148,6 +174,7 @@ public sealed class FinancialTransaction
             idempotencyKey,
             actorUserId,
             null,
+            FinancialTransactionStatus.Posted,
             [
                 new LedgerEntry(
                     Guid.NewGuid(),
@@ -171,6 +198,13 @@ public sealed class FinancialTransaction
         DateOnly occurredOn,
         string? description = null)
     {
+        if (postedTransaction.Status is not FinancialTransactionStatus.Posted)
+        {
+            throw new FinancialRuleException(
+                "transaction_not_reversible",
+                "Only a posted transaction can be reversed.");
+        }
+
         if (postedTransaction.Kind is FinancialTransactionKind.Reversal)
         {
             throw new FinancialRuleException(
@@ -187,6 +221,7 @@ public sealed class FinancialTransaction
             idempotencyKey,
             actorUserId,
             postedTransaction.Id,
+            FinancialTransactionStatus.Posted,
             postedTransaction.Entries.Select(entry => entry.Reverse()).ToArray());
     }
 
@@ -199,6 +234,7 @@ public sealed class FinancialTransaction
         Guid idempotencyKey,
         Guid createdBy,
         Guid? reversalOf,
+        FinancialTransactionStatus status,
         IReadOnlyList<LedgerEntry> entries) =>
         new(
             id,
@@ -209,7 +245,65 @@ public sealed class FinancialTransaction
             idempotencyKey,
             createdBy,
             reversalOf,
+            status,
             entries);
+
+    public void ValidateReferences(
+        IReadOnlyCollection<Account> accounts,
+        IReadOnlyCollection<Category> categories)
+    {
+        var accountIds = entries.Select(entry => entry.AccountId).Distinct().ToArray();
+        var referencedAccounts = accounts
+            .Where(account => accountIds.Contains(account.Id))
+            .ToArray();
+        if (referencedAccounts.Length != accountIds.Length ||
+            referencedAccounts.Any(account => account.HouseholdId != HouseholdId || !account.IsActive))
+        {
+            throw new FinancialRuleException(
+                "invalid_account",
+                "Every account must be active and belong to the household.");
+        }
+
+        if (referencedAccounts.Any(account =>
+            !string.Equals(account.Currency, entries[0].Amount.Currency, StringComparison.Ordinal)))
+        {
+            throw new FinancialRuleException(
+                "currency_mismatch",
+                "Transaction currency must match every account.");
+        }
+
+        var categoryIds = entries
+            .Where(entry => entry.CategoryId is not null)
+            .Select(entry => entry.CategoryId!.Value)
+            .Distinct()
+            .ToArray();
+        if (categoryIds.Length == 0)
+        {
+            return;
+        }
+
+        var expectedFlow = Kind switch
+        {
+            FinancialTransactionKind.Income => FinancialFlow.Income,
+            FinancialTransactionKind.Expense => FinancialFlow.Expense,
+            _ => throw new FinancialRuleException(
+                "invalid_category",
+                "This transaction kind cannot have a category."),
+        };
+        var referencedCategories = categories
+            .Where(category => categoryIds.Contains(category.Id))
+            .ToArray();
+        if (referencedCategories.Length != categoryIds.Length ||
+            referencedCategories.Any(category =>
+                category.HouseholdId != HouseholdId ||
+                !category.IsActive ||
+                category.Flow != expectedFlow))
+        {
+            throw new FinancialRuleException(
+                "invalid_category",
+                "Every category must be active, belong to the household, and match the transaction flow.");
+        }
+    }
 
     private static FinancialTransaction SingleEntry(
         Guid householdId,
@@ -231,6 +325,7 @@ public sealed class FinancialTransaction
             idempotencyKey,
             actorUserId,
             null,
+            FinancialTransactionStatus.Posted,
             [
                 new LedgerEntry(
                     Guid.NewGuid(),

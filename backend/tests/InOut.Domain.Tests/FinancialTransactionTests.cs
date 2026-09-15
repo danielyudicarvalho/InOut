@@ -156,6 +156,104 @@ public sealed class FinancialTransactionTests
     }
 
     [Fact]
+    public void ReversalRejectsAnAlreadyReversedTransaction()
+    {
+        var accountId = Guid.NewGuid();
+        var original = FinancialTransaction.RestorePosted(
+            Guid.NewGuid(),
+            HouseholdId,
+            FinancialTransactionKind.Expense,
+            null,
+            OccurredOn,
+            Guid.NewGuid(),
+            ActorId,
+            null,
+            FinancialTransactionStatus.Reversed,
+            [
+                new LedgerEntry(
+                    Guid.NewGuid(),
+                    accountId,
+                    Guid.NewGuid(),
+                    EntryDirection.Debit,
+                    new Money(75_00)),
+            ]);
+
+        var exception = Assert.Throws<FinancialRuleException>(() =>
+            FinancialTransaction.Reversal(
+                original,
+                Guid.NewGuid(),
+                ActorId,
+                OccurredOn.AddDays(1)));
+
+        Assert.Equal("transaction_not_reversible", exception.Code);
+    }
+
+    [Fact]
+    public void ReferenceValidationRejectsArchivedAccounts()
+    {
+        var accountId = Guid.NewGuid();
+        var categoryId = Guid.NewGuid();
+        var transaction = FinancialTransaction.Expense(
+            HouseholdId,
+            accountId,
+            categoryId,
+            new Money(100),
+            OccurredOn,
+            Guid.NewGuid(),
+            ActorId,
+            null);
+        var account = new Account(
+            accountId,
+            HouseholdId,
+            "Checking",
+            AccountKind.Checking,
+            "BRL",
+            DateTimeOffset.UtcNow);
+        var category = new Category(
+            categoryId,
+            HouseholdId,
+            FinancialFlow.Expense,
+            null);
+
+        var exception = Assert.Throws<FinancialRuleException>(() =>
+            transaction.ValidateReferences([account], [category]));
+
+        Assert.Equal("invalid_account", exception.Code);
+    }
+
+    [Fact]
+    public void ReferenceValidationRejectsCategoryFromTheWrongFlow()
+    {
+        var accountId = Guid.NewGuid();
+        var categoryId = Guid.NewGuid();
+        var transaction = FinancialTransaction.Expense(
+            HouseholdId,
+            accountId,
+            categoryId,
+            new Money(100),
+            OccurredOn,
+            Guid.NewGuid(),
+            ActorId,
+            null);
+        var account = Account.Create(
+            accountId,
+            HouseholdId,
+            "Checking",
+            AccountKind.Checking,
+            "BRL");
+        var category = new Category(
+            categoryId,
+            HouseholdId,
+            FinancialFlow.Income,
+            null);
+
+        var exception = Assert.Throws<FinancialRuleException>(() =>
+            transaction.ValidateReferences([account], [category]));
+
+        Assert.Equal("invalid_category", exception.Code);
+    }
+
+    [Fact]
     public void IdempotencyKeyIsRequired()
     {
         var exception = Assert.Throws<FinancialRuleException>(() =>

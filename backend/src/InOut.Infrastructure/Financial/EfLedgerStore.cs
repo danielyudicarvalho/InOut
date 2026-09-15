@@ -8,15 +8,17 @@ namespace InOut.Infrastructure.Financial;
 public sealed class EfLedgerStore(InOutDbContext dbContext) : ILedgerStore
 {
     public async Task<AccountCreationResult> CreateAccountAsync(
-        Account account,
-        long initialBalanceCents,
-        DateOnly occurredOn,
-        Guid idempotencyKey,
+        AccountOpening opening,
         Guid actorUserId,
         CancellationToken cancellationToken)
     {
+        var account = opening.Account;
+        var idempotencyKey = opening.OpeningBalance?.IdempotencyKey;
         await using var databaseTransaction = await BeginForUserAsync(actorUserId, cancellationToken);
-        await LockIdempotencyKeyAsync(account.HouseholdId, idempotencyKey, cancellationToken);
+        if (idempotencyKey is not null)
+        {
+            await LockIdempotencyKeyAsync(account.HouseholdId, idempotencyKey.Value, cancellationToken);
+        }
 
         var existing = await dbContext.Accounts
             .AsNoTracking()
@@ -33,7 +35,11 @@ public sealed class EfLedgerStore(InOutDbContext dbContext) : ILedgerStore
             return new AccountCreationResult(summary, true);
         }
 
-        if (await FindByIdempotencyKeyAsync(account.HouseholdId, idempotencyKey, cancellationToken) is not null)
+        if (idempotencyKey is not null &&
+            await FindByIdempotencyKeyAsync(
+                account.HouseholdId,
+                idempotencyKey.Value,
+                cancellationToken) is not null)
         {
             throw new FinancialRuleException("idempotency_conflict", "Idempotency key is already in use.");
         }
@@ -51,15 +57,9 @@ public sealed class EfLedgerStore(InOutDbContext dbContext) : ILedgerStore
         AddAudit(account.HouseholdId, actorUserId, "financial.account.created", "account", account.Id);
         await dbContext.SaveChangesAsync(cancellationToken);
 
-        if (initialBalanceCents > 0)
+        if (opening.OpeningBalance is not null)
         {
-            var openingBalance = FinancialTransaction.OpeningBalance(
-                account.HouseholdId,
-                account.Id,
-                Money.Positive(initialBalanceCents, account.Currency),
-                occurredOn,
-                idempotencyKey,
-                actorUserId);
+            var openingBalance = opening.OpeningBalance;
             AddTransaction(openingBalance);
             AddAudit(
                 account.HouseholdId,
@@ -71,6 +71,7 @@ public sealed class EfLedgerStore(InOutDbContext dbContext) : ILedgerStore
         }
 
         await databaseTransaction.CommitAsync(cancellationToken);
+        var initialBalanceCents = opening.OpeningBalance?.Entries.Single().Amount.Cents ?? 0;
         return new AccountCreationResult(
             new AccountSummary(account.Id, account.Name, account.Kind, account.Currency, initialBalanceCents, null),
             false);
@@ -127,9 +128,17 @@ public sealed class EfLedgerStore(InOutDbContext dbContext) : ILedgerStore
             throw new FinancialRuleException("account_not_found", "Account was not found.");
         }
 
-        if (account.ArchivedAt is null)
+        var archived = new Account(
+            account.Id,
+            account.HouseholdId,
+            account.Name,
+            ParseAccountKind(account.Kind),
+            account.Currency,
+            account.ArchivedAt)
+            .Archive(DateTimeOffset.UtcNow);
+        if (account.ArchivedAt != archived.ArchivedAt)
         {
-            account.ArchivedAt = DateTimeOffset.UtcNow;
+            account.ArchivedAt = archived.ArchivedAt;
             AddAudit(householdId, actorUserId, "financial.account.archived", "account", accountId);
             await dbContext.SaveChangesAsync(cancellationToken);
         }
@@ -251,13 +260,6 @@ public sealed class EfLedgerStore(InOutDbContext dbContext) : ILedgerStore
                 "Transaction was not found.");
         }
 
-        if (!string.Equals(originalRecord.Status, "posted", StringComparison.Ordinal))
-        {
-            throw new FinancialRuleException(
-                "transaction_not_reversible",
-                "Only a posted transaction can be reversed.");
-        }
-
         var original = ToDomain(originalRecord);
         var reversal = FinancialTransaction.Reversal(
             original,
@@ -327,56 +329,24 @@ public sealed class EfLedgerStore(InOutDbContext dbContext) : ILedgerStore
         CancellationToken cancellationToken)
     {
         var accountIds = transaction.Entries.Select(entry => entry.AccountId).Distinct().ToArray();
-        var accounts = await dbContext.Accounts
+        var accountRecords = await dbContext.Accounts
             .Where(account =>
-                account.HouseholdId == transaction.HouseholdId &&
-                accountIds.Contains(account.Id) &&
-                account.ArchivedAt == null)
+                account.HouseholdId == transaction.HouseholdId && accountIds.Contains(account.Id))
+            .AsNoTracking()
             .ToListAsync(cancellationToken);
-        if (accounts.Count != accountIds.Length)
-        {
-            throw new FinancialRuleException(
-                "invalid_account",
-                "Every account must be active and belong to the household.");
-        }
-
-        if (accounts.Any(account =>
-            !string.Equals(
-                account.Currency,
-                transaction.Entries[0].Amount.Currency,
-                StringComparison.Ordinal)))
-        {
-            throw new FinancialRuleException(
-                "currency_mismatch",
-                "Transaction currency must match every account.");
-        }
-
         var categoryIds = transaction.Entries
             .Where(entry => entry.CategoryId is not null)
             .Select(entry => entry.CategoryId!.Value)
             .Distinct()
             .ToArray();
-        if (categoryIds.Length == 0)
-        {
-            return;
-        }
-
-        var expectedFlow = transaction.Kind is FinancialTransactionKind.Income
-            ? "income"
-            : "expense";
-        var categoryCount = await dbContext.Categories.CountAsync(
-            category =>
-                category.HouseholdId == transaction.HouseholdId &&
-                categoryIds.Contains(category.Id) &&
-                category.ArchivedAt == null &&
-                category.Flow == expectedFlow,
-            cancellationToken);
-        if (categoryCount != categoryIds.Length)
-        {
-            throw new FinancialRuleException(
-                "invalid_category",
-                "Every category must be active, belong to the household, and match the transaction flow.");
-        }
+        var categoryRecords = await dbContext.Categories
+            .Where(category =>
+                category.HouseholdId == transaction.HouseholdId && categoryIds.Contains(category.Id))
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
+        transaction.ValidateReferences(
+            accountRecords.Select(ToDomain).ToArray(),
+            categoryRecords.Select(ToDomain).ToArray());
     }
 
     private void AddTransaction(FinancialTransaction transaction)
@@ -450,6 +420,23 @@ public sealed class EfLedgerStore(InOutDbContext dbContext) : ILedgerStore
         _ => Enum.Parse<FinancialTransactionKind>(value, true),
     };
 
+    private static FinancialTransactionStatus ParseTransactionStatus(string value) =>
+        Enum.Parse<FinancialTransactionStatus>(value, true);
+
+    private static Account ToDomain(AccountRecord record) => new(
+        record.Id,
+        record.HouseholdId,
+        record.Name,
+        ParseAccountKind(record.Kind),
+        record.Currency,
+        record.ArchivedAt);
+
+    private static Category ToDomain(CategoryRecord record) => new(
+        record.Id,
+        record.HouseholdId,
+        Enum.Parse<FinancialFlow>(record.Flow, true),
+        record.ArchivedAt);
+
     private static string ToDatabaseKind(FinancialTransactionKind kind) => kind switch
     {
         FinancialTransactionKind.OpeningBalance => "opening_balance",
@@ -497,6 +484,7 @@ public sealed class EfLedgerStore(InOutDbContext dbContext) : ILedgerStore
             record.IdempotencyKey,
             record.CreatedBy,
             record.ReversalOf,
+            ParseTransactionStatus(record.Status),
             record.Entries.Select(entry => new LedgerEntry(
                 entry.Id,
                 entry.AccountId,
