@@ -28,6 +28,7 @@ Registrar entradas, saídas e transferências; organizar categorias e subcategor
 - [Ambientes, dependências e integração contínua](docs/08-environments-and-ci.md)
 - [Banco de dados e isolamento por residência](docs/09-database-security.md)
 - [Inventário dos limites Supabase e plano de migração](docs/10-supabase-boundary-inventory.md)
+- [Runbook do corte dos caminhos legados](docs/runbooks/gom-101-legacy-cutover.md)
 - [Registro de decisões arquiteturais](docs/adr/README.md)
 
 ## Desenvolvimento

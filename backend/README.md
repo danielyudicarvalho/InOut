@@ -49,7 +49,9 @@ concedem autorização.
 ### Usuário de runtime
 
 A migration cria `inout_api_runtime` como `NOLOGIN`, `NOSUPERUSER` e
-`NOBYPASSRLS`, com acesso somente de leitura a `household_members`. Habilite o
+`NOBYPASSRLS`. O papel recebe somente os privilégios exigidos pelas fatias
+Identity & Household e Ledger; não recebe `DELETE` no ledger nem acesso a
+budgets/goals. Habilite o
 login e defina sua senha diretamente no ambiente operacional, nunca em uma
 migration ou no Git:
 
@@ -60,6 +62,9 @@ alter role inout_api_runtime login password '<secret-from-secret-manager>';
 Cada consulta de autorização define `request.jwt.claim.sub` apenas dentro da
 transação. A política RLS exige que esse sujeito coincida com `user_id`, e a
 consulta repete explicitamente o par `(household_id, user_id)`.
+
+O corte operacional e o rollback são definidos no
+[runbook da GOM-101](../docs/runbooks/gom-101-legacy-cutover.md).
 
 ## Identity & Household API
 

@@ -12,11 +12,10 @@ Future<void> main() async {
     'SUPABASE_PUBLISHABLE_KEY',
   );
   const apiBaseUrl = String.fromEnvironment('API_BASE_URL');
-  const useLegacyRpc = bool.fromEnvironment('USE_LEGACY_HOUSEHOLD_RPC');
   final backendConfigured =
       supabaseUrl.isNotEmpty &&
       supabasePublishableKey.isNotEmpty &&
-      (useLegacyRpc || apiBaseUrl.isNotEmpty);
+      apiBaseUrl.isNotEmpty;
 
   if (backendConfigured) {
     await Supabase.initialize(

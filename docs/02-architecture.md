@@ -105,10 +105,14 @@ A estrutura final pode seguir as convenções do framework escolhido, desde que 
 ## Política de RPCs e acesso direto
 
 - Novos casos de uso de negócio não serão implementados como RPC Supabase.
-- RPCs e acessos diretos existentes serão inventariados, caracterizados e migrados incrementalmente.
-- O Flutter não gravará tabelas financeiras diretamente após a migração do fluxo.
+- As RPCs legadas de residência permanecem instaladas por uma janela curta de
+  rollback, porém sem `EXECUTE` para papéis públicos.
+- O Flutter usa o SDK Supabase somente para Auth e não possui privilégios de
+  leitura ou escrita nas tabelas de negócio.
+- A API usa `inout_api_runtime`, menor privilégio e RLS por residência.
 - RLS e constraints permanecem como defesa em profundidade.
-- Nenhum caminho antigo será removido antes de paridade, observabilidade e rollback comprovados.
+- O corte remoto segue os gates e o rollback do
+  [runbook da GOM-101](runbooks/gom-101-legacy-cutover.md).
 
 ## Estrutura do backend
 
