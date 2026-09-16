@@ -177,8 +177,8 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
             Assert.Equal(400, balances.Single(item => item.AccountId == destinationAccountId).BalanceCents);
             Assert.Equal(1_000, balances.Sum(item => item.BalanceCents));
             Assert.Equal(2, transferEntries.Length);
-            Assert.Equal(400, transferEntries.Single(item => item.Direction == "debit").AmountCents);
-            Assert.Equal(400, transferEntries.Single(item => item.Direction == "credit").AmountCents);
+            Assert.Equal(400, transferEntries.Single(item => item.Direction == EntryDirection.Debit).AmountCents);
+            Assert.Equal(400, transferEntries.Single(item => item.Direction == EntryDirection.Credit).AmountCents);
         }
     }
 
