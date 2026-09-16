@@ -19,7 +19,9 @@ public sealed class FinancialExceptionHandler : IExceptionHandler
         var status = financialException.Code switch
         {
             "transaction_not_found" => StatusCodes.Status404NotFound,
-            "transaction_not_reversible" => StatusCodes.Status409Conflict,
+            "transaction_not_reversible" or
+            "idempotency_conflict" or
+            "account_conflict" => StatusCodes.Status409Conflict,
             _ => StatusCodes.Status400BadRequest
         };
         httpContext.Response.StatusCode = status;
