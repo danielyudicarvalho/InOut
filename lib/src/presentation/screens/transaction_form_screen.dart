@@ -3,7 +3,6 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:inout/src/application/financial/ledger_repository.dart';
 import 'package:inout/src/domain/household/household.dart';
 import 'package:inout/src/domain/transaction/financial_flow.dart';
 import 'package:inout/src/infrastructure/financial/api_ledger_repository.dart';
@@ -89,14 +88,21 @@ final class _TransactionFormScreenState
         );
       }
       ref.invalidate(ledgerAccountsProvider(widget.household.id));
-      if (mounted) Navigator.of(context).pop(true);
+      if (mounted) {
+        Navigator.of(context).pop(true);
+      }
     } on ApiLedgerException catch (error) {
-      if (mounted) setState(() => _error = _messageFor(error.code));
+      if (mounted) {
+        setState(() => _error = _messageFor(error.code));
+      }
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         setState(() => _error = 'Não foi possível salvar. Tente novamente.');
+      }
     } finally {
-      if (mounted) setState(() => _saving = false);
+      if (mounted) {
+        setState(() => _saving = false);
+      }
     }
   }
 

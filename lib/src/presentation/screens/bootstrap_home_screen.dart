@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:inout/src/domain/transaction/financial_flow.dart';
 import 'package:inout/src/domain/household/household.dart';
+import 'package:inout/src/domain/transaction/financial_flow.dart';
 import 'package:inout/src/presentation/components/financial_flow_card.dart';
 import 'package:inout/src/presentation/formatters/money_formatter.dart';
 import 'package:inout/src/presentation/layout/inout_adaptive_scaffold.dart';
