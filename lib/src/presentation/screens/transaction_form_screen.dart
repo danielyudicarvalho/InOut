@@ -1,8 +1,9 @@
-import 'dart:math';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:inout/src/core/utils/money_utils.dart';
+import 'package:inout/src/core/utils/string_utils.dart';
+import 'package:inout/src/core/utils/uuid_utils.dart';
 import 'package:inout/src/domain/household/household.dart';
 import 'package:inout/src/domain/transaction/financial_flow.dart';
 import 'package:inout/src/infrastructure/financial/api_ledger_repository.dart';
@@ -50,7 +51,7 @@ final class _TransactionFormScreenState
       _error = null;
     });
     final repository = ref.read(ledgerRepositoryProvider);
-    final cents = _parseAmount(_amount.text)!;
+    final cents = MoneyUtils.parseBrlToCents(_amount.text)!;
     final arguments = (
       householdId: widget.household.id,
       accountId: _accountId!,
@@ -58,10 +59,8 @@ final class _TransactionFormScreenState
       amountCents: cents,
       currency: 'BRL',
       occurredOn: DateTime.now(),
-      idempotencyKey: _uuidV4(),
-      description: _description.text.trim().isEmpty
-          ? null
-          : _description.text.trim(),
+      idempotencyKey: UuidUtils.v4(),
+      description: StringUtils.trimToNull(_description.text),
     );
     try {
       if (_isIncome) {
@@ -156,7 +155,9 @@ final class _TransactionFormScreenState
                               helperText: 'Ex.: 12,50',
                             ),
                             validator: (value) =>
-                                (_parseAmount(value ?? '') ?? 0) <= 0
+                                (MoneyUtils.parseBrlToCents(value ?? '') ??
+                                        0) <=
+                                    0
                                 ? 'Informe um valor maior que zero.'
                                 : null,
                           ),
@@ -240,23 +241,4 @@ final class _TransactionFormScreenState
     'invalid_amount' => 'Informe um valor maior que zero.',
     _ => 'Não foi possível salvar. Verifique os dados e tente novamente.',
   };
-
-  static String _uuidV4() {
-    final random = Random.secure();
-    final bytes = List<int>.generate(16, (_) => random.nextInt(256));
-    bytes[6] = (bytes[6] & 0x0f) | 0x40;
-    bytes[8] = (bytes[8] & 0x3f) | 0x80;
-    final hex = bytes
-        .map((value) => value.toRadixString(16).padLeft(2, '0'))
-        .join();
-    return '${hex.substring(0, 8)}-${hex.substring(8, 12)}-${hex.substring(12, 16)}-'
-        '${hex.substring(16, 20)}-${hex.substring(20)}';
-  }
-
-  static int? _parseAmount(String value) {
-    final normalized = value.trim().replaceAll('.', '').replaceAll(',', '.');
-    final amount = double.tryParse(normalized);
-    if (amount == null || !amount.isFinite) return null;
-    return (amount * 100).round();
-  }
 }

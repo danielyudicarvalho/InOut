@@ -1,5 +1,6 @@
 using InOut.Domain.Financial;
 using InOut.Domain.Households;
+using InOut.Domain.Utils;
 
 namespace InOut.Infrastructure.Persistence;
 
@@ -32,7 +33,7 @@ internal static class DomainTypeStorage
     internal static HouseholdRole HouseholdRoleFromString(string value) => Parse<HouseholdRole>(value);
 
     private static string Lower<T>(T value) where T : struct, Enum =>
-        value.ToString().ToLowerInvariant();
+        StringUtils.NormalizeLower(value.ToString());
 
     private static T Parse<T>(string value) where T : struct, Enum =>
         Enum.Parse<T>(value, true);

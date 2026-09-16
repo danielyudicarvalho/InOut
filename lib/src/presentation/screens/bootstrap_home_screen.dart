@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:inout/src/core/utils/money_utils.dart';
 import 'package:inout/src/domain/household/household.dart';
 import 'package:inout/src/domain/transaction/financial_flow.dart';
 import 'package:inout/src/presentation/components/financial_flow_card.dart';
-import 'package:inout/src/presentation/formatters/money_formatter.dart';
 import 'package:inout/src/presentation/layout/inout_adaptive_scaffold.dart';
 import 'package:inout/src/presentation/providers/household_providers.dart';
 import 'package:inout/src/presentation/providers/session_providers.dart';
@@ -35,7 +35,7 @@ final class BootstrapHomeScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Saldo total: ${MoneyFormatter.formatBrl(items.fold(0, (sum, item) => sum + item.balanceCents))}',
+                  'Saldo total: ${MoneyUtils.formatBrl(items.fold(0, (sum, item) => sum + item.balanceCents))}',
                   style: Theme.of(context).textTheme.headlineSmall,
                 ),
                 const SizedBox(height: 24),
@@ -75,9 +75,7 @@ final class BootstrapHomeScreen extends ConsumerWidget {
                     (item) => ListTile(
                       contentPadding: EdgeInsets.zero,
                       title: Text(item.name),
-                      trailing: Text(
-                        MoneyFormatter.formatBrl(item.balanceCents),
-                      ),
+                      trailing: Text(MoneyUtils.formatBrl(item.balanceCents)),
                     ),
                   ),
               ],
@@ -105,7 +103,7 @@ final class BootstrapHomeScreen extends ConsumerWidget {
               Text(value.name, style: Theme.of(context).textTheme.titleLarge),
               const SizedBox(height: 8),
               Text(
-                'Saldo inicial: ${MoneyFormatter.formatBrl(value.balanceInCents)}',
+                'Saldo inicial: ${MoneyUtils.formatBrl(value.balanceInCents)}',
                 style: Theme.of(context).textTheme.headlineSmall,
               ),
               const SizedBox(height: 24),

@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 import 'package:inout/src/application/household/household_repository.dart';
+import 'package:inout/src/core/utils/string_utils.dart';
 import 'package:inout/src/domain/household/household.dart';
 
 typedef AccessTokenProvider = Future<String?> Function();
@@ -36,7 +37,7 @@ final class ApiHouseholdRepository implements HouseholdRepository {
     final response = await _send(
       'POST',
       '/api/v1/households',
-      body: {'name': name.trim()},
+      body: {'name': StringUtils.trimToNull(name) ?? ''},
     );
     return _mapHousehold(jsonDecode(response.body) as Map<String, dynamic>);
   }
@@ -56,7 +57,7 @@ final class ApiHouseholdRepository implements HouseholdRepository {
     final response = await _send(
       'POST',
       '/api/v1/household-invitations/accept',
-      body: {'code': inviteCode.trim()},
+      body: {'code': StringUtils.trimToNull(inviteCode) ?? ''},
     );
     return _mapHousehold(jsonDecode(response.body) as Map<String, dynamic>);
   }

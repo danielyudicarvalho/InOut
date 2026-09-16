@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using InOut.Application.Utils;
 using InOut.Domain.Households;
 
 namespace InOut.Application.Households;
@@ -20,7 +21,7 @@ public sealed class HouseholdService(IHouseholdStore store, TimeProvider timePro
         Guid householdId,
         CancellationToken cancellationToken)
     {
-        var code = Convert.ToHexString(RandomNumberGenerator.GetBytes(24)).ToLowerInvariant();
+        var code = SecureTokenUtils.GenerateHex(24);
         var expiresAt = timeProvider.GetUtcNow().Add(HouseholdRules.InvitationLifetime);
         await store.SaveInvitationAsync(
             userId,

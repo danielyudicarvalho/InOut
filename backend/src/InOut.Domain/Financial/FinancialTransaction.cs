@@ -1,3 +1,5 @@
+using InOut.Domain.Utils;
+
 namespace InOut.Domain.Financial;
 
 public sealed class FinancialTransaction
@@ -320,7 +322,7 @@ public sealed class FinancialTransaction
 
     private static string? NormalizeDescription(string? description)
     {
-        var normalized = description?.Trim();
+        var normalized = StringUtils.TrimToNull(description);
         if (normalized?.Length > 500)
         {
             throw new FinancialRuleException(
@@ -328,6 +330,6 @@ public sealed class FinancialTransaction
                 "Description cannot exceed 500 characters.");
         }
 
-        return string.IsNullOrEmpty(normalized) ? null : normalized;
+        return normalized;
     }
 }

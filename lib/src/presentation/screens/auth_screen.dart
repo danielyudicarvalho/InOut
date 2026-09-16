@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:inout/src/core/utils/email_utils.dart';
 import 'package:inout/src/presentation/providers/session_providers.dart';
 
 final class AuthScreen extends ConsumerStatefulWidget {
@@ -24,7 +25,7 @@ final class _AuthScreenState extends ConsumerState<AuthScreen> {
   }
 
   Future<void> _submit() async {
-    if (_email.text.trim().isEmpty || _password.text.length < 8) {
+    if (!EmailUtils.isValid(_email.text) || _password.text.length < 8) {
       setState(
         () => _error = 'Informe um e-mail e uma senha com 8 caracteres.',
       );

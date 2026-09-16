@@ -1,3 +1,5 @@
+using InOut.Domain.Utils;
+
 namespace InOut.Domain.Financial;
 
 public sealed record Account(
@@ -61,7 +63,7 @@ public sealed record Account(
 
     public static string NormalizeName(string? name)
     {
-        var normalized = name?.Trim();
+        var normalized = StringUtils.TrimToNull(name);
         if (string.IsNullOrEmpty(normalized) || normalized.Length > 80)
         {
             throw new FinancialRuleException(
