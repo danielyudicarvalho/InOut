@@ -115,7 +115,7 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
         await using (var context = CreateContext())
         {
             var service = new LedgerService(new EfLedgerStore(context));
-            var invalidAmount = Assert.Throws<FinancialRuleException>(() =>
+            var invalidAmount = await Assert.ThrowsAsync<FinancialRuleException>(() =>
                 service.PostIncomeAsync(
                     actorUserId,
                     new PostIncomeCommand(
