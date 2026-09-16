@@ -270,6 +270,7 @@ final class ApiLedgerRepository implements LedgerRepository {
         kind: row['kind']! as String,
         status: row['status']! as String,
         description: row['description'] as String?,
+        reversalOf: row['reversalOf'] as String?,
         occurredOn: DateTime.parse(row['occurredOn']! as String),
         postedAt: DateTime.parse(row['postedAt']! as String),
         createdBy: row['createdBy']! as String,

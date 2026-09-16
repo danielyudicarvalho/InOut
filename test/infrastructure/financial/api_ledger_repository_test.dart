@@ -67,6 +67,7 @@ void main() {
               'kind': 'openingBalance',
               'status': 'posted',
               'description': 'Saldo inicial',
+              'reversalOf': null,
               'occurredOn': '2026-09-15',
               'postedAt': '2026-09-15T12:00:00Z',
               'createdBy': 'user-1',
@@ -86,7 +87,42 @@ void main() {
 
     expect(history.single.createdBy, 'user-1');
     expect(history.single.kind, 'openingBalance');
+    expect(history.single.reversalOf, isNull);
     expect(history.single.occurredOn, DateTime(2026, 9, 15));
+  });
+
+  test('maps the original transaction referenced by a reversal', () async {
+    final repository = ApiLedgerRepository(
+      baseUrl: Uri.parse('https://api.inout.test'),
+      accessToken: () async => 'token',
+      client: MockClient(
+        (_) async => http.Response(
+          jsonEncode([
+            {
+              'transactionId': 'reversal-1',
+              'kind': 'reversal',
+              'status': 'posted',
+              'description': 'Correção',
+              'reversalOf': 'transaction-1',
+              'occurredOn': '2026-09-16',
+              'postedAt': '2026-09-16T12:00:00Z',
+              'createdBy': 'user-1',
+              'accountId': 'account-1',
+              'accountName': 'Reserva',
+              'direction': 'debit',
+              'amountCents': 25000,
+              'currency': 'BRL',
+            },
+          ]),
+          200,
+        ),
+      ),
+    );
+
+    final reversal = (await repository.getHistory('household-1')).single;
+
+    expect(reversal.kind, 'reversal');
+    expect(reversal.reversalOf, 'transaction-1');
   });
 
   test('posts income through the versioned API contract', () async {

@@ -152,7 +152,12 @@ public sealed class FinancialTransactionTests
 
         Assert.Equal(original.Id, reversal.ReversalOf);
         Assert.Equal(FinancialTransactionKind.Reversal, reversal.Kind);
-        Assert.Equal(EntryDirection.Credit, Assert.Single(reversal.Entries).Direction);
+        var originalEntry = Assert.Single(original.Entries);
+        var reversalEntry = Assert.Single(reversal.Entries);
+        Assert.Equal(EntryDirection.Credit, reversalEntry.Direction);
+        Assert.Equal(originalEntry.Amount, reversalEntry.Amount);
+        Assert.Equal(originalEntry.AccountId, reversalEntry.AccountId);
+        Assert.Equal(originalEntry.CategoryId, reversalEntry.CategoryId);
     }
 
     [Fact]

@@ -253,7 +253,43 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
         Assert.Equal(0, balances.Single(item => item.AccountId == accountId).BalanceCents);
     }
 
-    private async Task<LedgerWriteResult> PostIncomeAsync(Guid idempotencyKey)
+    [Fact]
+    public async Task ReversalAndRepostRemainVisibleAsAnAuditableCorrectionChain()
+    {
+        var original = await PostIncomeAsync(Guid.NewGuid(), 1_000, "Valor incorreto");
+        var reversal = await ReverseAsync(original.TransactionId, Guid.NewGuid());
+        var repost = await PostIncomeAsync(Guid.NewGuid(), 750, "Valor corrigido");
+
+        await using var context = CreateContext();
+        var store = new EfLedgerStore(context);
+        var history = await store.GetHistoryAsync(householdId, 100, CancellationToken.None);
+        var balance = await store.GetBalancesAsync(householdId, CancellationToken.None);
+
+        var originalItem = Assert.Single(history, item => item.TransactionId == original.TransactionId);
+        var reversalItem = Assert.Single(history, item => item.TransactionId == reversal.TransactionId);
+        var repostItem = Assert.Single(history, item => item.TransactionId == repost.TransactionId);
+
+        Assert.Equal("reversed", originalItem.Status);
+        Assert.Null(originalItem.ReversalOf);
+        Assert.Equal(EntryDirection.Credit, originalItem.Direction);
+        Assert.Equal(1_000, originalItem.AmountCents);
+
+        Assert.Equal(FinancialTransactionKind.Reversal, reversalItem.Kind);
+        Assert.Equal(original.TransactionId, reversalItem.ReversalOf);
+        Assert.Equal(EntryDirection.Debit, reversalItem.Direction);
+        Assert.Equal(originalItem.AmountCents, reversalItem.AmountCents);
+
+        Assert.Equal(FinancialTransactionKind.Income, repostItem.Kind);
+        Assert.Equal("posted", repostItem.Status);
+        Assert.Null(repostItem.ReversalOf);
+        Assert.Equal(750, repostItem.AmountCents);
+        Assert.Equal(750, balance.Single(item => item.AccountId == accountId).BalanceCents);
+    }
+
+    private async Task<LedgerWriteResult> PostIncomeAsync(
+        Guid idempotencyKey,
+        long amountCents = 1_000,
+        string description = "Salary")
     {
         await using var context = CreateContext();
         var service = new LedgerService(new EfLedgerStore(context));
@@ -263,11 +299,11 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
                 householdId,
                 accountId,
                 categoryId,
-                1_000,
+                amountCents,
                 "BRL",
                 new DateOnly(2026, 9, 14),
                 idempotencyKey,
-                "Salary"),
+                description),
             CancellationToken.None);
     }
 

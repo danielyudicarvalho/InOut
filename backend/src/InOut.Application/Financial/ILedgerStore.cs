@@ -21,6 +21,7 @@ public sealed record LedgerHistoryItem(
     FinancialTransactionKind Kind,
     string Status,
     string? Description,
+    Guid? ReversalOf,
     DateOnly OccurredOn,
     DateTimeOffset PostedAt,
     Guid CreatedBy,
