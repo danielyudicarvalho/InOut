@@ -146,6 +146,29 @@ public sealed class EfLedgerStore(InOutDbContext dbContext) : ILedgerStore
         await databaseTransaction.CommitAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyList<CategorySummary>> GetCategoriesAsync(
+        Guid householdId,
+        FinancialFlow? flow,
+        CancellationToken cancellationToken)
+    {
+        var query = dbContext.Categories
+            .AsNoTracking()
+            .Where(item => item.HouseholdId == householdId && item.ArchivedAt == null);
+        if (flow is not null)
+        {
+            var databaseFlow = flow.Value.ToString().ToLowerInvariant();
+            query = query.Where(item => item.Flow == databaseFlow);
+        }
+
+        return await query
+            .OrderBy(item => item.Name)
+            .Select(item => new CategorySummary(
+                item.Id,
+                item.Name,
+                item.Flow == "income" ? FinancialFlow.Income : FinancialFlow.Expense))
+            .ToArrayAsync(cancellationToken);
+    }
+
     public async Task<IReadOnlyList<LedgerHistoryItem>> GetHistoryAsync(
         Guid householdId,
         int limit,

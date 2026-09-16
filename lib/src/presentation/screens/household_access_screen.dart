@@ -83,7 +83,7 @@ final class _HouseholdAccessScreenState
                 ),
               ],
             ),
-            body: const BootstrapHomeScreen(),
+            body: BootstrapHomeScreen(household: items.first),
           );
         }
         return Scaffold(

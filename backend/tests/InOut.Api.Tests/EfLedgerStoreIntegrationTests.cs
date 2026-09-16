@@ -19,6 +19,7 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
     private readonly Guid accountId = Guid.NewGuid();
     private readonly Guid destinationAccountId = Guid.NewGuid();
     private readonly Guid categoryId = Guid.NewGuid();
+    private readonly Guid expenseCategoryId = Guid.NewGuid();
 
     public async Task InitializeAsync()
     {
@@ -39,12 +40,15 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
             values (@destination_account_id, @household_id, 'Savings', 'savings', 'BRL', @actor_user_id);
             insert into public.categories (id, household_id, name, flow, created_by)
             values (@category_id, @household_id, 'Salary', 'income', @actor_user_id);
+            insert into public.categories (id, household_id, name, flow, created_by)
+            values (@expense_category_id, @household_id, 'Food', 'expense', @actor_user_id);
             """;
         seed.Parameters.AddWithValue("household_id", householdId);
         seed.Parameters.AddWithValue("actor_user_id", actorUserId);
         seed.Parameters.AddWithValue("account_id", accountId);
         seed.Parameters.AddWithValue("destination_account_id", destinationAccountId);
         seed.Parameters.AddWithValue("category_id", categoryId);
+        seed.Parameters.AddWithValue("expense_category_id", expenseCategoryId);
         await seed.ExecuteNonQueryAsync();
     }
 
@@ -71,6 +75,85 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
         Assert.True(reconciliation.IsConsistent);
         Assert.Equal(1, reconciliation.PostedTransactionCount);
         Assert.Equal(1, reconciliation.EntryTransactionCount);
+    }
+
+    [Fact]
+    public async Task IncomeAndExpenseUpdateOnlyTheSelectedAccount()
+    {
+        await PostIncomeAsync(Guid.NewGuid(), 10_000, "Salary");
+        await using (var context = CreateContext())
+        {
+            var service = new LedgerService(new EfLedgerStore(context));
+            await service.PostExpenseAsync(
+                actorUserId,
+                new PostExpenseCommand(
+                    householdId,
+                    accountId,
+                    expenseCategoryId,
+                    2_500,
+                    "BRL",
+                    new DateOnly(2026, 9, 16),
+                    Guid.NewGuid(),
+                    "Groceries"),
+                CancellationToken.None);
+        }
+
+        await using var verification = CreateContext();
+        var store = new EfLedgerStore(verification);
+        var balances = await store.GetBalancesAsync(householdId, CancellationToken.None);
+        var history = await store.GetHistoryAsync(householdId, 100, CancellationToken.None);
+
+        Assert.Equal(7_500, balances.Single(item => item.AccountId == accountId).BalanceCents);
+        Assert.Equal(0, balances.Single(item => item.AccountId == destinationAccountId).BalanceCents);
+        Assert.Contains(history, item => item.Kind == FinancialTransactionKind.Income && item.AmountCents == 10_000);
+        Assert.Contains(history, item => item.Kind == FinancialTransactionKind.Expense && item.AmountCents == 2_500);
+    }
+
+    [Fact]
+    public async Task InvalidAmountAndCrossFlowCategoryAreRejectedWithoutChangingBalance()
+    {
+        await using (var context = CreateContext())
+        {
+            var service = new LedgerService(new EfLedgerStore(context));
+            var invalidAmount = Assert.Throws<FinancialRuleException>(() =>
+                service.PostIncomeAsync(
+                    actorUserId,
+                    new PostIncomeCommand(
+                        householdId,
+                        accountId,
+                        categoryId,
+                        0,
+                        "BRL",
+                        new DateOnly(2026, 9, 16),
+                        Guid.NewGuid(),
+                        null),
+                    CancellationToken.None));
+            Assert.Equal("invalid_amount", invalidAmount.Code);
+        }
+
+        await using (var context = CreateContext())
+        {
+            var service = new LedgerService(new EfLedgerStore(context));
+            var mismatch = await Assert.ThrowsAsync<FinancialRuleException>(() =>
+                service.PostExpenseAsync(
+                    actorUserId,
+                    new PostExpenseCommand(
+                        householdId,
+                        accountId,
+                        categoryId,
+                        500,
+                        "BRL",
+                        new DateOnly(2026, 9, 16),
+                        Guid.NewGuid(),
+                        null),
+                    CancellationToken.None));
+            Assert.Equal("invalid_category", mismatch.Code);
+        }
+
+        await using var verification = CreateContext();
+        var balances = await new EfLedgerStore(verification)
+            .GetBalancesAsync(householdId, CancellationToken.None);
+        Assert.All(balances, balance => Assert.Equal(0, balance.BalanceCents));
     }
 
     [Fact]

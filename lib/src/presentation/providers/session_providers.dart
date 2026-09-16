@@ -48,3 +48,18 @@ final authenticatedUserProvider = StreamProvider<AuthenticatedUser?>((ref) {
 final householdsProvider = FutureProvider.autoDispose<List<Household>>((ref) {
   return ref.watch(householdRepositoryProvider).listMine();
 });
+
+final ledgerAccountsProvider = FutureProvider.autoDispose
+    .family<List<AccountSummary>, String>((ref, householdId) {
+      return ref.watch(ledgerRepositoryProvider).getAccounts(householdId);
+    });
+
+final ledgerCategoriesProvider = FutureProvider.autoDispose
+    .family<List<CategorySummary>, ({String householdId, String flow})>((
+      ref,
+      input,
+    ) {
+      return ref
+          .watch(ledgerRepositoryProvider)
+          .getCategories(input.householdId, flow: input.flow);
+    });

@@ -43,6 +43,17 @@ public sealed class EfHouseholdStore(InOutDbContext dbContext) : IHouseholdStore
             Role = "owner",
             Household = household,
         });
+        foreach (var (categoryName, flow) in DefaultCategories)
+        {
+            dbContext.Categories.Add(new CategoryRecord
+            {
+                Id = Guid.NewGuid(),
+                HouseholdId = household.Id,
+                Name = categoryName,
+                Flow = flow,
+                CreatedBy = userId,
+            });
+        }
         AddAudit(household.Id, userId, "household.created", "household", household.Id);
         await dbContext.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
@@ -201,4 +212,14 @@ public sealed class EfHouseholdStore(InOutDbContext dbContext) : IHouseholdStore
             EntityType = entityType,
             EntityId = entityId,
         });
+
+    private static readonly (string Name, string Flow)[] DefaultCategories =
+    [
+        ("Salário", "income"),
+        ("Outras receitas", "income"),
+        ("Moradia", "expense"),
+        ("Alimentação", "expense"),
+        ("Transporte", "expense"),
+        ("Outras despesas", "expense"),
+    ];
 }

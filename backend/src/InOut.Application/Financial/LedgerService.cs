@@ -90,6 +90,12 @@ public sealed class LedgerService(ILedgerStore store)
         CancellationToken cancellationToken) =>
         store.ArchiveAccountAsync(householdId, accountId, actorUserId, cancellationToken);
 
+    public Task<IReadOnlyList<CategorySummary>> GetCategoriesAsync(
+        Guid householdId,
+        FinancialFlow? flow,
+        CancellationToken cancellationToken) =>
+        store.GetCategoriesAsync(householdId, flow, cancellationToken);
+
     public Task<IReadOnlyList<LedgerHistoryItem>> GetHistoryAsync(
         Guid householdId,
         int limit,

@@ -78,6 +78,28 @@ final class ApiLedgerRepository implements LedgerRepository {
   }
 
   @override
+  Future<List<CategorySummary>> getCategories(
+    String householdId, {
+    String? flow,
+  }) async {
+    final suffix = flow == null ? '' : '?flow=$flow';
+    final response = await _send(
+      'GET',
+      '/api/v1/households/$householdId/ledger/categories$suffix',
+    );
+    return (jsonDecode(response.body) as List<dynamic>)
+        .cast<Map<String, dynamic>>()
+        .map(
+          (row) => CategorySummary(
+            id: row['id']! as String,
+            name: row['name']! as String,
+            flow: row['flow']! as String,
+          ),
+        )
+        .toList(growable: false);
+  }
+
+  @override
   Future<List<LedgerHistoryItem>> getHistory(
     String householdId, {
     int limit = 100,
