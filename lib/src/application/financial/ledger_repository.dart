@@ -51,6 +51,7 @@ final class LedgerHistoryItem {
     required this.kind,
     required this.status,
     required this.description,
+    required this.reversalOf,
     required this.occurredOn,
     required this.postedAt,
     required this.createdBy,
@@ -65,6 +66,7 @@ final class LedgerHistoryItem {
   final String kind;
   final String status;
   final String? description;
+  final String? reversalOf;
   final DateTime occurredOn;
   final DateTime postedAt;
   final String createdBy;
