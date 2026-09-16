@@ -14,7 +14,7 @@
 - Despesa debita apenas a conta selecionada.
 - Valor zero/negativo, conta externa e categoria externa ou de fluxo oposto são rejeitados.
 - Novas residências recebem categorias mínimas no mesmo commit transacional.
-- A migration faz backfill idempotente das categorias mínimas para residências existentes.
+- Tipos categóricos são enums centralizados no domínio e convertidos para texto somente na persistência.
 
 ## Evidência automatizada
 
@@ -26,6 +26,5 @@
 
 ## Operação Supabase
 
-A migration `20260916174000_seed_default_categories.sql` contém apenas backfill aditivo.
-Ela não altera políticas, grants nem a estrutura das tabelas e deve ser aplicada pelo fluxo
-normal de deploy depois do merge.
+Não há alteração de schema nem migration adicional. O catálogo padrão é aplicado
+transacionalmente pela aplicação ao criar uma residência.

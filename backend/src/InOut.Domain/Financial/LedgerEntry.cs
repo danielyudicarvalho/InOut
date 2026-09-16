@@ -1,11 +1,5 @@
 namespace InOut.Domain.Financial;
 
-public enum EntryDirection
-{
-    Debit,
-    Credit
-}
-
 public sealed record LedgerEntry(
     Guid Id,
     Guid AccountId,

@@ -1,22 +1,5 @@
 namespace InOut.Domain.Financial;
 
-public enum FinancialTransactionKind
-{
-    OpeningBalance,
-    Income,
-    Expense,
-    Transfer,
-    Reversal
-}
-
-public enum FinancialTransactionStatus
-{
-    Draft,
-    Posted,
-    Reversed,
-    Voided
-}
-
 public sealed class FinancialTransaction
 {
     private readonly IReadOnlyList<LedgerEntry> entries;

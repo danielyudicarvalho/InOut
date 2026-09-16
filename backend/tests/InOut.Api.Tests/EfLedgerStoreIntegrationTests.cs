@@ -352,7 +352,7 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
         var reversalItem = Assert.Single(history, item => item.TransactionId == reversal.TransactionId);
         var repostItem = Assert.Single(history, item => item.TransactionId == repost.TransactionId);
 
-        Assert.Equal("reversed", originalItem.Status);
+        Assert.Equal(FinancialTransactionStatus.Reversed, originalItem.Status);
         Assert.Null(originalItem.ReversalOf);
         Assert.Equal(EntryDirection.Credit, originalItem.Direction);
         Assert.Equal(1_000, originalItem.AmountCents);
@@ -363,7 +363,7 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
         Assert.Equal(originalItem.AmountCents, reversalItem.AmountCents);
 
         Assert.Equal(FinancialTransactionKind.Income, repostItem.Kind);
-        Assert.Equal("posted", repostItem.Status);
+        Assert.Equal(FinancialTransactionStatus.Posted, repostItem.Status);
         Assert.Null(repostItem.ReversalOf);
         Assert.Equal(750, repostItem.AmountCents);
         Assert.Equal(750, balance.Single(item => item.AccountId == accountId).BalanceCents);

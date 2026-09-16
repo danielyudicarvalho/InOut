@@ -1,4 +1,5 @@
 using InOut.Application.Households;
+using InOut.Domain.Financial;
 using InOut.Domain.Households;
 using InOut.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -40,17 +41,17 @@ public sealed class EfHouseholdStore(InOutDbContext dbContext) : IHouseholdStore
         {
             HouseholdId = household.Id,
             UserId = userId,
-            Role = "owner",
+            Role = HouseholdRole.Owner,
             Household = household,
         });
-        foreach (var (categoryName, flow) in DefaultCategories)
+        foreach (var category in DefaultCategoryCatalog.All)
         {
             dbContext.Categories.Add(new CategoryRecord
             {
                 Id = Guid.NewGuid(),
                 HouseholdId = household.Id,
-                Name = categoryName,
-                Flow = flow,
+                Name = category.Name,
+                Flow = category.Flow,
                 CreatedBy = userId,
             });
         }
@@ -74,7 +75,7 @@ public sealed class EfHouseholdStore(InOutDbContext dbContext) : IHouseholdStore
             .Where(member => member.HouseholdId == householdId && member.UserId == userId)
             .Select(member => member.Role)
             .SingleOrDefaultAsync(cancellationToken);
-        if (!string.Equals(role, "owner", StringComparison.Ordinal))
+        if (role != HouseholdRole.Owner)
         {
             throw new HouseholdRuleException("owner_required", "Only a household owner can create an invitation.");
         }
@@ -150,7 +151,7 @@ public sealed class EfHouseholdStore(InOutDbContext dbContext) : IHouseholdStore
         {
             HouseholdId = invitation.HouseholdId,
             UserId = userId,
-            Role = "member",
+            Role = HouseholdRole.Member,
         });
         invitation.AcceptedBy = userId;
         invitation.AcceptedAt = DateTimeOffset.UtcNow;
@@ -213,13 +214,4 @@ public sealed class EfHouseholdStore(InOutDbContext dbContext) : IHouseholdStore
             EntityId = entityId,
         });
 
-    private static readonly (string Name, string Flow)[] DefaultCategories =
-    [
-        ("Salário", "income"),
-        ("Outras receitas", "income"),
-        ("Moradia", "expense"),
-        ("Alimentação", "expense"),
-        ("Transporte", "expense"),
-        ("Outras despesas", "expense"),
-    ];
 }

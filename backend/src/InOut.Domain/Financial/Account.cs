@@ -1,14 +1,5 @@
 namespace InOut.Domain.Financial;
 
-public enum AccountKind
-{
-    Cash,
-    Checking,
-    Savings,
-    Investment,
-    Other
-}
-
 public sealed record Account(
     Guid Id,
     Guid HouseholdId,

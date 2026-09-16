@@ -1,3 +1,4 @@
+using InOut.Domain.Households;
 using Microsoft.EntityFrameworkCore;
 
 namespace InOut.Infrastructure.Persistence;
@@ -29,7 +30,11 @@ public sealed partial class InOutDbContext(DbContextOptions<InOutDbContext> opti
             entity.HasKey(item => new { item.HouseholdId, item.UserId });
             entity.Property(item => item.HouseholdId).HasColumnName("household_id");
             entity.Property(item => item.UserId).HasColumnName("user_id");
-            entity.Property(item => item.Role).HasColumnName("role");
+            entity.Property(item => item.Role)
+                .HasColumnName("role")
+                .HasConversion(
+                    value => DomainTypeStorage.HouseholdRoleToString(value),
+                    value => DomainTypeStorage.HouseholdRoleFromString(value));
             entity.Property(item => item.JoinedAt).HasColumnName("joined_at").HasDefaultValueSql("now()");
             entity.HasOne(item => item.Household)
                 .WithMany()
@@ -86,7 +91,7 @@ internal sealed class HouseholdMemberRecord
 {
     public Guid HouseholdId { get; set; }
     public Guid UserId { get; set; }
-    public string Role { get; set; } = string.Empty;
+    public HouseholdRole Role { get; set; }
     public DateTimeOffset JoinedAt { get; set; }
     public HouseholdRecord Household { get; set; } = null!;
 }

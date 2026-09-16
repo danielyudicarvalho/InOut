@@ -1,11 +1,5 @@
 namespace InOut.Domain.Financial;
 
-public enum FinancialFlow
-{
-    Income,
-    Expense
-}
-
 public sealed record Category(
     Guid Id,
     Guid HouseholdId,

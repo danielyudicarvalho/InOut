@@ -21,7 +21,7 @@ public sealed record CategorySummary(Guid Id, string Name, FinancialFlow Flow);
 public sealed record LedgerHistoryItem(
     Guid TransactionId,
     FinancialTransactionKind Kind,
-    string Status,
+    FinancialTransactionStatus Status,
     string? Description,
     Guid? ReversalOf,
     DateOnly OccurredOn,

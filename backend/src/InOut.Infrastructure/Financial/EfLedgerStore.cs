@@ -49,7 +49,7 @@ public sealed class EfLedgerStore(InOutDbContext dbContext) : ILedgerStore
             Id = account.Id,
             HouseholdId = account.HouseholdId,
             Name = account.Name,
-            Kind = account.Kind.ToString().ToLowerInvariant(),
+            Kind = account.Kind,
             Currency = account.Currency,
             CreatedBy = actorUserId,
         };
@@ -98,7 +98,7 @@ public sealed class EfLedgerStore(InOutDbContext dbContext) : ILedgerStore
                 item.Currency,
                 BalanceCents = dbContext.Entries
                     .Where(entry => entry.HouseholdId == householdId && entry.AccountId == item.Id)
-                    .Sum(entry => (long?)(entry.Direction == "credit" ? entry.AmountCents : -entry.AmountCents)) ?? 0,
+                    .Sum(entry => (long?)(entry.Direction == EntryDirection.Credit ? entry.AmountCents : -entry.AmountCents)) ?? 0,
                 item.ArchivedAt,
             })
             .ToListAsync(cancellationToken);
@@ -106,7 +106,7 @@ public sealed class EfLedgerStore(InOutDbContext dbContext) : ILedgerStore
             .Select(item => new AccountSummary(
                 item.Id,
                 item.Name,
-                ParseAccountKind(item.Kind),
+                item.Kind,
                 item.Currency,
                 item.BalanceCents,
                 item.ArchivedAt))
@@ -132,7 +132,7 @@ public sealed class EfLedgerStore(InOutDbContext dbContext) : ILedgerStore
             account.Id,
             account.HouseholdId,
             account.Name,
-            ParseAccountKind(account.Kind),
+            account.Kind,
             account.Currency,
             account.ArchivedAt)
             .Archive(DateTimeOffset.UtcNow);
@@ -156,8 +156,7 @@ public sealed class EfLedgerStore(InOutDbContext dbContext) : ILedgerStore
             .Where(item => item.HouseholdId == householdId && item.ArchivedAt == null);
         if (flow is not null)
         {
-            var databaseFlow = flow.Value.ToString().ToLowerInvariant();
-            query = query.Where(item => item.Flow == databaseFlow);
+            query = query.Where(item => item.Flow == flow.Value);
         }
 
         return await query
@@ -165,7 +164,7 @@ public sealed class EfLedgerStore(InOutDbContext dbContext) : ILedgerStore
             .Select(item => new CategorySummary(
                 item.Id,
                 item.Name,
-                item.Flow == "income" ? FinancialFlow.Income : FinancialFlow.Expense))
+                item.Flow))
             .ToArrayAsync(cancellationToken);
     }
 
@@ -203,7 +202,7 @@ public sealed class EfLedgerStore(InOutDbContext dbContext) : ILedgerStore
         return rows
             .Select(item => new LedgerHistoryItem(
                 item.TransactionId,
-                ParseTransactionKind(item.Kind),
+                item.Kind,
                 item.Status,
                 item.Description,
                 item.ReversalOf,
@@ -212,7 +211,7 @@ public sealed class EfLedgerStore(InOutDbContext dbContext) : ILedgerStore
                 item.CreatedBy,
                 item.AccountId,
                 item.AccountName,
-                item.Direction == "credit" ? EntryDirection.Credit : EntryDirection.Debit,
+                item.Direction,
                 item.AmountCents,
                 item.Currency))
             .ToArray();
@@ -293,7 +292,7 @@ public sealed class EfLedgerStore(InOutDbContext dbContext) : ILedgerStore
             occurredOn,
             description);
         AddTransaction(reversal);
-        originalRecord.Status = "reversed";
+        originalRecord.Status = FinancialTransactionStatus.Reversed;
         AddAudit(householdId, actorUserId, "financial.transaction.reversed", "transaction", transactionId);
         await dbContext.SaveChangesAsync(cancellationToken);
         await databaseTransaction.CommitAsync(cancellationToken);
@@ -316,7 +315,7 @@ public sealed class EfLedgerStore(InOutDbContext dbContext) : ILedgerStore
                 AccountId = account.Id,
                 account.Currency,
                 BalanceCents = accountEntries.Sum(entry =>
-                    (long?)(entry.Direction == "credit" ? entry.AmountCents : -entry.AmountCents)) ?? 0,
+                    (long?)(entry.Direction == EntryDirection.Credit ? entry.AmountCents : -entry.AmountCents)) ?? 0,
             })
             .OrderBy(item => item.AccountId)
             .ToListAsync(cancellationToken);
@@ -333,7 +332,8 @@ public sealed class EfLedgerStore(InOutDbContext dbContext) : ILedgerStore
             .AsNoTracking()
             .LongCountAsync(
                 item => item.HouseholdId == householdId &&
-                    (item.Status == "posted" || item.Status == "reversed"),
+                    (item.Status == FinancialTransactionStatus.Posted ||
+                        item.Status == FinancialTransactionStatus.Reversed),
                 cancellationToken);
         var entryTransactionCount = await dbContext.Entries
             .AsNoTracking()
@@ -380,8 +380,8 @@ public sealed class EfLedgerStore(InOutDbContext dbContext) : ILedgerStore
         {
             Id = transaction.Id,
             HouseholdId = transaction.HouseholdId,
-            Kind = ToDatabaseKind(transaction.Kind),
-            Status = "posted",
+            Kind = transaction.Kind,
+            Status = FinancialTransactionStatus.Posted,
             Description = transaction.Description,
             OccurredOn = transaction.OccurredOn,
             IdempotencyKey = transaction.IdempotencyKey,
@@ -395,7 +395,7 @@ public sealed class EfLedgerStore(InOutDbContext dbContext) : ILedgerStore
                 TransactionId = transaction.Id,
                 AccountId = entry.AccountId,
                 CategoryId = entry.CategoryId,
-                Direction = entry.Direction.ToString().ToLowerInvariant(),
+                Direction = entry.Direction,
                 AmountCents = entry.Amount.Cents,
                 CreatedBy = transaction.CreatedBy,
             }).ToList(),
@@ -426,47 +426,30 @@ public sealed class EfLedgerStore(InOutDbContext dbContext) : ILedgerStore
             .AsNoTracking()
             .Where(entry => entry.HouseholdId == account.HouseholdId && entry.AccountId == account.Id)
             .SumAsync(
-                entry => (long?)(entry.Direction == "credit" ? entry.AmountCents : -entry.AmountCents),
+                entry => (long?)(entry.Direction == EntryDirection.Credit ? entry.AmountCents : -entry.AmountCents),
                 cancellationToken) ?? 0;
         return new AccountSummary(
             account.Id,
             account.Name,
-            ParseAccountKind(account.Kind),
+            account.Kind,
             account.Currency,
             balance,
             account.ArchivedAt);
     }
 
-    private static AccountKind ParseAccountKind(string value) => Enum.Parse<AccountKind>(value, true);
-
-    private static FinancialTransactionKind ParseTransactionKind(string value) => value switch
-    {
-        "opening_balance" => FinancialTransactionKind.OpeningBalance,
-        _ => Enum.Parse<FinancialTransactionKind>(value, true),
-    };
-
-    private static FinancialTransactionStatus ParseTransactionStatus(string value) =>
-        Enum.Parse<FinancialTransactionStatus>(value, true);
-
     private static Account ToDomain(AccountRecord record) => new(
         record.Id,
         record.HouseholdId,
         record.Name,
-        ParseAccountKind(record.Kind),
+        record.Kind,
         record.Currency,
         record.ArchivedAt);
 
     private static Category ToDomain(CategoryRecord record) => new(
         record.Id,
         record.HouseholdId,
-        Enum.Parse<FinancialFlow>(record.Flow, true),
+        record.Flow,
         record.ArchivedAt);
-
-    private static string ToDatabaseKind(FinancialTransactionKind kind) => kind switch
-    {
-        FinancialTransactionKind.OpeningBalance => "opening_balance",
-        _ => kind.ToString().ToLowerInvariant(),
-    };
 
     private Task<Guid?> FindByIdempotencyKeyAsync(
         Guid householdId,
@@ -503,17 +486,17 @@ public sealed class EfLedgerStore(InOutDbContext dbContext) : ILedgerStore
         FinancialTransaction.RestorePosted(
             record.Id,
             record.HouseholdId,
-            ParseTransactionKind(record.Kind),
+            record.Kind,
             record.Description,
             record.OccurredOn,
             record.IdempotencyKey,
             record.CreatedBy,
             record.ReversalOf,
-            ParseTransactionStatus(record.Status),
+            record.Status,
             record.Entries.Select(entry => new LedgerEntry(
                 entry.Id,
                 entry.AccountId,
                 entry.CategoryId,
-                Enum.Parse<EntryDirection>(entry.Direction, true),
+                entry.Direction,
                 Money.Positive(entry.AmountCents))).ToArray());
 }
