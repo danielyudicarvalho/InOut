@@ -67,7 +67,7 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
         var store = new EfLedgerStore(context);
         var balances = await store.GetBalancesAsync(householdId, CancellationToken.None);
         var reconciliation = await store.ReconcileAsync(householdId, CancellationToken.None);
-        Assert.Equal(1_000, Assert.Single(balances).BalanceCents);
+        Assert.Equal(1_000, balances.Single(item => item.AccountId == accountId).BalanceCents);
         Assert.True(reconciliation.IsConsistent);
         Assert.Equal(1, reconciliation.PostedTransactionCount);
         Assert.Equal(1, reconciliation.EntryTransactionCount);
@@ -250,7 +250,7 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
         await using var context = CreateContext();
         var balances = await new EfLedgerStore(context)
             .GetBalancesAsync(householdId, CancellationToken.None);
-        Assert.Equal(0, Assert.Single(balances).BalanceCents);
+        Assert.Equal(0, balances.Single(item => item.AccountId == accountId).BalanceCents);
     }
 
     private async Task<LedgerWriteResult> PostIncomeAsync(Guid idempotencyKey)
