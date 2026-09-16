@@ -166,6 +166,51 @@ void main() {
     });
   });
 
+  test('loads flow categories and posts an expense', () async {
+    final requests = <http.Request>[];
+    final repository = ApiLedgerRepository(
+      baseUrl: Uri.parse('https://api.inout.test'),
+      accessToken: () async => 'token',
+      client: MockClient((request) async {
+        requests.add(request);
+        if (request.method == 'GET') {
+          return http.Response(
+            jsonEncode([
+              {'id': 'category-1', 'name': 'Alimentação', 'flow': 'expense'},
+            ]),
+            200,
+          );
+        }
+        return http.Response(
+          jsonEncode({'transactionId': 'expense-1', 'replayed': false}),
+          201,
+        );
+      }),
+    );
+
+    final categories = await repository.getCategories(
+      'household-1',
+      flow: 'expense',
+    );
+    await repository.postExpense(
+      householdId: 'household-1',
+      accountId: 'account-1',
+      categoryId: categories.single.id,
+      amountCents: 2590,
+      currency: 'BRL',
+      occurredOn: DateTime(2026, 9, 16),
+      idempotencyKey: 'idempotency-expense-1',
+      description: 'Mercado',
+    );
+
+    expect(requests.first.url.queryParameters, {'flow': 'expense'});
+    expect(
+      requests.last.url.path,
+      '/api/v1/households/household-1/ledger/expenses',
+    );
+    expect(jsonDecode(requests.last.body), containsPair('amountCents', 2590));
+  });
+
   test(
     'maps balances and reconciliation without recalculating values',
     () async {

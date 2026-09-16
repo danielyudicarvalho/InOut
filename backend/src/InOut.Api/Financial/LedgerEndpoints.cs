@@ -58,6 +58,14 @@ public static class LedgerEndpoints
             return Results.NoContent();
         }).WithName("ArchiveAccount");
 
+        ledger.MapGet("/categories", async (
+            Guid householdId,
+            FinancialFlow? flow,
+            LedgerService service,
+            CancellationToken cancellationToken) =>
+            Results.Ok(await service.GetCategoriesAsync(householdId, flow, cancellationToken)))
+            .WithName("GetCategories");
+
         ledger.MapGet("/history", async (
             Guid householdId,
             int? limit,

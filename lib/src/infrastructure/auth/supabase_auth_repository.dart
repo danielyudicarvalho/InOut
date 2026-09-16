@@ -1,4 +1,5 @@
 import 'package:inout/src/application/identity/auth_repository.dart';
+import 'package:inout/src/core/utils/email_utils.dart';
 import 'package:inout/src/domain/identity/authenticated_user.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -17,14 +18,17 @@ final class SupabaseAuthRepository implements AuthRepository {
   @override
   Future<void> signIn({required String email, required String password}) async {
     await _client.auth.signInWithPassword(
-      email: email.trim(),
+      email: EmailUtils.normalize(email),
       password: password,
     );
   }
 
   @override
   Future<void> signUp({required String email, required String password}) async {
-    await _client.auth.signUp(email: email.trim(), password: password);
+    await _client.auth.signUp(
+      email: EmailUtils.normalize(email),
+      password: password,
+    );
   }
 
   @override

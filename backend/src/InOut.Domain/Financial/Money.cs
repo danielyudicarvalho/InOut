@@ -1,3 +1,5 @@
+using InOut.Domain.Utils;
+
 namespace InOut.Domain.Financial;
 
 public readonly record struct Money
@@ -9,8 +11,8 @@ public readonly record struct Money
             throw new FinancialRuleException("invalid_amount", "Money cannot be negative.");
         }
 
-        var normalizedCurrency = currency?.Trim().ToUpperInvariant();
-        if (normalizedCurrency is null || normalizedCurrency.Length != 3 ||
+        var normalizedCurrency = StringUtils.NormalizeUpper(currency);
+        if (normalizedCurrency.Length != 3 ||
             normalizedCurrency.Any(character => character is < 'A' or > 'Z'))
         {
             throw new FinancialRuleException("invalid_currency", "Currency must be a three-letter ISO code.");

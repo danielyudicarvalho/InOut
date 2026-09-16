@@ -1,3 +1,5 @@
+using InOut.Domain.Utils;
+
 namespace InOut.Domain.Households;
 
 public static class HouseholdRules
@@ -7,7 +9,7 @@ public static class HouseholdRules
 
     public static string NormalizeName(string? name)
     {
-        var normalized = name?.Trim() ?? string.Empty;
+        var normalized = StringUtils.TrimOrEmpty(name);
         if (normalized.Length is < 1 or > 80)
         {
             throw new HouseholdRuleException(
@@ -20,7 +22,7 @@ public static class HouseholdRules
 
     public static string NormalizeInviteCode(string? code)
     {
-        var normalized = code?.Trim().ToLowerInvariant() ?? string.Empty;
+        var normalized = StringUtils.NormalizeLower(code);
         if (normalized.Length != 48 || normalized.Any(character => !char.IsAsciiHexDigit(character)))
         {
             throw new HouseholdRuleException("invalid_invite", "Invalid or expired invitation.");

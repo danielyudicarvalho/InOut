@@ -45,6 +45,18 @@ final class AccountCreationResult {
   final bool replayed;
 }
 
+final class CategorySummary {
+  const CategorySummary({
+    required this.id,
+    required this.name,
+    required this.flow,
+  });
+
+  final String id;
+  final String name;
+  final String flow;
+}
+
 final class LedgerHistoryItem {
   const LedgerHistoryItem({
     required this.transactionId,
@@ -111,6 +123,11 @@ abstract interface class LedgerRepository {
   Future<void> archiveAccount({
     required String householdId,
     required String accountId,
+  });
+
+  Future<List<CategorySummary>> getCategories(
+    String householdId, {
+    String? flow,
   });
 
   Future<List<LedgerHistoryItem>> getHistory(

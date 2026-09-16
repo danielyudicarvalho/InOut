@@ -1,4 +1,5 @@
 using InOut.Application.Households;
+using InOut.Domain.Financial;
 using InOut.Domain.Households;
 using InOut.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -40,9 +41,20 @@ public sealed class EfHouseholdStore(InOutDbContext dbContext) : IHouseholdStore
         {
             HouseholdId = household.Id,
             UserId = userId,
-            Role = "owner",
+            Role = HouseholdRole.Owner,
             Household = household,
         });
+        foreach (var category in DefaultCategoryCatalog.All)
+        {
+            dbContext.Categories.Add(new CategoryRecord
+            {
+                Id = Guid.NewGuid(),
+                HouseholdId = household.Id,
+                Name = category.Name,
+                Flow = category.Flow,
+                CreatedBy = userId,
+            });
+        }
         AddAudit(household.Id, userId, "household.created", "household", household.Id);
         await dbContext.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
@@ -63,7 +75,7 @@ public sealed class EfHouseholdStore(InOutDbContext dbContext) : IHouseholdStore
             .Where(member => member.HouseholdId == householdId && member.UserId == userId)
             .Select(member => member.Role)
             .SingleOrDefaultAsync(cancellationToken);
-        if (!string.Equals(role, "owner", StringComparison.Ordinal))
+        if (role != HouseholdRole.Owner)
         {
             throw new HouseholdRuleException("owner_required", "Only a household owner can create an invitation.");
         }
@@ -139,7 +151,7 @@ public sealed class EfHouseholdStore(InOutDbContext dbContext) : IHouseholdStore
         {
             HouseholdId = invitation.HouseholdId,
             UserId = userId,
-            Role = "member",
+            Role = HouseholdRole.Member,
         });
         invitation.AcceptedBy = userId;
         invitation.AcceptedAt = DateTimeOffset.UtcNow;
@@ -201,4 +213,5 @@ public sealed class EfHouseholdStore(InOutDbContext dbContext) : IHouseholdStore
             EntityType = entityType,
             EntityId = entityId,
         });
+
 }

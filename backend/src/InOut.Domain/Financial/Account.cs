@@ -1,13 +1,6 @@
-namespace InOut.Domain.Financial;
+using InOut.Domain.Utils;
 
-public enum AccountKind
-{
-    Cash,
-    Checking,
-    Savings,
-    Investment,
-    Other
-}
+namespace InOut.Domain.Financial;
 
 public sealed record Account(
     Guid Id,
@@ -70,7 +63,7 @@ public sealed record Account(
 
     public static string NormalizeName(string? name)
     {
-        var normalized = name?.Trim();
+        var normalized = StringUtils.TrimToNull(name);
         if (string.IsNullOrEmpty(normalized) || normalized.Length > 80)
         {
             throw new FinancialRuleException(
