@@ -17,6 +17,7 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
     private readonly Guid householdId = Guid.NewGuid();
     private readonly Guid actorUserId = Guid.NewGuid();
     private readonly Guid accountId = Guid.NewGuid();
+    private readonly Guid destinationAccountId = Guid.NewGuid();
     private readonly Guid categoryId = Guid.NewGuid();
 
     public async Task InitializeAsync()
@@ -34,12 +35,15 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
             values (@household_id, 'Integration household', @actor_user_id);
             insert into public.accounts (id, household_id, name, kind, currency, created_by)
             values (@account_id, @household_id, 'Checking', 'checking', 'BRL', @actor_user_id);
+            insert into public.accounts (id, household_id, name, kind, currency, created_by)
+            values (@destination_account_id, @household_id, 'Savings', 'savings', 'BRL', @actor_user_id);
             insert into public.categories (id, household_id, name, flow, created_by)
             values (@category_id, @household_id, 'Salary', 'income', @actor_user_id);
             """;
         seed.Parameters.AddWithValue("household_id", householdId);
         seed.Parameters.AddWithValue("actor_user_id", actorUserId);
         seed.Parameters.AddWithValue("account_id", accountId);
+        seed.Parameters.AddWithValue("destination_account_id", destinationAccountId);
         seed.Parameters.AddWithValue("category_id", categoryId);
         await seed.ExecuteNonQueryAsync();
     }
@@ -63,7 +67,7 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
         var store = new EfLedgerStore(context);
         var balances = await store.GetBalancesAsync(householdId, CancellationToken.None);
         var reconciliation = await store.ReconcileAsync(householdId, CancellationToken.None);
-        Assert.Equal(1_000, Assert.Single(balances).BalanceCents);
+        Assert.Equal(1_000, balances.Single(item => item.AccountId == accountId).BalanceCents);
         Assert.True(reconciliation.IsConsistent);
         Assert.Equal(1, reconciliation.PostedTransactionCount);
         Assert.Equal(1, reconciliation.EntryTransactionCount);
@@ -136,6 +140,101 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task TransferMovesValueAtomicallyWithoutChangingConsolidatedBalance()
+    {
+        await PostIncomeAsync(Guid.NewGuid());
+
+        LedgerWriteResult result;
+        await using (var context = CreateContext())
+        {
+            var service = new LedgerService(new EfLedgerStore(context));
+            result = await service.PostTransferAsync(
+                actorUserId,
+                new PostTransferCommand(
+                    householdId,
+                    accountId,
+                    destinationAccountId,
+                    400,
+                    "BRL",
+                    new DateOnly(2026, 9, 15),
+                    Guid.NewGuid(),
+                    "Reserva mensal"),
+                CancellationToken.None);
+        }
+
+        await using (var context = CreateContext())
+        {
+            var store = new EfLedgerStore(context);
+            var balances = await store.GetBalancesAsync(householdId, CancellationToken.None);
+            var transferEntries = (await store.GetHistoryAsync(
+                    householdId,
+                    100,
+                    CancellationToken.None))
+                .Where(entry => entry.TransactionId == result.TransactionId)
+                .ToArray();
+
+            Assert.Equal(600, balances.Single(item => item.AccountId == accountId).BalanceCents);
+            Assert.Equal(400, balances.Single(item => item.AccountId == destinationAccountId).BalanceCents);
+            Assert.Equal(1_000, balances.Sum(item => item.BalanceCents));
+            Assert.Equal(2, transferEntries.Length);
+            Assert.Equal(400, transferEntries.Single(item => item.Direction == EntryDirection.Debit).AmountCents);
+            Assert.Equal(400, transferEntries.Single(item => item.Direction == EntryDirection.Credit).AmountCents);
+        }
+    }
+
+    [Fact]
+    public async Task InvalidTransferLeavesNoTransactionEntriesOrPartialBalance()
+    {
+        await PostIncomeAsync(Guid.NewGuid());
+        var foreignHouseholdId = Guid.NewGuid();
+        var foreignAccountId = Guid.NewGuid();
+
+        await using (var context = CreateContext())
+        {
+            await context.Database.ExecuteSqlInterpolatedAsync($"""
+                insert into public.households (id, name, created_by)
+                values ({foreignHouseholdId}, 'Foreign household', {actorUserId});
+                insert into public.accounts (id, household_id, name, kind, currency, created_by)
+                values ({foreignAccountId}, {foreignHouseholdId}, 'Foreign account', 'checking', 'BRL', {actorUserId});
+                """);
+        }
+
+        await using (var context = CreateContext())
+        {
+            var service = new LedgerService(new EfLedgerStore(context));
+            var exception = await Assert.ThrowsAsync<FinancialRuleException>(() =>
+                service.PostTransferAsync(
+                    actorUserId,
+                    new PostTransferCommand(
+                        householdId,
+                        accountId,
+                        foreignAccountId,
+                        400,
+                        "BRL",
+                        new DateOnly(2026, 9, 15),
+                        Guid.NewGuid(),
+                        null),
+                    CancellationToken.None));
+
+            Assert.Equal("invalid_account", exception.Code);
+        }
+
+        await using (var context = CreateContext())
+        {
+            var balances = await new EfLedgerStore(context)
+                .GetBalancesAsync(householdId, CancellationToken.None);
+            var reconciliation = await new EfLedgerStore(context)
+                .ReconcileAsync(householdId, CancellationToken.None);
+
+            Assert.Equal(1_000, balances.Single(item => item.AccountId == accountId).BalanceCents);
+            Assert.Equal(0, balances.Single(item => item.AccountId == destinationAccountId).BalanceCents);
+            Assert.True(reconciliation.IsConsistent);
+            Assert.Equal(1, reconciliation.PostedTransactionCount);
+            Assert.Equal(1, reconciliation.EntryTransactionCount);
+        }
+    }
+
+    [Fact]
     public async Task ConcurrentReversalsAllowOnlyOneReversal()
     {
         var posted = await PostIncomeAsync(Guid.NewGuid());
@@ -151,7 +250,7 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
         await using var context = CreateContext();
         var balances = await new EfLedgerStore(context)
             .GetBalancesAsync(householdId, CancellationToken.None);
-        Assert.Equal(0, Assert.Single(balances).BalanceCents);
+        Assert.Equal(0, balances.Single(item => item.AccountId == accountId).BalanceCents);
     }
 
     private async Task<LedgerWriteResult> PostIncomeAsync(Guid idempotencyKey)

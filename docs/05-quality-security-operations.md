@@ -87,7 +87,7 @@ Coletar apenas o necessário ao funcionamento. Permitir exportar os dados. Defin
 
 - [ ] Ambos os usuários acessam somente a casa correta.
 - [ ] Saldos reconciliam com uma amostra conhecida.
-- [ ] Transferências somam zero no consolidado.
+- [x] Transferências somam zero no consolidado (GOM-83: teste de integração cobre as duas pernas, neutralidade patrimonial e rollback em referência inválida).
 - [ ] Estorno neutraliza exatamente o original.
 - [ ] Duplo envio não duplica movimento.
 - [ ] Pipeline está verde.
