@@ -38,7 +38,6 @@ void main() {
       currency: 'BRL',
       initialBalanceCents: 25000,
       openingDate: DateTime(2026, 9, 15),
-      idempotencyKey: 'idempotency-account-2',
     );
 
     expect(result.account.balanceCents, 25000);
@@ -51,7 +50,6 @@ void main() {
       'currency': 'BRL',
       'initialBalanceCents': 25000,
       'openingDate': '2026-09-15',
-      'idempotencyKey': 'idempotency-account-2',
     });
   });
 

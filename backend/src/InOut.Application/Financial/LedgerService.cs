@@ -9,8 +9,7 @@ public sealed record CreateAccountCommand(
     AccountKind Kind,
     string Currency,
     long InitialBalanceCents,
-    DateOnly OpeningDate,
-    Guid IdempotencyKey);
+    DateOnly OpeningDate);
 
 public sealed record PostIncomeCommand(
     Guid HouseholdId,
@@ -56,11 +55,6 @@ public sealed class LedgerService(ILedgerStore store)
         CreateAccountCommand command,
         CancellationToken cancellationToken)
     {
-        if (command.IdempotencyKey == Guid.Empty)
-        {
-            throw new FinancialRuleException("invalid_idempotency_key", "Idempotency key is required.");
-        }
-
         var opening = Account.Open(
             command.Id,
             command.HouseholdId,
@@ -69,7 +63,6 @@ public sealed class LedgerService(ILedgerStore store)
             command.Currency,
             command.InitialBalanceCents,
             command.OpeningDate,
-            command.IdempotencyKey,
             actorUserId);
         return store.CreateAccountAsync(
             opening,

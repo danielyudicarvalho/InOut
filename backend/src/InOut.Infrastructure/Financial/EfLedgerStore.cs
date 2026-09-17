@@ -18,37 +18,29 @@ public sealed class EfLedgerStore(InOutDbContext dbContext) : ILedgerStore
         await using var databaseTransaction = await BeginForUserAsync(actorUserId, cancellationToken);
         await LockIdempotencyKeyAsync(
             account.HouseholdId,
-            opening.IdempotencyKey,
+            account.Id,
             cancellationToken);
 
         var replayedAccount = await dbContext.Accounts
             .AsNoTracking()
-            .SingleOrDefaultAsync(
-                item => item.HouseholdId == account.HouseholdId &&
-                    item.IdempotencyKey == opening.IdempotencyKey,
-                cancellationToken);
+            .SingleOrDefaultAsync(item => item.Id == account.Id, cancellationToken);
         if (replayedAccount is not null)
         {
+            if (replayedAccount.HouseholdId != account.HouseholdId)
+            {
+                throw new FinancialRuleException("account_conflict", "Account identifier is already in use.");
+            }
+
             await EnsureAccountReplayMatchesAsync(replayedAccount, opening, cancellationToken);
             var replayedSummary = await GetAccountSummaryAsync(replayedAccount, cancellationToken);
             await databaseTransaction.CommitAsync(cancellationToken);
             return new AccountCreationResult(replayedSummary, true);
         }
 
-        if (await FindByIdempotencyKeyAsync(
-            account.HouseholdId,
-            opening.IdempotencyKey,
-            cancellationToken) is not null)
+        if (opening.OpeningBalance is not null &&
+            await FindByIdempotencyKeyAsync(account.HouseholdId, account.Id, cancellationToken) is not null)
         {
             ThrowIdempotencyConflict();
-        }
-
-        var existing = await dbContext.Accounts
-            .AsNoTracking()
-            .SingleOrDefaultAsync(item => item.Id == account.Id, cancellationToken);
-        if (existing is not null)
-        {
-            throw new FinancialRuleException("account_conflict", "Account identifier is already in use.");
         }
 
         var record = new AccountRecord
@@ -58,7 +50,6 @@ public sealed class EfLedgerStore(InOutDbContext dbContext) : ILedgerStore
             Name = account.Name,
             Kind = account.Kind,
             Currency = account.Currency,
-            IdempotencyKey = opening.IdempotencyKey,
             CreatedBy = actorUserId,
         };
         dbContext.Accounts.Add(record);
@@ -236,11 +227,6 @@ public sealed class EfLedgerStore(InOutDbContext dbContext) : ILedgerStore
             transaction.IdempotencyKey,
             cancellationToken);
 
-        await EnsureKeyIsNotUsedByAccountAsync(
-            transaction.HouseholdId,
-            transaction.IdempotencyKey,
-            cancellationToken);
-
         var existingId = await FindByIdempotencyKeyAsync(
             transaction.HouseholdId,
             transaction.IdempotencyKey,
@@ -275,8 +261,6 @@ public sealed class EfLedgerStore(InOutDbContext dbContext) : ILedgerStore
         await using var databaseTransaction =
             await BeginForUserAsync(actorUserId, cancellationToken);
         await LockIdempotencyKeyAsync(householdId, idempotencyKey, cancellationToken);
-        await EnsureKeyIsNotUsedByAccountAsync(householdId, idempotencyKey, cancellationToken);
-
         var existingId = await FindByIdempotencyKeyAsync(
             householdId,
             idempotencyKey,
@@ -487,18 +471,22 @@ public sealed class EfLedgerStore(InOutDbContext dbContext) : ILedgerStore
             persisted.Kind != account.Kind ||
             persisted.Currency != account.Currency)
         {
-            ThrowIdempotencyConflict();
+            throw new FinancialRuleException(
+                "account_conflict",
+                "Account identifier was already used with different account data.");
         }
 
         var existingOpeningId = await FindByIdempotencyKeyAsync(
             account.HouseholdId,
-            requested.IdempotencyKey,
+            account.Id,
             cancellationToken);
         if (requested.OpeningBalance is null)
         {
             if (existingOpeningId is not null)
             {
-                ThrowIdempotencyConflict();
+                throw new FinancialRuleException(
+                    "account_conflict",
+                    "Account identifier was already used with a different opening balance.");
             }
 
             return;
@@ -506,7 +494,9 @@ public sealed class EfLedgerStore(InOutDbContext dbContext) : ILedgerStore
 
         if (existingOpeningId is null)
         {
-            ThrowIdempotencyConflict();
+            throw new FinancialRuleException(
+                "account_conflict",
+                "Account identifier was already used with a different opening balance.");
         }
 
         await EnsureTransactionReplayMatchesAsync(
@@ -597,19 +587,6 @@ public sealed class EfLedgerStore(InOutDbContext dbContext) : ILedgerStore
                 item.IdempotencyKey == idempotencyKey)
             .Select(item => (Guid?)item.Id)
             .SingleOrDefaultAsync(cancellationToken);
-
-    private async Task EnsureKeyIsNotUsedByAccountAsync(
-        Guid householdId,
-        Guid idempotencyKey,
-        CancellationToken cancellationToken)
-    {
-        if (await dbContext.Accounts.AsNoTracking().AnyAsync(
-            item => item.HouseholdId == householdId && item.IdempotencyKey == idempotencyKey,
-            cancellationToken))
-        {
-            ThrowIdempotencyConflict();
-        }
-    }
 
     private async Task<Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction> BeginForUserAsync(
         Guid userId,

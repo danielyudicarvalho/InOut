@@ -91,6 +91,11 @@ conta. Saldos são derivados das entries contabilizadas. O runtime pode criar e
 arquivar contas, mas não recebe `DELETE`; o histórico mantém autor, data, tipo e
 as pernas de cada movimento.
 
+A criação é idempotente pelo `accountId` fornecido pelo cliente. Um retry com o
+mesmo payload retorna a conta existente; reutilizar o ID com dados diferentes
+retorna conflito. Quando há saldo inicial, o lançamento usa o próprio
+`accountId` como chave determinística e é persistido atomicamente com a conta.
+
 ## Limites
 
 Domain e Application não podem depender de ASP.NET Core, EF Core, Npgsql, Supabase ou Flutter. Os testes de arquitetura bloqueiam violações básicas dessa direção.

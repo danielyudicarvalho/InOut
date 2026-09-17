@@ -28,7 +28,6 @@ final class ApiLedgerRepository implements LedgerRepository {
     required String currency,
     required int initialBalanceCents,
     required DateTime openingDate,
-    required String idempotencyKey,
   }) async {
     final response = await _send(
       'POST',
@@ -40,7 +39,6 @@ final class ApiLedgerRepository implements LedgerRepository {
         'currency': currency,
         'initialBalanceCents': initialBalanceCents,
         'openingDate': _date(openingDate),
-        'idempotencyKey': idempotencyKey,
       },
     );
     final body = jsonDecode(response.body) as Map<String, dynamic>;

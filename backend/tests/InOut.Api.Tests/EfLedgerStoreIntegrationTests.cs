@@ -99,7 +99,6 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
     public async Task ZeroBalanceAccountCreationCanBeSafelyRetried()
     {
         var createdAccountId = Guid.NewGuid();
-        var idempotencyKey = Guid.NewGuid();
 
         async Task<AccountCreationResult> CreateAsync(string name)
         {
@@ -113,8 +112,7 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
                     AccountKind.Savings,
                     "BRL",
                     0,
-                    new DateOnly(2026, 9, 16),
-                    idempotencyKey),
+                    new DateOnly(2026, 9, 16)),
                 CancellationToken.None);
         }
 
@@ -125,7 +123,7 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
         Assert.False(created.Replayed);
         Assert.True(replayed.Replayed);
         Assert.Equal(created.Account.Id, replayed.Account.Id);
-        Assert.Equal("idempotency_conflict", conflict.Code);
+        Assert.Equal("account_conflict", conflict.Code);
     }
 
     [Fact]
@@ -211,7 +209,6 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
     public async Task AccountLifecycleKeepsDerivedBalanceAndHistoryAfterArchive()
     {
         var createdAccountId = Guid.NewGuid();
-        var idempotencyKey = Guid.NewGuid();
         await using (var context = CreateContext())
         {
             var service = new LedgerService(new EfLedgerStore(context));
@@ -224,8 +221,7 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
                     AccountKind.Savings,
                     "BRL",
                     25_000,
-                    new DateOnly(2026, 9, 15),
-                    idempotencyKey),
+                    new DateOnly(2026, 9, 15)),
                 CancellationToken.None);
 
             Assert.False(created.Replayed);
@@ -244,8 +240,7 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
                     AccountKind.Savings,
                     "BRL",
                     25_000,
-                    new DateOnly(2026, 9, 15),
-                    idempotencyKey),
+                    new DateOnly(2026, 9, 15)),
                 CancellationToken.None);
             Assert.True(replay.Replayed);
 
@@ -496,12 +491,10 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
           name text not null,
           kind text not null,
           currency text not null,
-          idempotency_key uuid,
           created_by uuid not null,
           created_at timestamptz not null default now(),
           archived_at timestamptz,
-          unique (household_id, id),
-          unique (household_id, idempotency_key)
+          unique (household_id, id)
         );
         create table public.categories (
           id uuid primary key,

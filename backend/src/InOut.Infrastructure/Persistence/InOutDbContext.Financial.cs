@@ -25,7 +25,6 @@ public sealed partial class InOutDbContext
                     value => DomainTypeStorage.AccountKindToString(value),
                     value => DomainTypeStorage.AccountKindFromString(value));
             entity.Property(item => item.Currency).HasColumnName("currency");
-            entity.Property(item => item.IdempotencyKey).HasColumnName("idempotency_key");
             entity.Property(item => item.CreatedBy).HasColumnName("created_by");
             entity.Property(item => item.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("now()");
             entity.Property(item => item.ArchivedAt).HasColumnName("archived_at");
@@ -106,7 +105,6 @@ internal sealed class AccountRecord
     public string Name { get; set; } = string.Empty;
     public AccountKind Kind { get; set; }
     public string Currency { get; set; } = "BRL";
-    public Guid? IdempotencyKey { get; set; }
     public Guid CreatedBy { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset? ArchivedAt { get; set; }

@@ -6,7 +6,8 @@
 - Repetições semanticamente idênticas retornam o identificador original com `replayed: true`.
 - A reutilização da chave com operação ou payload diferente retorna `idempotency_conflict` e HTTP 409.
 - A restrição única do PostgreSQL permanece como defesa adicional contra duplicação.
-- Criações de conta, inclusive com saldo inicial zero, persistem a chave e podem ser repetidas com segurança.
+- Criações de conta usam `(household_id, account_id)` como identidade estável do comando e podem ser repetidas com segurança, inclusive com saldo inicial zero.
+- Quando há saldo inicial, o movimento `opening_balance` usa o `account_id` como chave determinística; a conta não persiste uma segunda chave de idempotência.
 - Estornos bloqueiam a transação original durante a alteração de estado.
 
 ## Evidência automatizada

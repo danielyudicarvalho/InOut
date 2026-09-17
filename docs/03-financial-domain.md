@@ -93,7 +93,7 @@ Exemplo: despesa de R$ 150 registrada como R$ 510.
 ## Regras de concorrência
 
 - Gravações financeiras usam transação de banco.
-- Operações aceitam chave de idempotência para evitar duplo envio.
+- Comandos financeiros aceitam chave de idempotência para evitar duplo envio; a criação de conta usa seu `account_id` fornecido pelo cliente como identidade estável.
 - A versão do registro ou constraint impede estorno duplo.
 - O cliente não calcula o saldo final como fonte de verdade.
 - Respostas a repetição idempotente retornam o resultado original.

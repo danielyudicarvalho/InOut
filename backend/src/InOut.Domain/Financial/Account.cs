@@ -35,7 +35,6 @@ public sealed record Account(
         string currency,
         long initialBalanceCents,
         DateOnly openingDate,
-        Guid idempotencyKey,
         Guid actorUserId)
     {
         if (initialBalanceCents < 0)
@@ -53,9 +52,9 @@ public sealed record Account(
                 id,
                 Money.Positive(initialBalanceCents, account.Currency),
                 openingDate,
-                idempotencyKey,
+                id,
                 actorUserId);
-        return new AccountOpening(account, openingBalance, idempotencyKey);
+        return new AccountOpening(account, openingBalance);
     }
 
     public Account Archive(DateTimeOffset archivedAt) =>
@@ -77,5 +76,4 @@ public sealed record Account(
 
 public sealed record AccountOpening(
     Account Account,
-    FinancialTransaction? OpeningBalance,
-    Guid IdempotencyKey);
+    FinancialTransaction? OpeningBalance);

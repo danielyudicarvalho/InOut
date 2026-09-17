@@ -29,8 +29,7 @@ public static class LedgerEndpoints
                     request.Kind,
                     request.Currency,
                     request.InitialBalanceCents,
-                    request.OpeningDate,
-                    request.IdempotencyKey),
+                    request.OpeningDate),
                 cancellationToken);
             return result.Replayed
                 ? Results.Ok(result)
@@ -200,8 +199,7 @@ public static class LedgerEndpoints
         AccountKind Kind,
         string Currency,
         long InitialBalanceCents,
-        DateOnly OpeningDate,
-        Guid IdempotencyKey);
+        DateOnly OpeningDate);
 
     public sealed record PostExpenseRequest(
         Guid AccountId,
