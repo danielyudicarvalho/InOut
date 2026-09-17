@@ -1,7 +1,8 @@
-using System.Diagnostics.CodeAnalysis;
+using System.Net;
 using InOut.Application.Financial;
+using InOut.Application.Idempotency;
 using InOut.Domain.Financial;
-using InOut.Domain.Utils;
+using InOut.Infrastructure.Idempotency;
 using InOut.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
@@ -9,46 +10,35 @@ namespace InOut.Infrastructure.Financial;
 
 public sealed class EfLedgerStore(InOutDbContext dbContext) : ILedgerStore
 {
+    private readonly EfIdempotencyCoordinator idempotency = new(dbContext, TimeProvider.System);
+
     public async Task<AccountCreationResult> CreateAccountAsync(
         AccountOpening opening,
-        Guid actorUserId,
+        IdempotencyRequest idempotencyRequest,
         CancellationToken cancellationToken)
     {
         var account = opening.Account;
-        await using var databaseTransaction = await BeginForUserAsync(actorUserId, cancellationToken);
-        await LockIdempotencyKeyAsync(
+        await using var databaseTransaction = await BeginForUserAsync(idempotencyRequest.ActorUserId, cancellationToken);
+        var acquisition = await idempotency.AcquireAsync<AccountCreationResult>(
+            idempotencyRequest,
+            cancellationToken);
+        if (acquisition.IsReplay)
+        {
+            await databaseTransaction.CommitAsync(cancellationToken);
+            return acquisition.Response! with { Replayed = true };
+        }
+
+        await LockResourceAsync(
             account.HouseholdId,
-            opening.IdempotencyKey,
+            account.Id,
             cancellationToken);
 
-        var replayedAccount = await dbContext.Accounts
-            .AsNoTracking()
-            .SingleOrDefaultAsync(
-                item => item.HouseholdId == account.HouseholdId &&
-                    item.IdempotencyKey == opening.IdempotencyKey,
-                cancellationToken);
-        if (replayedAccount is not null)
-        {
-            await EnsureAccountReplayMatchesAsync(replayedAccount, opening, cancellationToken);
-            var replayedSummary = await GetAccountSummaryAsync(replayedAccount, cancellationToken);
-            await databaseTransaction.CommitAsync(cancellationToken);
-            return new AccountCreationResult(replayedSummary, true);
-        }
-
-        if (await FindByIdempotencyKeyAsync(
-            account.HouseholdId,
-            opening.IdempotencyKey,
-            cancellationToken) is not null)
-        {
-            ThrowIdempotencyConflict();
-        }
-
-        var existing = await dbContext.Accounts
+        var existingAccount = await dbContext.Accounts
             .AsNoTracking()
             .SingleOrDefaultAsync(item => item.Id == account.Id, cancellationToken);
-        if (existing is not null)
+        if (existingAccount is not null)
         {
-            throw new FinancialRuleException("account_conflict", "Account identifier is already in use.");
+            throw new FinancialRuleException(FinancialErrorCodes.AccountConflict, "Account identifier is already in use.");
         }
 
         var record = new AccountRecord
@@ -58,11 +48,22 @@ public sealed class EfLedgerStore(InOutDbContext dbContext) : ILedgerStore
             Name = account.Name,
             Kind = account.Kind,
             Currency = account.Currency,
-            IdempotencyKey = opening.IdempotencyKey,
-            CreatedBy = actorUserId,
+            CreatedBy = idempotencyRequest.ActorUserId,
         };
         dbContext.Accounts.Add(record);
-        AddAudit(account.HouseholdId, actorUserId, "financial.account.created", "account", account.Id);
+        AddAudit(
+            account.HouseholdId,
+            idempotencyRequest.ActorUserId,
+            PersistenceVocabulary.AuditActions.AccountCreated,
+            PersistenceVocabulary.EntityTypes.Account,
+            account.Id);
+        idempotency.AddOutboxEvent(
+            account.HouseholdId,
+            PersistenceVocabulary.EntityTypes.Account,
+            account.Id,
+            1,
+            PersistenceVocabulary.AuditActions.AccountCreated,
+            new { account.Id, account.HouseholdId, account.Name, account.Kind, account.Currency });
         await dbContext.SaveChangesAsync(cancellationToken);
 
         if (opening.OpeningBalance is not null)
@@ -71,18 +72,32 @@ public sealed class EfLedgerStore(InOutDbContext dbContext) : ILedgerStore
             AddTransaction(openingBalance);
             AddAudit(
                 account.HouseholdId,
-                actorUserId,
-                "financial.opening_balance.posted",
-                "transaction",
+                idempotencyRequest.ActorUserId,
+                PersistenceVocabulary.AuditActions.OpeningBalancePosted,
+                PersistenceVocabulary.EntityTypes.Transaction,
                 openingBalance.Id);
-            await dbContext.SaveChangesAsync(cancellationToken);
+            idempotency.AddOutboxEvent(
+                account.HouseholdId,
+                PersistenceVocabulary.EntityTypes.Transaction,
+                openingBalance.Id,
+                1,
+                PersistenceVocabulary.AuditActions.OpeningBalancePosted,
+                new { openingBalance.Id, openingBalance.HouseholdId, AccountId = account.Id });
         }
 
-        await databaseTransaction.CommitAsync(cancellationToken);
         var initialBalanceCents = opening.OpeningBalance?.Entries.Single().Amount.Cents ?? 0;
-        return new AccountCreationResult(
+        var result = new AccountCreationResult(
             new AccountSummary(account.Id, account.Name, account.Kind, account.Currency, initialBalanceCents, null),
             false);
+        idempotency.Complete(
+            acquisition.Record,
+            result,
+            (int)HttpStatusCode.Created,
+            PersistenceVocabulary.EntityTypes.Account,
+            account.Id);
+        await dbContext.SaveChangesAsync(cancellationToken);
+        await databaseTransaction.CommitAsync(cancellationToken);
+        return result;
     }
 
     public async Task<IReadOnlyList<AccountSummary>> GetAccountsAsync(
@@ -133,7 +148,7 @@ public sealed class EfLedgerStore(InOutDbContext dbContext) : ILedgerStore
             cancellationToken);
         if (account is null)
         {
-            throw new FinancialRuleException("account_not_found", "Account was not found.");
+            throw new FinancialRuleException(FinancialErrorCodes.AccountNotFound, "Account was not found.");
         }
 
         var archived = new Account(
@@ -147,7 +162,12 @@ public sealed class EfLedgerStore(InOutDbContext dbContext) : ILedgerStore
         if (account.ArchivedAt != archived.ArchivedAt)
         {
             account.ArchivedAt = archived.ArchivedAt;
-            AddAudit(householdId, actorUserId, "financial.account.archived", "account", accountId);
+            AddAudit(
+                householdId,
+                actorUserId,
+                PersistenceVocabulary.AuditActions.AccountArchived,
+                PersistenceVocabulary.EntityTypes.Account,
+                accountId);
             await dbContext.SaveChangesAsync(cancellationToken);
         }
 
@@ -227,71 +247,65 @@ public sealed class EfLedgerStore(InOutDbContext dbContext) : ILedgerStore
 
     public async Task<LedgerWriteResult> PostAsync(
         FinancialTransaction transaction,
+        IdempotencyRequest idempotencyRequest,
         CancellationToken cancellationToken)
     {
         await using var databaseTransaction =
             await BeginForUserAsync(transaction.CreatedBy, cancellationToken);
-        await LockIdempotencyKeyAsync(
-            transaction.HouseholdId,
-            transaction.IdempotencyKey,
+        var acquisition = await idempotency.AcquireAsync<LedgerWriteResult>(
+            idempotencyRequest,
             cancellationToken);
-
-        await EnsureKeyIsNotUsedByAccountAsync(
-            transaction.HouseholdId,
-            transaction.IdempotencyKey,
-            cancellationToken);
-
-        var existingId = await FindByIdempotencyKeyAsync(
-            transaction.HouseholdId,
-            transaction.IdempotencyKey,
-            cancellationToken);
-        if (existingId is not null)
+        if (acquisition.IsReplay)
         {
-            await EnsureTransactionReplayMatchesAsync(
-                existingId.Value,
-                transaction,
-                cancellationToken);
             await databaseTransaction.CommitAsync(cancellationToken);
-            return new LedgerWriteResult(existingId.Value, true);
+            return acquisition.Response! with { Replayed = true };
         }
 
+        await LockAccountsAsync(transaction.HouseholdId, transaction.Entries, cancellationToken);
         await ValidateReferencesAsync(transaction, cancellationToken);
         AddTransaction(transaction);
-        AddAudit(transaction.HouseholdId, transaction.CreatedBy, "financial.transaction.posted", "transaction", transaction.Id);
+        AddAudit(
+            transaction.HouseholdId,
+            transaction.CreatedBy,
+            PersistenceVocabulary.AuditActions.TransactionPosted,
+            PersistenceVocabulary.EntityTypes.Transaction,
+            transaction.Id);
+        idempotency.AddOutboxEvent(
+            transaction.HouseholdId,
+            PersistenceVocabulary.EntityTypes.Transaction,
+            transaction.Id,
+            1,
+            PersistenceVocabulary.AuditActions.TransactionPosted,
+            new { transaction.Id, transaction.HouseholdId, transaction.Kind, transaction.OccurredOn });
+        var result = new LedgerWriteResult(transaction.Id, false);
+        idempotency.Complete(
+            acquisition.Record,
+            result,
+            (int)HttpStatusCode.Created,
+            PersistenceVocabulary.EntityTypes.Transaction,
+            transaction.Id);
         await dbContext.SaveChangesAsync(cancellationToken);
         await databaseTransaction.CommitAsync(cancellationToken);
-        return new LedgerWriteResult(transaction.Id, false);
+        return result;
     }
 
     public async Task<LedgerWriteResult> ReverseAsync(
         Guid householdId,
         Guid transactionId,
-        Guid idempotencyKey,
-        Guid actorUserId,
         DateOnly occurredOn,
         string? description,
+        IdempotencyRequest idempotencyRequest,
         CancellationToken cancellationToken)
     {
         await using var databaseTransaction =
-            await BeginForUserAsync(actorUserId, cancellationToken);
-        await LockIdempotencyKeyAsync(householdId, idempotencyKey, cancellationToken);
-        await EnsureKeyIsNotUsedByAccountAsync(householdId, idempotencyKey, cancellationToken);
-
-        var existingId = await FindByIdempotencyKeyAsync(
-            householdId,
-            idempotencyKey,
+            await BeginForUserAsync(idempotencyRequest.ActorUserId, cancellationToken);
+        var acquisition = await idempotency.AcquireAsync<LedgerWriteResult>(
+            idempotencyRequest,
             cancellationToken);
-        if (existingId is not null)
+        if (acquisition.IsReplay)
         {
-            await EnsureReversalReplayMatchesAsync(
-                existingId.Value,
-                transactionId,
-                actorUserId,
-                occurredOn,
-                description,
-                cancellationToken);
             await databaseTransaction.CommitAsync(cancellationToken);
-            return new LedgerWriteResult(existingId.Value, true);
+            return acquisition.Response! with { Replayed = true };
         }
 
         await dbContext.Database.ExecuteSqlInterpolatedAsync(
@@ -305,23 +319,41 @@ public sealed class EfLedgerStore(InOutDbContext dbContext) : ILedgerStore
         if (originalRecord is null)
         {
             throw new FinancialRuleException(
-                "transaction_not_found",
+                FinancialErrorCodes.TransactionNotFound,
                 "Transaction was not found.");
         }
 
         var original = ToDomain(originalRecord);
         var reversal = FinancialTransaction.Reversal(
             original,
-            idempotencyKey,
-            actorUserId,
+            idempotencyRequest.ActorUserId,
             occurredOn,
             description);
         AddTransaction(reversal);
         originalRecord.Status = FinancialTransactionStatus.Reversed;
-        AddAudit(householdId, actorUserId, "financial.transaction.reversed", "transaction", transactionId);
+        AddAudit(
+            householdId,
+            idempotencyRequest.ActorUserId,
+            PersistenceVocabulary.AuditActions.TransactionReversed,
+            PersistenceVocabulary.EntityTypes.Transaction,
+            transactionId);
+        idempotency.AddOutboxEvent(
+            householdId,
+            PersistenceVocabulary.EntityTypes.Transaction,
+            transactionId,
+            2,
+            PersistenceVocabulary.AuditActions.TransactionReversed,
+            new { TransactionId = transactionId, ReversalId = reversal.Id, OccurredOn = occurredOn });
+        var result = new LedgerWriteResult(reversal.Id, false);
+        idempotency.Complete(
+            acquisition.Record,
+            result,
+            (int)HttpStatusCode.Created,
+            PersistenceVocabulary.EntityTypes.Transaction,
+            reversal.Id);
         await dbContext.SaveChangesAsync(cancellationToken);
         await databaseTransaction.CommitAsync(cancellationToken);
-        return new LedgerWriteResult(reversal.Id, false);
+        return result;
     }
 
     public async Task<IReadOnlyList<AccountBalance>> GetBalancesAsync(
@@ -409,8 +441,10 @@ public sealed class EfLedgerStore(InOutDbContext dbContext) : ILedgerStore
             Status = FinancialTransactionStatus.Posted,
             Description = transaction.Description,
             OccurredOn = transaction.OccurredOn,
-            IdempotencyKey = transaction.IdempotencyKey,
             ReversalOf = transaction.ReversalOf,
+            OpeningAccountId = transaction.Kind == FinancialTransactionKind.OpeningBalance
+                ? transaction.Entries.Single().AccountId
+                : null,
             CreatedBy = transaction.CreatedBy,
             PostedAt = DateTimeOffset.UtcNow,
             Entries = transaction.Entries.Select(entry => new EntryRecord
@@ -443,25 +477,6 @@ public sealed class EfLedgerStore(InOutDbContext dbContext) : ILedgerStore
             EntityId = entityId,
         });
 
-    private async Task<AccountSummary> GetAccountSummaryAsync(
-        AccountRecord account,
-        CancellationToken cancellationToken)
-    {
-        var balance = await dbContext.Entries
-            .AsNoTracking()
-            .Where(entry => entry.HouseholdId == account.HouseholdId && entry.AccountId == account.Id)
-            .SumAsync(
-                entry => (long?)(entry.Direction == EntryDirection.Credit ? entry.AmountCents : -entry.AmountCents),
-                cancellationToken) ?? 0;
-        return new AccountSummary(
-            account.Id,
-            account.Name,
-            account.Kind,
-            account.Currency,
-            balance,
-            account.ArchivedAt);
-    }
-
     private static Account ToDomain(AccountRecord record) => new(
         record.Id,
         record.HouseholdId,
@@ -476,159 +491,38 @@ public sealed class EfLedgerStore(InOutDbContext dbContext) : ILedgerStore
         record.Flow,
         record.ArchivedAt);
 
-    private async Task EnsureAccountReplayMatchesAsync(
-        AccountRecord persisted,
-        AccountOpening requested,
-        CancellationToken cancellationToken)
-    {
-        var account = requested.Account;
-        if (persisted.Id != account.Id ||
-            persisted.Name != account.Name ||
-            persisted.Kind != account.Kind ||
-            persisted.Currency != account.Currency)
-        {
-            ThrowIdempotencyConflict();
-        }
-
-        var existingOpeningId = await FindByIdempotencyKeyAsync(
-            account.HouseholdId,
-            requested.IdempotencyKey,
-            cancellationToken);
-        if (requested.OpeningBalance is null)
-        {
-            if (existingOpeningId is not null)
-            {
-                ThrowIdempotencyConflict();
-            }
-
-            return;
-        }
-
-        if (existingOpeningId is null)
-        {
-            ThrowIdempotencyConflict();
-        }
-
-        await EnsureTransactionReplayMatchesAsync(
-            existingOpeningId.Value,
-            requested.OpeningBalance,
-            cancellationToken);
-    }
-
-    private async Task EnsureTransactionReplayMatchesAsync(
-        Guid persistedId,
-        FinancialTransaction requested,
-        CancellationToken cancellationToken)
-    {
-        var persisted = await dbContext.FinancialTransactions
-            .AsNoTracking()
-            .Include(item => item.Entries)
-            .SingleAsync(item => item.Id == persistedId, cancellationToken);
-        if (persisted.Kind != requested.Kind ||
-            persisted.Description != requested.Description ||
-            persisted.OccurredOn != requested.OccurredOn ||
-            persisted.ReversalOf != requested.ReversalOf ||
-            persisted.CreatedBy != requested.CreatedBy ||
-            !EntriesMatch(persisted.Entries, requested.Entries))
-        {
-            ThrowIdempotencyConflict();
-        }
-
-        var accountIds = requested.Entries.Select(entry => entry.AccountId).ToArray();
-        var currencies = await dbContext.Accounts
-            .AsNoTracking()
-            .Where(item =>
-                item.HouseholdId == requested.HouseholdId &&
-                accountIds.Contains(item.Id))
-            .Select(item => item.Currency)
-            .Distinct()
-            .ToArrayAsync(cancellationToken);
-        if (currencies.Length != 1 || currencies[0] != requested.Entries[0].Amount.Currency)
-        {
-            ThrowIdempotencyConflict();
-        }
-    }
-
-    private async Task EnsureReversalReplayMatchesAsync(
-        Guid persistedId,
-        Guid reversedTransactionId,
-        Guid actorUserId,
-        DateOnly occurredOn,
-        string? description,
-        CancellationToken cancellationToken)
-    {
-        var persisted = await dbContext.FinancialTransactions
-            .AsNoTracking()
-            .SingleAsync(item => item.Id == persistedId, cancellationToken);
-        if (persisted.Kind != FinancialTransactionKind.Reversal ||
-            persisted.ReversalOf != reversedTransactionId ||
-            persisted.CreatedBy != actorUserId ||
-            persisted.OccurredOn != occurredOn ||
-            persisted.Description != StringUtils.TrimToNull(description))
-        {
-            ThrowIdempotencyConflict();
-        }
-    }
-
-    private static bool EntriesMatch(
-        List<EntryRecord> persisted,
-        IReadOnlyList<LedgerEntry> requested) =>
-        persisted.Count == requested.Count && requested.All(candidate =>
-            persisted.Any(item =>
-                item.AccountId == candidate.AccountId &&
-                item.CategoryId == candidate.CategoryId &&
-                item.Direction == candidate.Direction &&
-                item.AmountCents == candidate.Amount.Cents));
-
-    [DoesNotReturn]
-    private static void ThrowIdempotencyConflict() =>
-        throw new FinancialRuleException(
-            "idempotency_conflict",
-            "Idempotency key was already used with a different request.");
-
-    private Task<Guid?> FindByIdempotencyKeyAsync(
-        Guid householdId,
-        Guid idempotencyKey,
-        CancellationToken cancellationToken) =>
-        dbContext.FinancialTransactions
-            .AsNoTracking()
-            .Where(item =>
-                item.HouseholdId == householdId &&
-                item.IdempotencyKey == idempotencyKey)
-            .Select(item => (Guid?)item.Id)
-            .SingleOrDefaultAsync(cancellationToken);
-
-    private async Task EnsureKeyIsNotUsedByAccountAsync(
-        Guid householdId,
-        Guid idempotencyKey,
-        CancellationToken cancellationToken)
-    {
-        if (await dbContext.Accounts.AsNoTracking().AnyAsync(
-            item => item.HouseholdId == householdId && item.IdempotencyKey == idempotencyKey,
-            cancellationToken))
-        {
-            ThrowIdempotencyConflict();
-        }
-    }
-
     private async Task<Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction> BeginForUserAsync(
         Guid userId,
         CancellationToken cancellationToken)
     {
         var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
+        var subjectSetting = PersistenceVocabulary.SessionSettings.JwtSubject;
         await dbContext.Database.ExecuteSqlInterpolatedAsync(
-            $"select set_config('request.jwt.claim.sub', {userId.ToString()}, true)",
+            $"select set_config({subjectSetting}, {userId.ToString()}, true)",
             cancellationToken);
         return transaction;
     }
 
-    private Task<int> LockIdempotencyKeyAsync(
+    private Task<int> LockResourceAsync(
         Guid householdId,
-        Guid idempotencyKey,
+        Guid resourceId,
         CancellationToken cancellationToken) =>
         dbContext.Database.ExecuteSqlInterpolatedAsync(
-            $"select pg_advisory_xact_lock(hashtextextended({householdId + ":" + idempotencyKey}, 0))",
+            $"select pg_advisory_xact_lock(hashtextextended({householdId + ":" + resourceId}, 0))",
             cancellationToken);
+
+    private async Task LockAccountsAsync(
+        Guid householdId,
+        IReadOnlyList<LedgerEntry> entries,
+        CancellationToken cancellationToken)
+    {
+        foreach (var accountId in entries.Select(item => item.AccountId).Distinct().Order())
+        {
+            await dbContext.Database.ExecuteSqlInterpolatedAsync(
+                $"select id from public.accounts where household_id = {householdId} and id = {accountId} for update",
+                cancellationToken);
+        }
+    }
 
     private static FinancialTransaction ToDomain(FinancialTransactionRecord record) =>
         FinancialTransaction.RestorePosted(
@@ -637,7 +531,6 @@ public sealed class EfLedgerStore(InOutDbContext dbContext) : ILedgerStore
             record.Kind,
             record.Description,
             record.OccurredOn,
-            record.IdempotencyKey,
             record.CreatedBy,
             record.ReversalOf,
             record.Status,

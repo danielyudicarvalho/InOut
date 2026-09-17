@@ -13,7 +13,7 @@ public static class HouseholdRules
         if (normalized.Length is < 1 or > 80)
         {
             throw new HouseholdRuleException(
-                "invalid_household_name",
+                HouseholdErrorCodes.InvalidHouseholdName,
                 "Household name must contain between 1 and 80 characters.");
         }
 
@@ -25,7 +25,7 @@ public static class HouseholdRules
         var normalized = StringUtils.NormalizeLower(code);
         if (normalized.Length != 48 || normalized.Any(character => !char.IsAsciiHexDigit(character)))
         {
-            throw new HouseholdRuleException("invalid_invite", "Invalid or expired invitation.");
+            throw new HouseholdRuleException(HouseholdErrorCodes.InvalidInvite, "Invalid or expired invitation.");
         }
 
         return normalized;

@@ -51,8 +51,8 @@ void main() {
       'currency': 'BRL',
       'initialBalanceCents': 25000,
       'openingDate': '2026-09-15',
-      'idempotencyKey': 'idempotency-account-2',
     });
+    expect(captured.headers['Idempotency-Key'], 'idempotency-account-2');
   });
 
   test('maps ledger history with author, date, and type', () async {
@@ -155,13 +155,13 @@ void main() {
     expect(captured.method, 'POST');
     expect(captured.url.path, '/api/v1/households/household-1/ledger/income');
     expect(captured.headers['Authorization'], 'Bearer valid-session-token');
+    expect(captured.headers['Idempotency-Key'], 'idempotency-1');
     expect(jsonDecode(captured.body), {
       'accountId': 'account-1',
       'categoryId': 'category-1',
       'amountCents': 12500,
       'currency': 'BRL',
       'occurredOn': '2026-09-14',
-      'idempotencyKey': 'idempotency-1',
       'description': 'Salary',
     });
   });
@@ -209,6 +209,7 @@ void main() {
       '/api/v1/households/household-1/ledger/expenses',
     );
     expect(jsonDecode(requests.last.body), containsPair('amountCents', 2590));
+    expect(requests.last.headers['Idempotency-Key'], 'idempotency-expense-1');
   });
 
   test(

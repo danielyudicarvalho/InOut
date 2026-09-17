@@ -13,8 +13,10 @@ public sealed class HouseholdMemberAuthorizationHandler(
         HouseholdMemberRequirement requirement)
     {
         if (context.Resource is not HttpContext httpContext ||
-            !Guid.TryParse(context.User.FindFirstValue("sub"), out var userId) ||
-            !Guid.TryParse(httpContext.Request.RouteValues["householdId"]?.ToString(), out var householdId))
+            !Guid.TryParse(context.User.FindFirstValue(ApiContract.Claims.Subject), out var userId) ||
+            !Guid.TryParse(
+                httpContext.Request.RouteValues[ApiContract.RouteValues.HouseholdId]?.ToString(),
+                out var householdId))
         {
             return;
         }

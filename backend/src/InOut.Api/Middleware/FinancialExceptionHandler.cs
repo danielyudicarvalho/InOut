@@ -1,4 +1,5 @@
 using InOut.Domain.Financial;
+using InOut.Application.Idempotency;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 
@@ -11,26 +12,38 @@ public sealed class FinancialExceptionHandler : IExceptionHandler
         Exception exception,
         CancellationToken cancellationToken)
     {
-        if (exception is not FinancialRuleException financialException)
+        var (code, message) = exception switch
+        {
+            FinancialRuleException financial => (financial.Code, financial.Message),
+            IdempotencyException idempotency => (idempotency.Code, idempotency.Message),
+            _ => (null, null),
+        };
+        if (code is null)
         {
             return false;
         }
 
-        var status = financialException.Code switch
+        var status = code switch
         {
-            "transaction_not_found" => StatusCodes.Status404NotFound,
-            "transaction_not_reversible" or
-            "idempotency_conflict" or
-            "account_conflict" => StatusCodes.Status409Conflict,
+            FinancialErrorCodes.TransactionNotFound => StatusCodes.Status404NotFound,
+            FinancialErrorCodes.TransactionNotReversible or
+            IdempotencyErrorCodes.Conflict or
+            IdempotencyErrorCodes.InProgress or
+            FinancialErrorCodes.AccountConflict => StatusCodes.Status409Conflict,
             _ => StatusCodes.Status400BadRequest
         };
         httpContext.Response.StatusCode = status;
+        if (code == IdempotencyErrorCodes.InProgress)
+        {
+            httpContext.Response.Headers[ApiContract.Headers.RetryAfter] =
+                ApiContract.HeaderValues.RetryAfterFiveSeconds;
+        }
         await httpContext.Response.WriteAsJsonAsync(
             new ProblemDetails
             {
                 Status = status,
-                Title = financialException.Message,
-                Extensions = { ["code"] = financialException.Code }
+                Title = message,
+                Extensions = { [ApiContract.ProblemFields.Code] = code }
             },
             cancellationToken);
         return true;

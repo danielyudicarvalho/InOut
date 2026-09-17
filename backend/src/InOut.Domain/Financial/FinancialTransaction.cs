@@ -12,30 +12,22 @@ public sealed class FinancialTransaction
         FinancialTransactionKind kind,
         string? description,
         DateOnly occurredOn,
-        Guid idempotencyKey,
         Guid createdBy,
         Guid? reversalOf,
         FinancialTransactionStatus status,
         IReadOnlyList<LedgerEntry> entries)
     {
-        if (idempotencyKey == Guid.Empty)
-        {
-            throw new FinancialRuleException(
-                "invalid_idempotency_key",
-                "Idempotency key is required.");
-        }
-
         if (entries.Count == 0)
         {
             throw new FinancialRuleException(
-                "transaction_without_entries",
+                FinancialErrorCodes.TransactionWithoutEntries,
                 "A financial transaction must have at least one entry.");
         }
 
         if (entries.Select(entry => entry.Amount.Currency).Distinct().Count() != 1)
         {
             throw new FinancialRuleException(
-                "currency_mismatch",
+                FinancialErrorCodes.CurrencyMismatch,
                 "Every entry in a transaction must use the same currency.");
         }
 
@@ -44,7 +36,6 @@ public sealed class FinancialTransaction
         Kind = kind;
         Description = NormalizeDescription(description);
         OccurredOn = occurredOn;
-        IdempotencyKey = idempotencyKey;
         CreatedBy = createdBy;
         ReversalOf = reversalOf;
         Status = status;
@@ -61,8 +52,6 @@ public sealed class FinancialTransaction
 
     public DateOnly OccurredOn { get; }
 
-    public Guid IdempotencyKey { get; }
-
     public Guid CreatedBy { get; }
 
     public Guid? ReversalOf { get; }
@@ -77,7 +66,6 @@ public sealed class FinancialTransaction
         Guid categoryId,
         Money amount,
         DateOnly occurredOn,
-        Guid idempotencyKey,
         Guid actorUserId,
         string? description) =>
         SingleEntry(
@@ -88,7 +76,6 @@ public sealed class FinancialTransaction
             EntryDirection.Credit,
             amount,
             occurredOn,
-            idempotencyKey,
             actorUserId,
             description);
 
@@ -97,7 +84,6 @@ public sealed class FinancialTransaction
         Guid accountId,
         Money amount,
         DateOnly occurredOn,
-        Guid idempotencyKey,
         Guid actorUserId) =>
         SingleEntry(
             householdId,
@@ -107,7 +93,6 @@ public sealed class FinancialTransaction
             EntryDirection.Credit,
             amount,
             occurredOn,
-            idempotencyKey,
             actorUserId,
             "Saldo inicial");
 
@@ -117,7 +102,6 @@ public sealed class FinancialTransaction
         Guid categoryId,
         Money amount,
         DateOnly occurredOn,
-        Guid idempotencyKey,
         Guid actorUserId,
         string? description) =>
         SingleEntry(
@@ -128,7 +112,6 @@ public sealed class FinancialTransaction
             EntryDirection.Debit,
             amount,
             occurredOn,
-            idempotencyKey,
             actorUserId,
             description);
 
@@ -138,14 +121,13 @@ public sealed class FinancialTransaction
         Guid destinationAccountId,
         Money amount,
         DateOnly occurredOn,
-        Guid idempotencyKey,
         Guid actorUserId,
         string? description)
     {
         if (sourceAccountId == destinationAccountId)
         {
             throw new FinancialRuleException(
-                "same_transfer_account",
+                FinancialErrorCodes.SameTransferAccount,
                 "Source and destination accounts must differ.");
         }
 
@@ -156,7 +138,6 @@ public sealed class FinancialTransaction
             FinancialTransactionKind.Transfer,
             description,
             occurredOn,
-            idempotencyKey,
             actorUserId,
             null,
             FinancialTransactionStatus.Posted,
@@ -178,7 +159,6 @@ public sealed class FinancialTransaction
 
     public static FinancialTransaction Reversal(
         FinancialTransaction postedTransaction,
-        Guid idempotencyKey,
         Guid actorUserId,
         DateOnly occurredOn,
         string? description = null)
@@ -186,14 +166,14 @@ public sealed class FinancialTransaction
         if (postedTransaction.Status is not FinancialTransactionStatus.Posted)
         {
             throw new FinancialRuleException(
-                "transaction_not_reversible",
+                FinancialErrorCodes.TransactionNotReversible,
                 "Only a posted transaction can be reversed.");
         }
 
         if (postedTransaction.Kind is FinancialTransactionKind.Reversal)
         {
             throw new FinancialRuleException(
-                "reversal_of_reversal",
+                FinancialErrorCodes.ReversalOfReversal,
                 "A reversal cannot reverse another reversal.");
         }
 
@@ -203,7 +183,6 @@ public sealed class FinancialTransaction
             FinancialTransactionKind.Reversal,
             description ?? $"Reversal of {postedTransaction.Id}",
             occurredOn,
-            idempotencyKey,
             actorUserId,
             postedTransaction.Id,
             FinancialTransactionStatus.Posted,
@@ -216,7 +195,6 @@ public sealed class FinancialTransaction
         FinancialTransactionKind kind,
         string? description,
         DateOnly occurredOn,
-        Guid idempotencyKey,
         Guid createdBy,
         Guid? reversalOf,
         FinancialTransactionStatus status,
@@ -227,7 +205,6 @@ public sealed class FinancialTransaction
             kind,
             description,
             occurredOn,
-            idempotencyKey,
             createdBy,
             reversalOf,
             status,
@@ -245,7 +222,7 @@ public sealed class FinancialTransaction
             referencedAccounts.Any(account => account.HouseholdId != HouseholdId || !account.IsActive))
         {
             throw new FinancialRuleException(
-                "invalid_account",
+                FinancialErrorCodes.InvalidAccount,
                 "Every account must be active and belong to the household.");
         }
 
@@ -253,7 +230,7 @@ public sealed class FinancialTransaction
             !string.Equals(account.Currency, entries[0].Amount.Currency, StringComparison.Ordinal)))
         {
             throw new FinancialRuleException(
-                "currency_mismatch",
+                FinancialErrorCodes.CurrencyMismatch,
                 "Transaction currency must match every account.");
         }
 
@@ -272,7 +249,7 @@ public sealed class FinancialTransaction
             FinancialTransactionKind.Income => FinancialFlow.Income,
             FinancialTransactionKind.Expense => FinancialFlow.Expense,
             _ => throw new FinancialRuleException(
-                "invalid_category",
+                FinancialErrorCodes.InvalidCategory,
                 "This transaction kind cannot have a category."),
         };
         var referencedCategories = categories
@@ -285,7 +262,7 @@ public sealed class FinancialTransaction
                 category.Flow != expectedFlow))
         {
             throw new FinancialRuleException(
-                "invalid_category",
+                FinancialErrorCodes.InvalidCategory,
                 "Every category must be active, belong to the household, and match the transaction flow.");
         }
     }
@@ -298,7 +275,6 @@ public sealed class FinancialTransaction
         EntryDirection direction,
         Money amount,
         DateOnly occurredOn,
-        Guid idempotencyKey,
         Guid actorUserId,
         string? description) =>
         new(
@@ -307,7 +283,6 @@ public sealed class FinancialTransaction
             kind,
             description,
             occurredOn,
-            idempotencyKey,
             actorUserId,
             null,
             FinancialTransactionStatus.Posted,
@@ -326,7 +301,7 @@ public sealed class FinancialTransaction
         if (normalized?.Length > 500)
         {
             throw new FinancialRuleException(
-                "description_too_long",
+                FinancialErrorCodes.DescriptionTooLong,
                 "Description cannot exceed 500 characters.");
         }
 

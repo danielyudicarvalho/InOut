@@ -8,18 +8,18 @@ public static class HouseholdEndpoints
 {
     public static IEndpointRouteBuilder MapHouseholdEndpoints(this IEndpointRouteBuilder endpoints)
     {
-        var households = endpoints.MapGroup("/api/v1/households")
+        var households = endpoints.MapGroup(ApiContract.Routes.Households)
             .RequireAuthorization()
-            .WithTags("Households");
+            .WithTags(ApiContract.Tags.Households);
 
-        households.MapGet("/", async (
+        households.MapGet(ApiContract.Routes.Root, async (
             ClaimsPrincipal principal,
             HouseholdService service,
             CancellationToken cancellationToken) =>
             Results.Ok(await service.ListAsync(UserId(principal), cancellationToken)))
-            .WithName("ListHouseholds");
+            .WithName(ApiContract.EndpointNames.ListHouseholds);
 
-        households.MapPost("/", async (
+        households.MapPost(ApiContract.Routes.Root, async (
             CreateHouseholdRequest request,
             ClaimsPrincipal principal,
             HouseholdService service,
@@ -27,23 +27,23 @@ public static class HouseholdEndpoints
         {
             var household = await service.CreateAsync(
                 UserId(principal), request.Name, cancellationToken);
-            return Results.Created($"/api/v1/households/{household.Id}", household);
+            return Results.Created(ApiContract.Routes.HouseholdResource(household.Id), household);
         })
-            .WithName("CreateHousehold");
+            .WithName(ApiContract.EndpointNames.CreateHousehold);
 
-        households.MapPost("/{householdId:guid}/invitations", async (
+        households.MapPost(ApiContract.Routes.HouseholdInvitations, async (
             Guid householdId,
             ClaimsPrincipal principal,
             HouseholdService service,
             CancellationToken cancellationToken) =>
             Results.Created(
-                $"/api/v1/households/{householdId}/invitations",
+                ApiContract.Routes.InvitationResource(householdId),
                 await service.CreateInvitationAsync(
                     UserId(principal), householdId, cancellationToken)))
             .RequireAuthorization(HouseholdMemberRequirement.PolicyName)
-            .WithName("CreateHouseholdInvitation");
+            .WithName(ApiContract.EndpointNames.CreateHouseholdInvitation);
 
-        endpoints.MapPost("/api/v1/household-invitations/accept", async (
+        endpoints.MapPost(ApiContract.Routes.AcceptInvitation, async (
             AcceptHouseholdInvitationRequest request,
             ClaimsPrincipal principal,
             HouseholdService service,
@@ -51,14 +51,14 @@ public static class HouseholdEndpoints
             Results.Ok(await service.AcceptInvitationAsync(
                 UserId(principal), request.Code, cancellationToken)))
             .RequireAuthorization()
-            .WithTags("Households")
-            .WithName("AcceptHouseholdInvitation");
+            .WithTags(ApiContract.Tags.Households)
+            .WithName(ApiContract.EndpointNames.AcceptHouseholdInvitation);
 
         return endpoints;
     }
 
     private static Guid UserId(ClaimsPrincipal principal) =>
-        Guid.Parse(principal.FindFirstValue("sub")!);
+        Guid.Parse(principal.FindFirstValue(ApiContract.Claims.Subject)!);
 
     public sealed record CreateHouseholdRequest(string? Name);
     public sealed record AcceptHouseholdInvitationRequest(string? Code);

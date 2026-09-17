@@ -9,9 +9,9 @@ public static class SupabaseAuthenticationExtensions
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        var issuer = configuration["Supabase:Jwt:Issuer"]?.TrimEnd('/')
+        var issuer = configuration[ApiContract.Configuration.SupabaseIssuer]?.TrimEnd('/')
             ?? throw new InvalidOperationException("Supabase:Jwt:Issuer is required.");
-        var audience = configuration["Supabase:Jwt:Audience"]
+        var audience = configuration[ApiContract.Configuration.SupabaseAudience]
             ?? throw new InvalidOperationException("Supabase:Jwt:Audience is required.");
 
         if (!Uri.TryCreate(issuer, UriKind.Absolute, out var issuerUri) ||
@@ -31,7 +31,9 @@ public static class SupabaseAuthenticationExtensions
                 {
                     OnTokenValidated = context =>
                     {
-                        if (!Guid.TryParse(context.Principal?.FindFirst("sub")?.Value, out _))
+                        if (!Guid.TryParse(
+                            context.Principal?.FindFirst(ApiContract.Claims.Subject)?.Value,
+                            out _))
                         {
                             context.Fail("A valid subject claim is required.");
                         }

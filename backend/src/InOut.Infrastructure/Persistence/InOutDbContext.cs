@@ -13,6 +13,7 @@ public sealed partial class InOutDbContext(DbContextOptions<InOutDbContext> opti
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         ConfigureFinancial(modelBuilder);
+        ConfigureReliability(modelBuilder);
         modelBuilder.Entity<HouseholdRecord>(entity =>
         {
             entity.ToTable("households", "public");
@@ -116,7 +117,7 @@ internal sealed class AuditEventRecord
     public string Action { get; set; } = string.Empty;
     public string EntityType { get; set; } = string.Empty;
     public Guid? EntityId { get; set; }
-    public string Outcome { get; set; } = "success";
+    public string Outcome { get; set; } = PersistenceVocabulary.AuditOutcomes.Success;
     public DateTimeOffset OccurredAt { get; set; }
-    public string Metadata { get; set; } = "{}";
+    public string Metadata { get; set; } = PersistenceVocabulary.Json.EmptyObject;
 }

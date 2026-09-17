@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:inout/src/application/household/household_repository.dart';
 import 'package:inout/src/core/utils/string_utils.dart';
 import 'package:inout/src/domain/household/household.dart';
+import 'package:inout/src/infrastructure/http/api_contract.dart';
 
 typedef AccessTokenProvider = Future<String?> Function();
 
@@ -24,7 +25,7 @@ final class ApiHouseholdRepository implements HouseholdRepository {
 
   @override
   Future<List<Household>> listMine() async {
-    final response = await _send('GET', '/api/v1/households');
+    final response = await _send(ApiMethods.get, ApiContract.households);
     final rows = jsonDecode(response.body) as List<dynamic>;
     return rows
         .cast<Map<String, dynamic>>()
@@ -35,9 +36,9 @@ final class ApiHouseholdRepository implements HouseholdRepository {
   @override
   Future<Household> create(String name) async {
     final response = await _send(
-      'POST',
-      '/api/v1/households',
-      body: {'name': StringUtils.trimToNull(name) ?? ''},
+      ApiMethods.post,
+      ApiContract.households,
+      body: {ApiFields.name: StringUtils.trimToNull(name) ?? ''},
     );
     return _mapHousehold(jsonDecode(response.body) as Map<String, dynamic>);
   }
@@ -45,19 +46,19 @@ final class ApiHouseholdRepository implements HouseholdRepository {
   @override
   Future<String> createInvite(String householdId) async {
     final response = await _send(
-      'POST',
-      '/api/v1/households/$householdId/invitations',
+      ApiMethods.post,
+      ApiContract.invitations(householdId),
     );
     final body = jsonDecode(response.body) as Map<String, dynamic>;
-    return body['code']! as String;
+    return body[ApiFields.code]! as String;
   }
 
   @override
   Future<Household> acceptInvite(String inviteCode) async {
     final response = await _send(
-      'POST',
-      '/api/v1/household-invitations/accept',
-      body: {'code': StringUtils.trimToNull(inviteCode) ?? ''},
+      ApiMethods.post,
+      ApiContract.acceptInvitation,
+      body: {ApiFields.code: StringUtils.trimToNull(inviteCode) ?? ''},
     );
     return _mapHousehold(jsonDecode(response.body) as Map<String, dynamic>);
   }
@@ -69,24 +70,27 @@ final class ApiHouseholdRepository implements HouseholdRepository {
   }) async {
     final token = await _accessToken();
     if (token == null || token.isEmpty) {
-      throw const ApiHouseholdException(401, 'authentication_required');
+      throw const ApiHouseholdException(
+        ApiStatusCodes.unauthorized,
+        ApiErrorCodes.authenticationRequired,
+      );
     }
 
     final request = http.Request(method, _baseUrl.resolve(path))
       ..headers.addAll({
-        'Authorization': 'Bearer $token',
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
+        ApiHeaders.authorization: '${ApiHeaders.bearer} $token',
+        ApiHeaders.accept: ApiHeaders.json,
+        ApiHeaders.contentType: ApiHeaders.json,
       });
     if (body != null) request.body = jsonEncode(body);
 
     final streamed = await _client.send(request);
     final response = await http.Response.fromStream(streamed);
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      String code = 'api_error';
+      String code = ApiErrorCodes.apiError;
       try {
         code =
-            (jsonDecode(response.body) as Map<String, dynamic>)['code']
+            (jsonDecode(response.body) as Map<String, dynamic>)[ApiFields.code]
                 as String? ??
             code;
       } on FormatException {
@@ -97,8 +101,10 @@ final class ApiHouseholdRepository implements HouseholdRepository {
     return response;
   }
 
-  static Household _mapHousehold(Map<String, dynamic> row) =>
-      Household(id: row['id']! as String, name: row['name']! as String);
+  static Household _mapHousehold(Map<String, dynamic> row) => Household(
+    id: row[ApiFields.id]! as String,
+    name: row[ApiFields.name]! as String,
+  );
 }
 
 final class ApiHouseholdException implements Exception {
