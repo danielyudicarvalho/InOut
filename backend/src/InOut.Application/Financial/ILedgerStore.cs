@@ -44,7 +44,7 @@ public interface ILedgerStore
 {
     Task<AccountCreationResult> CreateAccountAsync(
         AccountOpening opening,
-        IdempotencyRequest idempotency,
+        IdempotencyRequest idempotencyRequest,
         CancellationToken cancellationToken);
 
     Task<IReadOnlyList<AccountSummary>> GetAccountsAsync(
@@ -70,7 +70,7 @@ public interface ILedgerStore
 
     Task<LedgerWriteResult> PostAsync(
         FinancialTransaction transaction,
-        IdempotencyRequest idempotency,
+        IdempotencyRequest idempotencyRequest,
         CancellationToken cancellationToken);
 
     Task<LedgerWriteResult> ReverseAsync(
@@ -78,7 +78,7 @@ public interface ILedgerStore
         Guid transactionId,
         DateOnly occurredOn,
         string? description,
-        IdempotencyRequest idempotency,
+        IdempotencyRequest idempotencyRequest,
         CancellationToken cancellationToken);
 
     Task<IReadOnlyList<AccountBalance>> GetBalancesAsync(
