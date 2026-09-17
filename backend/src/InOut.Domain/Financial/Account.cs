@@ -55,7 +55,7 @@ public sealed record Account(
                 openingDate,
                 idempotencyKey,
                 actorUserId);
-        return new AccountOpening(account, openingBalance);
+        return new AccountOpening(account, openingBalance, idempotencyKey);
     }
 
     public Account Archive(DateTimeOffset archivedAt) =>
@@ -77,4 +77,5 @@ public sealed record Account(
 
 public sealed record AccountOpening(
     Account Account,
-    FinancialTransaction? OpeningBalance);
+    FinancialTransaction? OpeningBalance,
+    Guid IdempotencyKey);

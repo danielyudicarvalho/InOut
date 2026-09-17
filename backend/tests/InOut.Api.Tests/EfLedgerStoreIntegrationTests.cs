@@ -78,6 +78,57 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task ReusingKeyWithDifferentPayloadReturnsConflictWithoutDuplicatingMovement()
+    {
+        var idempotencyKey = Guid.NewGuid();
+        var original = await PostIncomeAsync(idempotencyKey, 1_000, "Salary");
+
+        var exception = await Assert.ThrowsAsync<FinancialRuleException>(() =>
+            PostIncomeAsync(idempotencyKey, 2_000, "Bonus"));
+
+        Assert.Equal("idempotency_conflict", exception.Code);
+        await using var context = CreateContext();
+        var store = new EfLedgerStore(context);
+        var balances = await store.GetBalancesAsync(householdId, CancellationToken.None);
+        var history = await store.GetHistoryAsync(householdId, 100, CancellationToken.None);
+        Assert.Equal(1_000, balances.Single(item => item.AccountId == accountId).BalanceCents);
+        Assert.All(history, item => Assert.Equal(original.TransactionId, item.TransactionId));
+    }
+
+    [Fact]
+    public async Task ZeroBalanceAccountCreationCanBeSafelyRetried()
+    {
+        var createdAccountId = Guid.NewGuid();
+        var idempotencyKey = Guid.NewGuid();
+
+        async Task<AccountCreationResult> CreateAsync(string name)
+        {
+            await using var context = CreateContext();
+            return await new LedgerService(new EfLedgerStore(context)).CreateAccountAsync(
+                actorUserId,
+                new CreateAccountCommand(
+                    createdAccountId,
+                    householdId,
+                    name,
+                    AccountKind.Savings,
+                    "BRL",
+                    0,
+                    new DateOnly(2026, 9, 16),
+                    idempotencyKey),
+                CancellationToken.None);
+        }
+
+        var created = await CreateAsync("Emergency fund");
+        var replayed = await CreateAsync("Emergency fund");
+        var conflict = await Assert.ThrowsAsync<FinancialRuleException>(() => CreateAsync("Other account"));
+
+        Assert.False(created.Replayed);
+        Assert.True(replayed.Replayed);
+        Assert.Equal(created.Account.Id, replayed.Account.Id);
+        Assert.Equal("idempotency_conflict", conflict.Code);
+    }
+
+    [Fact]
     public async Task IncomeAndExpenseUpdateOnlyTheSelectedAccount()
     {
         await PostIncomeAsync(Guid.NewGuid(), 10_000, "Salary");
@@ -445,10 +496,12 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
           name text not null,
           kind text not null,
           currency text not null,
+          idempotency_key uuid,
           created_by uuid not null,
           created_at timestamptz not null default now(),
           archived_at timestamptz,
-          unique (household_id, id)
+          unique (household_id, id),
+          unique (household_id, idempotency_key)
         );
         create table public.categories (
           id uuid primary key,
