@@ -209,10 +209,7 @@ void main() {
       '/api/v1/households/household-1/ledger/expenses',
     );
     expect(jsonDecode(requests.last.body), containsPair('amountCents', 2590));
-    expect(
-      requests.last.headers['Idempotency-Key'],
-      'idempotency-expense-1',
-    );
+    expect(requests.last.headers['Idempotency-Key'], 'idempotency-expense-1');
   });
 
   test(

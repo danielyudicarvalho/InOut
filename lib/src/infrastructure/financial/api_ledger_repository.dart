@@ -124,18 +124,14 @@ final class ApiLedgerRepository implements LedgerRepository {
     required DateTime occurredOn,
     required String idempotencyKey,
     String? description,
-  }) => _post(
-    '/api/v1/households/$householdId/ledger/income',
-    idempotencyKey,
-    {
-      'accountId': accountId,
-      'categoryId': categoryId,
-      'amountCents': amountCents,
-      'currency': currency,
-      'occurredOn': _date(occurredOn),
-      'description': description,
-    },
-  );
+  }) => _post('/api/v1/households/$householdId/ledger/income', idempotencyKey, {
+    'accountId': accountId,
+    'categoryId': categoryId,
+    'amountCents': amountCents,
+    'currency': currency,
+    'occurredOn': _date(occurredOn),
+    'description': description,
+  });
 
   @override
   Future<LedgerWriteResult> postExpense({
@@ -147,18 +143,15 @@ final class ApiLedgerRepository implements LedgerRepository {
     required DateTime occurredOn,
     required String idempotencyKey,
     String? description,
-  }) => _post(
-    '/api/v1/households/$householdId/ledger/expenses',
-    idempotencyKey,
-    {
-      'accountId': accountId,
-      'categoryId': categoryId,
-      'amountCents': amountCents,
-      'currency': currency,
-      'occurredOn': _date(occurredOn),
-      'description': description,
-    },
-  );
+  }) =>
+      _post('/api/v1/households/$householdId/ledger/expenses', idempotencyKey, {
+        'accountId': accountId,
+        'categoryId': categoryId,
+        'amountCents': amountCents,
+        'currency': currency,
+        'occurredOn': _date(occurredOn),
+        'description': description,
+      });
 
   @override
   Future<LedgerWriteResult> postTransfer({
@@ -194,10 +187,7 @@ final class ApiLedgerRepository implements LedgerRepository {
     '/api/v1/households/$householdId/ledger/transactions/'
     '$transactionId/reversals',
     idempotencyKey,
-    {
-      'occurredOn': _date(occurredOn),
-      'description': description,
-    },
+    {'occurredOn': _date(occurredOn), 'description': description},
   );
 
   @override
