@@ -30,3 +30,4 @@ Quais benefícios, custos, riscos e próximos passos surgem?
 - [ADR-003: stack multiplataforma e hospedagem do MVP](ADR-003-application-stack-and-hosting.md) — aceita.
 - ADR-004: autenticação Supabase e associação segura à residência por convite opaco — aceita.
 - [ADR-005: backend dedicado ASP.NET](ADR-005-dedicated-aspnet-backend.md) — aceita; substitui o uso de RPCs/Supabase como sede dos casos de uso.
+- [ADR-006: idempotência e mensageria confiável](006-idempotency-and-reliable-messaging.md) — aceita.

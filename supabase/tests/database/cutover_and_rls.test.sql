@@ -116,10 +116,9 @@ select results_eq(
 select throws_ok(
   $$
     insert into public.transactions (
-      household_id, kind, status, occurred_on, idempotency_key, created_by, posted_at
+      household_id, kind, status, occurred_on, created_by, posted_at
     ) values (
       'bbbbbbbb-0000-0000-0000-000000000002', 'income', 'posted', current_date,
-      '90000000-0000-0000-0000-000000000001',
       '10000000-0000-0000-0000-000000000001', now()
     )
   $$,
@@ -130,10 +129,9 @@ select throws_ok(
 select lives_ok(
   $$
     insert into public.transactions (
-      household_id, kind, status, occurred_on, idempotency_key, created_by, posted_at
+      household_id, kind, status, occurred_on, created_by, posted_at
     ) values (
       'aaaaaaaa-0000-0000-0000-000000000001', 'income', 'posted', current_date,
-      '90000000-0000-0000-0000-000000000002',
       '10000000-0000-0000-0000-000000000001', now()
     )
   $$,

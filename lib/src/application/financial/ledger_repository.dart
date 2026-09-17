@@ -112,6 +112,7 @@ abstract interface class LedgerRepository {
     required String currency,
     required int initialBalanceCents,
     required DateTime openingDate,
+    required String idempotencyKey,
   });
 
   Future<List<AccountSummary>> getAccounts(

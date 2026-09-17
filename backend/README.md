@@ -91,10 +91,11 @@ conta. Saldos são derivados das entries contabilizadas. O runtime pode criar e
 arquivar contas, mas não recebe `DELETE`; o histórico mantém autor, data, tipo e
 as pernas de cada movimento.
 
-A criação é idempotente pelo `accountId` fornecido pelo cliente. Um retry com o
-mesmo payload retorna a conta existente; reutilizar o ID com dados diferentes
-retorna conflito. Quando há saldo inicial, o lançamento usa o próprio
-`accountId` como chave determinística e é persistido atomicamente com a conta.
+Operações mutáveis recebem `Idempotency-Key`. A intenção é registrada na tabela
+genérica `private.idempotency_requests`, com escopo por residência e operação,
+fingerprint do payload, estado, lease e resultado semântico. Chave, mutação,
+auditoria e Outbox são persistidos atomicamente. Identidades e constraints de
+domínio continuam independentes da chave; consulte a ADR-006.
 
 ## Limites
 

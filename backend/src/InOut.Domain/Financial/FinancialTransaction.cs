@@ -12,19 +12,11 @@ public sealed class FinancialTransaction
         FinancialTransactionKind kind,
         string? description,
         DateOnly occurredOn,
-        Guid idempotencyKey,
         Guid createdBy,
         Guid? reversalOf,
         FinancialTransactionStatus status,
         IReadOnlyList<LedgerEntry> entries)
     {
-        if (idempotencyKey == Guid.Empty)
-        {
-            throw new FinancialRuleException(
-                "invalid_idempotency_key",
-                "Idempotency key is required.");
-        }
-
         if (entries.Count == 0)
         {
             throw new FinancialRuleException(
@@ -44,7 +36,6 @@ public sealed class FinancialTransaction
         Kind = kind;
         Description = NormalizeDescription(description);
         OccurredOn = occurredOn;
-        IdempotencyKey = idempotencyKey;
         CreatedBy = createdBy;
         ReversalOf = reversalOf;
         Status = status;
@@ -61,8 +52,6 @@ public sealed class FinancialTransaction
 
     public DateOnly OccurredOn { get; }
 
-    public Guid IdempotencyKey { get; }
-
     public Guid CreatedBy { get; }
 
     public Guid? ReversalOf { get; }
@@ -77,7 +66,6 @@ public sealed class FinancialTransaction
         Guid categoryId,
         Money amount,
         DateOnly occurredOn,
-        Guid idempotencyKey,
         Guid actorUserId,
         string? description) =>
         SingleEntry(
@@ -88,7 +76,6 @@ public sealed class FinancialTransaction
             EntryDirection.Credit,
             amount,
             occurredOn,
-            idempotencyKey,
             actorUserId,
             description);
 
@@ -97,7 +84,6 @@ public sealed class FinancialTransaction
         Guid accountId,
         Money amount,
         DateOnly occurredOn,
-        Guid idempotencyKey,
         Guid actorUserId) =>
         SingleEntry(
             householdId,
@@ -107,7 +93,6 @@ public sealed class FinancialTransaction
             EntryDirection.Credit,
             amount,
             occurredOn,
-            idempotencyKey,
             actorUserId,
             "Saldo inicial");
 
@@ -117,7 +102,6 @@ public sealed class FinancialTransaction
         Guid categoryId,
         Money amount,
         DateOnly occurredOn,
-        Guid idempotencyKey,
         Guid actorUserId,
         string? description) =>
         SingleEntry(
@@ -128,7 +112,6 @@ public sealed class FinancialTransaction
             EntryDirection.Debit,
             amount,
             occurredOn,
-            idempotencyKey,
             actorUserId,
             description);
 
@@ -138,7 +121,6 @@ public sealed class FinancialTransaction
         Guid destinationAccountId,
         Money amount,
         DateOnly occurredOn,
-        Guid idempotencyKey,
         Guid actorUserId,
         string? description)
     {
@@ -156,7 +138,6 @@ public sealed class FinancialTransaction
             FinancialTransactionKind.Transfer,
             description,
             occurredOn,
-            idempotencyKey,
             actorUserId,
             null,
             FinancialTransactionStatus.Posted,
@@ -178,7 +159,6 @@ public sealed class FinancialTransaction
 
     public static FinancialTransaction Reversal(
         FinancialTransaction postedTransaction,
-        Guid idempotencyKey,
         Guid actorUserId,
         DateOnly occurredOn,
         string? description = null)
@@ -203,7 +183,6 @@ public sealed class FinancialTransaction
             FinancialTransactionKind.Reversal,
             description ?? $"Reversal of {postedTransaction.Id}",
             occurredOn,
-            idempotencyKey,
             actorUserId,
             postedTransaction.Id,
             FinancialTransactionStatus.Posted,
@@ -216,7 +195,6 @@ public sealed class FinancialTransaction
         FinancialTransactionKind kind,
         string? description,
         DateOnly occurredOn,
-        Guid idempotencyKey,
         Guid createdBy,
         Guid? reversalOf,
         FinancialTransactionStatus status,
@@ -227,7 +205,6 @@ public sealed class FinancialTransaction
             kind,
             description,
             occurredOn,
-            idempotencyKey,
             createdBy,
             reversalOf,
             status,
@@ -298,7 +275,6 @@ public sealed class FinancialTransaction
         EntryDirection direction,
         Money amount,
         DateOnly occurredOn,
-        Guid idempotencyKey,
         Guid actorUserId,
         string? description) =>
         new(
@@ -307,7 +283,6 @@ public sealed class FinancialTransaction
             kind,
             description,
             occurredOn,
-            idempotencyKey,
             actorUserId,
             null,
             FinancialTransactionStatus.Posted,

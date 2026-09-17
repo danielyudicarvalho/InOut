@@ -67,14 +67,14 @@ select lives_ok(
   $$
     insert into public.transactions (
       household_id, kind, status, description, occurred_on,
-      idempotency_key, created_by, posted_at
+      opening_account_id, created_by, posted_at
     ) values (
       '82000000-0000-0000-0000-000000000001',
       'opening_balance',
       'posted',
       'Saldo inicial',
       current_date,
-      '84000000-0000-0000-0000-000000000001',
+      '83000000-0000-0000-0000-000000000001',
       '81000000-0000-0000-0000-000000000001',
       now()
     )

@@ -28,10 +28,12 @@ final class ApiLedgerRepository implements LedgerRepository {
     required String currency,
     required int initialBalanceCents,
     required DateTime openingDate,
+    required String idempotencyKey,
   }) async {
     final response = await _send(
       'POST',
       '/api/v1/households/$householdId/ledger/accounts',
+      idempotencyKey: idempotencyKey,
       body: {
         'id': id,
         'name': name,
@@ -122,15 +124,18 @@ final class ApiLedgerRepository implements LedgerRepository {
     required DateTime occurredOn,
     required String idempotencyKey,
     String? description,
-  }) => _post('/api/v1/households/$householdId/ledger/income', {
-    'accountId': accountId,
-    'categoryId': categoryId,
-    'amountCents': amountCents,
-    'currency': currency,
-    'occurredOn': _date(occurredOn),
-    'idempotencyKey': idempotencyKey,
-    'description': description,
-  });
+  }) => _post(
+    '/api/v1/households/$householdId/ledger/income',
+    idempotencyKey,
+    {
+      'accountId': accountId,
+      'categoryId': categoryId,
+      'amountCents': amountCents,
+      'currency': currency,
+      'occurredOn': _date(occurredOn),
+      'description': description,
+    },
+  );
 
   @override
   Future<LedgerWriteResult> postExpense({
@@ -142,15 +147,18 @@ final class ApiLedgerRepository implements LedgerRepository {
     required DateTime occurredOn,
     required String idempotencyKey,
     String? description,
-  }) => _post('/api/v1/households/$householdId/ledger/expenses', {
-    'accountId': accountId,
-    'categoryId': categoryId,
-    'amountCents': amountCents,
-    'currency': currency,
-    'occurredOn': _date(occurredOn),
-    'idempotencyKey': idempotencyKey,
-    'description': description,
-  });
+  }) => _post(
+    '/api/v1/households/$householdId/ledger/expenses',
+    idempotencyKey,
+    {
+      'accountId': accountId,
+      'categoryId': categoryId,
+      'amountCents': amountCents,
+      'currency': currency,
+      'occurredOn': _date(occurredOn),
+      'description': description,
+    },
+  );
 
   @override
   Future<LedgerWriteResult> postTransfer({
@@ -162,15 +170,18 @@ final class ApiLedgerRepository implements LedgerRepository {
     required DateTime occurredOn,
     required String idempotencyKey,
     String? description,
-  }) => _post('/api/v1/households/$householdId/ledger/transfers', {
-    'sourceAccountId': sourceAccountId,
-    'destinationAccountId': destinationAccountId,
-    'amountCents': amountCents,
-    'currency': currency,
-    'occurredOn': _date(occurredOn),
-    'idempotencyKey': idempotencyKey,
-    'description': description,
-  });
+  }) => _post(
+    '/api/v1/households/$householdId/ledger/transfers',
+    idempotencyKey,
+    {
+      'sourceAccountId': sourceAccountId,
+      'destinationAccountId': destinationAccountId,
+      'amountCents': amountCents,
+      'currency': currency,
+      'occurredOn': _date(occurredOn),
+      'description': description,
+    },
+  );
 
   @override
   Future<LedgerWriteResult> reverse({
@@ -182,9 +193,9 @@ final class ApiLedgerRepository implements LedgerRepository {
   }) => _post(
     '/api/v1/households/$householdId/ledger/transactions/'
     '$transactionId/reversals',
+    idempotencyKey,
     {
       'occurredOn': _date(occurredOn),
-      'idempotencyKey': idempotencyKey,
       'description': description,
     },
   );
@@ -221,9 +232,15 @@ final class ApiLedgerRepository implements LedgerRepository {
 
   Future<LedgerWriteResult> _post(
     String path,
+    String idempotencyKey,
     Map<String, Object?> body,
   ) async {
-    final response = await _send('POST', path, body: body);
+    final response = await _send(
+      'POST',
+      path,
+      body: body,
+      idempotencyKey: idempotencyKey,
+    );
     final payload = jsonDecode(response.body) as Map<String, dynamic>;
     return LedgerWriteResult(
       transactionId: payload['transactionId']! as String,
@@ -235,6 +252,7 @@ final class ApiLedgerRepository implements LedgerRepository {
     String method,
     String path, {
     Map<String, Object?>? body,
+    String? idempotencyKey,
   }) async {
     final token = await _accessToken();
     if (token == null || token.isEmpty) {
@@ -247,6 +265,9 @@ final class ApiLedgerRepository implements LedgerRepository {
         'Accept': 'application/json',
         'Content-Type': 'application/json',
       });
+    if (idempotencyKey != null) {
+      request.headers['Idempotency-Key'] = idempotencyKey;
+    }
     if (body != null) request.body = jsonEncode(body);
 
     final response = await http.Response.fromStream(

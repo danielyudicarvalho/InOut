@@ -52,7 +52,6 @@ public sealed record Account(
                 id,
                 Money.Positive(initialBalanceCents, account.Currency),
                 openingDate,
-                id,
                 actorUserId);
         return new AccountOpening(account, openingBalance);
     }

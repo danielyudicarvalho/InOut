@@ -2,12 +2,15 @@
 
 ## Garantias entregues
 
-- A chave de idempotência é serializada por residência com advisory lock transacional.
+- A intenção é adquirida atomicamente em `private.idempotency_requests`, no escopo residência + operação + chave.
 - Repetições semanticamente idênticas retornam o identificador original com `replayed: true`.
 - A reutilização da chave com operação ou payload diferente retorna `idempotency_conflict` e HTTP 409.
-- A restrição única do PostgreSQL permanece como defesa adicional contra duplicação.
-- Criações de conta usam `(household_id, account_id)` como identidade estável do comando e podem ser repetidas com segurança, inclusive com saldo inicial zero.
-- Quando há saldo inicial, o movimento `opening_balance` usa o `account_id` como chave determinística; a conta não persiste uma segunda chave de idempotência.
+- O fingerprint SHA-256 impede que a chave seja reutilizada por outro ator ou payload.
+- A restrição única do PostgreSQL é a autoridade contra aquisições concorrentes.
+- Criações de conta também usam `Idempotency-Key`; o `account_id` continua sendo uma constraint de identidade independente.
+- Uma conta possui no máximo um `opening_balance`, e uma transação no máximo um estorno, independentemente das chaves usadas.
+- Mutações, resposta idempotente, auditoria e evento Outbox são confirmados na mesma transação.
+- Eventos possuem identidade e versão; consumidores futuros usam Inbox transacional.
 - Estornos bloqueiam a transação original durante a alteração de estado.
 
 ## Evidência automatizada

@@ -37,7 +37,6 @@ public sealed class FinancialTransactionTests
             Guid.NewGuid(),
             new Money(150_00),
             OccurredOn,
-            Guid.NewGuid(),
             ActorId,
             "Salary");
 
@@ -55,7 +54,6 @@ public sealed class FinancialTransactionTests
             Guid.NewGuid(),
             new Money(500_00),
             OccurredOn,
-            Guid.NewGuid(),
             ActorId);
 
         var entry = Assert.Single(transaction.Entries);
@@ -74,7 +72,6 @@ public sealed class FinancialTransactionTests
             Guid.NewGuid(),
             new Money(49_90),
             OccurredOn,
-            Guid.NewGuid(),
             ActorId,
             "Groceries");
 
@@ -93,7 +90,6 @@ public sealed class FinancialTransactionTests
             destination,
             new Money(200_00),
             OccurredOn,
-            Guid.NewGuid(),
             ActorId,
             null);
 
@@ -124,7 +120,6 @@ public sealed class FinancialTransactionTests
                 accountId,
                 new Money(100),
                 OccurredOn,
-                Guid.NewGuid(),
                 ActorId,
                 null));
 
@@ -140,13 +135,11 @@ public sealed class FinancialTransactionTests
             Guid.NewGuid(),
             new Money(75_00),
             OccurredOn,
-            Guid.NewGuid(),
             ActorId,
             null);
 
         var reversal = FinancialTransaction.Reversal(
             original,
-            Guid.NewGuid(),
             ActorId,
             OccurredOn.AddDays(1));
 
@@ -170,7 +163,6 @@ public sealed class FinancialTransactionTests
             FinancialTransactionKind.Expense,
             null,
             OccurredOn,
-            Guid.NewGuid(),
             ActorId,
             null,
             FinancialTransactionStatus.Reversed,
@@ -186,7 +178,6 @@ public sealed class FinancialTransactionTests
         var exception = Assert.Throws<FinancialRuleException>(() =>
             FinancialTransaction.Reversal(
                 original,
-                Guid.NewGuid(),
                 ActorId,
                 OccurredOn.AddDays(1)));
 
@@ -204,7 +195,6 @@ public sealed class FinancialTransactionTests
             categoryId,
             new Money(100),
             OccurredOn,
-            Guid.NewGuid(),
             ActorId,
             null);
         var account = new Account(
@@ -237,7 +227,6 @@ public sealed class FinancialTransactionTests
             categoryId,
             new Money(100),
             OccurredOn,
-            Guid.NewGuid(),
             ActorId,
             null);
         var account = Account.Create(
@@ -258,20 +247,4 @@ public sealed class FinancialTransactionTests
         Assert.Equal("invalid_category", exception.Code);
     }
 
-    [Fact]
-    public void IdempotencyKeyIsRequired()
-    {
-        var exception = Assert.Throws<FinancialRuleException>(() =>
-            FinancialTransaction.Income(
-                HouseholdId,
-                Guid.NewGuid(),
-                Guid.NewGuid(),
-                new Money(100),
-                OccurredOn,
-                Guid.Empty,
-                ActorId,
-                null));
-
-        Assert.Equal("invalid_idempotency_key", exception.Code);
-    }
 }

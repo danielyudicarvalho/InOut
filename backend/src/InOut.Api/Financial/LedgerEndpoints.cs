@@ -2,6 +2,7 @@ using System.Security.Claims;
 using InOut.Api.Security;
 using InOut.Application.Financial;
 using InOut.Domain.Financial;
+using Microsoft.AspNetCore.Mvc;
 
 namespace InOut.Api.Financial;
 
@@ -16,6 +17,7 @@ public static class LedgerEndpoints
         ledger.MapPost("/accounts", async (
             Guid householdId,
             CreateAccountRequest request,
+            [FromHeader(Name = "Idempotency-Key")] Guid idempotencyKey,
             ClaimsPrincipal principal,
             LedgerService service,
             CancellationToken cancellationToken) =>
@@ -29,7 +31,8 @@ public static class LedgerEndpoints
                     request.Kind,
                     request.Currency,
                     request.InitialBalanceCents,
-                    request.OpeningDate),
+                    request.OpeningDate,
+                    idempotencyKey),
                 cancellationToken);
             return result.Replayed
                 ? Results.Ok(result)
@@ -76,6 +79,7 @@ public static class LedgerEndpoints
         ledger.MapPost("/income", async (
             Guid householdId,
             PostIncomeRequest request,
+            [FromHeader(Name = "Idempotency-Key")] Guid idempotencyKey,
             ClaimsPrincipal principal,
             LedgerService service,
             CancellationToken cancellationToken) =>
@@ -89,7 +93,7 @@ public static class LedgerEndpoints
                     request.AmountCents,
                     request.Currency,
                     request.OccurredOn,
-                    request.IdempotencyKey,
+                    idempotencyKey,
                     request.Description),
                 cancellationToken);
             return WriteResult(result);
@@ -98,6 +102,7 @@ public static class LedgerEndpoints
         ledger.MapPost("/expenses", async (
             Guid householdId,
             PostExpenseRequest request,
+            [FromHeader(Name = "Idempotency-Key")] Guid idempotencyKey,
             ClaimsPrincipal principal,
             LedgerService service,
             CancellationToken cancellationToken) =>
@@ -111,7 +116,7 @@ public static class LedgerEndpoints
                     request.AmountCents,
                     request.Currency,
                     request.OccurredOn,
-                    request.IdempotencyKey,
+                    idempotencyKey,
                     request.Description),
                 cancellationToken);
             return WriteResult(result);
@@ -120,6 +125,7 @@ public static class LedgerEndpoints
         ledger.MapPost("/transfers", async (
             Guid householdId,
             PostTransferRequest request,
+            [FromHeader(Name = "Idempotency-Key")] Guid idempotencyKey,
             ClaimsPrincipal principal,
             LedgerService service,
             CancellationToken cancellationToken) =>
@@ -133,7 +139,7 @@ public static class LedgerEndpoints
                     request.AmountCents,
                     request.Currency,
                     request.OccurredOn,
-                    request.IdempotencyKey,
+                    idempotencyKey,
                     request.Description),
                 cancellationToken);
             return WriteResult(result);
@@ -143,6 +149,7 @@ public static class LedgerEndpoints
             Guid householdId,
             Guid transactionId,
             ReverseTransactionRequest request,
+            [FromHeader(Name = "Idempotency-Key")] Guid idempotencyKey,
             ClaimsPrincipal principal,
             LedgerService service,
             CancellationToken cancellationToken) =>
@@ -153,7 +160,7 @@ public static class LedgerEndpoints
                     householdId,
                     transactionId,
                     request.OccurredOn,
-                    request.IdempotencyKey,
+                    idempotencyKey,
                     request.Description),
                 cancellationToken);
             return WriteResult(result);
@@ -190,7 +197,6 @@ public static class LedgerEndpoints
         long AmountCents,
         string Currency,
         DateOnly OccurredOn,
-        Guid IdempotencyKey,
         string? Description);
 
     public sealed record CreateAccountRequest(
@@ -207,7 +213,6 @@ public static class LedgerEndpoints
         long AmountCents,
         string Currency,
         DateOnly OccurredOn,
-        Guid IdempotencyKey,
         string? Description);
 
     public sealed record PostTransferRequest(
@@ -216,11 +221,9 @@ public static class LedgerEndpoints
         long AmountCents,
         string Currency,
         DateOnly OccurredOn,
-        Guid IdempotencyKey,
         string? Description);
 
     public sealed record ReverseTransactionRequest(
         DateOnly OccurredOn,
-        Guid IdempotencyKey,
         string? Description);
 }

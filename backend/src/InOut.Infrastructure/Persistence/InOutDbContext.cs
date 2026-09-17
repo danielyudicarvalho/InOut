@@ -13,6 +13,7 @@ public sealed partial class InOutDbContext(DbContextOptions<InOutDbContext> opti
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         ConfigureFinancial(modelBuilder);
+        ConfigureReliability(modelBuilder);
         modelBuilder.Entity<HouseholdRecord>(entity =>
         {
             entity.ToTable("households", "public");

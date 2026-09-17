@@ -41,7 +41,6 @@ public sealed class AccountTests
         Assert.Equal(
             FinancialTransactionKind.OpeningBalance,
             openingBalance.Kind);
-        Assert.Equal(accountId, openingBalance.IdempotencyKey);
     }
 
     [Fact]

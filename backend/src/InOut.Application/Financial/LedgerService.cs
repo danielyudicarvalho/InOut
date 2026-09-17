@@ -1,3 +1,4 @@
+using InOut.Application.Idempotency;
 using InOut.Domain.Financial;
 
 namespace InOut.Application.Financial;
@@ -9,7 +10,8 @@ public sealed record CreateAccountCommand(
     AccountKind Kind,
     string Currency,
     long InitialBalanceCents,
-    DateOnly OpeningDate);
+    DateOnly OpeningDate,
+    Guid IdempotencyKey);
 
 public sealed record PostIncomeCommand(
     Guid HouseholdId,
@@ -64,10 +66,18 @@ public sealed class LedgerService(ILedgerStore store)
             command.InitialBalanceCents,
             command.OpeningDate,
             actorUserId);
-        return store.CreateAccountAsync(
-            opening,
+        var idempotency = IdempotencyRequest.Create(
+            command.HouseholdId,
             actorUserId,
-            cancellationToken);
+            IdempotencyOperation.CreateAccount,
+            command.IdempotencyKey,
+            opening.Account.Id,
+            opening.Account.Name,
+            opening.Account.Kind,
+            opening.Account.Currency,
+            command.InitialBalanceCents,
+            command.OpeningDate);
+        return store.CreateAccountAsync(opening, idempotency, cancellationToken);
     }
 
     public Task<IReadOnlyList<AccountSummary>> GetAccountsAsync(
@@ -99,14 +109,16 @@ public sealed class LedgerService(ILedgerStore store)
         Guid actorUserId,
         PostIncomeCommand command,
         CancellationToken cancellationToken) =>
-        store.PostAsync(
+        PostAsync(
+            actorUserId,
+            IdempotencyOperation.PostIncome,
+            command.IdempotencyKey,
             FinancialTransaction.Income(
                 command.HouseholdId,
                 command.AccountId,
                 command.CategoryId,
                 Money.Positive(command.AmountCents, command.Currency),
                 command.OccurredOn,
-                command.IdempotencyKey,
                 actorUserId,
                 command.Description),
             cancellationToken);
@@ -115,14 +127,16 @@ public sealed class LedgerService(ILedgerStore store)
         Guid actorUserId,
         PostExpenseCommand command,
         CancellationToken cancellationToken) =>
-        store.PostAsync(
+        PostAsync(
+            actorUserId,
+            IdempotencyOperation.PostExpense,
+            command.IdempotencyKey,
             FinancialTransaction.Expense(
                 command.HouseholdId,
                 command.AccountId,
                 command.CategoryId,
                 Money.Positive(command.AmountCents, command.Currency),
                 command.OccurredOn,
-                command.IdempotencyKey,
                 actorUserId,
                 command.Description),
             cancellationToken);
@@ -131,14 +145,16 @@ public sealed class LedgerService(ILedgerStore store)
         Guid actorUserId,
         PostTransferCommand command,
         CancellationToken cancellationToken) =>
-        store.PostAsync(
+        PostAsync(
+            actorUserId,
+            IdempotencyOperation.PostTransfer,
+            command.IdempotencyKey,
             FinancialTransaction.Transfer(
                 command.HouseholdId,
                 command.SourceAccountId,
                 command.DestinationAccountId,
                 Money.Positive(command.AmountCents, command.Currency),
                 command.OccurredOn,
-                command.IdempotencyKey,
                 actorUserId,
                 command.Description),
             cancellationToken);
@@ -150,10 +166,16 @@ public sealed class LedgerService(ILedgerStore store)
         store.ReverseAsync(
             command.HouseholdId,
             command.TransactionId,
-            command.IdempotencyKey,
-            actorUserId,
             command.OccurredOn,
             command.Description,
+            IdempotencyRequest.Create(
+                command.HouseholdId,
+                actorUserId,
+                IdempotencyOperation.ReverseTransaction,
+                command.IdempotencyKey,
+                command.TransactionId,
+                command.OccurredOn,
+                command.Description?.Trim()),
             cancellationToken);
 
     public Task<IReadOnlyList<AccountBalance>> GetBalancesAsync(
@@ -165,4 +187,31 @@ public sealed class LedgerService(ILedgerStore store)
         Guid householdId,
         CancellationToken cancellationToken) =>
         store.ReconcileAsync(householdId, cancellationToken);
+
+    private Task<LedgerWriteResult> PostAsync(
+        Guid actorUserId,
+        IdempotencyOperation operation,
+        Guid idempotencyKey,
+        FinancialTransaction transaction,
+        CancellationToken cancellationToken)
+    {
+        var entries = string.Join(
+            ';',
+            transaction.Entries
+                .OrderBy(entry => entry.AccountId)
+                .ThenBy(entry => entry.CategoryId)
+                .ThenBy(entry => entry.Direction)
+                .Select(entry =>
+                    $"{entry.AccountId:D},{entry.CategoryId?.ToString("D")},{entry.Direction},{entry.Amount.Cents},{entry.Amount.Currency}"));
+        var idempotency = IdempotencyRequest.Create(
+            transaction.HouseholdId,
+            actorUserId,
+            operation,
+            idempotencyKey,
+            transaction.Kind,
+            transaction.OccurredOn,
+            transaction.Description,
+            entries);
+        return store.PostAsync(transaction, idempotency, cancellationToken);
+    }
 }
