@@ -14,17 +14,19 @@ public sealed class EfInboxMessageProcessor(
         CancellationToken cancellationToken)
     {
         await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
+        var subjectSetting = PersistenceVocabulary.SessionSettings.JwtSubject;
         await dbContext.Database.ExecuteSqlInterpolatedAsync(
-            $"select set_config('request.jwt.claim.sub', {message.ActorUserId.ToString()}, true)",
+            $"select set_config({subjectSetting}, {message.ActorUserId.ToString()}, true)",
             cancellationToken);
         var now = timeProvider.GetUtcNow();
+        var processingStatus = PersistenceVocabulary.InboxStatuses.Processing;
         var inserted = await dbContext.Database.ExecuteSqlInterpolatedAsync($"""
             insert into private.inbox_messages (
                 consumer, message_id, tenant_id, message_fingerprint,
                 status, received_at)
             values (
                 {message.Consumer}, {message.MessageId}, {message.TenantId},
-                {message.MessageFingerprint}, 'processing', {now})
+                {message.MessageFingerprint}, {processingStatus}, {now})
             on conflict (consumer, message_id) do nothing
             """, cancellationToken);
 
@@ -42,18 +44,18 @@ public sealed class EfInboxMessageProcessor(
             record.MessageFingerprint != message.MessageFingerprint)
         {
             throw new IdempotencyException(
-                "message_identity_conflict",
+                IdempotencyErrorCodes.MessageIdentityConflict,
                 "Message identifier was reused with different content or tenant.");
         }
 
-        if (inserted == 0 && record.Status == "processed")
+        if (inserted == 0 && record.Status == PersistenceVocabulary.InboxStatuses.Processed)
         {
             await transaction.CommitAsync(cancellationToken);
             return false;
         }
 
         await handler(cancellationToken);
-        record.Status = "processed";
+        record.Status = PersistenceVocabulary.InboxStatuses.Processed;
         record.ProcessedAt = now;
         await dbContext.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);

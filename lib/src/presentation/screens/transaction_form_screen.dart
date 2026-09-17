@@ -6,6 +6,7 @@ import 'package:inout/src/core/utils/string_utils.dart';
 import 'package:inout/src/core/utils/uuid_utils.dart';
 import 'package:inout/src/domain/household/household.dart';
 import 'package:inout/src/domain/transaction/financial_flow.dart';
+import 'package:inout/src/core/types/currency_codes.dart';
 import 'package:inout/src/infrastructure/financial/api_ledger_repository.dart';
 import 'package:inout/src/presentation/providers/session_providers.dart';
 
@@ -35,7 +36,7 @@ final class _TransactionFormScreenState
   String? _error;
 
   bool get _isIncome => widget.flow == FinancialFlow.income;
-  String get _flow => _isIncome ? 'income' : 'expense';
+  String get _flow => widget.flow.name;
 
   @override
   void dispose() {
@@ -57,7 +58,7 @@ final class _TransactionFormScreenState
       accountId: _accountId!,
       categoryId: _categoryId!,
       amountCents: cents,
-      currency: 'BRL',
+      currency: CurrencyCodes.brl,
       occurredOn: DateTime.now(),
       idempotencyKey: UuidUtils.v4(),
       description: StringUtils.trimToNull(_description.text),

@@ -72,7 +72,7 @@ internal sealed class IdempotencyRequestRecord
     public Guid IdempotencyKey { get; set; }
     public Guid ActorUserId { get; set; }
     public string RequestFingerprint { get; set; } = string.Empty;
-    public string Status { get; set; } = "processing";
+    public string Status { get; set; } = PersistenceVocabulary.IdempotencyStatuses.Processing;
     public int? ResponseCode { get; set; }
     public string? ResponseBody { get; set; }
     public string? ResourceType { get; set; }
@@ -94,7 +94,7 @@ internal sealed class OutboxMessageRecord
     public Guid AggregateId { get; set; }
     public long AggregateVersion { get; set; }
     public string EventType { get; set; } = string.Empty;
-    public string Payload { get; set; } = "{}";
+    public string Payload { get; set; } = PersistenceVocabulary.Json.EmptyObject;
     public DateTimeOffset OccurredAt { get; set; }
     public DateTimeOffset? PublishedAt { get; set; }
     public int AttemptCount { get; set; }
@@ -107,7 +107,7 @@ internal sealed class InboxMessageRecord
     public Guid MessageId { get; set; }
     public Guid TenantId { get; set; }
     public string MessageFingerprint { get; set; } = string.Empty;
-    public string Status { get; set; } = "processing";
+    public string Status { get; set; } = PersistenceVocabulary.InboxStatuses.Processing;
     public DateTimeOffset ReceivedAt { get; set; }
     public DateTimeOffset? ProcessedAt { get; set; }
 }

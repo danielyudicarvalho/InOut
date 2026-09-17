@@ -21,14 +21,14 @@ public sealed record IdempotencyRequest(
         if (tenantId == Guid.Empty || actorUserId == Guid.Empty)
         {
             throw new IdempotencyException(
-                "invalid_idempotency_scope",
+                IdempotencyErrorCodes.InvalidScope,
                 "Tenant and actor identifiers are required.");
         }
 
         if (key == Guid.Empty)
         {
             throw new IdempotencyException(
-                "invalid_idempotency_key",
+                IdempotencyErrorCodes.InvalidKey,
                 "Idempotency key is required.");
         }
 

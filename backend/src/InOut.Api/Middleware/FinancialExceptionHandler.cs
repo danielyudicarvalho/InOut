@@ -25,24 +25,25 @@ public sealed class FinancialExceptionHandler : IExceptionHandler
 
         var status = code switch
         {
-            "transaction_not_found" => StatusCodes.Status404NotFound,
-            "transaction_not_reversible" or
-            "idempotency_conflict" or
-            "idempotency_in_progress" or
-            "account_conflict" => StatusCodes.Status409Conflict,
+            FinancialErrorCodes.TransactionNotFound => StatusCodes.Status404NotFound,
+            FinancialErrorCodes.TransactionNotReversible or
+            IdempotencyErrorCodes.Conflict or
+            IdempotencyErrorCodes.InProgress or
+            FinancialErrorCodes.AccountConflict => StatusCodes.Status409Conflict,
             _ => StatusCodes.Status400BadRequest
         };
         httpContext.Response.StatusCode = status;
-        if (code == "idempotency_in_progress")
+        if (code == IdempotencyErrorCodes.InProgress)
         {
-            httpContext.Response.Headers["Retry-After"] = "5";
+            httpContext.Response.Headers[ApiContract.Headers.RetryAfter] =
+                ApiContract.HeaderValues.RetryAfterFiveSeconds;
         }
         await httpContext.Response.WriteAsJsonAsync(
             new ProblemDetails
             {
                 Status = status,
                 Title = message,
-                Extensions = { ["code"] = code }
+                Extensions = { [ApiContract.ProblemFields.Code] = code }
             },
             cancellationToken);
         return true;

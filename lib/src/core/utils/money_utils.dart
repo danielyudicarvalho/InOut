@@ -1,9 +1,10 @@
 import 'package:intl/intl.dart';
+import 'package:inout/src/core/types/currency_codes.dart';
 
 abstract final class MoneyUtils {
   static final NumberFormat _brl = NumberFormat.currency(
     locale: 'pt_BR',
-    name: 'BRL',
+    name: CurrencyCodes.brl,
     symbol: r'R$',
     decimalDigits: 2,
   );

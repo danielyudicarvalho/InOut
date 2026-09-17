@@ -21,7 +21,7 @@ public sealed record Account(
     {
         if (id == Guid.Empty || householdId == Guid.Empty)
         {
-            throw new FinancialRuleException("invalid_account_id", "Account and household identifiers are required.");
+            throw new FinancialRuleException(FinancialErrorCodes.InvalidAccountId, "Account and household identifiers are required.");
         }
 
         return new Account(id, householdId, NormalizeName(name), kind, new Money(0, currency).Currency, null);
@@ -40,7 +40,7 @@ public sealed record Account(
         if (initialBalanceCents < 0)
         {
             throw new FinancialRuleException(
-                "invalid_initial_balance",
+                FinancialErrorCodes.InvalidInitialBalance,
                 "Initial balance cannot be negative.");
         }
 
@@ -65,7 +65,7 @@ public sealed record Account(
         if (string.IsNullOrEmpty(normalized) || normalized.Length > 80)
         {
             throw new FinancialRuleException(
-                "invalid_account_name",
+                FinancialErrorCodes.InvalidAccountName,
                 "Account name must contain between 1 and 80 characters.");
         }
 

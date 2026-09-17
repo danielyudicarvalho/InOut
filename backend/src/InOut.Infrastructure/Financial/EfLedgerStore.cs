@@ -1,3 +1,4 @@
+using System.Net;
 using InOut.Application.Financial;
 using InOut.Application.Idempotency;
 using InOut.Domain.Financial;
@@ -37,7 +38,7 @@ public sealed class EfLedgerStore(InOutDbContext dbContext) : ILedgerStore
             .SingleOrDefaultAsync(item => item.Id == account.Id, cancellationToken);
         if (existingAccount is not null)
         {
-            throw new FinancialRuleException("account_conflict", "Account identifier is already in use.");
+            throw new FinancialRuleException(FinancialErrorCodes.AccountConflict, "Account identifier is already in use.");
         }
 
         var record = new AccountRecord
@@ -50,13 +51,18 @@ public sealed class EfLedgerStore(InOutDbContext dbContext) : ILedgerStore
             CreatedBy = idempotencyRequest.ActorUserId,
         };
         dbContext.Accounts.Add(record);
-        AddAudit(account.HouseholdId, idempotencyRequest.ActorUserId, "financial.account.created", "account", account.Id);
+        AddAudit(
+            account.HouseholdId,
+            idempotencyRequest.ActorUserId,
+            PersistenceVocabulary.AuditActions.AccountCreated,
+            PersistenceVocabulary.EntityTypes.Account,
+            account.Id);
         idempotency.AddOutboxEvent(
             account.HouseholdId,
-            "account",
+            PersistenceVocabulary.EntityTypes.Account,
             account.Id,
             1,
-            "financial.account.created",
+            PersistenceVocabulary.AuditActions.AccountCreated,
             new { account.Id, account.HouseholdId, account.Name, account.Kind, account.Currency });
         await dbContext.SaveChangesAsync(cancellationToken);
 
@@ -67,15 +73,15 @@ public sealed class EfLedgerStore(InOutDbContext dbContext) : ILedgerStore
             AddAudit(
                 account.HouseholdId,
                 idempotencyRequest.ActorUserId,
-                "financial.opening_balance.posted",
-                "transaction",
+                PersistenceVocabulary.AuditActions.OpeningBalancePosted,
+                PersistenceVocabulary.EntityTypes.Transaction,
                 openingBalance.Id);
             idempotency.AddOutboxEvent(
                 account.HouseholdId,
-                "transaction",
+                PersistenceVocabulary.EntityTypes.Transaction,
                 openingBalance.Id,
                 1,
-                "financial.opening_balance.posted",
+                PersistenceVocabulary.AuditActions.OpeningBalancePosted,
                 new { openingBalance.Id, openingBalance.HouseholdId, AccountId = account.Id });
         }
 
@@ -83,7 +89,12 @@ public sealed class EfLedgerStore(InOutDbContext dbContext) : ILedgerStore
         var result = new AccountCreationResult(
             new AccountSummary(account.Id, account.Name, account.Kind, account.Currency, initialBalanceCents, null),
             false);
-        idempotency.Complete(acquisition.Record, result, 201, "account", account.Id);
+        idempotency.Complete(
+            acquisition.Record,
+            result,
+            (int)HttpStatusCode.Created,
+            PersistenceVocabulary.EntityTypes.Account,
+            account.Id);
         await dbContext.SaveChangesAsync(cancellationToken);
         await databaseTransaction.CommitAsync(cancellationToken);
         return result;
@@ -137,7 +148,7 @@ public sealed class EfLedgerStore(InOutDbContext dbContext) : ILedgerStore
             cancellationToken);
         if (account is null)
         {
-            throw new FinancialRuleException("account_not_found", "Account was not found.");
+            throw new FinancialRuleException(FinancialErrorCodes.AccountNotFound, "Account was not found.");
         }
 
         var archived = new Account(
@@ -151,7 +162,12 @@ public sealed class EfLedgerStore(InOutDbContext dbContext) : ILedgerStore
         if (account.ArchivedAt != archived.ArchivedAt)
         {
             account.ArchivedAt = archived.ArchivedAt;
-            AddAudit(householdId, actorUserId, "financial.account.archived", "account", accountId);
+            AddAudit(
+                householdId,
+                actorUserId,
+                PersistenceVocabulary.AuditActions.AccountArchived,
+                PersistenceVocabulary.EntityTypes.Account,
+                accountId);
             await dbContext.SaveChangesAsync(cancellationToken);
         }
 
@@ -248,16 +264,26 @@ public sealed class EfLedgerStore(InOutDbContext dbContext) : ILedgerStore
         await LockAccountsAsync(transaction.HouseholdId, transaction.Entries, cancellationToken);
         await ValidateReferencesAsync(transaction, cancellationToken);
         AddTransaction(transaction);
-        AddAudit(transaction.HouseholdId, transaction.CreatedBy, "financial.transaction.posted", "transaction", transaction.Id);
+        AddAudit(
+            transaction.HouseholdId,
+            transaction.CreatedBy,
+            PersistenceVocabulary.AuditActions.TransactionPosted,
+            PersistenceVocabulary.EntityTypes.Transaction,
+            transaction.Id);
         idempotency.AddOutboxEvent(
             transaction.HouseholdId,
-            "transaction",
+            PersistenceVocabulary.EntityTypes.Transaction,
             transaction.Id,
             1,
-            "financial.transaction.posted",
+            PersistenceVocabulary.AuditActions.TransactionPosted,
             new { transaction.Id, transaction.HouseholdId, transaction.Kind, transaction.OccurredOn });
         var result = new LedgerWriteResult(transaction.Id, false);
-        idempotency.Complete(acquisition.Record, result, 201, "transaction", transaction.Id);
+        idempotency.Complete(
+            acquisition.Record,
+            result,
+            (int)HttpStatusCode.Created,
+            PersistenceVocabulary.EntityTypes.Transaction,
+            transaction.Id);
         await dbContext.SaveChangesAsync(cancellationToken);
         await databaseTransaction.CommitAsync(cancellationToken);
         return result;
@@ -293,7 +319,7 @@ public sealed class EfLedgerStore(InOutDbContext dbContext) : ILedgerStore
         if (originalRecord is null)
         {
             throw new FinancialRuleException(
-                "transaction_not_found",
+                FinancialErrorCodes.TransactionNotFound,
                 "Transaction was not found.");
         }
 
@@ -305,16 +331,26 @@ public sealed class EfLedgerStore(InOutDbContext dbContext) : ILedgerStore
             description);
         AddTransaction(reversal);
         originalRecord.Status = FinancialTransactionStatus.Reversed;
-        AddAudit(householdId, idempotencyRequest.ActorUserId, "financial.transaction.reversed", "transaction", transactionId);
+        AddAudit(
+            householdId,
+            idempotencyRequest.ActorUserId,
+            PersistenceVocabulary.AuditActions.TransactionReversed,
+            PersistenceVocabulary.EntityTypes.Transaction,
+            transactionId);
         idempotency.AddOutboxEvent(
             householdId,
-            "transaction",
+            PersistenceVocabulary.EntityTypes.Transaction,
             transactionId,
             2,
-            "financial.transaction.reversed",
+            PersistenceVocabulary.AuditActions.TransactionReversed,
             new { TransactionId = transactionId, ReversalId = reversal.Id, OccurredOn = occurredOn });
         var result = new LedgerWriteResult(reversal.Id, false);
-        idempotency.Complete(acquisition.Record, result, 201, "transaction", reversal.Id);
+        idempotency.Complete(
+            acquisition.Record,
+            result,
+            (int)HttpStatusCode.Created,
+            PersistenceVocabulary.EntityTypes.Transaction,
+            reversal.Id);
         await dbContext.SaveChangesAsync(cancellationToken);
         await databaseTransaction.CommitAsync(cancellationToken);
         return result;
@@ -460,8 +496,9 @@ public sealed class EfLedgerStore(InOutDbContext dbContext) : ILedgerStore
         CancellationToken cancellationToken)
     {
         var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
+        var subjectSetting = PersistenceVocabulary.SessionSettings.JwtSubject;
         await dbContext.Database.ExecuteSqlInterpolatedAsync(
-            $"select set_config('request.jwt.claim.sub', {userId.ToString()}, true)",
+            $"select set_config({subjectSetting}, {userId.ToString()}, true)",
             cancellationToken);
         return transaction;
     }

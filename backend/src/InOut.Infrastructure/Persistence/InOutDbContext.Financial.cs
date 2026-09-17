@@ -104,7 +104,7 @@ internal sealed class AccountRecord
     public Guid HouseholdId { get; set; }
     public string Name { get; set; } = string.Empty;
     public AccountKind Kind { get; set; }
-    public string Currency { get; set; } = "BRL";
+    public string Currency { get; set; } = Money.DefaultCurrency;
     public Guid CreatedBy { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset? ArchivedAt { get; set; }

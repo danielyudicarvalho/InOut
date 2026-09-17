@@ -17,11 +17,11 @@ internal static class DomainTypeStorage
 
     internal static string TransactionKindToString(FinancialTransactionKind value) =>
         value is FinancialTransactionKind.OpeningBalance
-            ? "opening_balance"
+            ? PersistenceVocabulary.StorageValues.OpeningBalance
             : Lower(value);
 
     internal static FinancialTransactionKind TransactionKindFromString(string value) =>
-        value == "opening_balance"
+        value == PersistenceVocabulary.StorageValues.OpeningBalance
             ? FinancialTransactionKind.OpeningBalance
             : Parse<FinancialTransactionKind>(value);
 

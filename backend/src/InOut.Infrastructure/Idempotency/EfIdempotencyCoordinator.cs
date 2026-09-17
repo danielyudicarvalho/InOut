@@ -10,13 +10,21 @@ internal sealed class EfIdempotencyCoordinator(
     InOutDbContext dbContext,
     TimeProvider timeProvider)
 {
-    private static readonly Meter Meter = new("InOut.Idempotency", "1.0.0");
-    private static readonly Counter<long> Started = Meter.CreateCounter<long>("idempotency.started");
-    private static readonly Counter<long> Replayed = Meter.CreateCounter<long>("idempotency.replayed");
-    private static readonly Counter<long> Conflicts = Meter.CreateCounter<long>("idempotency.conflicts");
-    private static readonly Counter<long> InProgress = Meter.CreateCounter<long>("idempotency.in_progress");
-    private static readonly Counter<long> Reclaimed = Meter.CreateCounter<long>("idempotency.reclaimed");
-    private static readonly Counter<long> Failed = Meter.CreateCounter<long>("idempotency.failed");
+    private static readonly Meter Meter = new(
+        PersistenceVocabulary.Metrics.MeterName,
+        PersistenceVocabulary.Metrics.MeterVersion);
+    private static readonly Counter<long> Started =
+        Meter.CreateCounter<long>(PersistenceVocabulary.Metrics.Started);
+    private static readonly Counter<long> Replayed =
+        Meter.CreateCounter<long>(PersistenceVocabulary.Metrics.Replayed);
+    private static readonly Counter<long> Conflicts =
+        Meter.CreateCounter<long>(PersistenceVocabulary.Metrics.Conflicts);
+    private static readonly Counter<long> InProgress =
+        Meter.CreateCounter<long>(PersistenceVocabulary.Metrics.InProgress);
+    private static readonly Counter<long> Reclaimed =
+        Meter.CreateCounter<long>(PersistenceVocabulary.Metrics.Reclaimed);
+    private static readonly Counter<long> Failed =
+        Meter.CreateCounter<long>(PersistenceVocabulary.Metrics.Failed);
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
     private static readonly TimeSpan ProcessingLease = TimeSpan.FromMinutes(5);
     private static readonly TimeSpan Retention = TimeSpan.FromDays(90);
@@ -27,6 +35,7 @@ internal sealed class EfIdempotencyCoordinator(
     {
         var operation = OperationName(request.Operation);
         var now = timeProvider.GetUtcNow();
+        var processingStatus = PersistenceVocabulary.IdempotencyStatuses.Processing;
         var inserted = await dbContext.Database.ExecuteSqlInterpolatedAsync($"""
             insert into private.idempotency_requests (
                 tenant_id, operation, idempotency_key, actor_user_id,
@@ -34,7 +43,7 @@ internal sealed class EfIdempotencyCoordinator(
                 created_at, updated_at, expires_at)
             values (
                 {request.TenantId}, {operation}, {request.Key}, {request.ActorUserId},
-                {request.RequestFingerprint}, 'processing', 1, {now + ProcessingLease},
+                {request.RequestFingerprint}, {processingStatus}, 1, {now + ProcessingLease},
                 {now}, {now}, {now + Retention})
             on conflict (tenant_id, operation, idempotency_key) do nothing
             """, cancellationToken);
@@ -65,11 +74,11 @@ internal sealed class EfIdempotencyCoordinator(
         {
             Conflicts.Add(1, Tags(operation));
             throw new IdempotencyException(
-                "idempotency_conflict",
+                IdempotencyErrorCodes.Conflict,
                 "Idempotency key was already used by another actor or with a different request.");
         }
 
-        if (record.Status == "completed")
+        if (record.Status == PersistenceVocabulary.IdempotencyStatuses.Completed)
         {
             Replayed.Add(1, Tags(operation));
             var response = JsonSerializer.Deserialize<TResult>(record.ResponseBody!, JsonOptions)
@@ -77,11 +86,11 @@ internal sealed class EfIdempotencyCoordinator(
             return IdempotencyAcquisition<TResult>.Replay(record, response);
         }
 
-        if (record.Status == "failed_final")
+        if (record.Status == PersistenceVocabulary.IdempotencyStatuses.FailedFinal)
         {
             Replayed.Add(1, Tags(operation));
             throw new IdempotencyException(
-                record.LastErrorCode ?? "idempotency_failed",
+                record.LastErrorCode ?? IdempotencyErrorCodes.Failed,
                 "The original operation reached a final failure state.");
         }
 
@@ -89,11 +98,11 @@ internal sealed class EfIdempotencyCoordinator(
         {
             InProgress.Add(1, Tags(operation));
             throw new IdempotencyException(
-                "idempotency_in_progress",
+                IdempotencyErrorCodes.InProgress,
                 "The original operation is still processing. Retry later with the same key.");
         }
 
-        record.Status = "processing";
+        record.Status = PersistenceVocabulary.IdempotencyStatuses.Processing;
         record.AttemptCount += 1;
         record.LockedUntil = now + ProcessingLease;
         record.UpdatedAt = now;
@@ -110,7 +119,7 @@ internal sealed class EfIdempotencyCoordinator(
         Guid resourceId)
     {
         var now = timeProvider.GetUtcNow();
-        record.Status = "completed";
+        record.Status = PersistenceVocabulary.IdempotencyStatuses.Completed;
         record.ResponseCode = responseCode;
         record.ResponseBody = JsonSerializer.Serialize(response, JsonOptions);
         record.ResourceType = resourceType;
@@ -145,7 +154,9 @@ internal sealed class EfIdempotencyCoordinator(
         bool retryable)
     {
         var now = timeProvider.GetUtcNow();
-        record.Status = retryable ? "failed_retryable" : "failed_final";
+        record.Status = retryable
+            ? PersistenceVocabulary.IdempotencyStatuses.FailedRetryable
+            : PersistenceVocabulary.IdempotencyStatuses.FailedFinal;
         record.LastErrorCode = errorCode;
         record.UpdatedAt = now;
         record.LockedUntil = retryable ? now : record.ExpiresAt;
@@ -154,16 +165,16 @@ internal sealed class EfIdempotencyCoordinator(
 
     private static string OperationName(IdempotencyOperation operation) => operation switch
     {
-        IdempotencyOperation.CreateAccount => "create_account",
-        IdempotencyOperation.PostIncome => "post_income",
-        IdempotencyOperation.PostExpense => "post_expense",
-        IdempotencyOperation.PostTransfer => "post_transfer",
-        IdempotencyOperation.ReverseTransaction => "reverse_transaction",
+        IdempotencyOperation.CreateAccount => PersistenceVocabulary.OperationNames.CreateAccount,
+        IdempotencyOperation.PostIncome => PersistenceVocabulary.OperationNames.PostIncome,
+        IdempotencyOperation.PostExpense => PersistenceVocabulary.OperationNames.PostExpense,
+        IdempotencyOperation.PostTransfer => PersistenceVocabulary.OperationNames.PostTransfer,
+        IdempotencyOperation.ReverseTransaction => PersistenceVocabulary.OperationNames.ReverseTransaction,
         _ => throw new ArgumentOutOfRangeException(nameof(operation), operation, null),
     };
 
     private static KeyValuePair<string, object?> Tags(string operation) =>
-        new("operation", operation);
+        new(PersistenceVocabulary.MetricTags.Operation, operation);
 }
 
 internal sealed record IdempotencyAcquisition<TResult>(
