@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using InOut.Application.Financial;
 using InOut.Domain.Financial;
 using InOut.Domain.Utils;
@@ -570,7 +571,7 @@ public sealed class EfLedgerStore(InOutDbContext dbContext) : ILedgerStore
     }
 
     private static bool EntriesMatch(
-        IReadOnlyCollection<EntryRecord> persisted,
+        List<EntryRecord> persisted,
         IReadOnlyList<LedgerEntry> requested) =>
         persisted.Count == requested.Count && requested.All(candidate =>
             persisted.Any(item =>
@@ -579,6 +580,7 @@ public sealed class EfLedgerStore(InOutDbContext dbContext) : ILedgerStore
                 item.Direction == candidate.Direction &&
                 item.AmountCents == candidate.Amount.Cents));
 
+    [DoesNotReturn]
     private static void ThrowIdempotencyConflict() =>
         throw new FinancialRuleException(
             "idempotency_conflict",
