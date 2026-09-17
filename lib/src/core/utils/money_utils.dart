@@ -1,5 +1,5 @@
-import 'package:intl/intl.dart';
 import 'package:inout/src/core/types/currency_codes.dart';
+import 'package:intl/intl.dart';
 
 abstract final class MoneyUtils {
   static final NumberFormat _brl = NumberFormat.currency(
