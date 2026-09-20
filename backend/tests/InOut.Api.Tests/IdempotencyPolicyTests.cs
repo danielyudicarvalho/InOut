@@ -20,7 +20,7 @@ public sealed class IdempotencyPolicyTests
     public void FinancialCommandsUseShortLeaseAndNinetyDayRetention(
         IdempotencyOperation operation)
     {
-        var policy = new IdempotencyPolicy().Get(operation);
+        var policy = new IdempotencyPolicy().GetPolicy(operation);
 
         Assert.Equal(TimeSpan.FromSeconds(30), policy.LeaseDuration);
         Assert.Equal(TimeSpan.FromDays(90), policy.Retention);
@@ -32,6 +32,6 @@ public sealed class IdempotencyPolicyTests
         var operation = (IdempotencyOperation)int.MaxValue;
 
         Assert.Throws<ArgumentOutOfRangeException>(() =>
-            new IdempotencyPolicy().Get(operation));
+            new IdempotencyPolicy().GetPolicy(operation));
     }
 }

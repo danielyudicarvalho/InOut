@@ -32,7 +32,7 @@ internal sealed class EfIdempotencyCoordinator(
         CancellationToken cancellationToken)
     {
         var operation = OperationName(request.Operation);
-        var policy = policyProvider.Get(request.Operation);
+        var policy = policyProvider.GetPolicy(request.Operation);
         var now = timeProvider.GetUtcNow();
         var processingStatus = PersistenceVocabulary.IdempotencyStatuses.Processing;
         var inserted = await dbContext.Database.ExecuteSqlInterpolatedAsync($"""

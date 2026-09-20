@@ -6,5 +6,5 @@ public sealed record IdempotencyExecutionPolicy(
 
 public interface IIdempotencyPolicy
 {
-    IdempotencyExecutionPolicy Get(IdempotencyOperation operation);
+    IdempotencyExecutionPolicy GetPolicy(IdempotencyOperation operation);
 }

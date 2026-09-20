@@ -7,7 +7,7 @@ public sealed class IdempotencyPolicy : IIdempotencyPolicy
     private static readonly TimeSpan FinancialCommandLease = TimeSpan.FromSeconds(30);
     private static readonly TimeSpan FinancialCommandRetention = TimeSpan.FromDays(90);
 
-    public IdempotencyExecutionPolicy Get(IdempotencyOperation operation) => operation switch
+    public IdempotencyExecutionPolicy GetPolicy(IdempotencyOperation operation) => operation switch
     {
         IdempotencyOperation.CreateAccount => FinancialCommand(),
         IdempotencyOperation.PostIncome => FinancialCommand(),
