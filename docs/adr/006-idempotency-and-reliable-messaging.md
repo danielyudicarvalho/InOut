@@ -34,6 +34,10 @@ ser confundida com identidade da entidade, concorrência ou invariantes do domí
 
 - `private.idempotency_requests` implementa aquisição atômica, lease, estados,
   resultado semântico, referência ao recurso e retenção de 90 dias.
+- `IIdempotencyPolicy` define lease e retenção por operação. Os comandos
+  financeiros locais começam com lease de 30 segundos e retenção de 90 dias,
+  permitindo que novos workflows adotem políticas próprias sem alterar o
+  coordenador.
 - A constraint `(tenant_id, operation, idempotency_key)` é a autoridade contra
   corrida; não existe fluxo `SELECT` seguido de `INSERT` desprotegido.
 - A aquisição, mutação, auditoria, Outbox e conclusão compartilham uma transação.

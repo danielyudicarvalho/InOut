@@ -46,6 +46,7 @@ builder.Services.AddScoped<IHouseholdStore, EfHouseholdStore>();
 builder.Services.AddScoped<HouseholdService>();
 builder.Services.AddScoped<ILedgerStore, EfLedgerStore>();
 builder.Services.AddScoped<LedgerService>();
+builder.Services.AddSingleton<IIdempotencyPolicy, IdempotencyPolicy>();
 builder.Services.AddScoped<IInboxMessageProcessor, EfInboxMessageProcessor>();
 builder.Services.AddSingleton(TimeProvider.System);
 

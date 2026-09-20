@@ -8,7 +8,8 @@ namespace InOut.Infrastructure.Idempotency;
 
 internal sealed class EfIdempotencyCoordinator(
     InOutDbContext dbContext,
-    TimeProvider timeProvider)
+    TimeProvider timeProvider,
+    IIdempotencyPolicy policyProvider)
 {
     private static readonly Meter Meter = new(
         PersistenceVocabulary.Metrics.MeterName,
@@ -26,14 +27,12 @@ internal sealed class EfIdempotencyCoordinator(
     private static readonly Counter<long> Failed =
         Meter.CreateCounter<long>(PersistenceVocabulary.Metrics.Failed);
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
-    private static readonly TimeSpan ProcessingLease = TimeSpan.FromMinutes(5);
-    private static readonly TimeSpan Retention = TimeSpan.FromDays(90);
-
     internal async Task<IdempotencyAcquisition<TResult>> AcquireAsync<TResult>(
         IdempotencyRequest request,
         CancellationToken cancellationToken)
     {
         var operation = OperationName(request.Operation);
+        var policy = policyProvider.Get(request.Operation);
         var now = timeProvider.GetUtcNow();
         var processingStatus = PersistenceVocabulary.IdempotencyStatuses.Processing;
         var inserted = await dbContext.Database.ExecuteSqlInterpolatedAsync($"""
@@ -43,8 +42,8 @@ internal sealed class EfIdempotencyCoordinator(
                 created_at, updated_at, expires_at)
             values (
                 {request.TenantId}, {operation}, {request.Key}, {request.ActorUserId},
-                {request.RequestFingerprint}, {processingStatus}, 1, {now + ProcessingLease},
-                {now}, {now}, {now + Retention})
+                {request.RequestFingerprint}, {processingStatus}, 1, {now + policy.LeaseDuration},
+                {now}, {now}, {now + policy.Retention})
             on conflict (tenant_id, operation, idempotency_key) do nothing
             """, cancellationToken);
 
@@ -104,7 +103,7 @@ internal sealed class EfIdempotencyCoordinator(
 
         record.Status = PersistenceVocabulary.IdempotencyStatuses.Processing;
         record.AttemptCount += 1;
-        record.LockedUntil = now + ProcessingLease;
+        record.LockedUntil = now + policy.LeaseDuration;
         record.UpdatedAt = now;
         record.LastErrorCode = null;
         Reclaimed.Add(1, Tags(operation));

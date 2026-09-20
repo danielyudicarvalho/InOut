@@ -8,9 +8,13 @@ using Microsoft.EntityFrameworkCore;
 
 namespace InOut.Infrastructure.Financial;
 
-public sealed class EfLedgerStore(InOutDbContext dbContext) : ILedgerStore
+public sealed class EfLedgerStore(
+    InOutDbContext dbContext,
+    IIdempotencyPolicy idempotencyPolicy,
+    TimeProvider timeProvider) : ILedgerStore
 {
-    private readonly EfIdempotencyCoordinator idempotency = new(dbContext, TimeProvider.System);
+    private readonly EfIdempotencyCoordinator idempotency =
+        new(dbContext, timeProvider, idempotencyPolicy);
 
     public async Task<AccountCreationResult> CreateAccountAsync(
         AccountOpening opening,

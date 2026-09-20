@@ -70,7 +70,7 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
         Assert.Single(results, result => !result.Replayed);
 
         await using var context = CreateContext();
-        var store = new EfLedgerStore(context);
+        var store = CreateStore(context);
         var balances = await store.GetBalancesAsync(householdId, CancellationToken.None);
         var reconciliation = await store.ReconcileAsync(householdId, CancellationToken.None);
         Assert.Equal(1_000, balances.Single(item => item.AccountId == accountId).BalanceCents);
@@ -92,7 +92,7 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
 
         Assert.Equal("idempotency_conflict", exception.Code);
         await using var context = CreateContext();
-        var store = new EfLedgerStore(context);
+        var store = CreateStore(context);
         var balances = await store.GetBalancesAsync(householdId, CancellationToken.None);
         var history = await store.GetHistoryAsync(householdId, 100, CancellationToken.None);
         Assert.Equal(1_000, balances.Single(item => item.AccountId == accountId).BalanceCents);
@@ -121,7 +121,7 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
         async Task<AccountCreationResult> CreateAsync(string name)
         {
             await using var context = CreateContext();
-            return await new LedgerService(new EfLedgerStore(context)).CreateAccountAsync(
+            return await new LedgerService(CreateStore(context)).CreateAccountAsync(
                 actorUserId,
                 new CreateAccountCommand(
                     createdAccountId,
@@ -153,7 +153,7 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
         async Task<AccountCreationResult> CreateAsync(Guid key)
         {
             await using var context = CreateContext();
-            return await new LedgerService(new EfLedgerStore(context)).CreateAccountAsync(
+            return await new LedgerService(CreateStore(context)).CreateAccountAsync(
                 actorUserId,
                 new CreateAccountCommand(
                     createdAccountId,
@@ -221,7 +221,7 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
         await PostIncomeAsync(Guid.NewGuid(), 10_000, "Salary");
         await using (var context = CreateContext())
         {
-            var service = new LedgerService(new EfLedgerStore(context));
+            var service = new LedgerService(CreateStore(context));
             await service.PostExpenseAsync(
                 actorUserId,
                 new PostExpenseCommand(
@@ -237,7 +237,7 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
         }
 
         await using var verification = CreateContext();
-        var store = new EfLedgerStore(verification);
+        var store = CreateStore(verification);
         var balances = await store.GetBalancesAsync(householdId, CancellationToken.None);
         var history = await store.GetHistoryAsync(householdId, 100, CancellationToken.None);
 
@@ -252,7 +252,7 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
     {
         await using (var context = CreateContext())
         {
-            var service = new LedgerService(new EfLedgerStore(context));
+            var service = new LedgerService(CreateStore(context));
             var invalidAmount = await Assert.ThrowsAsync<FinancialRuleException>(() =>
                 service.PostIncomeAsync(
                     actorUserId,
@@ -271,7 +271,7 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
 
         await using (var context = CreateContext())
         {
-            var service = new LedgerService(new EfLedgerStore(context));
+            var service = new LedgerService(CreateStore(context));
             var mismatch = await Assert.ThrowsAsync<FinancialRuleException>(() =>
                 service.PostExpenseAsync(
                     actorUserId,
@@ -289,7 +289,7 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
         }
 
         await using var verification = CreateContext();
-        var balances = await new EfLedgerStore(verification)
+        var balances = await CreateStore(verification)
             .GetBalancesAsync(householdId, CancellationToken.None);
         Assert.All(balances, balance => Assert.Equal(0, balance.BalanceCents));
     }
@@ -301,7 +301,7 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
         var idempotencyKey = Guid.NewGuid();
         await using (var context = CreateContext())
         {
-            var service = new LedgerService(new EfLedgerStore(context));
+            var service = new LedgerService(CreateStore(context));
             var created = await service.CreateAccountAsync(
                 actorUserId,
                 new CreateAccountCommand(
@@ -321,7 +321,7 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
 
         await using (var context = CreateContext())
         {
-            var service = new LedgerService(new EfLedgerStore(context));
+            var service = new LedgerService(CreateStore(context));
             var replay = await service.CreateAccountAsync(
                 actorUserId,
                 new CreateAccountCommand(
@@ -345,7 +345,7 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
 
         await using (var context = CreateContext())
         {
-            var service = new LedgerService(new EfLedgerStore(context));
+            var service = new LedgerService(CreateStore(context));
             var active = await service.GetAccountsAsync(householdId, false, CancellationToken.None);
             var all = await service.GetAccountsAsync(householdId, true, CancellationToken.None);
             var history = await service.GetHistoryAsync(householdId, 100, CancellationToken.None);
@@ -368,7 +368,7 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
         LedgerWriteResult result;
         await using (var context = CreateContext())
         {
-            var service = new LedgerService(new EfLedgerStore(context));
+            var service = new LedgerService(CreateStore(context));
             result = await service.PostTransferAsync(
                 actorUserId,
                 new PostTransferCommand(
@@ -385,7 +385,7 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
 
         await using (var context = CreateContext())
         {
-            var store = new EfLedgerStore(context);
+            var store = CreateStore(context);
             var balances = await store.GetBalancesAsync(householdId, CancellationToken.None);
             var transferEntries = (await store.GetHistoryAsync(
                     householdId,
@@ -422,7 +422,7 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
 
         await using (var context = CreateContext())
         {
-            var service = new LedgerService(new EfLedgerStore(context));
+            var service = new LedgerService(CreateStore(context));
             var exception = await Assert.ThrowsAsync<FinancialRuleException>(() =>
                 service.PostTransferAsync(
                     actorUserId,
@@ -442,9 +442,9 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
 
         await using (var context = CreateContext())
         {
-            var balances = await new EfLedgerStore(context)
+            var balances = await CreateStore(context)
                 .GetBalancesAsync(householdId, CancellationToken.None);
-            var reconciliation = await new EfLedgerStore(context)
+            var reconciliation = await CreateStore(context)
                 .ReconcileAsync(householdId, CancellationToken.None);
 
             Assert.Equal(1_000, balances.Single(item => item.AccountId == accountId).BalanceCents);
@@ -469,7 +469,7 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
         Assert.Equal("transaction_not_reversible", Assert.IsType<FinancialRuleException>(failure).Code);
 
         await using var context = CreateContext();
-        var balances = await new EfLedgerStore(context)
+        var balances = await CreateStore(context)
             .GetBalancesAsync(householdId, CancellationToken.None);
         Assert.Equal(0, balances.Single(item => item.AccountId == accountId).BalanceCents);
     }
@@ -482,7 +482,7 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
         var repost = await PostIncomeAsync(Guid.NewGuid(), 750, "Valor corrigido");
 
         await using var context = CreateContext();
-        var store = new EfLedgerStore(context);
+        var store = CreateStore(context);
         var history = await store.GetHistoryAsync(householdId, 100, CancellationToken.None);
         var balance = await store.GetBalancesAsync(householdId, CancellationToken.None);
 
@@ -514,7 +514,7 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
         Guid? actorId = null)
     {
         await using var context = CreateContext();
-        var service = new LedgerService(new EfLedgerStore(context));
+        var service = new LedgerService(CreateStore(context));
         return await service.PostIncomeAsync(
             actorId ?? actorUserId,
             new PostIncomeCommand(
@@ -532,7 +532,7 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
     private async Task<LedgerWriteResult> ReverseAsync(Guid transactionId, Guid idempotencyKey)
     {
         await using var context = CreateContext();
-        var service = new LedgerService(new EfLedgerStore(context));
+        var service = new LedgerService(CreateStore(context));
         return await service.ReverseAsync(
             actorUserId,
             new ReverseTransactionCommand(
@@ -548,6 +548,9 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
         new DbContextOptionsBuilder<InOutDbContext>()
             .UseNpgsql(postgres.GetConnectionString())
             .Options);
+
+    private static EfLedgerStore CreateStore(InOutDbContext context) =>
+        new(context, new IdempotencyPolicy(), TimeProvider.System);
 
     private async Task<long> CountAsync(string qualifiedTable)
     {
