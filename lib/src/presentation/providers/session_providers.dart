@@ -73,9 +73,8 @@ final ledgerCategoriesProvider = FutureProvider.autoDispose
 final householdSyncProvider = StreamProvider.autoDispose
     .family<HouseholdSyncEvent, String>((ref, householdId) async* {
       yield HouseholdSyncEvent.connecting;
-      await for (final event in ref
-          .watch(householdSyncGatewayProvider)
-          .watch(householdId)) {
+      await for (final event
+          in ref.watch(householdSyncGatewayProvider).watch(householdId)) {
         if (event != HouseholdSyncEvent.disconnected) {
           ref.invalidate(ledgerAccountsProvider(householdId));
           ref.invalidate(ledgerCategoriesProvider);

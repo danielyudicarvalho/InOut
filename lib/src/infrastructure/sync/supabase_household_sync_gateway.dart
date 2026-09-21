@@ -31,8 +31,8 @@ final class SupabaseHouseholdSyncGateway implements HouseholdSyncGateway {
               if (status == RealtimeSubscribeStatus.subscribed) {
                 controller.add(HouseholdSyncEvent.connected);
               } else if (status == RealtimeSubscribeStatus.channelError ||
-                      status == RealtimeSubscribeStatus.timedOut ||
-                      status == RealtimeSubscribeStatus.closed) {
+                  status == RealtimeSubscribeStatus.timedOut ||
+                  status == RealtimeSubscribeStatus.closed) {
                 controller.add(HouseholdSyncEvent.disconnected);
               }
             });

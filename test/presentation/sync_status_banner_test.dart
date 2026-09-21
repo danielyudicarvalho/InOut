@@ -11,7 +11,10 @@ void main() {
     );
 
     expect(find.byIcon(Icons.cloud_off_outlined), findsOneWidget);
-    expect(find.textContaining('nenhuma gravação será confirmada'), findsOneWidget);
+    expect(
+      find.textContaining('nenhuma gravação será confirmada'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('stays hidden while synchronized', (tester) async {

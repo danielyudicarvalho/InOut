@@ -295,9 +295,9 @@ void main() {
     final repository = ApiLedgerRepository(
       baseUrl: Uri.parse('https://api.inout.test'),
       accessToken: () async => 'token',
-      client: MockClient(
-        (_) async => throw http.ClientException('Network unavailable'),
-      ),
+      client: MockClient((_) async {
+        throw http.ClientException('Network unavailable');
+      }),
     );
 
     expect(
