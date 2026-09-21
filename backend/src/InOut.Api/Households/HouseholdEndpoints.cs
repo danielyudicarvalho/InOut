@@ -59,7 +59,4 @@ public static class HouseholdEndpoints
 
     private static Guid UserId(ClaimsPrincipal principal) =>
         Guid.Parse(principal.FindFirstValue(ApiContract.Claims.Subject)!);
-
-    public sealed record CreateHouseholdRequest(string? Name);
-    public sealed record AcceptHouseholdInvitationRequest(string? Code);
 }

@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 import 'package:inout/src/application/financial/ledger_repository.dart';
+import 'package:inout/src/infrastructure/financial/dtos/ledger_response_mapper.dart';
 import 'package:inout/src/infrastructure/household/api_household_repository.dart';
 import 'package:inout/src/infrastructure/http/api_contract.dart';
 
@@ -46,7 +47,9 @@ final class ApiLedgerRepository implements LedgerRepository {
     );
     final body = jsonDecode(response.body) as Map<String, dynamic>;
     return AccountCreationResult(
-      account: _account(body[ApiFields.account]! as Map<String, dynamic>),
+      account: LedgerResponseMapper.account(
+        body[ApiFields.account]! as Map<String, dynamic>,
+      ),
       replayed: body[ApiFields.replayed]! as bool,
     );
   }
@@ -65,7 +68,7 @@ final class ApiLedgerRepository implements LedgerRepository {
     );
     return (jsonDecode(response.body) as List<dynamic>)
         .cast<Map<String, dynamic>>()
-        .map(_account)
+        .map(LedgerResponseMapper.account)
         .toList(growable: false);
   }
 
@@ -110,7 +113,7 @@ final class ApiLedgerRepository implements LedgerRepository {
     );
     return (jsonDecode(response.body) as List<dynamic>)
         .cast<Map<String, dynamic>>()
-        .map(_historyItem)
+        .map(LedgerResponseMapper.historyItem)
         .toList(growable: false);
   }
 
@@ -192,7 +195,7 @@ final class ApiLedgerRepository implements LedgerRepository {
     );
     return (jsonDecode(response.body) as List<dynamic>)
         .cast<Map<String, dynamic>>()
-        .map(_balance)
+        .map(LedgerResponseMapper.balance)
         .toList(growable: false);
   }
 
@@ -209,7 +212,7 @@ final class ApiLedgerRepository implements LedgerRepository {
       entryTransactionCount: body[ApiFields.entryTransactionCount]! as int,
       balances: (body[ApiFields.balances]! as List<dynamic>)
           .cast<Map<String, dynamic>>()
-          .map(_balance)
+          .map(LedgerResponseMapper.balance)
           .toList(growable: false),
     );
   }
@@ -280,40 +283,6 @@ final class ApiLedgerRepository implements LedgerRepository {
     }
     return response;
   }
-
-  static AccountBalance _balance(Map<String, dynamic> row) => AccountBalance(
-    accountId: row[ApiFields.accountId]! as String,
-    currency: row[ApiFields.currency]! as String,
-    balanceCents: row[ApiFields.balanceCents]! as int,
-  );
-
-  static AccountSummary _account(Map<String, dynamic> row) => AccountSummary(
-    id: row[ApiFields.id]! as String,
-    name: row[ApiFields.name]! as String,
-    kind: row[ApiFields.kind]! as String,
-    currency: row[ApiFields.currency]! as String,
-    balanceCents: row[ApiFields.balanceCents]! as int,
-    archivedAt: row[ApiFields.archivedAt] == null
-        ? null
-        : DateTime.parse(row[ApiFields.archivedAt]! as String),
-  );
-
-  static LedgerHistoryItem _historyItem(Map<String, dynamic> row) =>
-      LedgerHistoryItem(
-        transactionId: row[ApiFields.transactionId]! as String,
-        kind: row[ApiFields.kind]! as String,
-        status: row[ApiFields.status]! as String,
-        description: row[ApiFields.description] as String?,
-        reversalOf: row[ApiFields.reversalOf] as String?,
-        occurredOn: DateTime.parse(row[ApiFields.occurredOn]! as String),
-        postedAt: DateTime.parse(row[ApiFields.postedAt]! as String),
-        createdBy: row[ApiFields.createdBy]! as String,
-        accountId: row[ApiFields.accountId]! as String,
-        accountName: row[ApiFields.accountName]! as String,
-        direction: row[ApiFields.direction]! as String,
-        amountCents: row[ApiFields.amountCents]! as int,
-        currency: row[ApiFields.currency]! as String,
-      );
 
   static String _date(DateTime value) =>
       value.toIso8601String().substring(0, 10);
