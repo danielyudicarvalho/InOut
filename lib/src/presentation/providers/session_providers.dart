@@ -2,11 +2,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:inout/src/application/financial/ledger_repository.dart';
 import 'package:inout/src/application/household/household_repository.dart';
 import 'package:inout/src/application/identity/auth_repository.dart';
+import 'package:inout/src/application/sync/household_sync_gateway.dart';
 import 'package:inout/src/domain/household/household.dart';
 import 'package:inout/src/domain/identity/authenticated_user.dart';
 import 'package:inout/src/infrastructure/auth/supabase_auth_repository.dart';
 import 'package:inout/src/infrastructure/financial/api_ledger_repository.dart';
 import 'package:inout/src/infrastructure/household/api_household_repository.dart';
+import 'package:inout/src/infrastructure/sync/supabase_household_sync_gateway.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 final authRepositoryProvider = Provider<AuthRepository>(
@@ -37,6 +39,10 @@ final ledgerRepositoryProvider = Provider<LedgerRepository>((ref) {
   return repository;
 });
 
+final householdSyncGatewayProvider = Provider<HouseholdSyncGateway>(
+  (ref) => SupabaseHouseholdSyncGateway(Supabase.instance.client),
+);
+
 final authenticatedUserProvider = StreamProvider<AuthenticatedUser?>((ref) {
   final repository = ref.watch(authRepositoryProvider);
   return Stream.value(repository.currentUser).asyncExpand((initial) async* {
@@ -62,4 +68,18 @@ final ledgerCategoriesProvider = FutureProvider.autoDispose
       return ref
           .watch(ledgerRepositoryProvider)
           .getCategories(input.householdId, flow: input.flow);
+    });
+
+final householdSyncProvider = StreamProvider.autoDispose
+    .family<HouseholdSyncEvent, String>((ref, householdId) async* {
+      yield HouseholdSyncEvent.connecting;
+      await for (final event in ref
+          .watch(householdSyncGatewayProvider)
+          .watch(householdId)) {
+        if (event != HouseholdSyncEvent.disconnected) {
+          ref.invalidate(ledgerAccountsProvider(householdId));
+          ref.invalidate(ledgerCategoriesProvider);
+        }
+        yield event;
+      }
     });

@@ -257,9 +257,15 @@ final class ApiLedgerRepository implements LedgerRepository {
     }
     if (body != null) request.body = jsonEncode(body);
 
-    final response = await http.Response.fromStream(
-      await _client.send(request),
-    );
+    late final http.Response response;
+    try {
+      response = await http.Response.fromStream(await _client.send(request));
+    } on http.ClientException {
+      throw const ApiLedgerException(
+        ApiStatusCodes.networkUnavailable,
+        ApiErrorCodes.networkUnavailable,
+      );
+    }
     if (response.statusCode < 200 || response.statusCode >= 300) {
       var code = ApiErrorCodes.apiError;
       try {
