@@ -18,8 +18,9 @@ public sealed class HouseholdExceptionHandler : IExceptionHandler
 
         var status = householdException.Code switch
         {
-            "owner_required" => StatusCodes.Status403Forbidden,
-            "household_full" or "already_member" => StatusCodes.Status409Conflict,
+            HouseholdErrorCodes.OwnerRequired => StatusCodes.Status403Forbidden,
+            HouseholdErrorCodes.HouseholdFull or HouseholdErrorCodes.AlreadyMember =>
+                StatusCodes.Status409Conflict,
             _ => StatusCodes.Status400BadRequest
         };
         httpContext.Response.StatusCode = status;
@@ -28,7 +29,7 @@ public sealed class HouseholdExceptionHandler : IExceptionHandler
             {
                 Status = status,
                 Title = householdException.Message,
-                Extensions = { ["code"] = householdException.Code }
+                Extensions = { [ApiContract.ProblemFields.Code] = householdException.Code }
             },
             cancellationToken);
         return true;

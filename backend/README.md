@@ -91,6 +91,12 @@ conta. Saldos são derivados das entries contabilizadas. O runtime pode criar e
 arquivar contas, mas não recebe `DELETE`; o histórico mantém autor, data, tipo e
 as pernas de cada movimento.
 
+Operações mutáveis recebem `Idempotency-Key`. A intenção é registrada na tabela
+genérica `private.idempotency_requests`, com escopo por residência e operação,
+fingerprint do payload, estado, lease e resultado semântico. Chave, mutação,
+auditoria e Outbox são persistidos atomicamente. Identidades e constraints de
+domínio continuam independentes da chave; consulte a ADR-006.
+
 ## Limites
 
 Domain e Application não podem depender de ASP.NET Core, EF Core, Npgsql, Supabase ou Flutter. Os testes de arquitetura bloqueiam violações básicas dessa direção.

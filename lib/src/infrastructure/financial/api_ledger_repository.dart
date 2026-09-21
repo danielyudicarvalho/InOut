@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:inout/src/application/financial/ledger_repository.dart';
 import 'package:inout/src/infrastructure/household/api_household_repository.dart';
+import 'package:inout/src/infrastructure/http/api_contract.dart';
 
 final class ApiLedgerRepository implements LedgerRepository {
   ApiLedgerRepository({
@@ -31,22 +32,22 @@ final class ApiLedgerRepository implements LedgerRepository {
     required String idempotencyKey,
   }) async {
     final response = await _send(
-      'POST',
-      '/api/v1/households/$householdId/ledger/accounts',
+      ApiMethods.post,
+      ApiContract.accounts(householdId),
+      idempotencyKey: idempotencyKey,
       body: {
-        'id': id,
-        'name': name,
-        'kind': kind,
-        'currency': currency,
-        'initialBalanceCents': initialBalanceCents,
-        'openingDate': _date(openingDate),
-        'idempotencyKey': idempotencyKey,
+        ApiFields.id: id,
+        ApiFields.name: name,
+        ApiFields.kind: kind,
+        ApiFields.currency: currency,
+        ApiFields.initialBalanceCents: initialBalanceCents,
+        ApiFields.openingDate: _date(openingDate),
       },
     );
     final body = jsonDecode(response.body) as Map<String, dynamic>;
     return AccountCreationResult(
-      account: _account(body['account']! as Map<String, dynamic>),
-      replayed: body['replayed']! as bool,
+      account: _account(body[ApiFields.account]! as Map<String, dynamic>),
+      replayed: body[ApiFields.replayed]! as bool,
     );
   }
 
@@ -55,10 +56,12 @@ final class ApiLedgerRepository implements LedgerRepository {
     String householdId, {
     bool includeArchived = false,
   }) async {
-    final suffix = includeArchived ? '?includeArchived=true' : '';
+    final suffix = includeArchived
+        ? '?${ApiQueryFields.includeArchived}=true'
+        : '';
     final response = await _send(
-      'GET',
-      '/api/v1/households/$householdId/ledger/accounts$suffix',
+      ApiMethods.get,
+      '${ApiContract.accounts(householdId)}$suffix',
     );
     return (jsonDecode(response.body) as List<dynamic>)
         .cast<Map<String, dynamic>>()
@@ -71,10 +74,7 @@ final class ApiLedgerRepository implements LedgerRepository {
     required String householdId,
     required String accountId,
   }) async {
-    await _send(
-      'DELETE',
-      '/api/v1/households/$householdId/ledger/accounts/$accountId',
-    );
+    await _send(ApiMethods.delete, ApiContract.account(householdId, accountId));
   }
 
   @override
@@ -82,18 +82,18 @@ final class ApiLedgerRepository implements LedgerRepository {
     String householdId, {
     String? flow,
   }) async {
-    final suffix = flow == null ? '' : '?flow=$flow';
+    final suffix = flow == null ? '' : '?${ApiQueryFields.flow}=$flow';
     final response = await _send(
-      'GET',
-      '/api/v1/households/$householdId/ledger/categories$suffix',
+      ApiMethods.get,
+      '${ApiContract.categories(householdId)}$suffix',
     );
     return (jsonDecode(response.body) as List<dynamic>)
         .cast<Map<String, dynamic>>()
         .map(
           (row) => CategorySummary(
-            id: row['id']! as String,
-            name: row['name']! as String,
-            flow: row['flow']! as String,
+            id: row[ApiFields.id]! as String,
+            name: row[ApiFields.name]! as String,
+            flow: row[ApiFields.flow]! as String,
           ),
         )
         .toList(growable: false);
@@ -105,8 +105,8 @@ final class ApiLedgerRepository implements LedgerRepository {
     int limit = 100,
   }) async {
     final response = await _send(
-      'GET',
-      '/api/v1/households/$householdId/ledger/history?limit=$limit',
+      ApiMethods.get,
+      '${ApiContract.history(householdId)}?${ApiQueryFields.limit}=$limit',
     );
     return (jsonDecode(response.body) as List<dynamic>)
         .cast<Map<String, dynamic>>()
@@ -124,14 +124,13 @@ final class ApiLedgerRepository implements LedgerRepository {
     required DateTime occurredOn,
     required String idempotencyKey,
     String? description,
-  }) => _post('/api/v1/households/$householdId/ledger/income', {
-    'accountId': accountId,
-    'categoryId': categoryId,
-    'amountCents': amountCents,
-    'currency': currency,
-    'occurredOn': _date(occurredOn),
-    'idempotencyKey': idempotencyKey,
-    'description': description,
+  }) => _post(ApiContract.income(householdId), idempotencyKey, {
+    ApiFields.accountId: accountId,
+    ApiFields.categoryId: categoryId,
+    ApiFields.amountCents: amountCents,
+    ApiFields.currency: currency,
+    ApiFields.occurredOn: _date(occurredOn),
+    ApiFields.description: description,
   });
 
   @override
@@ -144,14 +143,13 @@ final class ApiLedgerRepository implements LedgerRepository {
     required DateTime occurredOn,
     required String idempotencyKey,
     String? description,
-  }) => _post('/api/v1/households/$householdId/ledger/expenses', {
-    'accountId': accountId,
-    'categoryId': categoryId,
-    'amountCents': amountCents,
-    'currency': currency,
-    'occurredOn': _date(occurredOn),
-    'idempotencyKey': idempotencyKey,
-    'description': description,
+  }) => _post(ApiContract.expenses(householdId), idempotencyKey, {
+    ApiFields.accountId: accountId,
+    ApiFields.categoryId: categoryId,
+    ApiFields.amountCents: amountCents,
+    ApiFields.currency: currency,
+    ApiFields.occurredOn: _date(occurredOn),
+    ApiFields.description: description,
   });
 
   @override
@@ -164,14 +162,13 @@ final class ApiLedgerRepository implements LedgerRepository {
     required DateTime occurredOn,
     required String idempotencyKey,
     String? description,
-  }) => _post('/api/v1/households/$householdId/ledger/transfers', {
-    'sourceAccountId': sourceAccountId,
-    'destinationAccountId': destinationAccountId,
-    'amountCents': amountCents,
-    'currency': currency,
-    'occurredOn': _date(occurredOn),
-    'idempotencyKey': idempotencyKey,
-    'description': description,
+  }) => _post(ApiContract.transfers(householdId), idempotencyKey, {
+    ApiFields.sourceAccountId: sourceAccountId,
+    ApiFields.destinationAccountId: destinationAccountId,
+    ApiFields.amountCents: amountCents,
+    ApiFields.currency: currency,
+    ApiFields.occurredOn: _date(occurredOn),
+    ApiFields.description: description,
   });
 
   @override
@@ -181,21 +178,17 @@ final class ApiLedgerRepository implements LedgerRepository {
     required DateTime occurredOn,
     required String idempotencyKey,
     String? description,
-  }) => _post(
-    '/api/v1/households/$householdId/ledger/transactions/'
-    '$transactionId/reversals',
-    {
-      'occurredOn': _date(occurredOn),
-      'idempotencyKey': idempotencyKey,
-      'description': description,
-    },
-  );
+  }) =>
+      _post(ApiContract.reversals(householdId, transactionId), idempotencyKey, {
+        ApiFields.occurredOn: _date(occurredOn),
+        ApiFields.description: description,
+      });
 
   @override
   Future<List<AccountBalance>> getBalances(String householdId) async {
     final response = await _send(
-      'GET',
-      '/api/v1/households/$householdId/ledger/balances',
+      ApiMethods.get,
+      ApiContract.balances(householdId),
     );
     return (jsonDecode(response.body) as List<dynamic>)
         .cast<Map<String, dynamic>>()
@@ -206,15 +199,15 @@ final class ApiLedgerRepository implements LedgerRepository {
   @override
   Future<LedgerReconciliation> reconcile(String householdId) async {
     final response = await _send(
-      'GET',
-      '/api/v1/households/$householdId/ledger/reconciliation',
+      ApiMethods.get,
+      ApiContract.reconciliation(householdId),
     );
     final body = jsonDecode(response.body) as Map<String, dynamic>;
     return LedgerReconciliation(
-      isConsistent: body['isConsistent']! as bool,
-      postedTransactionCount: body['postedTransactionCount']! as int,
-      entryTransactionCount: body['entryTransactionCount']! as int,
-      balances: (body['balances']! as List<dynamic>)
+      isConsistent: body[ApiFields.isConsistent]! as bool,
+      postedTransactionCount: body[ApiFields.postedTransactionCount]! as int,
+      entryTransactionCount: body[ApiFields.entryTransactionCount]! as int,
+      balances: (body[ApiFields.balances]! as List<dynamic>)
           .cast<Map<String, dynamic>>()
           .map(_balance)
           .toList(growable: false),
@@ -223,13 +216,19 @@ final class ApiLedgerRepository implements LedgerRepository {
 
   Future<LedgerWriteResult> _post(
     String path,
+    String idempotencyKey,
     Map<String, Object?> body,
   ) async {
-    final response = await _send('POST', path, body: body);
+    final response = await _send(
+      ApiMethods.post,
+      path,
+      body: body,
+      idempotencyKey: idempotencyKey,
+    );
     final payload = jsonDecode(response.body) as Map<String, dynamic>;
     return LedgerWriteResult(
-      transactionId: payload['transactionId']! as String,
-      replayed: payload['replayed']! as bool,
+      transactionId: payload[ApiFields.transactionId]! as String,
+      replayed: payload[ApiFields.replayed]! as bool,
     );
   }
 
@@ -237,28 +236,35 @@ final class ApiLedgerRepository implements LedgerRepository {
     String method,
     String path, {
     Map<String, Object?>? body,
+    String? idempotencyKey,
   }) async {
     final token = await _accessToken();
     if (token == null || token.isEmpty) {
-      throw const ApiLedgerException(401, 'authentication_required');
+      throw const ApiLedgerException(
+        ApiStatusCodes.unauthorized,
+        ApiErrorCodes.authenticationRequired,
+      );
     }
 
     final request = http.Request(method, _baseUrl.resolve(path))
       ..headers.addAll({
-        'Authorization': 'Bearer $token',
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
+        ApiHeaders.authorization: '${ApiHeaders.bearer} $token',
+        ApiHeaders.accept: ApiHeaders.json,
+        ApiHeaders.contentType: ApiHeaders.json,
       });
+    if (idempotencyKey != null) {
+      request.headers[ApiHeaders.idempotencyKey] = idempotencyKey;
+    }
     if (body != null) request.body = jsonEncode(body);
 
     final response = await http.Response.fromStream(
       await _client.send(request),
     );
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      var code = 'api_error';
+      var code = ApiErrorCodes.apiError;
       try {
         code =
-            (jsonDecode(response.body) as Map<String, dynamic>)['code']
+            (jsonDecode(response.body) as Map<String, dynamic>)[ApiFields.code]
                 as String? ??
             code;
       } on FormatException {
@@ -270,37 +276,37 @@ final class ApiLedgerRepository implements LedgerRepository {
   }
 
   static AccountBalance _balance(Map<String, dynamic> row) => AccountBalance(
-    accountId: row['accountId']! as String,
-    currency: row['currency']! as String,
-    balanceCents: row['balanceCents']! as int,
+    accountId: row[ApiFields.accountId]! as String,
+    currency: row[ApiFields.currency]! as String,
+    balanceCents: row[ApiFields.balanceCents]! as int,
   );
 
   static AccountSummary _account(Map<String, dynamic> row) => AccountSummary(
-    id: row['id']! as String,
-    name: row['name']! as String,
-    kind: row['kind']! as String,
-    currency: row['currency']! as String,
-    balanceCents: row['balanceCents']! as int,
-    archivedAt: row['archivedAt'] == null
+    id: row[ApiFields.id]! as String,
+    name: row[ApiFields.name]! as String,
+    kind: row[ApiFields.kind]! as String,
+    currency: row[ApiFields.currency]! as String,
+    balanceCents: row[ApiFields.balanceCents]! as int,
+    archivedAt: row[ApiFields.archivedAt] == null
         ? null
-        : DateTime.parse(row['archivedAt']! as String),
+        : DateTime.parse(row[ApiFields.archivedAt]! as String),
   );
 
   static LedgerHistoryItem _historyItem(Map<String, dynamic> row) =>
       LedgerHistoryItem(
-        transactionId: row['transactionId']! as String,
-        kind: row['kind']! as String,
-        status: row['status']! as String,
-        description: row['description'] as String?,
-        reversalOf: row['reversalOf'] as String?,
-        occurredOn: DateTime.parse(row['occurredOn']! as String),
-        postedAt: DateTime.parse(row['postedAt']! as String),
-        createdBy: row['createdBy']! as String,
-        accountId: row['accountId']! as String,
-        accountName: row['accountName']! as String,
-        direction: row['direction']! as String,
-        amountCents: row['amountCents']! as int,
-        currency: row['currency']! as String,
+        transactionId: row[ApiFields.transactionId]! as String,
+        kind: row[ApiFields.kind]! as String,
+        status: row[ApiFields.status]! as String,
+        description: row[ApiFields.description] as String?,
+        reversalOf: row[ApiFields.reversalOf] as String?,
+        occurredOn: DateTime.parse(row[ApiFields.occurredOn]! as String),
+        postedAt: DateTime.parse(row[ApiFields.postedAt]! as String),
+        createdBy: row[ApiFields.createdBy]! as String,
+        accountId: row[ApiFields.accountId]! as String,
+        accountName: row[ApiFields.accountName]! as String,
+        direction: row[ApiFields.direction]! as String,
+        amountCents: row[ApiFields.amountCents]! as int,
+        currency: row[ApiFields.currency]! as String,
       );
 
   static String _date(DateTime value) =>

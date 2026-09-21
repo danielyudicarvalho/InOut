@@ -93,7 +93,7 @@ Exemplo: despesa de R$ 150 registrada como R$ 510.
 ## Regras de concorrência
 
 - Gravações financeiras usam transação de banco.
-- Operações aceitam chave de idempotência para evitar duplo envio.
+- Comandos mutáveis recebem uma identidade de intenção pelo header `Idempotency-Key`; Application calcula o fingerprint e Infrastructure persiste replay e resultado sem contaminar as entidades do domínio.
 - A versão do registro ou constraint impede estorno duplo.
 - O cliente não calcula o saldo final como fonte de verdade.
 - Respostas a repetição idempotente retornam o resultado original.

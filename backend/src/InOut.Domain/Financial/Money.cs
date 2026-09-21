@@ -4,18 +4,20 @@ namespace InOut.Domain.Financial;
 
 public readonly record struct Money
 {
-    public Money(long cents, string currency = "BRL")
+    public const string DefaultCurrency = "BRL";
+
+    public Money(long cents, string currency = DefaultCurrency)
     {
         if (cents < 0)
         {
-            throw new FinancialRuleException("invalid_amount", "Money cannot be negative.");
+            throw new FinancialRuleException(FinancialErrorCodes.InvalidAmount, "Money cannot be negative.");
         }
 
         var normalizedCurrency = StringUtils.NormalizeUpper(currency);
         if (normalizedCurrency.Length != 3 ||
             normalizedCurrency.Any(character => character is < 'A' or > 'Z'))
         {
-            throw new FinancialRuleException("invalid_currency", "Currency must be a three-letter ISO code.");
+            throw new FinancialRuleException(FinancialErrorCodes.InvalidCurrency, "Currency must be a three-letter ISO code.");
         }
 
         Cents = cents;
@@ -26,11 +28,11 @@ public readonly record struct Money
 
     public string Currency { get; }
 
-    public static Money Positive(long cents, string currency = "BRL")
+    public static Money Positive(long cents, string currency = DefaultCurrency)
     {
         if (cents <= 0)
         {
-            throw new FinancialRuleException("invalid_amount", "Amount must be greater than zero.");
+            throw new FinancialRuleException(FinancialErrorCodes.InvalidAmount, "Amount must be greater than zero.");
         }
 
         return new Money(cents, currency);
@@ -47,7 +49,7 @@ public readonly record struct Money
         EnsureSameCurrency(other);
         if (other.Cents > Cents)
         {
-            throw new FinancialRuleException("negative_money", "The operation would produce negative Money.");
+            throw new FinancialRuleException(FinancialErrorCodes.NegativeMoney, "The operation would produce negative Money.");
         }
 
         return new Money(Cents - other.Cents, Currency);
@@ -57,7 +59,7 @@ public readonly record struct Money
     {
         if (!string.Equals(Currency, other.Currency, StringComparison.Ordinal))
         {
-            throw new FinancialRuleException("currency_mismatch", "Money currencies must match.");
+            throw new FinancialRuleException(FinancialErrorCodes.CurrencyMismatch, "Money currencies must match.");
         }
     }
 }

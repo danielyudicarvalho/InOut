@@ -1,3 +1,4 @@
+using InOut.Application.Idempotency;
 using InOut.Domain.Financial;
 
 namespace InOut.Application.Financial;
@@ -43,7 +44,7 @@ public interface ILedgerStore
 {
     Task<AccountCreationResult> CreateAccountAsync(
         AccountOpening opening,
-        Guid actorUserId,
+        IdempotencyRequest idempotencyRequest,
         CancellationToken cancellationToken);
 
     Task<IReadOnlyList<AccountSummary>> GetAccountsAsync(
@@ -69,15 +70,15 @@ public interface ILedgerStore
 
     Task<LedgerWriteResult> PostAsync(
         FinancialTransaction transaction,
+        IdempotencyRequest idempotencyRequest,
         CancellationToken cancellationToken);
 
     Task<LedgerWriteResult> ReverseAsync(
         Guid householdId,
         Guid transactionId,
-        Guid idempotencyKey,
-        Guid actorUserId,
         DateOnly occurredOn,
         string? description,
+        IdempotencyRequest idempotencyRequest,
         CancellationToken cancellationToken);
 
     Task<IReadOnlyList<AccountBalance>> GetBalancesAsync(

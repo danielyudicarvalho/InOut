@@ -17,7 +17,6 @@ public sealed class AccountTests
                 "BRL",
                 -1,
                 new DateOnly(2026, 9, 15),
-                Guid.NewGuid(),
                 Guid.NewGuid()));
 
         Assert.Equal("invalid_initial_balance", exception.Code);
@@ -35,13 +34,13 @@ public sealed class AccountTests
             "BRL",
             10_000,
             new DateOnly(2026, 9, 15),
-            Guid.NewGuid(),
             Guid.NewGuid());
 
         Assert.Equal(accountId, opening.Account.Id);
+        var openingBalance = Assert.IsType<FinancialTransaction>(opening.OpeningBalance);
         Assert.Equal(
             FinancialTransactionKind.OpeningBalance,
-            Assert.IsType<FinancialTransaction>(opening.OpeningBalance).Kind);
+            openingBalance.Kind);
     }
 
     [Fact]
