@@ -65,7 +65,10 @@ jobs:
         run: flutter pub get --enforce-lockfile
 
       - name: Check formatting
-        run: dart format --output=none --set-exit-if-changed lib test
+        run: |
+          dart format lib test
+          git diff -- test/infrastructure/financial/api_ledger_repository_test.dart test/presentation/sync_status_banner_test.dart
+          exit 1
 
       - name: Check architecture and design boundaries
         run: ./tool/check_architecture.sh
