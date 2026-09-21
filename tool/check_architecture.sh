@@ -24,7 +24,7 @@ fi
 
 if grep --recursive --line-number --extended-regexp \
   '\.(rpc|from)\(' lib --include='*.dart'; then
-  echo "Data-boundary violation: Flutter may use Supabase only for Auth; business data must use the API." >&2
+  echo "Data-boundary violation: Flutter may use Supabase for Auth and sync signals; business data must use the API." >&2
   exit 1
 fi
 

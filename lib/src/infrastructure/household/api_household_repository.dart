@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:inout/src/application/household/household_repository.dart';
 import 'package:inout/src/core/utils/string_utils.dart';
 import 'package:inout/src/domain/household/household.dart';
+import 'package:inout/src/infrastructure/household/dtos/household_response_mapper.dart';
 import 'package:inout/src/infrastructure/http/api_contract.dart';
 
 typedef AccessTokenProvider = Future<String?> Function();
@@ -29,7 +30,7 @@ final class ApiHouseholdRepository implements HouseholdRepository {
     final rows = jsonDecode(response.body) as List<dynamic>;
     return rows
         .cast<Map<String, dynamic>>()
-        .map(_mapHousehold)
+        .map(HouseholdResponseMapper.household)
         .toList(growable: false);
   }
 
@@ -40,7 +41,9 @@ final class ApiHouseholdRepository implements HouseholdRepository {
       ApiContract.households,
       body: {ApiFields.name: StringUtils.trimToNull(name) ?? ''},
     );
-    return _mapHousehold(jsonDecode(response.body) as Map<String, dynamic>);
+    return HouseholdResponseMapper.household(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
   }
 
   @override
@@ -60,7 +63,9 @@ final class ApiHouseholdRepository implements HouseholdRepository {
       ApiContract.acceptInvitation,
       body: {ApiFields.code: StringUtils.trimToNull(inviteCode) ?? ''},
     );
-    return _mapHousehold(jsonDecode(response.body) as Map<String, dynamic>);
+    return HouseholdResponseMapper.household(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
   }
 
   Future<http.Response> _send(
@@ -100,11 +105,6 @@ final class ApiHouseholdRepository implements HouseholdRepository {
     }
     return response;
   }
-
-  static Household _mapHousehold(Map<String, dynamic> row) => Household(
-    id: row[ApiFields.id]! as String,
-    name: row[ApiFields.name]! as String,
-  );
 }
 
 final class ApiHouseholdException implements Exception {

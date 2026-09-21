@@ -91,8 +91,10 @@ abstract final class ApiQueryFields {
 abstract final class ApiErrorCodes {
   static const apiError = 'api_error';
   static const authenticationRequired = 'authentication_required';
+  static const networkUnavailable = 'network_unavailable';
 }
 
 abstract final class ApiStatusCodes {
+  static const networkUnavailable = 0;
   static const unauthorized = 401;
 }

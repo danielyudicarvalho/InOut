@@ -23,6 +23,11 @@ uma classe global criaria acoplamento entre camadas e esconderia o contexto.
   domínio para valores fechados, como `FinancialFlow`.
 - Valores que são extensíveis por padrão, como códigos ISO de moedas, usam
   constantes nomeadas em vez de enums fechados.
+- DTOs de entrada HTTP ficam em `InOut.Api/<módulo>/Dtos`; comandos e projeções
+  de aplicação ficam em `InOut.Application/<módulo>/Dtos`. O domínio não depende
+  desses contratos. No Flutter, os modelos usados pelos casos de uso ficam em
+  `application/<módulo>/dtos`, e a conversão de JSON pertence aos mapeadores em
+  `infrastructure/<módulo>/dtos`.
 
 ## Exclusões deliberadas
 

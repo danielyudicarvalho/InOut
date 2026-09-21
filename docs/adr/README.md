@@ -32,3 +32,4 @@ Quais benefícios, custos, riscos e próximos passos surgem?
 - [ADR-005: backend dedicado ASP.NET](ADR-005-dedicated-aspnet-backend.md) — aceita; substitui o uso de RPCs/Supabase como sede dos casos de uso.
 - [ADR-006: idempotência e mensageria confiável](006-idempotency-and-reliable-messaging.md) — aceita.
 - [ADR-007: vocabulários fixos e strings de contrato](007-contract-vocabulary.md) — aceita.
+- [ADR-008: sinais de mudança e reconciliação da residência](008-household-realtime-reconciliation.md) — aceita.
