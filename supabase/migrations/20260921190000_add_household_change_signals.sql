@@ -9,6 +9,11 @@ create index household_change_signals_household_revision_idx
 
 alter table public.household_change_signals enable row level security;
 
+revoke all on table public.household_change_signals
+  from public, anon, authenticated;
+revoke all on sequence public.household_change_signals_revision_seq
+  from public, anon, authenticated;
+
 create function public.can_receive_household_signal(requested_household_id uuid)
 returns boolean
 language sql

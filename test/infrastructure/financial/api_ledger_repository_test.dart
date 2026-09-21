@@ -291,34 +291,37 @@ void main() {
     );
   });
 
-  test('reports an unconfirmed write when the network is unavailable', () {
-    final repository = ApiLedgerRepository(
-      baseUrl: Uri.parse('https://api.inout.test'),
-      accessToken: () async => 'token',
-      client: MockClient((_) async {
-        throw http.ClientException('Network unavailable');
-      }),
-    );
+  test(
+    'reports an unconfirmed write when the network is unavailable',
+    () {
+      final repository = ApiLedgerRepository(
+        baseUrl: Uri.parse('https://api.inout.test'),
+        accessToken: () async => 'token',
+        client: MockClient((_) async {
+          throw http.ClientException('Network unavailable');
+        }),
+      );
 
-    expect(
-      repository.postExpense(
-        householdId: 'household-1',
-        accountId: 'account-1',
-        categoryId: 'category-1',
-        amountCents: 100,
-        currency: 'BRL',
-        occurredOn: DateTime(2026, 9, 21),
-        idempotencyKey: 'intent-1',
-      ),
-      throwsA(
-        isA<ApiLedgerException>()
-            .having((error) => error.statusCode, 'statusCode', 0)
-            .having(
-              (error) => error.code,
-              'code',
-              'network_unavailable',
-            ),
-      ),
-    );
-  });
+      expect(
+        repository.postExpense(
+          householdId: 'household-1',
+          accountId: 'account-1',
+          categoryId: 'category-1',
+          amountCents: 100,
+          currency: 'BRL',
+          occurredOn: DateTime(2026, 9, 21),
+          idempotencyKey: 'intent-1',
+        ),
+        throwsA(
+          isA<ApiLedgerException>()
+              .having((error) => error.statusCode, 'statusCode', 0)
+              .having(
+                (error) => error.code,
+                'code',
+                'network_unavailable',
+              ),
+        ),
+      );
+    },
+  );
 }

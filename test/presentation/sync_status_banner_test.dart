@@ -3,19 +3,22 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:inout/src/presentation/components/sync_status_banner.dart';
 
 void main() {
-  testWidgets('shows that writes are unconfirmed while offline', (tester) async {
-    await tester.pumpWidget(
-      const MaterialApp(
-        home: Scaffold(body: SyncStatusBanner(offline: true)),
-      ),
-    );
+  testWidgets(
+    'shows that writes are unconfirmed while offline',
+    (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(body: SyncStatusBanner(offline: true)),
+        ),
+      );
 
-    expect(find.byIcon(Icons.cloud_off_outlined), findsOneWidget);
-    expect(
-      find.textContaining('nenhuma gravação será confirmada'),
-      findsOneWidget,
-    );
-  });
+      expect(find.byIcon(Icons.cloud_off_outlined), findsOneWidget);
+      expect(
+        find.textContaining('nenhuma gravação será confirmada'),
+        findsOneWidget,
+      );
+    },
+  );
 
   testWidgets('stays hidden while synchronized', (tester) async {
     await tester.pumpWidget(

@@ -76,13 +76,14 @@ set local request.jwt.claim.sub = '91000000-0000-0000-0000-000000000001';
 select lives_ok(
   $$
     insert into public.audit_events (
-      household_id, actor_user_id, action, entity_type, entity_id
+      household_id, actor_user_id, action, entity_type, entity_id, outcome
     ) values (
       '93000000-0000-0000-0000-000000000003',
       '91000000-0000-0000-0000-000000000001',
       'financial.transaction.posted',
       'transaction',
-      '95000000-0000-0000-0000-000000000005'
+      '95000000-0000-0000-0000-000000000005',
+      'success'
     )
   $$,
   'an audited API mutation emits its signal in the same transaction'
