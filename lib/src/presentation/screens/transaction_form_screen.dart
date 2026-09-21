@@ -34,6 +34,8 @@ final class _TransactionFormScreenState
   String? _categoryId;
   bool _saving = false;
   String? _error;
+  String? _pendingIntentSignature;
+  String? _pendingIdempotencyKey;
 
   bool get _isIncome => widget.flow == FinancialFlow.income;
   String get _flow => widget.flow.name;
@@ -53,15 +55,30 @@ final class _TransactionFormScreenState
     });
     final repository = ref.read(ledgerRepositoryProvider);
     final cents = MoneyUtils.parseBrlToCents(_amount.text)!;
+    final occurredOn = DateTime.now();
+    final description = StringUtils.trimToNull(_description.text);
+    final intentSignature = [
+      widget.household.id,
+      widget.flow.name,
+      _accountId,
+      _categoryId,
+      cents,
+      occurredOn.toIso8601String().substring(0, 10),
+      description,
+    ].join('|');
+    if (_pendingIntentSignature != intentSignature) {
+      _pendingIntentSignature = intentSignature;
+      _pendingIdempotencyKey = UuidUtils.v4();
+    }
     final arguments = (
       householdId: widget.household.id,
       accountId: _accountId!,
       categoryId: _categoryId!,
       amountCents: cents,
       currency: CurrencyCodes.brl,
-      occurredOn: DateTime.now(),
-      idempotencyKey: UuidUtils.v4(),
-      description: StringUtils.trimToNull(_description.text),
+      occurredOn: occurredOn,
+      idempotencyKey: _pendingIdempotencyKey!,
+      description: description,
     );
     try {
       if (_isIncome) {
@@ -240,6 +257,9 @@ final class _TransactionFormScreenState
     'invalid_category' =>
       'A categoria não pertence à residência ou ao tipo do lançamento.',
     'invalid_amount' => 'Informe um valor maior que zero.',
+    'network_unavailable' =>
+      'Sem conexão. O lançamento não foi confirmado; tente novamente quando '
+          'a conexão voltar.',
     _ => 'Não foi possível salvar. Verifique os dados e tente novamente.',
   };
 }

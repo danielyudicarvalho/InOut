@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:inout/src/application/sync/household_sync_gateway.dart';
 import 'package:inout/src/core/utils/money_utils.dart';
 import 'package:inout/src/domain/household/household.dart';
 import 'package:inout/src/domain/transaction/financial_flow.dart';
 import 'package:inout/src/presentation/components/financial_flow_card.dart';
+import 'package:inout/src/presentation/components/sync_status_banner.dart';
 import 'package:inout/src/presentation/layout/inout_adaptive_scaffold.dart';
 import 'package:inout/src/presentation/providers/household_providers.dart';
 import 'package:inout/src/presentation/providers/session_providers.dart';
@@ -18,72 +20,92 @@ final class BootstrapHomeScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     if (household case final selected?) {
       final accounts = ref.watch(ledgerAccountsProvider(selected.id));
+      final sync = ref.watch(householdSyncProvider(selected.id));
       return InOutAdaptiveScaffold(
         title: 'InOut',
         selectedIndex: 0,
         onDestinationSelected: (_) {},
         destinations: _destinations,
-        body: Padding(
-          padding: const EdgeInsets.all(24),
-          child: accounts.when(
-            data: (items) => Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(
-                  selected.name,
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Saldo total: ${MoneyUtils.formatBrl(items.fold(0, (sum, item) => sum + item.balanceCents))}',
-                  style: Theme.of(context).textTheme.headlineSmall,
-                ),
-                const SizedBox(height: 24),
-                Wrap(
-                  spacing: 12,
-                  runSpacing: 12,
-                  children: [
-                    FinancialFlowCard(
-                      flow: FinancialFlow.income,
-                      onTap: () => _openForm(
-                        context,
-                        ref,
-                        selected,
-                        FinancialFlow.income,
-                      ),
-                    ),
-                    FinancialFlowCard(
-                      flow: FinancialFlow.expense,
-                      onTap: () => _openForm(
-                        context,
-                        ref,
-                        selected,
-                        FinancialFlow.expense,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 24),
-                Text('Contas', style: Theme.of(context).textTheme.titleMedium),
-                if (items.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.only(top: 12),
-                    child: Text('Crie uma conta antes do primeiro lançamento.'),
-                  )
-                else
-                  ...items.map(
-                    (item) => ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: Text(item.name),
-                      trailing: Text(MoneyUtils.formatBrl(item.balanceCents)),
-                    ),
-                  ),
-              ],
+        body: Column(
+          children: [
+            SyncStatusBanner(
+              offline:
+                  sync.asData?.value == HouseholdSyncEvent.disconnected ||
+                  sync.hasError,
             ),
-            error: (error, stackTrace) =>
-                const Text('Não foi possível carregar o ledger.'),
-            loading: () => const Center(child: CircularProgressIndicator()),
-          ),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: accounts.when(
+                  data: (items) => Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        selected.name,
+                        style: Theme.of(context).textTheme.titleLarge,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Saldo total: ${MoneyUtils.formatBrl(items.fold(0, (sum, item) => sum + item.balanceCents))}',
+                        style: Theme.of(context).textTheme.headlineSmall,
+                      ),
+                      const SizedBox(height: 24),
+                      Wrap(
+                        spacing: 12,
+                        runSpacing: 12,
+                        children: [
+                          FinancialFlowCard(
+                            flow: FinancialFlow.income,
+                            onTap: () => _openForm(
+                              context,
+                              ref,
+                              selected,
+                              FinancialFlow.income,
+                            ),
+                          ),
+                          FinancialFlowCard(
+                            flow: FinancialFlow.expense,
+                            onTap: () => _openForm(
+                              context,
+                              ref,
+                              selected,
+                              FinancialFlow.expense,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 24),
+                      Text(
+                        'Contas',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      if (items.isEmpty)
+                        const Padding(
+                          padding: EdgeInsets.only(top: 12),
+                          child: Text(
+                            'Crie uma conta antes do primeiro lançamento.',
+                          ),
+                        )
+                      else
+                        ...items.map(
+                          (item) => ListTile(
+                            contentPadding: EdgeInsets.zero,
+                            title: Text(item.name),
+                            trailing: Text(
+                              MoneyUtils.formatBrl(item.balanceCents),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                  error: (error, stackTrace) =>
+                      const Text('Não foi possível carregar o ledger.'),
+                  loading: () =>
+                      const Center(child: CircularProgressIndicator()),
+                ),
+              ),
+            ),
+          ],
         ),
       );
     }
