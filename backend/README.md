@@ -85,6 +85,7 @@ transação PostgreSQL.
 - `DELETE /api/v1/households/{householdId}/ledger/accounts/{accountId}` (arquiva)
 - `GET /api/v1/households/{householdId}/ledger/history`
 - `GET /api/v1/households/{householdId}/ledger/balances`
+- `GET /api/v1/households/{householdId}/ledger/dashboard?year={year}&month={month}`
 
 O saldo inicial é persistido como `opening_balance`, não como estado mutável da
 conta. Saldos são derivados das entries contabilizadas. O runtime pode criar e

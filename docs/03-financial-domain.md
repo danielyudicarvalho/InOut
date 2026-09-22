@@ -90,6 +90,21 @@ Exemplo: despesa de R$ 150 registrada como R$ 510.
 - **Uso do orçamento** = despesas válidas da categoria / limite do período.
 - **Progresso da meta** = valor alocado / valor-alvo.
 
+## Projeção mensal do painel
+
+O painel é uma projeção de leitura do mesmo ledger usado pelo histórico e pelos
+saldos, nunca uma segunda fonte de verdade. Saldos consideram movimentos até o
+fim do período consultado. Receitas, despesas e distribuição por categoria
+consideram somente o intervalo mensal; transferências internas são excluídas do
+resultado. Um estorno aplica, na data em que ocorreu, o sinal inverso da natureza
+do movimento original. Totais consolidados são agrupados por moeda para impedir
+somas monetariamente inválidas.
+
+Orçamentos mensais e metas são lidos do módulo Planning. O painel apenas projeta o uso e
+o progresso; não altera limites nem alocações. A resposta também expõe o estado
+de reconciliação entre transações contabilizadas e transações que possuem
+entradas no ledger.
+
 ## Regras de concorrência
 
 - Gravações financeiras usam transação de banco.

@@ -13,6 +13,7 @@ internal static class ApiContract
         internal const string GetAccountBalances = "GetAccountBalances";
         internal const string GetAccounts = "GetAccounts";
         internal const string GetCategories = "GetCategories";
+        internal const string GetFinancialDashboard = "GetFinancialDashboard";
         internal const string CreateCategory = "CreateCategory";
         internal const string ArchiveCategory = "ArchiveCategory";
         internal const string GetLedgerHistory = "GetLedgerHistory";
@@ -68,6 +69,7 @@ internal static class ApiContract
         internal const string Categories = "/categories";
         internal const string CategoryById = "/categories/{categoryId:guid}";
         internal const string Expenses = "/expenses";
+        internal const string Dashboard = "/dashboard";
         internal const string History = "/history";
         internal const string HouseholdAccess = "/api/v1/households/{householdId:guid}/access";
         internal const string Households = "/api/v1/households";

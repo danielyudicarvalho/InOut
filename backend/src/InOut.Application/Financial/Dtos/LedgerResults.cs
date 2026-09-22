@@ -52,3 +52,29 @@ public sealed record LedgerReconciliation(
     long PostedTransactionCount,
     long EntryTransactionCount,
     IReadOnlyList<AccountBalance> Balances);
+
+public sealed record DashboardAccountBalance(
+    Guid AccountId, string AccountName, string Currency, long BalanceCents);
+
+public sealed record DashboardCurrencySummary(
+    string Currency, long ConsolidatedBalanceCents, long IncomeCents,
+    long ExpenseCents, long ResultCents);
+
+public sealed record DashboardCategoryExpense(
+    Guid CategoryId, string CategoryName, Guid? ParentId, string Currency, long AmountCents);
+
+public sealed record DashboardBudgetProgress(
+    Guid BudgetId, Guid CategoryId, string CategoryName, long LimitCents, long SpentCents);
+
+public sealed record DashboardGoalProgress(
+    Guid GoalId, string Name, long TargetCents, long AllocatedCents, DateOnly? TargetDate);
+
+public sealed record FinancialDashboard(
+    DateOnly PeriodStart,
+    DateOnly PeriodEnd,
+    bool IsReconciled,
+    IReadOnlyList<DashboardCurrencySummary> Summaries,
+    IReadOnlyList<DashboardAccountBalance> Accounts,
+    IReadOnlyList<DashboardCategoryExpense> CategoryExpenses,
+    IReadOnlyList<DashboardBudgetProgress> Budgets,
+    IReadOnlyList<DashboardGoalProgress> Goals);

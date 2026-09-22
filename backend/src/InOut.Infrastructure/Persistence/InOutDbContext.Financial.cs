@@ -9,6 +9,8 @@ public sealed partial class InOutDbContext
     internal DbSet<CategoryRecord> Categories => Set<CategoryRecord>();
     internal DbSet<FinancialTransactionRecord> FinancialTransactions => Set<FinancialTransactionRecord>();
     internal DbSet<EntryRecord> Entries => Set<EntryRecord>();
+    internal DbSet<BudgetRecord> Budgets => Set<BudgetRecord>();
+    internal DbSet<GoalRecord> Goals => Set<GoalRecord>();
 
     private static void ConfigureFinancial(ModelBuilder modelBuilder)
     {
@@ -95,6 +97,31 @@ public sealed partial class InOutDbContext
             entity.Property(item => item.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("now()");
             entity.Property(item => item.CreatedBy).HasColumnName("created_by");
         });
+
+        modelBuilder.Entity<BudgetRecord>(entity =>
+        {
+            entity.ToTable("budgets", "public");
+            entity.HasKey(item => item.Id);
+            entity.Property(item => item.Id).HasColumnName("id");
+            entity.Property(item => item.HouseholdId).HasColumnName("household_id");
+            entity.Property(item => item.CategoryId).HasColumnName("category_id");
+            entity.Property(item => item.PeriodStart).HasColumnName("period_start");
+            entity.Property(item => item.PeriodEnd).HasColumnName("period_end");
+            entity.Property(item => item.LimitCents).HasColumnName("limit_cents");
+        });
+
+        modelBuilder.Entity<GoalRecord>(entity =>
+        {
+            entity.ToTable("goals", "public");
+            entity.HasKey(item => item.Id);
+            entity.Property(item => item.Id).HasColumnName("id");
+            entity.Property(item => item.HouseholdId).HasColumnName("household_id");
+            entity.Property(item => item.Name).HasColumnName("name");
+            entity.Property(item => item.TargetCents).HasColumnName("target_cents");
+            entity.Property(item => item.AllocatedCents).HasColumnName("allocated_cents");
+            entity.Property(item => item.TargetDate).HasColumnName("target_date");
+            entity.Property(item => item.ArchivedAt).HasColumnName("archived_at");
+        });
     }
 }
 
@@ -149,4 +176,25 @@ internal sealed class EntryRecord
     public long AmountCents { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public Guid CreatedBy { get; set; }
+}
+
+internal sealed class BudgetRecord
+{
+    public Guid Id { get; set; }
+    public Guid HouseholdId { get; set; }
+    public Guid CategoryId { get; set; }
+    public DateOnly PeriodStart { get; set; }
+    public DateOnly PeriodEnd { get; set; }
+    public long LimitCents { get; set; }
+}
+
+internal sealed class GoalRecord
+{
+    public Guid Id { get; set; }
+    public Guid HouseholdId { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public long TargetCents { get; set; }
+    public long AllocatedCents { get; set; }
+    public DateOnly? TargetDate { get; set; }
+    public DateTimeOffset? ArchivedAt { get; set; }
 }

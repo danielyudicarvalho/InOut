@@ -15,6 +15,8 @@ abstract final class ApiContract {
       '${ledger(householdId)}/categories';
   static String expenses(String householdId) =>
       '${ledger(householdId)}/expenses';
+  static String dashboard(String householdId) =>
+      '${ledger(householdId)}/dashboard';
   static String history(String householdId) => '${ledger(householdId)}/history';
   static String income(String householdId) => '${ledger(householdId)}/income';
   static String reconciliation(String householdId) =>
@@ -85,6 +87,25 @@ abstract final class ApiFields {
   static const sourceAccountId = 'sourceAccountId';
   static const status = 'status';
   static const transactionId = 'transactionId';
+  static const periodStart = 'periodStart';
+  static const periodEnd = 'periodEnd';
+  static const isReconciled = 'isReconciled';
+  static const summaries = 'summaries';
+  static const accounts = 'accounts';
+  static const categoryExpenses = 'categoryExpenses';
+  static const budgets = 'budgets';
+  static const goals = 'goals';
+  static const consolidatedBalanceCents = 'consolidatedBalanceCents';
+  static const incomeCents = 'incomeCents';
+  static const expenseCents = 'expenseCents';
+  static const resultCents = 'resultCents';
+  static const budgetId = 'budgetId';
+  static const goalId = 'goalId';
+  static const limitCents = 'limitCents';
+  static const spentCents = 'spentCents';
+  static const targetCents = 'targetCents';
+  static const allocatedCents = 'allocatedCents';
+  static const targetDate = 'targetDate';
 }
 
 abstract final class ApiQueryFields {
@@ -96,6 +117,8 @@ abstract final class ApiQueryFields {
   static const kind = 'kind';
   static const limit = 'limit';
   static const to = 'to';
+  static const year = 'year';
+  static const month = 'month';
 }
 
 abstract final class ApiErrorCodes {

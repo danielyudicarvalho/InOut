@@ -212,6 +212,15 @@ public static class LedgerEndpoints
             Results.Ok(await service.ReconcileAsync(householdId, cancellationToken)))
             .WithName(ApiContract.EndpointNames.ReconcileLedger);
 
+        ledger.MapGet(ApiContract.Routes.Dashboard, async (
+            Guid householdId,
+            int year,
+            int month,
+            LedgerService service,
+            CancellationToken cancellationToken) =>
+            Results.Ok(await service.GetDashboardAsync(householdId, year, month, cancellationToken)))
+            .WithName(ApiContract.EndpointNames.GetFinancialDashboard);
+
         return endpoints;
     }
 

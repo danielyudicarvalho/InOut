@@ -61,6 +61,17 @@ final ledgerAccountsProvider = FutureProvider.autoDispose
       return ref.watch(ledgerRepositoryProvider).getAccounts(householdId);
     });
 
+final financialDashboardProvider = FutureProvider.autoDispose
+    .family<FinancialDashboard, ({String householdId, int year, int month})>(
+      (ref, input) => ref
+          .watch(ledgerRepositoryProvider)
+          .getDashboard(
+            input.householdId,
+            year: input.year,
+            month: input.month,
+          ),
+    );
+
 final ledgerCategoriesProvider = FutureProvider.autoDispose
     .family<List<CategorySummary>, ({String householdId, FinancialFlow flow})>((
       ref,
@@ -102,6 +113,7 @@ final householdSyncProvider = StreamProvider.autoDispose
           ref.invalidate(ledgerCategoriesProvider);
           ref.invalidate(ledgerAllCategoriesProvider);
           ref.invalidate(ledgerHistoryCategoriesProvider(householdId));
+          ref.invalidate(financialDashboardProvider);
         }
         yield event;
       }

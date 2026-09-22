@@ -5,6 +5,7 @@ import 'package:inout/src/core/utils/money_utils.dart';
 import 'package:inout/src/domain/household/household.dart';
 import 'package:inout/src/domain/transaction/financial_flow.dart';
 import 'package:inout/src/presentation/components/financial_flow_card.dart';
+import 'package:inout/src/presentation/components/financial_dashboard_panel.dart';
 import 'package:inout/src/presentation/components/sync_status_banner.dart';
 import 'package:inout/src/presentation/layout/inout_adaptive_scaffold.dart';
 import 'package:inout/src/presentation/providers/household_providers.dart';
@@ -21,7 +22,13 @@ final class BootstrapHomeScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     if (household case final selected?) {
-      final accounts = ref.watch(ledgerAccountsProvider(selected.id));
+      final now = DateTime.now();
+      final dashboardInput = (
+        householdId: selected.id,
+        year: now.year,
+        month: now.month,
+      );
+      final dashboard = ref.watch(financialDashboardProvider(dashboardInput));
       final sync = ref.watch(householdSyncProvider(selected.id));
       return InOutAdaptiveScaffold(
         title: 'InOut',
@@ -38,8 +45,8 @@ final class BootstrapHomeScreen extends ConsumerWidget {
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.all(24),
-                child: accounts.when(
-                  data: (items) => Column(
+                child: dashboard.when(
+                  data: (value) => Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       Text(
@@ -47,11 +54,7 @@ final class BootstrapHomeScreen extends ConsumerWidget {
                         style: Theme.of(context).textTheme.titleLarge,
                       ),
                       const SizedBox(height: 8),
-                      Text(
-                        'Saldo total: ${MoneyUtils.formatBrl(items.fold(0, (sum, item) => sum + item.balanceCents))}',
-                        style: Theme.of(context).textTheme.headlineSmall,
-                      ),
-                      const SizedBox(height: 24),
+                      const SizedBox(height: 12),
                       Wrap(
                         spacing: 12,
                         runSpacing: 12,
@@ -103,28 +106,10 @@ final class BootstrapHomeScreen extends ConsumerWidget {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 24),
-                      Text(
-                        'Contas',
-                        style: Theme.of(context).textTheme.titleMedium,
+                      const SizedBox(height: 12),
+                      Expanded(
+                        child: FinancialDashboardPanel(dashboard: value),
                       ),
-                      if (items.isEmpty)
-                        const Padding(
-                          padding: EdgeInsets.only(top: 12),
-                          child: Text(
-                            'Crie uma conta antes do primeiro lançamento.',
-                          ),
-                        )
-                      else
-                        ...items.map(
-                          (item) => ListTile(
-                            contentPadding: EdgeInsets.zero,
-                            title: Text(item.name),
-                            trailing: Text(
-                              MoneyUtils.formatBrl(item.balanceCents),
-                            ),
-                          ),
-                        ),
                     ],
                   ),
                   error: (error, stackTrace) =>
@@ -207,5 +192,6 @@ final class BootstrapHomeScreen extends ConsumerWidget {
       ),
     );
     ref.invalidate(ledgerAccountsProvider(household.id));
+    ref.invalidate(financialDashboardProvider);
   }
 }

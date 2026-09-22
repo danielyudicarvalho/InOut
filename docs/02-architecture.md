@@ -35,6 +35,11 @@ Domain e Application não importam ASP.NET, EF Core, Supabase SDK, Flutter ou de
 - **Classification**: categorias e subcategorias.
 - **Planning**: orçamentos, metas e projetos.
 - **Reporting**: consultas, painel e exportação.
+
+O painel mensal pertence a Reporting e depende das portas de Application. Sua
+implementação em Infrastructure materializa uma projeção somente de leitura a
+partir de Ledger e Planning. API e Flutter consomem um DTO próprio; nenhuma regra
+de saldo ou resultado é recalculada na apresentação.
 - **Operations**: auditoria, logs, backup e configuração.
 
 No MVP, são módulos internos do mesmo processo ASP.NET e do mesmo banco, não serviços independentes.

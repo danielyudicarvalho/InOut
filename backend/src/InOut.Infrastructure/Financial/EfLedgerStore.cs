@@ -547,6 +547,117 @@ public sealed class EfLedgerStore(
             balances);
     }
 
+    public async Task<FinancialDashboard> GetDashboardAsync(
+        Guid householdId,
+        DateOnly periodStart,
+        DateOnly periodEnd,
+        CancellationToken cancellationToken)
+    {
+        var accounts = await dbContext.Accounts.AsNoTracking()
+            .Where(item => item.HouseholdId == householdId && item.ArchivedAt == null)
+            .OrderBy(item => item.Name)
+            .ToListAsync(cancellationToken);
+        var transactions = await dbContext.FinancialTransactions.AsNoTracking()
+            .Include(item => item.Entries)
+            .Where(item => item.HouseholdId == householdId && item.OccurredOn <= periodEnd)
+            .ToListAsync(cancellationToken);
+        var categories = await dbContext.Categories.AsNoTracking()
+            .Where(item => item.HouseholdId == householdId)
+            .ToDictionaryAsync(item => item.Id, cancellationToken);
+
+        var accountById = accounts.ToDictionary(item => item.Id);
+        var accountBalances = accounts.Select(account => new DashboardAccountBalance(
+            account.Id,
+            account.Name,
+            account.Currency,
+            transactions.SelectMany(item => item.Entries)
+                .Where(entry => entry.AccountId == account.Id)
+                .Sum(entry => entry.Direction == EntryDirection.Credit
+                    ? entry.AmountCents
+                    : -entry.AmountCents)))
+            .ToArray();
+
+        var originalKindById = transactions.ToDictionary(item => item.Id, item => item.Kind);
+        var periodEntries = transactions
+            .Where(item => item.OccurredOn >= periodStart && item.OccurredOn <= periodEnd)
+            .SelectMany(transaction => transaction.Entries.Select(entry => new
+            {
+                Transaction = transaction,
+                Entry = entry,
+                EffectiveKind = transaction.Kind == FinancialTransactionKind.Reversal &&
+                    transaction.ReversalOf is { } reversedId && originalKindById.TryGetValue(reversedId, out var kind)
+                        ? kind
+                        : transaction.Kind,
+                Multiplier = transaction.Kind == FinancialTransactionKind.Reversal ? -1L : 1L,
+            }))
+            .Where(item => accountById.ContainsKey(item.Entry.AccountId))
+            .ToArray();
+
+        var summaries = accountBalances
+            .GroupBy(item => item.Currency)
+            .Select(group =>
+            {
+                var currencyEntries = periodEntries
+                    .Where(item => accountById[item.Entry.AccountId].Currency == group.Key)
+                    .ToArray();
+                var income = currencyEntries
+                    .Where(item => item.EffectiveKind == FinancialTransactionKind.Income)
+                    .Sum(item => item.Entry.AmountCents * item.Multiplier);
+                var expense = currencyEntries
+                    .Where(item => item.EffectiveKind == FinancialTransactionKind.Expense)
+                    .Sum(item => item.Entry.AmountCents * item.Multiplier);
+                return new DashboardCurrencySummary(
+                    group.Key, group.Sum(item => item.BalanceCents), income, expense, income - expense);
+            })
+            .OrderBy(item => item.Currency)
+            .ToArray();
+
+        var categoryExpenses = periodEntries
+            .Where(item => item.EffectiveKind == FinancialTransactionKind.Expense &&
+                item.Entry.CategoryId is not null && categories.ContainsKey(item.Entry.CategoryId.Value))
+            .GroupBy(item => new
+            {
+                Category = categories[item.Entry.CategoryId!.Value],
+                accountById[item.Entry.AccountId].Currency,
+            })
+            .Select(group => new DashboardCategoryExpense(
+                group.Key.Category.Id,
+                group.Key.Category.Name,
+                group.Key.Category.ParentId,
+                group.Key.Currency,
+                group.Sum(item => item.Entry.AmountCents * item.Multiplier)))
+            .Where(item => item.AmountCents != 0)
+            .OrderByDescending(item => item.AmountCents)
+            .ToArray();
+
+        var budgets = await dbContext.Budgets.AsNoTracking()
+            .Where(item => item.HouseholdId == householdId &&
+                item.PeriodStart == periodStart && item.PeriodEnd == periodEnd)
+            .OrderBy(item => item.PeriodStart)
+            .ToListAsync(cancellationToken);
+        var budgetProgress = budgets
+            .Where(item => categories.ContainsKey(item.CategoryId))
+            .Select(budget => new DashboardBudgetProgress(
+                budget.Id,
+                budget.CategoryId,
+                categories[budget.CategoryId].Name,
+                budget.LimitCents,
+                categoryExpenses.Where(item => item.CategoryId == budget.CategoryId)
+                    .Sum(item => item.AmountCents)))
+            .ToArray();
+        var goals = await dbContext.Goals.AsNoTracking()
+            .Where(item => item.HouseholdId == householdId && item.ArchivedAt == null)
+            .OrderBy(item => item.TargetDate)
+            .Select(item => new DashboardGoalProgress(
+                item.Id, item.Name, item.TargetCents, item.AllocatedCents, item.TargetDate))
+            .ToArrayAsync(cancellationToken);
+        var reconciliation = await ReconcileAsync(householdId, cancellationToken);
+
+        return new FinancialDashboard(
+            periodStart, periodEnd, reconciliation.IsConsistent, summaries,
+            accountBalances, categoryExpenses, budgetProgress, goals);
+    }
+
     private async Task ValidateReferencesAsync(
         FinancialTransaction transaction,
         CancellationToken cancellationToken)
