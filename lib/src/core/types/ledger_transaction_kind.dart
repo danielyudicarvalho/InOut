@@ -1,1 +1,7 @@
-enum LedgerTransactionKind { income, expense, transfer, reversal, openingBalance }
+enum LedgerTransactionKind {
+  income,
+  expense,
+  transfer,
+  reversal,
+  openingBalance,
+}

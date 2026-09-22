@@ -75,17 +75,21 @@ final ledgerAllCategoriesProvider = FutureProvider.autoDispose
       ref,
       input,
     ) {
-      return ref.watch(ledgerRepositoryProvider).getCategories(
-        input.householdId,
-        flow: input.flow,
-        includeArchived: true,
-      );
+      return ref
+          .watch(ledgerRepositoryProvider)
+          .getCategories(
+            input.householdId,
+            flow: input.flow,
+            includeArchived: true,
+          );
     });
 
 final ledgerHistoryCategoriesProvider = FutureProvider.autoDispose
-    .family<List<CategorySummary>, String>((ref, householdId) => ref
-        .watch(ledgerRepositoryProvider)
-        .getCategories(householdId, includeArchived: true));
+    .family<List<CategorySummary>, String>(
+      (ref, householdId) => ref
+          .watch(ledgerRepositoryProvider)
+          .getCategories(householdId, includeArchived: true),
+    );
 
 final householdSyncProvider = StreamProvider.autoDispose
     .family<HouseholdSyncEvent, String>((ref, householdId) async* {

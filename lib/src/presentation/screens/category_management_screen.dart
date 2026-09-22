@@ -41,19 +41,26 @@ final class _CategoryManagementScreenState
               ),
               DropdownButtonFormField<String?>(
                 initialValue: parentId,
-                decoration: const InputDecoration(labelText: 'Categoria principal'),
+                decoration: const InputDecoration(
+                  labelText: 'Categoria principal',
+                ),
                 items: [
                   const DropdownMenuItem<String?>(
                     value: null,
                     child: Text('Nenhuma (categoria principal)'),
                   ),
                   ...categories
-                      .where((category) =>
-                          category.parentId == null && category.archivedAt == null)
-                      .map((category) => DropdownMenuItem<String?>(
-                            value: category.id,
-                            child: Text(category.name),
-                          )),
+                      .where(
+                        (category) =>
+                            category.parentId == null &&
+                            category.archivedAt == null,
+                      )
+                      .map(
+                        (category) => DropdownMenuItem<String?>(
+                          value: category.id,
+                          child: Text(category.name),
+                        ),
+                      ),
                 ],
                 onChanged: (value) => refresh(() => parentId = value),
               ),
@@ -79,13 +86,15 @@ final class _CategoryManagementScreenState
     name.dispose();
     if (input == null || !mounted) return;
     try {
-      await ref.read(ledgerRepositoryProvider).createCategory(
-        householdId: widget.household.id,
-        id: UuidUtils.v4(),
-        name: input.$1,
-        flow: _flow.name,
-        parentId: input.$2,
-      );
+      await ref
+          .read(ledgerRepositoryProvider)
+          .createCategory(
+            householdId: widget.household.id,
+            id: UuidUtils.v4(),
+            name: input.$1,
+            flow: _flow.name,
+            parentId: input.$2,
+          );
       ref.invalidate(ledgerCategoriesProvider);
       ref.invalidate(ledgerAllCategoriesProvider);
     } on ApiLedgerException catch (error) {
@@ -115,16 +124,20 @@ final class _CategoryManagementScreenState
     );
     if (confirmed != true || !mounted) return;
     try {
-      await ref.read(ledgerRepositoryProvider).archiveCategory(
-        householdId: widget.household.id,
-        categoryId: category.id,
-      );
+      await ref
+          .read(ledgerRepositoryProvider)
+          .archiveCategory(
+            householdId: widget.household.id,
+            categoryId: category.id,
+          );
       ref.invalidate(ledgerCategoriesProvider);
       ref.invalidate(ledgerAllCategoriesProvider);
     } on ApiLedgerException catch (error) {
-      _showError(error.code == 'category_has_active_children'
-          ? 'Arquive as subcategorias antes da categoria principal.'
-          : error.code);
+      _showError(
+        error.code == 'category_has_active_children'
+            ? 'Arquive as subcategorias antes da categoria principal.'
+            : error.code,
+      );
     } catch (_) {
       _showError('Não foi possível arquivar a categoria.');
     }
@@ -132,26 +145,37 @@ final class _CategoryManagementScreenState
 
   void _showError(String message) {
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(message)));
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final categories = ref.watch(ledgerAllCategoriesProvider(
-      (householdId: widget.household.id, flow: _flow.name),
-    ));
+    final categories = ref.watch(
+      ledgerAllCategoriesProvider((
+        householdId: widget.household.id,
+        flow: _flow.name,
+      )),
+    );
     return Scaffold(
       appBar: AppBar(title: const Text('Categorias')),
       body: Column(
         children: [
           SegmentedButton<FinancialFlow>(
             segments: const [
-              ButtonSegment(value: FinancialFlow.income, label: Text('Entradas')),
-              ButtonSegment(value: FinancialFlow.expense, label: Text('Saídas')),
+              ButtonSegment(
+                value: FinancialFlow.income,
+                label: Text('Entradas'),
+              ),
+              ButtonSegment(
+                value: FinancialFlow.expense,
+                label: Text('Saídas'),
+              ),
             ],
             selected: {_flow},
-            onSelectionChanged: (values) => setState(() => _flow = values.first),
+            onSelectionChanged: (values) =>
+                setState(() => _flow = values.first),
           ),
           SwitchListTile(
             title: const Text('Mostrar arquivadas'),
@@ -168,7 +192,9 @@ final class _CategoryManagementScreenState
                   children: visible.map((item) {
                     final parent = item.parentId == null
                         ? null
-                        : items.where((other) => other.id == item.parentId).firstOrNull;
+                        : items
+                              .where((other) => other.id == item.parentId)
+                              .firstOrNull;
                     return ListTile(
                       title: Text(item.name),
                       subtitle: Text(parent?.name ?? 'Categoria principal'),
@@ -183,7 +209,8 @@ final class _CategoryManagementScreenState
                   }).toList(),
                 );
               },
-              error: (_, _) => const Center(child: Text('Falha ao carregar categorias.')),
+              error: (_, _) =>
+                  const Center(child: Text('Falha ao carregar categorias.')),
               loading: () => const Center(child: CircularProgressIndicator()),
             ),
           ),

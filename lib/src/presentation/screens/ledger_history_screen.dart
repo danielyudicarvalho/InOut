@@ -12,10 +12,12 @@ final class LedgerHistoryScreen extends ConsumerStatefulWidget {
   final Household household;
 
   @override
-  ConsumerState<LedgerHistoryScreen> createState() => _LedgerHistoryScreenState();
+  ConsumerState<LedgerHistoryScreen> createState() =>
+      _LedgerHistoryScreenState();
 }
 
-final class _LedgerHistoryScreenState extends ConsumerState<LedgerHistoryScreen> {
+final class _LedgerHistoryScreenState
+    extends ConsumerState<LedgerHistoryScreen> {
   String? _accountId;
   String? _categoryId;
   LedgerTransactionKind? _kind;
@@ -30,14 +32,16 @@ final class _LedgerHistoryScreenState extends ConsumerState<LedgerHistoryScreen>
   }
 
   void _load() {
-    _history = ref.read(ledgerRepositoryProvider).getHistory(
-      widget.household.id,
-      accountId: _accountId,
-      categoryId: _categoryId,
-      kind: _kind?.name,
-      from: _from,
-      to: _to,
-    );
+    _history = ref
+        .read(ledgerRepositoryProvider)
+        .getHistory(
+          widget.household.id,
+          accountId: _accountId,
+          categoryId: _categoryId,
+          kind: _kind?.name,
+          from: _from,
+          to: _to,
+        );
   }
 
   Future<void> _chooseDate({required bool start}) async {
@@ -62,7 +66,9 @@ final class _LedgerHistoryScreenState extends ConsumerState<LedgerHistoryScreen>
   @override
   Widget build(BuildContext context) {
     final accounts = ref.watch(ledgerAccountsProvider(widget.household.id));
-    final categories = ref.watch(ledgerHistoryCategoriesProvider(widget.household.id));
+    final categories = ref.watch(
+      ledgerHistoryCategoriesProvider(widget.household.id),
+    );
     return Scaffold(
       appBar: AppBar(title: const Text('Histórico')),
       body: Column(
@@ -77,45 +83,77 @@ final class _LedgerHistoryScreenState extends ConsumerState<LedgerHistoryScreen>
                   value: _accountId,
                   hint: const Text('Conta'),
                   items: [
-                    const DropdownMenuItem<String?>(value: null, child: Text('Todas as contas')),
-                    ...?accounts.value?.map((item) => DropdownMenuItem<String?>(
-                          value: item.id,
-                          child: Text(item.name),
-                        )),
+                    const DropdownMenuItem<String?>(
+                      value: null,
+                      child: Text('Todas as contas'),
+                    ),
+                    ...?accounts.value?.map(
+                      (item) => DropdownMenuItem<String?>(
+                        value: item.id,
+                        child: Text(item.name),
+                      ),
+                    ),
                   ],
-                  onChanged: (value) => setState(() { _accountId = value; _load(); }),
+                  onChanged: (value) => setState(() {
+                    _accountId = value;
+                    _load();
+                  }),
                 ),
                 DropdownButton<String?>(
                   value: _categoryId,
                   hint: const Text('Categoria'),
                   items: [
-                    const DropdownMenuItem<String?>(value: null, child: Text('Todas as categorias')),
-                    ...?categories.value?.map((item) => DropdownMenuItem<String?>(
-                          value: item.id,
-                          child: Text(item.name),
-                        )),
+                    const DropdownMenuItem<String?>(
+                      value: null,
+                      child: Text('Todas as categorias'),
+                    ),
+                    ...?categories.value?.map(
+                      (item) => DropdownMenuItem<String?>(
+                        value: item.id,
+                        child: Text(item.name),
+                      ),
+                    ),
                   ],
-                  onChanged: (value) => setState(() { _categoryId = value; _load(); }),
+                  onChanged: (value) => setState(() {
+                    _categoryId = value;
+                    _load();
+                  }),
                 ),
                 DropdownButton<LedgerTransactionKind?>(
                   value: _kind,
                   hint: const Text('Tipo'),
                   items: [
-                    const DropdownMenuItem<LedgerTransactionKind?>(value: null, child: Text('Todos os tipos')),
-                    ...LedgerTransactionKind.values.map((item) => DropdownMenuItem<LedgerTransactionKind?>(
-                          value: item,
-                          child: Text(item.name),
-                        )),
+                    const DropdownMenuItem<LedgerTransactionKind?>(
+                      value: null,
+                      child: Text('Todos os tipos'),
+                    ),
+                    ...LedgerTransactionKind.values.map(
+                      (item) => DropdownMenuItem<LedgerTransactionKind?>(
+                        value: item,
+                        child: Text(item.name),
+                      ),
+                    ),
                   ],
-                  onChanged: (value) => setState(() { _kind = value; _load(); }),
+                  onChanged: (value) => setState(() {
+                    _kind = value;
+                    _load();
+                  }),
                 ),
                 OutlinedButton(
                   onPressed: () => _chooseDate(start: true),
-                  child: Text(_from == null ? 'Desde' : 'Desde ${_from!.day}/${_from!.month}/${_from!.year}'),
+                  child: Text(
+                    _from == null
+                        ? 'Desde'
+                        : 'Desde ${_from!.day}/${_from!.month}/${_from!.year}',
+                  ),
                 ),
                 OutlinedButton(
                   onPressed: () => _chooseDate(start: false),
-                  child: Text(_to == null ? 'Até' : 'Até ${_to!.day}/${_to!.month}/${_to!.year}'),
+                  child: Text(
+                    _to == null
+                        ? 'Até'
+                        : 'Até ${_to!.day}/${_to!.month}/${_to!.year}',
+                  ),
                 ),
                 TextButton(
                   onPressed: () => setState(() {
@@ -136,21 +174,29 @@ final class _LedgerHistoryScreenState extends ConsumerState<LedgerHistoryScreen>
               future: _history,
               builder: (context, snapshot) {
                 if (snapshot.hasError) {
-                  return const Center(child: Text('Não foi possível consultar o histórico.'));
+                  return const Center(
+                    child: Text('Não foi possível consultar o histórico.'),
+                  );
                 }
                 if (!snapshot.hasData) {
                   return const Center(child: CircularProgressIndicator());
                 }
                 if (snapshot.data!.isEmpty) {
-                  return const Center(child: Text('Nenhum lançamento para estes filtros.'));
+                  return const Center(
+                    child: Text('Nenhum lançamento para estes filtros.'),
+                  );
                 }
                 return ListView.builder(
                   itemCount: snapshot.data!.length,
                   itemBuilder: (context, index) {
                     final item = snapshot.data![index];
                     return ListTile(
-                      title: Text(item.description ?? item.categoryName ?? item.kind),
-                      subtitle: Text('${item.accountName} · ${item.categoryName ?? "Sem categoria"} · ${item.occurredOn.day}/${item.occurredOn.month}/${item.occurredOn.year}'),
+                      title: Text(
+                        item.description ?? item.categoryName ?? item.kind,
+                      ),
+                      subtitle: Text(
+                        '${item.accountName} · ${item.categoryName ?? "Sem categoria"} · ${item.occurredOn.day}/${item.occurredOn.month}/${item.occurredOn.year}',
+                      ),
                       trailing: Text(MoneyUtils.formatBrl(item.amountCents)),
                     );
                   },

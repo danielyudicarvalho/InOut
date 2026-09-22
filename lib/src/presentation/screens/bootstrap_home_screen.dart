@@ -85,7 +85,9 @@ final class BootstrapHomeScreen extends ConsumerWidget {
                             label: const Text('Categorias'),
                             onPressed: () => Navigator.of(context).push(
                               MaterialPageRoute<void>(
-                                builder: (_) => CategoryManagementScreen(household: selected),
+                                builder: (_) => CategoryManagementScreen(
+                                  household: selected,
+                                ),
                               ),
                             ),
                           ),
@@ -94,7 +96,8 @@ final class BootstrapHomeScreen extends ConsumerWidget {
                             label: const Text('Histórico e filtros'),
                             onPressed: () => Navigator.of(context).push(
                               MaterialPageRoute<void>(
-                                builder: (_) => LedgerHistoryScreen(household: selected),
+                                builder: (_) =>
+                                    LedgerHistoryScreen(household: selected),
                               ),
                             ),
                           ),

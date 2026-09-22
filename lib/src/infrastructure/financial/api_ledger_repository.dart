@@ -90,11 +90,11 @@ final class ApiLedgerRepository implements LedgerRepository {
       if (flow != null) ApiQueryFields.flow: flow,
       if (includeArchived) ApiQueryFields.includeArchived: 'true',
     };
-    final uri = Uri(path: ApiContract.categories(householdId), queryParameters: query.isEmpty ? null : query);
-    final response = await _send(
-      ApiMethods.get,
-      uri.toString(),
+    final uri = Uri(
+      path: ApiContract.categories(householdId),
+      queryParameters: query.isEmpty ? null : query,
     );
+    final response = await _send(ApiMethods.get, uri.toString());
     return (jsonDecode(response.body) as List<dynamic>)
         .cast<Map<String, dynamic>>()
         .map(LedgerResponseMapper.category)
@@ -129,7 +129,10 @@ final class ApiLedgerRepository implements LedgerRepository {
     required String householdId,
     required String categoryId,
   }) async {
-    await _send(ApiMethods.delete, ApiContract.category(householdId, categoryId));
+    await _send(
+      ApiMethods.delete,
+      ApiContract.category(householdId, categoryId),
+    );
   }
 
   @override
@@ -153,10 +156,7 @@ final class ApiLedgerRepository implements LedgerRepository {
         if (kind != null) ApiQueryFields.kind: kind,
       },
     );
-    final response = await _send(
-      ApiMethods.get,
-      uri.toString(),
-    );
+    final response = await _send(ApiMethods.get, uri.toString());
     return (jsonDecode(response.body) as List<dynamic>)
         .cast<Map<String, dynamic>>()
         .map(LedgerResponseMapper.historyItem)
