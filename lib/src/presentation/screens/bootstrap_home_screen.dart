@@ -9,9 +9,9 @@ import 'package:inout/src/presentation/components/sync_status_banner.dart';
 import 'package:inout/src/presentation/layout/inout_adaptive_scaffold.dart';
 import 'package:inout/src/presentation/providers/household_providers.dart';
 import 'package:inout/src/presentation/providers/session_providers.dart';
-import 'package:inout/src/presentation/screens/transaction_form_screen.dart';
 import 'package:inout/src/presentation/screens/category_management_screen.dart';
 import 'package:inout/src/presentation/screens/ledger_history_screen.dart';
+import 'package:inout/src/presentation/screens/transaction_form_screen.dart';
 
 final class BootstrapHomeScreen extends ConsumerWidget {
   const BootstrapHomeScreen({this.household, super.key});

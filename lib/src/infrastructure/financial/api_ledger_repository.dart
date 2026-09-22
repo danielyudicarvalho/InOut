@@ -87,9 +87,9 @@ final class ApiLedgerRepository implements LedgerRepository {
     bool includeArchived = false,
   }) async {
     final query = <String, String>{
-      if (flow != null) ApiQueryFields.flow: flow,
       if (includeArchived) ApiQueryFields.includeArchived: 'true',
     };
+    if (flow != null) query[ApiQueryFields.flow] = flow;
     final uri = Uri(
       path: ApiContract.categories(householdId),
       queryParameters: query.isEmpty ? null : query,
@@ -145,16 +145,15 @@ final class ApiLedgerRepository implements LedgerRepository {
     String? categoryId,
     String? kind,
   }) async {
+    final query = <String, String>{ApiQueryFields.limit: '$limit'};
+    if (from != null) query[ApiQueryFields.from] = _date(from);
+    if (to != null) query[ApiQueryFields.to] = _date(to);
+    if (accountId != null) query[ApiQueryFields.accountId] = accountId;
+    if (categoryId != null) query[ApiQueryFields.categoryId] = categoryId;
+    if (kind != null) query[ApiQueryFields.kind] = kind;
     final uri = Uri(
       path: ApiContract.history(householdId),
-      queryParameters: {
-        ApiQueryFields.limit: '$limit',
-        if (from != null) ApiQueryFields.from: _date(from),
-        if (to != null) ApiQueryFields.to: _date(to),
-        if (accountId != null) ApiQueryFields.accountId: accountId,
-        if (categoryId != null) ApiQueryFields.categoryId: categoryId,
-        if (kind != null) ApiQueryFields.kind: kind,
-      },
+      queryParameters: query,
     );
     final response = await _send(ApiMethods.get, uri.toString());
     return (jsonDecode(response.body) as List<dynamic>)
