@@ -86,16 +86,15 @@ final class _CategoryManagementScreenState
     name.dispose();
     if (input == null || !mounted) return;
     try {
-      await ref
-          .read(ledgerRepositoryProvider)
-          .createCategory(
-            householdId: widget.household.id,
-            id: UuidUtils.v4(),
-            name: input.$1,
-            flow: _flow.name,
-            idempotencyKey: UuidUtils.v4(),
-            parentId: input.$2,
-          );
+      final repository = ref.read(ledgerRepositoryProvider);
+      await repository.createCategory(
+        householdId: widget.household.id,
+        id: UuidUtils.v4(),
+        name: input.$1,
+        flow: _flow.name,
+        idempotencyKey: UuidUtils.v4(),
+        parentId: input.$2,
+      );
       ref.invalidate(ledgerCategoriesProvider);
       ref.invalidate(ledgerAllCategoriesProvider);
     } on ApiLedgerException catch (error) {
