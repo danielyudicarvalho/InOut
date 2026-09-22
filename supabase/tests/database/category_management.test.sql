@@ -4,6 +4,11 @@ create extension if not exists pgtap with schema extensions;
 set local search_path = public, extensions, pg_catalog;
 select plan(6);
 
+-- The test runner connects as postgres; make it a runtime-role member only
+-- within this transaction, which is rolled back at the end.
+grant inout_api_runtime to postgres;
+grant usage on schema extensions to inout_api_runtime;
+
 select ok(
   has_table_privilege('inout_api_runtime', 'public.categories', 'insert')
   and has_column_privilege('inout_api_runtime', 'public.categories', 'archived_at', 'update')
