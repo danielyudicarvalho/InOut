@@ -31,8 +31,20 @@ abstract final class LedgerResponseMapper {
         createdBy: row[ApiFields.createdBy]! as String,
         accountId: row[ApiFields.accountId]! as String,
         accountName: row[ApiFields.accountName]! as String,
+        categoryId: row[ApiFields.categoryId] as String?,
+        categoryName: row[ApiFields.categoryName] as String?,
         direction: row[ApiFields.direction]! as String,
         amountCents: row[ApiFields.amountCents]! as int,
         currency: row[ApiFields.currency]! as String,
       );
+
+  static CategorySummary category(Map<String, dynamic> row) => CategorySummary(
+    id: row[ApiFields.id]! as String,
+    name: row[ApiFields.name]! as String,
+    flow: row[ApiFields.flow]! as String,
+    parentId: row[ApiFields.parentId] as String?,
+    archivedAt: row[ApiFields.archivedAt] == null
+        ? null
+        : DateTime.parse(row[ApiFields.archivedAt]! as String),
+  );
 }

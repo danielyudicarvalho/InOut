@@ -2,6 +2,8 @@ using InOut.Domain.Financial;
 
 namespace InOut.Api.Financial;
 
+public sealed record CreateCategoryRequest(Guid Id, string Name, FinancialFlow Flow, Guid? ParentId);
+
 public sealed record PostIncomeRequest(
     Guid AccountId,
     Guid CategoryId,

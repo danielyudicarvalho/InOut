@@ -5,6 +5,7 @@ using InOut.Domain.Financial;
 using InOut.Infrastructure.Idempotency;
 using InOut.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 namespace InOut.Infrastructure.Financial;
 
@@ -181,11 +182,16 @@ public sealed class EfLedgerStore(
     public async Task<IReadOnlyList<CategorySummary>> GetCategoriesAsync(
         Guid householdId,
         FinancialFlow? flow,
+        bool includeArchived,
         CancellationToken cancellationToken)
     {
         var query = dbContext.Categories
             .AsNoTracking()
-            .Where(item => item.HouseholdId == householdId && item.ArchivedAt == null);
+            .Where(item => item.HouseholdId == householdId);
+        if (!includeArchived)
+        {
+            query = query.Where(item => item.ArchivedAt == null);
+        }
         if (flow is not null)
         {
             query = query.Where(item => item.Flow == flow.Value);
@@ -196,22 +202,116 @@ public sealed class EfLedgerStore(
             .Select(item => new CategorySummary(
                 item.Id,
                 item.Name,
-                item.Flow))
+                item.Flow,
+                item.ParentId,
+                item.ArchivedAt))
             .ToArrayAsync(cancellationToken);
+    }
+
+    public Task<IReadOnlyList<CategorySummary>> GetCategoriesAsync(
+        Guid householdId, FinancialFlow? flow, CancellationToken cancellationToken) =>
+        GetCategoriesAsync(householdId, flow, false, cancellationToken);
+
+    public async Task<CategorySummary> CreateCategoryAsync(
+        Guid householdId, Guid actorUserId, Guid id, string name,
+        FinancialFlow flow, Guid? parentId, CancellationToken cancellationToken)
+    {
+        var category = Category.Create(id, householdId, name, flow);
+        await using var databaseTransaction = await BeginForUserAsync(actorUserId, cancellationToken);
+        if (parentId is not null)
+        {
+            await LockResourceAsync(householdId, parentId.Value, cancellationToken);
+            var parent = await dbContext.Categories.AsNoTracking().SingleOrDefaultAsync(
+                item => item.HouseholdId == householdId && item.Id == parentId, cancellationToken);
+            if (parent is null || parent.ParentId is not null || parent.ArchivedAt is not null || parent.Flow != flow)
+            {
+                throw new FinancialRuleException(FinancialErrorCodes.InvalidCategory,
+                    "Subcategory requires an active root category with the same flow in this household.");
+            }
+        }
+
+        dbContext.Categories.Add(new CategoryRecord
+        {
+            Id = category.Id,
+            HouseholdId = householdId,
+            ParentId = parentId,
+            Name = Category.NormalizeName(name),
+            Flow = category.Flow,
+            CreatedBy = actorUserId,
+        });
+        AddAudit(householdId, actorUserId, PersistenceVocabulary.AuditActions.CategoryCreated,
+            PersistenceVocabulary.EntityTypes.Category, id);
+        try
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+            await databaseTransaction.CommitAsync(cancellationToken);
+        }
+        catch (DbUpdateException error) when (error.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
+        {
+            throw new FinancialRuleException(FinancialErrorCodes.CategoryConflict, "Category name or identifier already exists.");
+        }
+
+        return new CategorySummary(id, Category.NormalizeName(name), flow, parentId, null);
+    }
+
+    public async Task ArchiveCategoryAsync(
+        Guid householdId, Guid categoryId, Guid actorUserId, CancellationToken cancellationToken)
+    {
+        await using var databaseTransaction = await BeginForUserAsync(actorUserId, cancellationToken);
+        await LockResourceAsync(householdId, categoryId, cancellationToken);
+        var record = await dbContext.Categories.SingleOrDefaultAsync(
+            item => item.HouseholdId == householdId && item.Id == categoryId, cancellationToken);
+        if (record is null)
+        {
+            throw new FinancialRuleException(FinancialErrorCodes.CategoryNotFound, "Category was not found.");
+        }
+
+        if (record.ArchivedAt is null)
+        {
+            if (await dbContext.Categories.AnyAsync(
+                item => item.HouseholdId == householdId && item.ParentId == categoryId && item.ArchivedAt == null,
+                cancellationToken))
+            {
+                throw new FinancialRuleException(FinancialErrorCodes.CategoryHasActiveChildren,
+                    "Archive active subcategories first.");
+            }
+
+            record.ArchivedAt = DateTimeOffset.UtcNow;
+            AddAudit(householdId, actorUserId, PersistenceVocabulary.AuditActions.CategoryArchived,
+                PersistenceVocabulary.EntityTypes.Category, categoryId);
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+
+        await databaseTransaction.CommitAsync(cancellationToken);
     }
 
     public async Task<IReadOnlyList<LedgerHistoryItem>> GetHistoryAsync(
         Guid householdId,
         int limit,
+        LedgerHistoryFilter filter,
         CancellationToken cancellationToken)
     {
+        var transactions = dbContext.FinancialTransactions.AsNoTracking()
+            .Where(item => item.HouseholdId == householdId);
+        if (filter.From is not null)
+            transactions = transactions.Where(item => item.OccurredOn >= filter.From.Value);
+        if (filter.To is not null)
+            transactions = transactions.Where(item => item.OccurredOn <= filter.To.Value);
+        if (filter.Kind is not null)
+            transactions = transactions.Where(item => item.Kind == filter.Kind.Value);
+
         var rows = await (
-            from transaction in dbContext.FinancialTransactions.AsNoTracking()
-            where transaction.HouseholdId == householdId
+            from transaction in transactions
             from entry in transaction.Entries
+            where (filter.AccountId == null || entry.AccountId == filter.AccountId)
+                && (filter.CategoryId == null || entry.CategoryId == filter.CategoryId)
             join account in dbContext.Accounts.AsNoTracking()
                 on new { entry.HouseholdId, Id = entry.AccountId }
                 equals new { account.HouseholdId, account.Id }
+            join category in dbContext.Categories.AsNoTracking()
+                on new { entry.HouseholdId, Id = entry.CategoryId }
+                equals new { category.HouseholdId, Id = (Guid?)category.Id } into categoryRows
+            from category in categoryRows.DefaultIfEmpty()
             orderby transaction.OccurredOn descending, transaction.PostedAt descending, entry.Id
             select new
             {
@@ -225,6 +325,8 @@ public sealed class EfLedgerStore(
                 transaction.CreatedBy,
                 entry.AccountId,
                 AccountName = account.Name,
+                entry.CategoryId,
+                CategoryName = category == null ? null : category.Name,
                 entry.Direction,
                 entry.AmountCents,
                 account.Currency,
@@ -243,11 +345,17 @@ public sealed class EfLedgerStore(
                 item.CreatedBy,
                 item.AccountId,
                 item.AccountName,
+                item.CategoryId,
+                item.CategoryName,
                 item.Direction,
                 item.AmountCents,
                 item.Currency))
             .ToArray();
     }
+
+    public Task<IReadOnlyList<LedgerHistoryItem>> GetHistoryAsync(
+        Guid householdId, int limit, CancellationToken cancellationToken) =>
+        GetHistoryAsync(householdId, limit, new LedgerHistoryFilter(), cancellationToken);
 
     public async Task<LedgerWriteResult> PostAsync(
         FinancialTransaction transaction,

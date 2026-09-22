@@ -16,7 +16,19 @@ public sealed record AccountSummary(
 
 public sealed record AccountCreationResult(AccountSummary Account, bool Replayed);
 
-public sealed record CategorySummary(Guid Id, string Name, FinancialFlow Flow);
+public sealed record CategorySummary(
+    Guid Id,
+    string Name,
+    FinancialFlow Flow,
+    Guid? ParentId,
+    DateTimeOffset? ArchivedAt);
+
+public sealed record LedgerHistoryFilter(
+    DateOnly? From = null,
+    DateOnly? To = null,
+    Guid? AccountId = null,
+    Guid? CategoryId = null,
+    FinancialTransactionKind? Kind = null);
 
 public sealed record LedgerHistoryItem(
     Guid TransactionId,
@@ -29,6 +41,8 @@ public sealed record LedgerHistoryItem(
     Guid CreatedBy,
     Guid AccountId,
     string AccountName,
+    Guid? CategoryId,
+    string? CategoryName,
     EntryDirection Direction,
     long AmountCents,
     string Currency);

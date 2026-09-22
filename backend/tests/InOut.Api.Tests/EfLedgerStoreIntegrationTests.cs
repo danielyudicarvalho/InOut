@@ -507,6 +507,69 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
         Assert.Equal(750, balance.Single(item => item.AccountId == accountId).BalanceCents);
     }
 
+    [Fact]
+    public async Task CategoriesRequireActiveMatchingRootAndPreserveArchivedHistory()
+    {
+        var rootId = Guid.NewGuid();
+        var childId = Guid.NewGuid();
+        await using (var context = CreateContext())
+        {
+            var service = new LedgerService(CreateStore(context));
+            await service.CreateCategoryAsync(householdId, actorUserId, rootId,
+                "  Extras  ", FinancialFlow.Expense, null, CancellationToken.None);
+            await service.CreateCategoryAsync(householdId, actorUserId, childId,
+                "Cinema", FinancialFlow.Expense, rootId, CancellationToken.None);
+            await Assert.ThrowsAsync<FinancialRuleException>(() => service.CreateCategoryAsync(
+                householdId, actorUserId, Guid.NewGuid(), "Invalid", FinancialFlow.Income,
+                rootId, CancellationToken.None));
+            await Assert.ThrowsAsync<FinancialRuleException>(() => service.ArchiveCategoryAsync(
+                householdId, rootId, actorUserId, CancellationToken.None));
+        }
+
+        await using (var context = CreateContext())
+        {
+            var service = new LedgerService(CreateStore(context));
+            await service.PostExpenseAsync(actorUserId,
+                new PostExpenseCommand(householdId, accountId, childId, 100,
+                    "BRL", new DateOnly(2026, 9, 20), Guid.NewGuid(), "Movie"),
+                CancellationToken.None);
+            await service.ArchiveCategoryAsync(householdId, childId, actorUserId, CancellationToken.None);
+            await service.ArchiveCategoryAsync(householdId, rootId, actorUserId, CancellationToken.None);
+
+            Assert.DoesNotContain(await service.GetCategoriesAsync(householdId, FinancialFlow.Expense,
+                false, CancellationToken.None), item => item.Id == childId);
+            var archived = await service.GetCategoriesAsync(householdId, FinancialFlow.Expense,
+                true, CancellationToken.None);
+            Assert.Equal(rootId, Assert.Single(archived, item => item.Id == childId).ParentId);
+            var history = await service.GetHistoryAsync(householdId, 100,
+                new LedgerHistoryFilter(CategoryId: childId, Kind: FinancialTransactionKind.Expense),
+                CancellationToken.None);
+            Assert.Equal("Cinema", Assert.Single(history).CategoryName);
+        }
+    }
+
+    [Fact]
+    public async Task HistoryFiltersBeforeLimitAndKeepsUnclassifiedTransfers()
+    {
+        await PostIncomeAsync(Guid.NewGuid());
+        await using (var context = CreateContext())
+        {
+            var service = new LedgerService(CreateStore(context));
+            await service.PostTransferAsync(actorUserId,
+                new PostTransferCommand(householdId, accountId, destinationAccountId,
+                    100, "BRL", new DateOnly(2026, 9, 15), Guid.NewGuid(), null),
+                CancellationToken.None);
+            var filtered = await service.GetHistoryAsync(householdId, 1,
+                new LedgerHistoryFilter(From: new DateOnly(2026, 9, 14),
+                    To: new DateOnly(2026, 9, 14), CategoryId: categoryId), CancellationToken.None);
+            Assert.Equal(FinancialTransactionKind.Income, Assert.Single(filtered).Kind);
+            var transfer = await service.GetHistoryAsync(householdId, 10,
+                new LedgerHistoryFilter(Kind: FinancialTransactionKind.Transfer), CancellationToken.None);
+            Assert.Equal(2, transfer.Count);
+            Assert.All(transfer, item => Assert.Null(item.CategoryId));
+        }
+    }
+
     private async Task<LedgerWriteResult> PostIncomeAsync(
         Guid idempotencyKey,
         long amountCents = 1_000,

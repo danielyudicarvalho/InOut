@@ -63,17 +63,48 @@ public static class LedgerEndpoints
         ledger.MapGet(ApiContract.Routes.Categories, async (
             Guid householdId,
             FinancialFlow? flow,
+            bool includeArchived,
             LedgerService service,
             CancellationToken cancellationToken) =>
-            Results.Ok(await service.GetCategoriesAsync(householdId, flow, cancellationToken)))
+            Results.Ok(await service.GetCategoriesAsync(householdId, flow, includeArchived, cancellationToken)))
             .WithName(ApiContract.EndpointNames.GetCategories);
+
+        ledger.MapPost(ApiContract.Routes.Categories, async (
+            Guid householdId,
+            CreateCategoryRequest request,
+            ClaimsPrincipal principal,
+            LedgerService service,
+            CancellationToken cancellationToken) =>
+        {
+            var category = await service.CreateCategoryAsync(
+                householdId, UserId(principal), request.Id, request.Name, request.Flow,
+                request.ParentId, cancellationToken);
+            return Results.Created(ApiContract.Routes.CategoryResource(householdId, category.Id), category);
+        }).WithName(ApiContract.EndpointNames.CreateCategory);
+
+        ledger.MapDelete(ApiContract.Routes.CategoryById, async (
+            Guid householdId,
+            Guid categoryId,
+            ClaimsPrincipal principal,
+            LedgerService service,
+            CancellationToken cancellationToken) =>
+        {
+            await service.ArchiveCategoryAsync(householdId, categoryId, UserId(principal), cancellationToken);
+            return Results.NoContent();
+        }).WithName(ApiContract.EndpointNames.ArchiveCategory);
 
         ledger.MapGet(ApiContract.Routes.History, async (
             Guid householdId,
             int? limit,
+            DateOnly? from,
+            DateOnly? to,
+            Guid? accountId,
+            Guid? categoryId,
+            FinancialTransactionKind? kind,
             LedgerService service,
             CancellationToken cancellationToken) =>
-            Results.Ok(await service.GetHistoryAsync(householdId, limit ?? 100, cancellationToken)))
+            Results.Ok(await service.GetHistoryAsync(householdId, limit ?? 100,
+                new LedgerHistoryFilter(from, to, accountId, categoryId, kind), cancellationToken)))
             .WithName(ApiContract.EndpointNames.GetLedgerHistory);
 
         ledger.MapPost(ApiContract.Routes.Income, async (

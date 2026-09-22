@@ -84,32 +84,78 @@ final class ApiLedgerRepository implements LedgerRepository {
   Future<List<CategorySummary>> getCategories(
     String householdId, {
     String? flow,
+    bool includeArchived = false,
   }) async {
-    final suffix = flow == null ? '' : '?${ApiQueryFields.flow}=$flow';
+    final query = <String, String>{
+      if (flow != null) ApiQueryFields.flow: flow,
+      if (includeArchived) ApiQueryFields.includeArchived: 'true',
+    };
+    final uri = Uri(path: ApiContract.categories(householdId), queryParameters: query.isEmpty ? null : query);
     final response = await _send(
       ApiMethods.get,
-      '${ApiContract.categories(householdId)}$suffix',
+      uri.toString(),
     );
     return (jsonDecode(response.body) as List<dynamic>)
         .cast<Map<String, dynamic>>()
-        .map(
-          (row) => CategorySummary(
-            id: row[ApiFields.id]! as String,
-            name: row[ApiFields.name]! as String,
-            flow: row[ApiFields.flow]! as String,
-          ),
-        )
+        .map(LedgerResponseMapper.category)
         .toList(growable: false);
+  }
+
+  @override
+  Future<CategorySummary> createCategory({
+    required String householdId,
+    required String id,
+    required String name,
+    required String flow,
+    String? parentId,
+  }) async {
+    final response = await _send(
+      ApiMethods.post,
+      ApiContract.categories(householdId),
+      body: {
+        ApiFields.id: id,
+        ApiFields.name: name,
+        ApiFields.flow: flow,
+        ApiFields.parentId: parentId,
+      },
+    );
+    return LedgerResponseMapper.category(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
+  }
+
+  @override
+  Future<void> archiveCategory({
+    required String householdId,
+    required String categoryId,
+  }) async {
+    await _send(ApiMethods.delete, ApiContract.category(householdId, categoryId));
   }
 
   @override
   Future<List<LedgerHistoryItem>> getHistory(
     String householdId, {
     int limit = 100,
+    DateTime? from,
+    DateTime? to,
+    String? accountId,
+    String? categoryId,
+    String? kind,
   }) async {
+    final uri = Uri(
+      path: ApiContract.history(householdId),
+      queryParameters: {
+        ApiQueryFields.limit: '$limit',
+        if (from != null) ApiQueryFields.from: _date(from),
+        if (to != null) ApiQueryFields.to: _date(to),
+        if (accountId != null) ApiQueryFields.accountId: accountId,
+        if (categoryId != null) ApiQueryFields.categoryId: categoryId,
+        if (kind != null) ApiQueryFields.kind: kind,
+      },
+    );
     final response = await _send(
       ApiMethods.get,
-      '${ApiContract.history(householdId)}?${ApiQueryFields.limit}=$limit',
+      uri.toString(),
     );
     return (jsonDecode(response.body) as List<dynamic>)
         .cast<Map<String, dynamic>>()

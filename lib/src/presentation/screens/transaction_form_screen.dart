@@ -204,14 +204,17 @@ final class _TransactionFormScreenState
                             decoration: const InputDecoration(
                               labelText: 'Categoria',
                             ),
-                            items: categories.value!
-                                .map(
-                                  (item) => DropdownMenuItem(
-                                    value: item.id,
-                                    child: Text(item.name),
-                                  ),
-                                )
-                                .toList(),
+                            items: categories.value!.map((item) {
+                              final parent = item.parentId == null
+                                  ? null
+                                  : categories.value!
+                                        .where((candidate) => candidate.id == item.parentId)
+                                        .firstOrNull;
+                              return DropdownMenuItem(
+                                value: item.id,
+                                child: Text(parent == null ? item.name : '${parent.name} › ${item.name}'),
+                              );
+                            }).toList(),
                             onChanged: (value) =>
                                 setState(() => _categoryId = value),
                             validator: (value) => value == null

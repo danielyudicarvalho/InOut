@@ -27,11 +27,30 @@ abstract interface class LedgerRepository {
   Future<List<CategorySummary>> getCategories(
     String householdId, {
     String? flow,
+    bool includeArchived = false,
+  });
+
+  Future<CategorySummary> createCategory({
+    required String householdId,
+    required String id,
+    required String name,
+    required String flow,
+    String? parentId,
+  });
+
+  Future<void> archiveCategory({
+    required String householdId,
+    required String categoryId,
   });
 
   Future<List<LedgerHistoryItem>> getHistory(
     String householdId, {
     int limit = 100,
+    DateTime? from,
+    DateTime? to,
+    String? accountId,
+    String? categoryId,
+    String? kind,
   });
 
   Future<LedgerWriteResult> postIncome({

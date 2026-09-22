@@ -49,14 +49,39 @@ public sealed class LedgerService(ILedgerStore store)
     public Task<IReadOnlyList<CategorySummary>> GetCategoriesAsync(
         Guid householdId,
         FinancialFlow? flow,
+        bool includeArchived,
         CancellationToken cancellationToken) =>
-        store.GetCategoriesAsync(householdId, flow, cancellationToken);
+        store.GetCategoriesAsync(householdId, flow, includeArchived, cancellationToken);
+
+    public Task<IReadOnlyList<CategorySummary>> GetCategoriesAsync(
+        Guid householdId, FinancialFlow? flow, CancellationToken cancellationToken) =>
+        GetCategoriesAsync(householdId, flow, false, cancellationToken);
+
+    public Task<CategorySummary> CreateCategoryAsync(
+        Guid householdId, Guid actorUserId, Guid id, string? name,
+        FinancialFlow flow, Guid? parentId, CancellationToken cancellationToken)
+    {
+        Category.Create(id, householdId, name, flow);
+        return store.CreateCategoryAsync(
+            householdId, actorUserId, id, Category.NormalizeName(name), flow, parentId, cancellationToken);
+    }
+
+    public Task ArchiveCategoryAsync(
+        Guid householdId, Guid categoryId, Guid actorUserId, CancellationToken cancellationToken) =>
+        store.ArchiveCategoryAsync(householdId, categoryId, actorUserId, cancellationToken);
 
     public Task<IReadOnlyList<LedgerHistoryItem>> GetHistoryAsync(
         Guid householdId,
         int limit,
+        LedgerHistoryFilter filter,
         CancellationToken cancellationToken) =>
-        store.GetHistoryAsync(householdId, Math.Clamp(limit, 1, 200), cancellationToken);
+        filter.From is not null && filter.To is not null && filter.From > filter.To
+            ? throw new FinancialRuleException(FinancialErrorCodes.InvalidCategory, "History date range is invalid.")
+            : store.GetHistoryAsync(householdId, Math.Clamp(limit, 1, 200), filter, cancellationToken);
+
+    public Task<IReadOnlyList<LedgerHistoryItem>> GetHistoryAsync(
+        Guid householdId, int limit, CancellationToken cancellationToken) =>
+        GetHistoryAsync(householdId, limit, new LedgerHistoryFilter(), cancellationToken);
 
     public Task<LedgerWriteResult> PostIncomeAsync(
         Guid actorUserId,

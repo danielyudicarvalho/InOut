@@ -70,6 +70,23 @@ final ledgerCategoriesProvider = FutureProvider.autoDispose
           .getCategories(input.householdId, flow: input.flow);
     });
 
+final ledgerAllCategoriesProvider = FutureProvider.autoDispose
+    .family<List<CategorySummary>, ({String householdId, String flow})>((
+      ref,
+      input,
+    ) {
+      return ref.watch(ledgerRepositoryProvider).getCategories(
+        input.householdId,
+        flow: input.flow,
+        includeArchived: true,
+      );
+    });
+
+final ledgerHistoryCategoriesProvider = FutureProvider.autoDispose
+    .family<List<CategorySummary>, String>((ref, householdId) => ref
+        .watch(ledgerRepositoryProvider)
+        .getCategories(householdId, includeArchived: true));
+
 final householdSyncProvider = StreamProvider.autoDispose
     .family<HouseholdSyncEvent, String>((ref, householdId) async* {
       yield HouseholdSyncEvent.connecting;
@@ -78,6 +95,8 @@ final householdSyncProvider = StreamProvider.autoDispose
         if (event != HouseholdSyncEvent.disconnected) {
           ref.invalidate(ledgerAccountsProvider(householdId));
           ref.invalidate(ledgerCategoriesProvider);
+          ref.invalidate(ledgerAllCategoriesProvider);
+          ref.invalidate(ledgerHistoryCategoriesProvider(householdId));
         }
         yield event;
       }

@@ -18,7 +18,15 @@ public interface ILedgerStore
     Task<IReadOnlyList<CategorySummary>> GetCategoriesAsync(
         Guid householdId,
         FinancialFlow? flow,
+        bool includeArchived,
         CancellationToken cancellationToken);
+
+    Task<CategorySummary> CreateCategoryAsync(
+        Guid householdId, Guid actorUserId, Guid id, string name,
+        FinancialFlow flow, Guid? parentId, CancellationToken cancellationToken);
+
+    Task ArchiveCategoryAsync(
+        Guid householdId, Guid categoryId, Guid actorUserId, CancellationToken cancellationToken);
 
     Task ArchiveAccountAsync(
         Guid householdId,
@@ -29,6 +37,7 @@ public interface ILedgerStore
     Task<IReadOnlyList<LedgerHistoryItem>> GetHistoryAsync(
         Guid householdId,
         int limit,
+        LedgerHistoryFilter filter,
         CancellationToken cancellationToken);
 
     Task<LedgerWriteResult> PostAsync(

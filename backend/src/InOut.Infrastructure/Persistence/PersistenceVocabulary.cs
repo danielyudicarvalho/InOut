@@ -11,6 +11,8 @@ internal static class PersistenceVocabulary
     {
         internal const string AccountArchived = "financial.account.archived";
         internal const string AccountCreated = "financial.account.created";
+        internal const string CategoryCreated = "financial.category.created";
+        internal const string CategoryArchived = "financial.category.archived";
         internal const string HouseholdCreated = "household.created";
         internal const string InvitationAccepted = "household.invitation.accepted";
         internal const string InvitationCreated = "household.invitation.created";
@@ -22,6 +24,7 @@ internal static class PersistenceVocabulary
     internal static class EntityTypes
     {
         internal const string Account = "account";
+        internal const string Category = "category";
         internal const string Household = "household";
         internal const string HouseholdInvitation = "household_invitation";
         internal const string Transaction = "transaction";

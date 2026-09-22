@@ -13,6 +13,8 @@ internal static class ApiContract
         internal const string GetAccountBalances = "GetAccountBalances";
         internal const string GetAccounts = "GetAccounts";
         internal const string GetCategories = "GetCategories";
+        internal const string CreateCategory = "CreateCategory";
+        internal const string ArchiveCategory = "ArchiveCategory";
         internal const string GetLedgerHistory = "GetLedgerHistory";
         internal const string GetSystemInfo = "GetSystemInfo";
         internal const string ListHouseholds = "ListHouseholds";
@@ -64,6 +66,7 @@ internal static class ApiContract
         internal const string AccountById = "/accounts/{accountId:guid}";
         internal const string Balances = "/balances";
         internal const string Categories = "/categories";
+        internal const string CategoryById = "/categories/{categoryId:guid}";
         internal const string Expenses = "/expenses";
         internal const string History = "/history";
         internal const string HouseholdAccess = "/api/v1/households/{householdId:guid}/access";
@@ -81,6 +84,9 @@ internal static class ApiContract
 
         internal static string AccountResource(Guid householdId, Guid accountId) =>
             $"/api/v1/households/{householdId}/ledger/accounts/{accountId}";
+
+        internal static string CategoryResource(Guid householdId, Guid categoryId) =>
+            $"/api/v1/households/{householdId}/ledger/categories/{categoryId}";
 
         internal static string HouseholdResource(Guid householdId) =>
             $"/api/v1/households/{householdId}";
