@@ -217,7 +217,7 @@ public sealed class EfLedgerStore(
         FinancialFlow flow, Guid? parentId, IdempotencyRequest idempotencyRequest,
         CancellationToken cancellationToken)
     {
-        var category = Category.Create(id, householdId, name, flow);
+        var category = Category.Create(id, householdId, name, flow, parentId);
         await using var databaseTransaction = await BeginForUserAsync(actorUserId, cancellationToken);
         var acquisition = await idempotency.AcquireAsync<CategorySummary>(
             idempotencyRequest,
@@ -244,8 +244,8 @@ public sealed class EfLedgerStore(
         {
             Id = category.Id,
             HouseholdId = householdId,
-            ParentId = parentId,
-            Name = Category.NormalizeName(name),
+            ParentId = category.ParentId,
+            Name = category.Name,
             Flow = category.Flow,
             CreatedBy = actorUserId,
         });
@@ -257,8 +257,13 @@ public sealed class EfLedgerStore(
             id,
             1,
             PersistenceVocabulary.AuditActions.CategoryCreated,
-            new { category.Id, category.HouseholdId, Name = Category.NormalizeName(name), category.Flow, ParentId = parentId });
-        var result = new CategorySummary(id, Category.NormalizeName(name), flow, parentId, null);
+            new { category.Id, category.HouseholdId, category.Name, category.Flow, category.ParentId });
+        var result = new CategorySummary(
+            category.Id,
+            category.Name,
+            category.Flow,
+            category.ParentId,
+            category.ArchivedAt);
         idempotency.Complete(
             acquisition.Record,
             result,
@@ -624,7 +629,9 @@ public sealed class EfLedgerStore(
     private static Category ToDomain(CategoryRecord record) => new(
         record.Id,
         record.HouseholdId,
+        record.Name,
         record.Flow,
+        record.ParentId,
         record.ArchivedAt);
 
     private async Task<Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction> BeginForUserAsync(

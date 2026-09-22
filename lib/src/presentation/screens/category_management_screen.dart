@@ -91,7 +91,7 @@ final class _CategoryManagementScreenState
         householdId: widget.household.id,
         id: UuidUtils.v4(),
         name: input.$1,
-        flow: _flow.name,
+        flow: _flow,
         idempotencyKey: UuidUtils.v4(),
         parentId: input.$2,
       );
@@ -156,7 +156,7 @@ final class _CategoryManagementScreenState
     final categories = ref.watch(
       ledgerAllCategoriesProvider((
         householdId: widget.household.id,
-        flow: _flow.name,
+        flow: _flow,
       )),
     );
     return Scaffold(

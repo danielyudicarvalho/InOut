@@ -1,4 +1,5 @@
 import 'package:inout/src/application/financial/dtos/ledger_models.dart';
+import 'package:inout/src/domain/transaction/financial_flow.dart';
 
 export 'package:inout/src/application/financial/dtos/ledger_models.dart';
 
@@ -26,7 +27,7 @@ abstract interface class LedgerRepository {
 
   Future<List<CategorySummary>> getCategories(
     String householdId, {
-    String? flow,
+    FinancialFlow? flow,
     bool includeArchived = false,
   });
 
@@ -34,7 +35,7 @@ abstract interface class LedgerRepository {
     required String householdId,
     required String id,
     required String name,
-    required String flow,
+    required FinancialFlow flow,
     required String idempotencyKey,
     String? parentId,
   });

@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:inout/src/domain/transaction/financial_flow.dart';
 import 'package:inout/src/infrastructure/financial/api_ledger_repository.dart';
 
 void main() {
@@ -190,7 +191,7 @@ void main() {
 
     final categories = await repository.getCategories(
       'household-1',
-      flow: 'expense',
+      flow: FinancialFlow.expense,
     );
     await repository.postExpense(
       householdId: 'household-1',

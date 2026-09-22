@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 set local search_path = public, extensions, pg_catalog;
-select plan(6);
+select plan(7);
 
 -- The test runner connects as postgres; make it a runtime-role member only
 -- within this transaction, which is rolled back at the end.
@@ -34,6 +34,14 @@ insert into public.categories (id, household_id, name, flow, created_by) values
   ('a5000000-0000-0000-0000-000000000005', 'a3000000-0000-0000-0000-000000000003', 'Root', 'expense', 'a1000000-0000-0000-0000-000000000001');
 insert into public.categories (id, household_id, parent_id, name, flow, created_by) values
   ('a6000000-0000-0000-0000-000000000006', 'a3000000-0000-0000-0000-000000000003', 'a5000000-0000-0000-0000-000000000005', 'Child', 'expense', 'a1000000-0000-0000-0000-000000000001');
+
+select throws_ok(
+  $$insert into public.categories (household_id, name, flow, created_by)
+    values ('a3000000-0000-0000-0000-000000000003', ' Padded ', 'expense', 'a1000000-0000-0000-0000-000000000001')$$,
+  '23514',
+  'new row for relation "categories" violates check constraint "categories_name_trimmed_chk"',
+  'category names must be stored trimmed'
+);
 
 select throws_ok(
   $$insert into public.categories (household_id, parent_id, name, flow, created_by)

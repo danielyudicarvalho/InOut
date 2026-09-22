@@ -207,7 +207,9 @@ public sealed class FinancialTransactionTests
         var category = new Category(
             categoryId,
             HouseholdId,
+            "Food",
             FinancialFlow.Expense,
+            null,
             null);
 
         var exception = Assert.Throws<FinancialRuleException>(() =>
@@ -238,7 +240,9 @@ public sealed class FinancialTransactionTests
         var category = new Category(
             categoryId,
             HouseholdId,
+            "Salary",
             FinancialFlow.Income,
+            null,
             null);
 
         var exception = Assert.Throws<FinancialRuleException>(() =>

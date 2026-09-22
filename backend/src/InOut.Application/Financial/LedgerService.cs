@@ -62,19 +62,19 @@ public sealed class LedgerService(ILedgerStore store)
         FinancialFlow flow, Guid? parentId, Guid idempotencyKey,
         CancellationToken cancellationToken)
     {
-        var category = Category.Create(id, householdId, name, flow);
-        var normalizedName = Category.NormalizeName(name);
+        var category = Category.Create(id, householdId, name, flow, parentId);
         var idempotency = IdempotencyRequest.Create(
             householdId,
             actorUserId,
             IdempotencyOperation.CreateCategory,
             idempotencyKey,
             category.Id,
-            normalizedName,
+            category.Name,
             category.Flow,
-            parentId);
+            category.ParentId);
         return store.CreateCategoryAsync(
-            householdId, actorUserId, id, normalizedName, flow, parentId,
+            householdId, actorUserId, category.Id, category.Name, category.Flow,
+            category.ParentId,
             idempotency, cancellationToken);
     }
 

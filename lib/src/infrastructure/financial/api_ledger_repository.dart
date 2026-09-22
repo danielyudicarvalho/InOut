@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 import 'package:inout/src/application/financial/ledger_repository.dart';
+import 'package:inout/src/domain/transaction/financial_flow.dart';
 import 'package:inout/src/infrastructure/financial/dtos/ledger_response_mapper.dart';
 import 'package:inout/src/infrastructure/household/api_household_repository.dart';
 import 'package:inout/src/infrastructure/http/api_contract.dart';
@@ -83,13 +84,13 @@ final class ApiLedgerRepository implements LedgerRepository {
   @override
   Future<List<CategorySummary>> getCategories(
     String householdId, {
-    String? flow,
+    FinancialFlow? flow,
     bool includeArchived = false,
   }) async {
     final query = <String, String>{
       if (includeArchived) ApiQueryFields.includeArchived: 'true',
     };
-    if (flow != null) query[ApiQueryFields.flow] = flow;
+    if (flow != null) query[ApiQueryFields.flow] = flow.name;
     final uri = Uri(
       path: ApiContract.categories(householdId),
       queryParameters: query.isEmpty ? null : query,
@@ -106,7 +107,7 @@ final class ApiLedgerRepository implements LedgerRepository {
     required String householdId,
     required String id,
     required String name,
-    required String flow,
+    required FinancialFlow flow,
     required String idempotencyKey,
     String? parentId,
   }) async {
@@ -117,7 +118,7 @@ final class ApiLedgerRepository implements LedgerRepository {
       body: {
         ApiFields.id: id,
         ApiFields.name: name,
-        ApiFields.flow: flow,
+        ApiFields.flow: flow.name,
         ApiFields.parentId: parentId,
       },
     );

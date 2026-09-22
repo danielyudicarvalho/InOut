@@ -38,7 +38,6 @@ final class _TransactionFormScreenState
   String? _pendingIdempotencyKey;
 
   bool get _isIncome => widget.flow == FinancialFlow.income;
-  String get _flow => widget.flow.name;
 
   @override
   void dispose() {
@@ -127,7 +126,10 @@ final class _TransactionFormScreenState
   Widget build(BuildContext context) {
     final accounts = ref.watch(ledgerAccountsProvider(widget.household.id));
     final categories = ref.watch(
-      ledgerCategoriesProvider((householdId: widget.household.id, flow: _flow)),
+      ledgerCategoriesProvider((
+        householdId: widget.household.id,
+        flow: widget.flow,
+      )),
     );
     final ready = accounts.hasValue && categories.hasValue;
     return Scaffold(

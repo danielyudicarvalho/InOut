@@ -1,3 +1,5 @@
+import 'package:inout/src/domain/transaction/financial_flow.dart';
+
 final class LedgerWriteResult {
   const LedgerWriteResult({
     required this.transactionId,
@@ -56,7 +58,7 @@ final class CategorySummary {
 
   final String id;
   final String name;
-  final String flow;
+  final FinancialFlow flow;
   final String? parentId;
   final DateTime? archivedAt;
 }

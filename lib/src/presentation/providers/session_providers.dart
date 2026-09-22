@@ -5,6 +5,7 @@ import 'package:inout/src/application/identity/auth_repository.dart';
 import 'package:inout/src/application/sync/household_sync_gateway.dart';
 import 'package:inout/src/domain/household/household.dart';
 import 'package:inout/src/domain/identity/authenticated_user.dart';
+import 'package:inout/src/domain/transaction/financial_flow.dart';
 import 'package:inout/src/infrastructure/auth/supabase_auth_repository.dart';
 import 'package:inout/src/infrastructure/financial/api_ledger_repository.dart';
 import 'package:inout/src/infrastructure/household/api_household_repository.dart';
@@ -61,7 +62,7 @@ final ledgerAccountsProvider = FutureProvider.autoDispose
     });
 
 final ledgerCategoriesProvider = FutureProvider.autoDispose
-    .family<List<CategorySummary>, ({String householdId, String flow})>((
+    .family<List<CategorySummary>, ({String householdId, FinancialFlow flow})>((
       ref,
       input,
     ) {
@@ -71,7 +72,7 @@ final ledgerCategoriesProvider = FutureProvider.autoDispose
     });
 
 final ledgerAllCategoriesProvider = FutureProvider.autoDispose
-    .family<List<CategorySummary>, ({String householdId, String flow})>((
+    .family<List<CategorySummary>, ({String householdId, FinancialFlow flow})>((
       ref,
       input,
     ) {

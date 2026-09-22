@@ -1,4 +1,5 @@
 import 'package:inout/src/application/financial/ledger_repository.dart';
+import 'package:inout/src/domain/transaction/financial_flow.dart';
 import 'package:inout/src/infrastructure/http/api_contract.dart';
 
 abstract final class LedgerResponseMapper {
@@ -41,7 +42,7 @@ abstract final class LedgerResponseMapper {
   static CategorySummary category(Map<String, dynamic> row) => CategorySummary(
     id: row[ApiFields.id]! as String,
     name: row[ApiFields.name]! as String,
-    flow: row[ApiFields.flow]! as String,
+    flow: FinancialFlow.parse(row[ApiFields.flow]! as String),
     parentId: row[ApiFields.parentId] as String?,
     archivedAt: row[ApiFields.archivedAt] == null
         ? null

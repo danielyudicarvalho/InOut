@@ -5,20 +5,31 @@ namespace InOut.Domain.Financial;
 public sealed record Category(
     Guid Id,
     Guid HouseholdId,
+    string Name,
     FinancialFlow Flow,
+    Guid? ParentId,
     DateTimeOffset? ArchivedAt)
 {
     public bool IsActive => ArchivedAt is null;
 
-    public static Category Create(Guid id, Guid householdId, string? name, FinancialFlow flow)
+    public static Category Create(
+        Guid id,
+        Guid householdId,
+        string? name,
+        FinancialFlow flow,
+        Guid? parentId = null)
     {
         if (id == Guid.Empty || householdId == Guid.Empty || !Enum.IsDefined(flow))
         {
             throw new FinancialRuleException(FinancialErrorCodes.InvalidCategory, "Category identifiers and flow are required.");
         }
 
-        NormalizeName(name);
-        return new Category(id, householdId, flow, null);
+        if (parentId == id)
+        {
+            throw new FinancialRuleException(FinancialErrorCodes.InvalidCategory, "Category cannot be its own parent.");
+        }
+
+        return new Category(id, householdId, NormalizeName(name), flow, parentId, null);
     }
 
     public static string NormalizeName(string? name)
