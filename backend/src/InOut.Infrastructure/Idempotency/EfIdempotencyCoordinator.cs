@@ -165,6 +165,7 @@ internal sealed class EfIdempotencyCoordinator(
     private static string OperationName(IdempotencyOperation operation) => operation switch
     {
         IdempotencyOperation.CreateAccount => PersistenceVocabulary.OperationNames.CreateAccount,
+        IdempotencyOperation.CreateCategory => PersistenceVocabulary.OperationNames.CreateCategory,
         IdempotencyOperation.PostIncome => PersistenceVocabulary.OperationNames.PostIncome,
         IdempotencyOperation.PostExpense => PersistenceVocabulary.OperationNames.PostExpense,
         IdempotencyOperation.PostTransfer => PersistenceVocabulary.OperationNames.PostTransfer,

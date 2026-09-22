@@ -93,6 +93,7 @@ final class _CategoryManagementScreenState
             id: UuidUtils.v4(),
             name: input.$1,
             flow: _flow.name,
+            idempotencyKey: UuidUtils.v4(),
             parentId: input.$2,
           );
       ref.invalidate(ledgerCategoriesProvider);
@@ -145,9 +146,8 @@ final class _CategoryManagementScreenState
 
   void _showError(String message) {
     if (mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(message)));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(message)));
     }
   }
 

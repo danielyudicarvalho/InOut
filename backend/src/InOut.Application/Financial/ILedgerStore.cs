@@ -23,7 +23,8 @@ public interface ILedgerStore
 
     Task<CategorySummary> CreateCategoryAsync(
         Guid householdId, Guid actorUserId, Guid id, string name,
-        FinancialFlow flow, Guid? parentId, CancellationToken cancellationToken);
+        FinancialFlow flow, Guid? parentId, IdempotencyRequest idempotencyRequest,
+        CancellationToken cancellationToken);
 
     Task ArchiveCategoryAsync(
         Guid householdId, Guid categoryId, Guid actorUserId, CancellationToken cancellationToken);

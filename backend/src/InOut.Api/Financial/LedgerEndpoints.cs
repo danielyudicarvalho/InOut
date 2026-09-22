@@ -72,13 +72,14 @@ public static class LedgerEndpoints
         ledger.MapPost(ApiContract.Routes.Categories, async (
             Guid householdId,
             CreateCategoryRequest request,
+            [FromHeader(Name = ApiContract.Headers.IdempotencyKey)] Guid idempotencyKey,
             ClaimsPrincipal principal,
             LedgerService service,
             CancellationToken cancellationToken) =>
         {
             var category = await service.CreateCategoryAsync(
                 householdId, UserId(principal), request.Id, request.Name, request.Flow,
-                request.ParentId, cancellationToken);
+                request.ParentId, idempotencyKey, cancellationToken);
             return Results.Created(ApiContract.Routes.CategoryResource(householdId, category.Id), category);
         }).WithName(ApiContract.EndpointNames.CreateCategory);
 

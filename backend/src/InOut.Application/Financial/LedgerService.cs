@@ -59,11 +59,23 @@ public sealed class LedgerService(ILedgerStore store)
 
     public Task<CategorySummary> CreateCategoryAsync(
         Guid householdId, Guid actorUserId, Guid id, string? name,
-        FinancialFlow flow, Guid? parentId, CancellationToken cancellationToken)
+        FinancialFlow flow, Guid? parentId, Guid idempotencyKey,
+        CancellationToken cancellationToken)
     {
-        Category.Create(id, householdId, name, flow);
+        var category = Category.Create(id, householdId, name, flow);
+        var normalizedName = Category.NormalizeName(name);
+        var idempotency = IdempotencyRequest.Create(
+            householdId,
+            actorUserId,
+            IdempotencyOperation.CreateCategory,
+            idempotencyKey,
+            category.Id,
+            normalizedName,
+            category.Flow,
+            parentId);
         return store.CreateCategoryAsync(
-            householdId, actorUserId, id, Category.NormalizeName(name), flow, parentId, cancellationToken);
+            householdId, actorUserId, id, normalizedName, flow, parentId,
+            idempotency, cancellationToken);
     }
 
     public Task ArchiveCategoryAsync(

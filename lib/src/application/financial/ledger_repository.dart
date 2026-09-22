@@ -35,6 +35,7 @@ abstract interface class LedgerRepository {
     required String id,
     required String name,
     required String flow,
+    required String idempotencyKey,
     String? parentId,
   });
 

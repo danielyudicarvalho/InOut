@@ -9,6 +9,7 @@ public sealed class IdempotencyPolicyTests
     public static TheoryData<IdempotencyOperation> FinancialOperations => new()
     {
         IdempotencyOperation.CreateAccount,
+        IdempotencyOperation.CreateCategory,
         IdempotencyOperation.PostIncome,
         IdempotencyOperation.PostExpense,
         IdempotencyOperation.PostTransfer,

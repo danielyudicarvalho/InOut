@@ -214,10 +214,20 @@ public sealed class EfLedgerStore(
 
     public async Task<CategorySummary> CreateCategoryAsync(
         Guid householdId, Guid actorUserId, Guid id, string name,
-        FinancialFlow flow, Guid? parentId, CancellationToken cancellationToken)
+        FinancialFlow flow, Guid? parentId, IdempotencyRequest idempotencyRequest,
+        CancellationToken cancellationToken)
     {
         var category = Category.Create(id, householdId, name, flow);
         await using var databaseTransaction = await BeginForUserAsync(actorUserId, cancellationToken);
+        var acquisition = await idempotency.AcquireAsync<CategorySummary>(
+            idempotencyRequest,
+            cancellationToken);
+        if (acquisition.IsReplay)
+        {
+            await databaseTransaction.CommitAsync(cancellationToken);
+            return acquisition.Response!;
+        }
+
         if (parentId is not null)
         {
             await LockResourceAsync(householdId, parentId.Value, cancellationToken);
@@ -241,6 +251,20 @@ public sealed class EfLedgerStore(
         });
         AddAudit(householdId, actorUserId, PersistenceVocabulary.AuditActions.CategoryCreated,
             PersistenceVocabulary.EntityTypes.Category, id);
+        idempotency.AddOutboxEvent(
+            householdId,
+            PersistenceVocabulary.EntityTypes.Category,
+            id,
+            1,
+            PersistenceVocabulary.AuditActions.CategoryCreated,
+            new { category.Id, category.HouseholdId, Name = Category.NormalizeName(name), category.Flow, ParentId = parentId });
+        var result = new CategorySummary(id, Category.NormalizeName(name), flow, parentId, null);
+        idempotency.Complete(
+            acquisition.Record,
+            result,
+            (int)HttpStatusCode.Created,
+            PersistenceVocabulary.EntityTypes.Category,
+            id);
         try
         {
             await dbContext.SaveChangesAsync(cancellationToken);
@@ -251,7 +275,7 @@ public sealed class EfLedgerStore(
             throw new FinancialRuleException(FinancialErrorCodes.CategoryConflict, "Category name or identifier already exists.");
         }
 
-        return new CategorySummary(id, Category.NormalizeName(name), flow, parentId, null);
+        return result;
     }
 
     public async Task ArchiveCategoryAsync(

@@ -176,6 +176,37 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task CategoryCreationReplaysSameIntentAndRejectsChangedPayload()
+    {
+        var createdCategoryId = Guid.NewGuid();
+        var idempotencyKey = Guid.NewGuid();
+
+        async Task<CategorySummary> CreateAsync(string name)
+        {
+            await using var context = CreateContext();
+            return await new LedgerService(CreateStore(context)).CreateCategoryAsync(
+                householdId,
+                actorUserId,
+                createdCategoryId,
+                name,
+                FinancialFlow.Expense,
+                null,
+                idempotencyKey,
+                CancellationToken.None);
+        }
+
+        var created = await CreateAsync("Transport");
+        var replayed = await CreateAsync("Transport");
+        var conflict = await Assert.ThrowsAsync<IdempotencyException>(() => CreateAsync("Fuel"));
+
+        Assert.Equal(created, replayed);
+        Assert.Equal("idempotency_conflict", conflict.Code);
+        Assert.Equal(1, await CountAsync("public.categories", "id", createdCategoryId));
+        Assert.Equal(1, await CountAsync("private.idempotency_requests", "resource_id", createdCategoryId));
+        Assert.Equal(1, await CountAsync("private.outbox_messages", "aggregate_id", createdCategoryId));
+    }
+
+    [Fact]
     public async Task InboxProcessesTheSameMessageOnlyOnce()
     {
         var message = new InboxMessage(
@@ -516,12 +547,12 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
         {
             var service = new LedgerService(CreateStore(context));
             await service.CreateCategoryAsync(householdId, actorUserId, rootId,
-                "  Extras  ", FinancialFlow.Expense, null, CancellationToken.None);
+                "  Extras  ", FinancialFlow.Expense, null, Guid.NewGuid(), CancellationToken.None);
             await service.CreateCategoryAsync(householdId, actorUserId, childId,
-                "Cinema", FinancialFlow.Expense, rootId, CancellationToken.None);
+                "Cinema", FinancialFlow.Expense, rootId, Guid.NewGuid(), CancellationToken.None);
             await Assert.ThrowsAsync<FinancialRuleException>(() => service.CreateCategoryAsync(
                 householdId, actorUserId, Guid.NewGuid(), "Invalid", FinancialFlow.Income,
-                rootId, CancellationToken.None));
+                rootId, Guid.NewGuid(), CancellationToken.None));
             await Assert.ThrowsAsync<FinancialRuleException>(() => service.ArchiveCategoryAsync(
                 householdId, rootId, actorUserId, CancellationToken.None));
         }

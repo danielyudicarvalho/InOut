@@ -107,11 +107,13 @@ final class ApiLedgerRepository implements LedgerRepository {
     required String id,
     required String name,
     required String flow,
+    required String idempotencyKey,
     String? parentId,
   }) async {
     final response = await _send(
       ApiMethods.post,
       ApiContract.categories(householdId),
+      idempotencyKey: idempotencyKey,
       body: {
         ApiFields.id: id,
         ApiFields.name: name,
