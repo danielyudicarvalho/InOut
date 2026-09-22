@@ -10,6 +10,7 @@ public sealed class IdempotencyPolicy : IIdempotencyPolicy
     public IdempotencyExecutionPolicy GetPolicy(IdempotencyOperation operation) => operation switch
     {
         IdempotencyOperation.CreateAccount => FinancialCommand(),
+        IdempotencyOperation.CreateCategory => FinancialCommand(),
         IdempotencyOperation.PostIncome => FinancialCommand(),
         IdempotencyOperation.PostExpense => FinancialCommand(),
         IdempotencyOperation.PostTransfer => FinancialCommand(),

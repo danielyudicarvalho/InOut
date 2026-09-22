@@ -11,6 +11,9 @@ public static class FinancialErrorCodes
     public const string InvalidAccountName = "invalid_account_name";
     public const string InvalidAmount = "invalid_amount";
     public const string InvalidCategory = "invalid_category";
+    public const string CategoryConflict = "category_conflict";
+    public const string CategoryNotFound = "category_not_found";
+    public const string CategoryHasActiveChildren = "category_has_active_children";
     public const string InvalidCurrency = "invalid_currency";
     public const string InvalidInitialBalance = "invalid_initial_balance";
     public const string NegativeMoney = "negative_money";

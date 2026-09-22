@@ -9,6 +9,8 @@ import 'package:inout/src/presentation/components/sync_status_banner.dart';
 import 'package:inout/src/presentation/layout/inout_adaptive_scaffold.dart';
 import 'package:inout/src/presentation/providers/household_providers.dart';
 import 'package:inout/src/presentation/providers/session_providers.dart';
+import 'package:inout/src/presentation/screens/category_management_screen.dart';
+import 'package:inout/src/presentation/screens/ledger_history_screen.dart';
 import 'package:inout/src/presentation/screens/transaction_form_screen.dart';
 
 final class BootstrapHomeScreen extends ConsumerWidget {
@@ -70,6 +72,33 @@ final class BootstrapHomeScreen extends ConsumerWidget {
                               ref,
                               selected,
                               FinancialFlow.expense,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 24),
+                      Wrap(
+                        spacing: 12,
+                        children: [
+                          OutlinedButton.icon(
+                            icon: const Icon(Icons.category_outlined),
+                            label: const Text('Categorias'),
+                            onPressed: () => Navigator.of(context).push(
+                              MaterialPageRoute<void>(
+                                builder: (_) => CategoryManagementScreen(
+                                  household: selected,
+                                ),
+                              ),
+                            ),
+                          ),
+                          OutlinedButton.icon(
+                            icon: const Icon(Icons.history),
+                            label: const Text('Histórico e filtros'),
+                            onPressed: () => Navigator.of(context).push(
+                              MaterialPageRoute<void>(
+                                builder: (_) =>
+                                    LedgerHistoryScreen(household: selected),
+                              ),
                             ),
                           ),
                         ],

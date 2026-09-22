@@ -38,7 +38,6 @@ final class _TransactionFormScreenState
   String? _pendingIdempotencyKey;
 
   bool get _isIncome => widget.flow == FinancialFlow.income;
-  String get _flow => widget.flow.name;
 
   @override
   void dispose() {
@@ -127,7 +126,10 @@ final class _TransactionFormScreenState
   Widget build(BuildContext context) {
     final accounts = ref.watch(ledgerAccountsProvider(widget.household.id));
     final categories = ref.watch(
-      ledgerCategoriesProvider((householdId: widget.household.id, flow: _flow)),
+      ledgerCategoriesProvider((
+        householdId: widget.household.id,
+        flow: widget.flow,
+      )),
     );
     final ready = accounts.hasValue && categories.hasValue;
     return Scaffold(
@@ -204,14 +206,24 @@ final class _TransactionFormScreenState
                             decoration: const InputDecoration(
                               labelText: 'Categoria',
                             ),
-                            items: categories.value!
-                                .map(
-                                  (item) => DropdownMenuItem(
-                                    value: item.id,
-                                    child: Text(item.name),
-                                  ),
-                                )
-                                .toList(),
+                            items: categories.value!.map((item) {
+                              final parent = item.parentId == null
+                                  ? null
+                                  : categories.value!
+                                        .where(
+                                          (candidate) =>
+                                              candidate.id == item.parentId,
+                                        )
+                                        .firstOrNull;
+                              return DropdownMenuItem(
+                                value: item.id,
+                                child: Text(
+                                  parent == null
+                                      ? item.name
+                                      : '${parent.name} › ${item.name}',
+                                ),
+                              );
+                            }).toList(),
                             onChanged: (value) =>
                                 setState(() => _categoryId = value),
                             validator: (value) => value == null

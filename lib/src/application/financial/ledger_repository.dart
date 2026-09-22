@@ -1,4 +1,5 @@
 import 'package:inout/src/application/financial/dtos/ledger_models.dart';
+import 'package:inout/src/domain/transaction/financial_flow.dart';
 
 export 'package:inout/src/application/financial/dtos/ledger_models.dart';
 
@@ -26,12 +27,32 @@ abstract interface class LedgerRepository {
 
   Future<List<CategorySummary>> getCategories(
     String householdId, {
-    String? flow,
+    FinancialFlow? flow,
+    bool includeArchived = false,
+  });
+
+  Future<CategorySummary> createCategory({
+    required String householdId,
+    required String id,
+    required String name,
+    required FinancialFlow flow,
+    required String idempotencyKey,
+    String? parentId,
+  });
+
+  Future<void> archiveCategory({
+    required String householdId,
+    required String categoryId,
   });
 
   Future<List<LedgerHistoryItem>> getHistory(
     String householdId, {
     int limit = 100,
+    DateTime? from,
+    DateTime? to,
+    String? accountId,
+    String? categoryId,
+    String? kind,
   });
 
   Future<LedgerWriteResult> postIncome({

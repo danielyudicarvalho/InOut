@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 import 'package:inout/src/application/financial/ledger_repository.dart';
+import 'package:inout/src/domain/transaction/financial_flow.dart';
 import 'package:inout/src/infrastructure/financial/dtos/ledger_response_mapper.dart';
 import 'package:inout/src/infrastructure/household/api_household_repository.dart';
 import 'package:inout/src/infrastructure/http/api_contract.dart';
@@ -83,34 +84,81 @@ final class ApiLedgerRepository implements LedgerRepository {
   @override
   Future<List<CategorySummary>> getCategories(
     String householdId, {
-    String? flow,
+    FinancialFlow? flow,
+    bool includeArchived = false,
   }) async {
-    final suffix = flow == null ? '' : '?${ApiQueryFields.flow}=$flow';
-    final response = await _send(
-      ApiMethods.get,
-      '${ApiContract.categories(householdId)}$suffix',
+    final query = <String, String>{
+      if (includeArchived) ApiQueryFields.includeArchived: 'true',
+    };
+    if (flow != null) query[ApiQueryFields.flow] = flow.name;
+    final uri = Uri(
+      path: ApiContract.categories(householdId),
+      queryParameters: query.isEmpty ? null : query,
     );
+    final response = await _send(ApiMethods.get, uri.toString());
     return (jsonDecode(response.body) as List<dynamic>)
         .cast<Map<String, dynamic>>()
-        .map(
-          (row) => CategorySummary(
-            id: row[ApiFields.id]! as String,
-            name: row[ApiFields.name]! as String,
-            flow: row[ApiFields.flow]! as String,
-          ),
-        )
+        .map(LedgerResponseMapper.category)
         .toList(growable: false);
+  }
+
+  @override
+  Future<CategorySummary> createCategory({
+    required String householdId,
+    required String id,
+    required String name,
+    required FinancialFlow flow,
+    required String idempotencyKey,
+    String? parentId,
+  }) async {
+    final response = await _send(
+      ApiMethods.post,
+      ApiContract.categories(householdId),
+      idempotencyKey: idempotencyKey,
+      body: {
+        ApiFields.id: id,
+        ApiFields.name: name,
+        ApiFields.flow: flow.name,
+        ApiFields.parentId: parentId,
+      },
+    );
+    return LedgerResponseMapper.category(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
+  }
+
+  @override
+  Future<void> archiveCategory({
+    required String householdId,
+    required String categoryId,
+  }) async {
+    await _send(
+      ApiMethods.delete,
+      ApiContract.category(householdId, categoryId),
+    );
   }
 
   @override
   Future<List<LedgerHistoryItem>> getHistory(
     String householdId, {
     int limit = 100,
+    DateTime? from,
+    DateTime? to,
+    String? accountId,
+    String? categoryId,
+    String? kind,
   }) async {
-    final response = await _send(
-      ApiMethods.get,
-      '${ApiContract.history(householdId)}?${ApiQueryFields.limit}=$limit',
+    final query = <String, String>{ApiQueryFields.limit: '$limit'};
+    if (from != null) query[ApiQueryFields.from] = _date(from);
+    if (to != null) query[ApiQueryFields.to] = _date(to);
+    if (accountId != null) query[ApiQueryFields.accountId] = accountId;
+    if (categoryId != null) query[ApiQueryFields.categoryId] = categoryId;
+    if (kind != null) query[ApiQueryFields.kind] = kind;
+    final uri = Uri(
+      path: ApiContract.history(householdId),
+      queryParameters: query,
     );
+    final response = await _send(ApiMethods.get, uri.toString());
     return (jsonDecode(response.body) as List<dynamic>)
         .cast<Map<String, dynamic>>()
         .map(LedgerResponseMapper.historyItem)

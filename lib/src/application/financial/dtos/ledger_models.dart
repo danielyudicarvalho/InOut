@@ -1,3 +1,5 @@
+import 'package:inout/src/domain/transaction/financial_flow.dart';
+
 final class LedgerWriteResult {
   const LedgerWriteResult({
     required this.transactionId,
@@ -50,11 +52,15 @@ final class CategorySummary {
     required this.id,
     required this.name,
     required this.flow,
+    required this.parentId,
+    required this.archivedAt,
   });
 
   final String id;
   final String name;
-  final String flow;
+  final FinancialFlow flow;
+  final String? parentId;
+  final DateTime? archivedAt;
 }
 
 final class LedgerHistoryItem {
@@ -69,6 +75,8 @@ final class LedgerHistoryItem {
     required this.createdBy,
     required this.accountId,
     required this.accountName,
+    required this.categoryId,
+    required this.categoryName,
     required this.direction,
     required this.amountCents,
     required this.currency,
@@ -84,6 +92,8 @@ final class LedgerHistoryItem {
   final String createdBy;
   final String accountId;
   final String accountName;
+  final String? categoryId;
+  final String? categoryName;
   final String direction;
   final int amountCents;
   final String currency;

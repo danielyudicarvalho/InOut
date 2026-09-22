@@ -25,6 +25,9 @@ abstract final class ApiContract {
   static String account(String householdId, String accountId) =>
       '${accounts(householdId)}/$accountId';
 
+  static String category(String householdId, String categoryId) =>
+      '${categories(householdId)}/$categoryId';
+
   static String reversals(String householdId, String transactionId) =>
       '${ledger(householdId)}/transactions/$transactionId/reversals';
 
@@ -71,6 +74,8 @@ abstract final class ApiFields {
   static const isConsistent = 'isConsistent';
   static const kind = 'kind';
   static const name = 'name';
+  static const parentId = 'parentId';
+  static const categoryName = 'categoryName';
   static const occurredOn = 'occurredOn';
   static const openingDate = 'openingDate';
   static const postedAt = 'postedAt';
@@ -83,9 +88,14 @@ abstract final class ApiFields {
 }
 
 abstract final class ApiQueryFields {
+  static const accountId = 'accountId';
+  static const categoryId = 'categoryId';
   static const flow = 'flow';
+  static const from = 'from';
   static const includeArchived = 'includeArchived';
+  static const kind = 'kind';
   static const limit = 'limit';
+  static const to = 'to';
 }
 
 abstract final class ApiErrorCodes {
