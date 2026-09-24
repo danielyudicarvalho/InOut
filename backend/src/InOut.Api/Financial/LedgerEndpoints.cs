@@ -2,6 +2,7 @@ using System.Security.Claims;
 using InOut.Api.Security;
 using InOut.Application.Financial;
 using InOut.Application.Financial.Dashboard;
+using InOut.Application.Financial.Export;
 using InOut.Domain.Financial;
 using Microsoft.AspNetCore.Mvc;
 
@@ -224,6 +225,20 @@ public static class LedgerEndpoints
                 new GetFinancialDashboardQuery(UserId(principal), householdId, year, month),
                 cancellationToken)))
             .WithName(ApiContract.EndpointNames.GetFinancialDashboard);
+
+        ledger.MapGet(ApiContract.Routes.ExportCsv, async (
+            Guid householdId,
+            ClaimsPrincipal principal,
+            ExportFinancialData export,
+            CancellationToken cancellationToken) =>
+        {
+            var rows = await export.ExecuteAsync(
+                UserId(principal), householdId, cancellationToken);
+            return Results.File(
+                FinancialCsvWriter.Write(rows),
+                "text/csv; charset=utf-8",
+                $"inout-ledger-{householdId}.csv");
+        }).WithName(ApiContract.EndpointNames.ExportFinancialCsv);
 
         return endpoints;
     }
