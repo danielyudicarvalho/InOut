@@ -52,8 +52,10 @@ public sealed class EfRecurringPlanStore(
         dbContext.RecurringPlans.Add(ToRecord(plan, identity.ActorUserId));
         dbContext.AuditEvents.Add(new AuditEventRecord
         {
-            HouseholdId = plan.HouseholdId, ActorUserId = identity.ActorUserId,
-            Action = "financial.recurring_plan.created", EntityType = "recurring_plan",
+            HouseholdId = plan.HouseholdId,
+            ActorUserId = identity.ActorUserId,
+            Action = "financial.recurring_plan.created",
+            EntityType = "recurring_plan",
             EntityId = plan.Id,
         });
         var result = ToSummary(plan);
@@ -111,9 +113,11 @@ public sealed class EfRecurringPlanStore(
             row.UpdatedAt = timeProvider.GetUtcNow();
             dbContext.AuditEvents.Add(new AuditEventRecord
             {
-                HouseholdId = householdId, ActorUserId = actorUserId,
+                HouseholdId = householdId,
+                ActorUserId = actorUserId,
                 Action = "financial.recurring_plan.status_changed",
-                EntityType = "recurring_plan", EntityId = id,
+                EntityType = "recurring_plan",
+                EntityId = id,
             });
             await dbContext.SaveChangesAsync(cancellationToken);
         }
@@ -126,12 +130,20 @@ public sealed class EfRecurringPlanStore(
 
     private static RecurringPlanRecord ToRecord(RecurringPlan plan, Guid actorUserId) => new()
     {
-        Id = plan.Id, HouseholdId = plan.HouseholdId, Name = plan.Name,
-        Flow = plan.Flow, AccountId = plan.AccountId, CategoryId = plan.CategoryId,
-        IncomeSourceId = plan.IncomeSourceId, AmountCents = plan.Amount.Cents,
-        Currency = plan.Amount.Currency, DayOfMonth = plan.DayOfMonth,
-        StartsOn = plan.StartsOn, EndsOn = plan.EndsOn,
-        Status = plan.Status, CreatedBy = actorUserId,
+        Id = plan.Id,
+        HouseholdId = plan.HouseholdId,
+        Name = plan.Name,
+        Flow = plan.Flow,
+        AccountId = plan.AccountId,
+        CategoryId = plan.CategoryId,
+        IncomeSourceId = plan.IncomeSourceId,
+        AmountCents = plan.Amount.Cents,
+        Currency = plan.Amount.Currency,
+        DayOfMonth = plan.DayOfMonth,
+        StartsOn = plan.StartsOn,
+        EndsOn = plan.EndsOn,
+        Status = plan.Status,
+        CreatedBy = actorUserId,
     };
 
     private static RecurringPlan ToDomain(RecurringPlanRecord row) =>
