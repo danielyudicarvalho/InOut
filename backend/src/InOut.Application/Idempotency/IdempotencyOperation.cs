@@ -4,6 +4,7 @@ public enum IdempotencyOperation
 {
     CreateAccount,
     CreateCategory,
+    CreateRecurringPlan,
     PostIncome,
     PostExpense,
     PostTransfer,

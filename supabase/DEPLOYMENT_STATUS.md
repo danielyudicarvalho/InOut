@@ -17,6 +17,11 @@ the other pending repository versions must be reconciled with the live history
 before using an automated `db push` against this project. Do not rerun the
 three migrations above against a schema that already contains their objects.
 
+Version `20260924213947` adds `public.recurring_plans` for monthly expectations;
+the matching migration file is in this repository. It has scoped household
+references, RLS, and API-only privileges. This table holds plans and never
+posts transactions or changes balances by itself.
+
 The generic operation identity is stored in `private.idempotency_requests` and
 keyed by `(tenant_id, operation, idempotency_key)`. The API verifies actor and
 request fingerprint on replay, stores completed responses and processing state,
