@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using InOut.Api.Security;
 using InOut.Application.Financial;
+using InOut.Application.Financial.Dashboard;
 using InOut.Domain.Financial;
 using Microsoft.AspNetCore.Mvc;
 
@@ -216,9 +217,12 @@ public static class LedgerEndpoints
             Guid householdId,
             int year,
             int month,
-            LedgerService service,
+            ClaimsPrincipal principal,
+            GetFinancialDashboard useCase,
             CancellationToken cancellationToken) =>
-            Results.Ok(await service.GetDashboardAsync(householdId, year, month, cancellationToken)))
+            Results.Ok(await useCase.ExecuteAsync(
+                new GetFinancialDashboardQuery(UserId(principal), householdId, year, month),
+                cancellationToken)))
             .WithName(ApiContract.EndpointNames.GetFinancialDashboard);
 
         return endpoints;

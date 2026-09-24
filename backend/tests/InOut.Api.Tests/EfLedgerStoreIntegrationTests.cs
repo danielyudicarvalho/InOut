@@ -1,9 +1,12 @@
 using InOut.Application.Financial;
+using InOut.Application.Financial.Dashboard;
 using InOut.Application.Idempotency;
 using InOut.Domain.Financial;
+using InOut.Domain.Households;
 using InOut.Infrastructure.Financial;
 using InOut.Infrastructure.Idempotency;
 using InOut.Infrastructure.Persistence;
+using InOut.Infrastructure.Security;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using Testcontainers.PostgreSql;
@@ -36,6 +39,8 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
         seed.CommandText = """
             insert into public.households (id, name, created_by)
             values (@household_id, 'Integration household', @actor_user_id);
+            insert into public.household_members (household_id, user_id, role)
+            values (@household_id, @actor_user_id, 'owner');
             insert into public.accounts (id, household_id, name, kind, currency, created_by)
             values (@account_id, @household_id, 'Checking', 'checking', 'BRL', @actor_user_id);
             insert into public.accounts (id, household_id, name, kind, currency, created_by)
@@ -628,8 +633,9 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
         }
 
         await using var queryContext = CreateContext();
-        var dashboard = await new LedgerService(CreateStore(queryContext))
-            .GetDashboardAsync(householdId, 2026, 9, CancellationToken.None);
+        var dashboard = await CreateDashboardUseCase(queryContext).ExecuteAsync(
+            new GetFinancialDashboardQuery(actorUserId, householdId, 2026, 9),
+            CancellationToken.None);
 
         var summary = Assert.Single(dashboard.Summaries);
         Assert.True(dashboard.IsReconciled);
@@ -641,6 +647,19 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
         Assert.Equal(250, Assert.Single(dashboard.CategoryExpenses).AmountCents);
         Assert.Equal(250, Assert.Single(dashboard.Budgets).SpentCents);
         Assert.Equal(2_500, Assert.Single(dashboard.Goals).AllocatedCents);
+    }
+
+    [Fact]
+    public async Task DashboardRejectsAnActorOutsideTheHousehold()
+    {
+        await using var context = CreateContext();
+
+        var exception = await Assert.ThrowsAsync<HouseholdRuleException>(() =>
+            CreateDashboardUseCase(context).ExecuteAsync(
+                new GetFinancialDashboardQuery(Guid.NewGuid(), householdId, 2026, 9),
+                CancellationToken.None));
+
+        Assert.Equal(HouseholdErrorCodes.MembershipRequired, exception.Code);
     }
 
     private async Task<LedgerWriteResult> PostIncomeAsync(
@@ -687,6 +706,9 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
 
     private static EfLedgerStore CreateStore(InOutDbContext context) =>
         new(context, new IdempotencyPolicy(), TimeProvider.System);
+
+    private static GetFinancialDashboard CreateDashboardUseCase(InOutDbContext context) =>
+        new(new EfHouseholdMembershipReader(context), new EfDashboardReader(context));
 
     private async Task<long> CountAsync(string qualifiedTable)
     {

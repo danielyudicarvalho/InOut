@@ -18,7 +18,8 @@ public sealed class HouseholdExceptionHandler : IExceptionHandler
 
         var status = householdException.Code switch
         {
-            HouseholdErrorCodes.OwnerRequired => StatusCodes.Status403Forbidden,
+            HouseholdErrorCodes.OwnerRequired or HouseholdErrorCodes.MembershipRequired =>
+                StatusCodes.Status403Forbidden,
             HouseholdErrorCodes.HouseholdFull or HouseholdErrorCodes.AlreadyMember =>
                 StatusCodes.Status409Conflict,
             _ => StatusCodes.Status400BadRequest

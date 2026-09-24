@@ -61,8 +61,4 @@ public interface ILedgerStore
     Task<LedgerReconciliation> ReconcileAsync(
         Guid householdId,
         CancellationToken cancellationToken);
-
-    Task<FinancialDashboard> GetDashboardAsync(
-        Guid householdId, DateOnly periodStart, DateOnly periodEnd,
-        CancellationToken cancellationToken);
 }

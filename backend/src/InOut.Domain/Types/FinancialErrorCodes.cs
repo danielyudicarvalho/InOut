@@ -16,6 +16,7 @@ public static class FinancialErrorCodes
     public const string CategoryHasActiveChildren = "category_has_active_children";
     public const string InvalidCurrency = "invalid_currency";
     public const string InvalidInitialBalance = "invalid_initial_balance";
+    public const string InvalidPeriod = "invalid_period";
     public const string NegativeMoney = "negative_money";
     public const string ReversalOfReversal = "reversal_of_reversal";
     public const string SameTransferAccount = "same_transfer_account";

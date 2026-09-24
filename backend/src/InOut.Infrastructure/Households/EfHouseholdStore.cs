@@ -13,7 +13,7 @@ public sealed class EfHouseholdStore(InOutDbContext dbContext) : IHouseholdStore
         Guid userId,
         CancellationToken cancellationToken)
     {
-        await using var transaction = await BeginForUserAsync(userId, cancellationToken);
+        await using var transaction = await dbContext.BeginUserTransactionAsync(userId, cancellationToken);
         var households = await dbContext.HouseholdMembers
             .AsNoTracking()
             .Where(member => member.UserId == userId)
@@ -29,7 +29,7 @@ public sealed class EfHouseholdStore(InOutDbContext dbContext) : IHouseholdStore
         string name,
         CancellationToken cancellationToken)
     {
-        await using var transaction = await BeginForUserAsync(userId, cancellationToken);
+        await using var transaction = await dbContext.BeginUserTransactionAsync(userId, cancellationToken);
         var household = new HouseholdRecord
         {
             Id = Guid.NewGuid(),
@@ -73,7 +73,7 @@ public sealed class EfHouseholdStore(InOutDbContext dbContext) : IHouseholdStore
         DateTimeOffset expiresAt,
         CancellationToken cancellationToken)
     {
-        await using var transaction = await BeginForUserAsync(userId, cancellationToken);
+        await using var transaction = await dbContext.BeginUserTransactionAsync(userId, cancellationToken);
         await LockHouseholdAsync(householdId, cancellationToken);
 
         var role = await dbContext.HouseholdMembers
@@ -124,7 +124,7 @@ public sealed class EfHouseholdStore(InOutDbContext dbContext) : IHouseholdStore
         byte[] tokenHash,
         CancellationToken cancellationToken)
     {
-        await using var transaction = await BeginForUserAsync(userId, cancellationToken);
+        await using var transaction = await dbContext.BeginUserTransactionAsync(userId, cancellationToken);
         var invitation = await dbContext.HouseholdInvitations
             .FromSqlInterpolated($$"""
                 select *
@@ -191,18 +191,6 @@ public sealed class EfHouseholdStore(InOutDbContext dbContext) : IHouseholdStore
             .SingleAsync(item => item.Id == invitation.HouseholdId, cancellationToken);
         await transaction.CommitAsync(cancellationToken);
         return new Household(household.Id, household.Name);
-    }
-
-    private async Task<Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction> BeginForUserAsync(
-        Guid userId,
-        CancellationToken cancellationToken)
-    {
-        var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
-        var subjectSetting = PersistenceVocabulary.SessionSettings.JwtSubject;
-        await dbContext.Database.ExecuteSqlInterpolatedAsync(
-            $"select set_config({subjectSetting}, {userId.ToString()}, true)",
-            cancellationToken);
-        return transaction;
     }
 
     private Task<int> LockHouseholdAsync(Guid householdId, CancellationToken cancellationToken) =>

@@ -105,6 +105,21 @@ o progresso; não altera limites nem alocações. A resposta também expõe o es
 de reconciliação entre transações contabilizadas e transações que possuem
 entradas no ledger.
 
+Responsabilidades da projeção:
+
+- **Domain**: representa o período mensal e calcula totais por moeda/categoria,
+  excluindo `transfer` e `opening_balance` do resultado e aplicando ao estorno a
+  natureza e o sinal inverso do movimento original.
+- **Application**: valida o período, autoriza `actorUserId` na residência,
+  coordena a leitura e monta o DTO do painel.
+- **Infrastructure**: estabelece o ator na transação PostgreSQL, deixa a RLS
+  filtrar por residência e retorna snapshots de contas, movimentos, categorias,
+  orçamentos, metas e reconciliação; não decide regras financeiras.
+
+A autorização é deliberadamente redundante: a policy HTTP bloqueia cedo, o caso
+de uso impede uso indevido por outros adaptadores e a RLS protege o banco contra
+consultas acidentais fora da residência.
+
 ## Regras de concorrência
 
 - Gravações financeiras usam transação de banco.
@@ -127,8 +142,9 @@ Registrar: usuário, casa, ação, entidade, identificador, instante e resultado
   domínio, limita entradas operacionais como paginação e chama as portas de
   persistência.
 - **Infrastructure** carrega os dados exigidos pelas regras, converte registros
-  EF para objetos do domínio e cuida de transações PostgreSQL, locks,
-  idempotência persistida, RLS, consultas e projeções.
+  EF para snapshots/objetos do domínio e cuida de transações PostgreSQL, locks,
+  idempotência persistida, contexto RLS e consultas; não contém decisões de
+  classificação ou consolidação financeira.
 
 Consultas de saldo continuam agregadas no PostgreSQL por eficiência. Isso não
 transforma a fórmula do saldo em regra de infraestrutura: a consulta apenas

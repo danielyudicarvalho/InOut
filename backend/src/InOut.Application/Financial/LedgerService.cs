@@ -178,20 +178,6 @@ public sealed class LedgerService(ILedgerStore store)
         CancellationToken cancellationToken) =>
         store.ReconcileAsync(householdId, cancellationToken);
 
-    public Task<FinancialDashboard> GetDashboardAsync(
-        Guid householdId, int year, int month, CancellationToken cancellationToken)
-    {
-        if (year is < 2000 or > 9999 || month is < 1 or > 12)
-        {
-            throw new FinancialRuleException(
-                FinancialErrorCodes.InvalidCategory, "Dashboard period is invalid.");
-        }
-
-        var start = new DateOnly(year, month, 1);
-        return store.GetDashboardAsync(
-            householdId, start, start.AddMonths(1).AddDays(-1), cancellationToken);
-    }
-
     private Task<LedgerWriteResult> PostAsync(
         Guid actorUserId,
         IdempotencyOperation operation,
