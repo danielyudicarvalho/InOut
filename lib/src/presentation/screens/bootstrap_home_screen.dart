@@ -13,6 +13,7 @@ import 'package:inout/src/presentation/providers/session_providers.dart';
 import 'package:inout/src/presentation/screens/category_management_screen.dart';
 import 'package:inout/src/presentation/screens/ledger_history_screen.dart';
 import 'package:inout/src/presentation/screens/transaction_form_screen.dart';
+import 'package:inout/src/presentation/screens/transfer_form_screen.dart';
 
 final class BootstrapHomeScreen extends ConsumerWidget {
   const BootstrapHomeScreen({this.household, super.key});
@@ -103,6 +104,26 @@ final class BootstrapHomeScreen extends ConsumerWidget {
                                     LedgerHistoryScreen(household: selected),
                               ),
                             ),
+                          ),
+                          OutlinedButton.icon(
+                            icon: const Icon(Icons.swap_horiz),
+                            label: const Text('Transferir'),
+                            onPressed: () async {
+                              final changed = await Navigator.of(context)
+                                  .push<bool>(
+                                    MaterialPageRoute(
+                                      builder: (_) => TransferFormScreen(
+                                        household: selected,
+                                      ),
+                                    ),
+                                  );
+                              if (changed == true) {
+                                ref.invalidate(
+                                  ledgerAccountsProvider(selected.id),
+                                );
+                                ref.invalidate(financialDashboardProvider);
+                              }
+                            },
                           ),
                         ],
                       ),
