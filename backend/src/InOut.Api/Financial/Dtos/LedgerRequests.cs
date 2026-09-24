@@ -10,7 +10,10 @@ public sealed record PostIncomeRequest(
     long AmountCents,
     string Currency,
     DateOnly OccurredOn,
-    string? Description);
+    string? Description,
+    Guid? IncomeSourceId = null);
+
+public sealed record CreateIncomeSourceRequest(Guid Id, string Name);
 
 public sealed record CreateAccountRequest(
     Guid Id,

@@ -6,6 +6,7 @@ namespace InOut.Infrastructure.Persistence;
 public sealed partial class InOutDbContext
 {
     internal DbSet<AccountRecord> Accounts => Set<AccountRecord>();
+    internal DbSet<IncomeSourceRecord> IncomeSources => Set<IncomeSourceRecord>();
     internal DbSet<CategoryRecord> Categories => Set<CategoryRecord>();
     internal DbSet<FinancialTransactionRecord> FinancialTransactions => Set<FinancialTransactionRecord>();
     internal DbSet<EntryRecord> Entries => Set<EntryRecord>();
@@ -50,6 +51,18 @@ public sealed partial class InOutDbContext
             entity.Property(item => item.ArchivedAt).HasColumnName("archived_at");
         });
 
+        modelBuilder.Entity<IncomeSourceRecord>(entity =>
+        {
+            entity.ToTable("income_sources", "public");
+            entity.HasKey(item => item.Id);
+            entity.Property(item => item.Id).HasColumnName("id");
+            entity.Property(item => item.HouseholdId).HasColumnName("household_id");
+            entity.Property(item => item.Name).HasColumnName("name");
+            entity.Property(item => item.CreatedBy).HasColumnName("created_by");
+            entity.Property(item => item.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("now()");
+            entity.Property(item => item.ArchivedAt).HasColumnName("archived_at");
+        });
+
         modelBuilder.Entity<FinancialTransactionRecord>(entity =>
         {
             entity.ToTable("transactions", "public");
@@ -69,6 +82,7 @@ public sealed partial class InOutDbContext
             entity.Property(item => item.Description).HasColumnName("description");
             entity.Property(item => item.OccurredOn).HasColumnName("occurred_on");
             entity.Property(item => item.ReversalOf).HasColumnName("reversal_of");
+            entity.Property(item => item.IncomeSourceId).HasColumnName("income_source_id");
             entity.Property(item => item.OpeningAccountId).HasColumnName("opening_account_id");
             entity.Property(item => item.CreatedBy).HasColumnName("created_by");
             entity.Property(item => item.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("now()");
@@ -149,6 +163,16 @@ internal sealed class CategoryRecord
     public DateTimeOffset? ArchivedAt { get; set; }
 }
 
+internal sealed class IncomeSourceRecord
+{
+    public Guid Id { get; set; }
+    public Guid HouseholdId { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public Guid CreatedBy { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
+    public DateTimeOffset? ArchivedAt { get; set; }
+}
+
 internal sealed class FinancialTransactionRecord
 {
     public Guid Id { get; set; }
@@ -158,6 +182,7 @@ internal sealed class FinancialTransactionRecord
     public string? Description { get; set; }
     public DateOnly OccurredOn { get; set; }
     public Guid? ReversalOf { get; set; }
+    public Guid? IncomeSourceId { get; set; }
     public Guid? OpeningAccountId { get; set; }
     public Guid CreatedBy { get; set; }
     public DateTimeOffset CreatedAt { get; set; }

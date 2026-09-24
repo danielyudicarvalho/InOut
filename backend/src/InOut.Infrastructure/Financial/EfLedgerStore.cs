@@ -9,7 +9,7 @@ using Npgsql;
 
 namespace InOut.Infrastructure.Financial;
 
-public sealed class EfLedgerStore(
+public sealed partial class EfLedgerStore(
     InOutDbContext dbContext,
     IIdempotencyPolicy idempotencyPolicy,
     TimeProvider timeProvider) : ILedgerStore
@@ -342,6 +342,10 @@ public sealed class EfLedgerStore(
                 on new { entry.HouseholdId, Id = entry.CategoryId }
                 equals new { category.HouseholdId, Id = (Guid?)category.Id } into categoryRows
             from category in categoryRows.DefaultIfEmpty()
+            join source in dbContext.IncomeSources.AsNoTracking()
+                on new { transaction.HouseholdId, Id = transaction.IncomeSourceId }
+                equals new { source.HouseholdId, Id = (Guid?)source.Id } into sourceRows
+            from source in sourceRows.DefaultIfEmpty()
             orderby transaction.OccurredOn descending, transaction.PostedAt descending, entry.Id
             select new
             {
@@ -357,6 +361,8 @@ public sealed class EfLedgerStore(
                 AccountName = account.Name,
                 entry.CategoryId,
                 CategoryName = category == null ? null : category.Name,
+                transaction.IncomeSourceId,
+                IncomeSourceName = source == null ? null : source.Name,
                 entry.Direction,
                 entry.AmountCents,
                 account.Currency,
@@ -379,7 +385,9 @@ public sealed class EfLedgerStore(
                 item.CategoryName,
                 item.Direction,
                 item.AmountCents,
-                item.Currency))
+                item.Currency,
+                item.IncomeSourceId,
+                item.IncomeSourceName))
             .ToArray();
     }
 
@@ -405,6 +413,11 @@ public sealed class EfLedgerStore(
 
         await LockAccountsAsync(transaction.HouseholdId, transaction.Entries, cancellationToken);
         await ValidateReferencesAsync(transaction, cancellationToken);
+        if (transaction.IncomeSourceId is { } sourceId &&
+            !await dbContext.IncomeSources.AnyAsync(source =>
+                source.HouseholdId == transaction.HouseholdId && source.Id == sourceId && source.ArchivedAt == null, cancellationToken))
+            throw new FinancialRuleException(FinancialErrorCodes.InvalidIncomeSource,
+                "Income source must be active and belong to the household.");
         AddTransaction(transaction);
         AddAudit(
             transaction.HouseholdId,
@@ -584,6 +597,7 @@ public sealed class EfLedgerStore(
             Description = transaction.Description,
             OccurredOn = transaction.OccurredOn,
             ReversalOf = transaction.ReversalOf,
+            IncomeSourceId = transaction.IncomeSourceId,
             OpeningAccountId = transaction.Kind == FinancialTransactionKind.OpeningBalance
                 ? transaction.Entries.Single().AccountId
                 : null,
@@ -671,5 +685,6 @@ public sealed class EfLedgerStore(
                 entry.AccountId,
                 entry.CategoryId,
                 entry.Direction,
-                Money.Positive(entry.AmountCents))).ToArray());
+                Money.Positive(entry.AmountCents))).ToArray(),
+            record.IncomeSourceId);
 }

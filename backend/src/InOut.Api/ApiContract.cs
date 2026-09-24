@@ -12,6 +12,9 @@ internal static class ApiContract
         internal const string CreateHouseholdInvitation = "CreateHouseholdInvitation";
         internal const string GetAccountBalances = "GetAccountBalances";
         internal const string GetAccounts = "GetAccounts";
+        internal const string GetIncomeSources = "GetIncomeSources";
+        internal const string CreateIncomeSource = "CreateIncomeSource";
+        internal const string ArchiveIncomeSource = "ArchiveIncomeSource";
         internal const string GetCategories = "GetCategories";
         internal const string GetFinancialDashboard = "GetFinancialDashboard";
         internal const string ExportFinancialCsv = "ExportFinancialCsv";
@@ -77,6 +80,8 @@ internal static class ApiContract
         internal const string Households = "/api/v1/households";
         internal const string HouseholdInvitations = "/{householdId:guid}/invitations";
         internal const string Income = "/income";
+        internal const string IncomeSources = "/income-sources";
+        internal const string IncomeSourceById = "/income-sources/{sourceId:guid}";
         internal const string Ledger = "/api/v1/households/{householdId:guid}/ledger";
         internal const string Liveness = "/health/live";
         internal const string Readiness = "/health/ready";

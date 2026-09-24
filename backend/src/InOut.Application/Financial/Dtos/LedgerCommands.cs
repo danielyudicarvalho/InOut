@@ -20,7 +20,8 @@ public sealed record PostIncomeCommand(
     string Currency,
     DateOnly OccurredOn,
     Guid IdempotencyKey,
-    string? Description);
+    string? Description,
+    Guid? IncomeSourceId = null);
 
 public sealed record PostExpenseCommand(
     Guid HouseholdId,

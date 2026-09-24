@@ -166,6 +166,51 @@ final class ApiLedgerRepository implements LedgerRepository {
   }
 
   @override
+  Future<List<IncomeSourceSummary>> getIncomeSources(
+    String householdId, {
+    bool includeArchived = false,
+  }) async {
+    final suffix = includeArchived
+        ? '?${ApiQueryFields.includeArchived}=true'
+        : '';
+    final response = await _send(
+      ApiMethods.get,
+      '${ApiContract.incomeSources(householdId)}$suffix',
+    );
+    return (jsonDecode(response.body) as List<dynamic>)
+        .cast<Map<String, dynamic>>()
+        .map(LedgerResponseMapper.incomeSource)
+        .toList(growable: false);
+  }
+
+  @override
+  Future<IncomeSourceSummary> createIncomeSource({
+    required String householdId,
+    required String id,
+    required String name,
+  }) async {
+    final response = await _send(
+      ApiMethods.post,
+      ApiContract.incomeSources(householdId),
+      body: {ApiFields.id: id, ApiFields.name: name},
+    );
+    return LedgerResponseMapper.incomeSource(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
+  }
+
+  @override
+  Future<void> archiveIncomeSource({
+    required String householdId,
+    required String sourceId,
+  }) async {
+    await _send(
+      ApiMethods.delete,
+      ApiContract.incomeSource(householdId, sourceId),
+    );
+  }
+
+  @override
   Future<LedgerWriteResult> postIncome({
     required String householdId,
     required String accountId,
@@ -175,6 +220,7 @@ final class ApiLedgerRepository implements LedgerRepository {
     required DateTime occurredOn,
     required String idempotencyKey,
     String? description,
+    String? incomeSourceId,
   }) => _post(ApiContract.income(householdId), idempotencyKey, {
     ApiFields.accountId: accountId,
     ApiFields.categoryId: categoryId,
@@ -182,6 +228,7 @@ final class ApiLedgerRepository implements LedgerRepository {
     ApiFields.currency: currency,
     ApiFields.occurredOn: _date(occurredOn),
     ApiFields.description: description,
+    ApiFields.incomeSourceId: incomeSourceId,
   });
 
   @override

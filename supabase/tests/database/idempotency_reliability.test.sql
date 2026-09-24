@@ -3,7 +3,7 @@ begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = public, extensions, pg_catalog;
 
-select plan(10);
+select plan(13);
 
 select ok(
   has_table_privilege('inout_api_runtime', 'private.idempotency_requests', 'select,insert,update')
@@ -24,6 +24,15 @@ select col_is_pk(
   array['tenant_id', 'operation', 'idempotency_key'],
   'tenant, operation and key are the atomic idempotency scope'
 );
+
+select has_column('private', 'idempotency_requests', 'request_fingerprint',
+  'different payloads can be rejected for the same operation identity');
+
+select has_column('private', 'idempotency_requests', 'response_body',
+  'completed requests retain the result needed for replay');
+
+select has_column('private', 'idempotency_requests', 'status',
+  'processing and terminal outcomes are recorded');
 
 select col_is_pk(
   'private',

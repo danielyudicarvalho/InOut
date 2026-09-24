@@ -26,6 +26,15 @@ public interface ILedgerStore
         FinancialFlow flow, Guid? parentId, IdempotencyRequest idempotencyRequest,
         CancellationToken cancellationToken);
 
+    Task<IReadOnlyList<IncomeSourceSummary>> GetIncomeSourcesAsync(
+        Guid householdId, bool includeArchived, CancellationToken cancellationToken);
+
+    Task<IncomeSourceSummary> CreateIncomeSourceAsync(
+        IncomeSource source, Guid actorUserId, CancellationToken cancellationToken);
+
+    Task ArchiveIncomeSourceAsync(
+        Guid householdId, Guid sourceId, Guid actorUserId, CancellationToken cancellationToken);
+
     Task ArchiveCategoryAsync(
         Guid householdId, Guid categoryId, Guid actorUserId, CancellationToken cancellationToken);
 

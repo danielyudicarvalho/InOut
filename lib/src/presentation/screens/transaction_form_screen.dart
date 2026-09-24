@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:inout/src/application/financial/ledger_repository.dart';
 import 'package:inout/src/core/types/currency_codes.dart';
 import 'package:inout/src/core/utils/money_utils.dart';
 import 'package:inout/src/core/utils/string_utils.dart';
@@ -32,6 +33,7 @@ final class _TransactionFormScreenState
   final _description = TextEditingController();
   String? _accountId;
   String? _categoryId;
+  String? _incomeSourceId;
   bool _saving = false;
   String? _error;
   String? _pendingIntentSignature;
@@ -44,6 +46,47 @@ final class _TransactionFormScreenState
     _amount.dispose();
     _description.dispose();
     super.dispose();
+  }
+
+  Future<void> _createIncomeSource() async {
+    final controller = TextEditingController();
+    final name = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Nova fonte de receita'),
+        content: TextField(
+          controller: controller,
+          maxLength: 80,
+          decoration: const InputDecoration(labelText: 'Nome'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, controller.text.trim()),
+            child: const Text('Criar'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (name == null || name.isEmpty) return;
+    try {
+      final source = await ref
+          .read(ledgerRepositoryProvider)
+          .createIncomeSource(
+            householdId: widget.household.id,
+            id: UuidUtils.v4(),
+            name: name,
+          );
+      ref.invalidate(_incomeSourcesProvider(widget.household.id));
+      if (mounted) setState(() => _incomeSourceId = source.id);
+    } catch (_) {
+      if (mounted)
+        setState(() => _error = 'Não foi possível criar a fonte de receita.');
+    }
   }
 
   Future<void> _submit() async {
@@ -61,6 +104,7 @@ final class _TransactionFormScreenState
       widget.flow.name,
       _accountId,
       _categoryId,
+      _incomeSourceId,
       cents,
       occurredOn.toIso8601String().substring(0, 10),
       description,
@@ -90,6 +134,7 @@ final class _TransactionFormScreenState
           occurredOn: arguments.occurredOn,
           idempotencyKey: arguments.idempotencyKey,
           description: arguments.description,
+          incomeSourceId: _incomeSourceId,
         );
       } else {
         await repository.postExpense(
@@ -131,7 +176,11 @@ final class _TransactionFormScreenState
         flow: widget.flow,
       )),
     );
-    final ready = accounts.hasValue && categories.hasValue;
+    final sources = ref.watch(_incomeSourcesProvider(widget.household.id));
+    final ready =
+        accounts.hasValue &&
+        categories.hasValue &&
+        (!_isIncome || sources.hasValue);
     return Scaffold(
       appBar: AppBar(title: Text(_isIncome ? 'Nova entrada' : 'Nova saída')),
       body: SafeArea(
@@ -140,7 +189,10 @@ final class _TransactionFormScreenState
             constraints: const BoxConstraints(maxWidth: 520),
             child: Padding(
               padding: const EdgeInsets.all(24),
-              child: accounts.hasError || categories.hasError
+              child:
+                  accounts.hasError ||
+                      categories.hasError ||
+                      (_isIncome && sources.hasError)
                   ? const Center(
                       child: Text(
                         'Não foi possível carregar contas e categorias.',
@@ -231,6 +283,37 @@ final class _TransactionFormScreenState
                                 : null,
                           ),
                           const SizedBox(height: 16),
+                          if (_isIncome) ...[
+                            DropdownButtonFormField<String>(
+                              initialValue: _incomeSourceId,
+                              decoration: const InputDecoration(
+                                labelText: 'Fonte da receita (opcional)',
+                              ),
+                              items: [
+                                const DropdownMenuItem(
+                                  value: null,
+                                  child: Text('Sem fonte'),
+                                ),
+                                ...sources.value!.map(
+                                  (source) => DropdownMenuItem(
+                                    value: source.id,
+                                    child: Text(source.name),
+                                  ),
+                                ),
+                              ],
+                              onChanged: (value) =>
+                                  setState(() => _incomeSourceId = value),
+                            ),
+                            Align(
+                              alignment: Alignment.centerLeft,
+                              child: TextButton.icon(
+                                onPressed: _createIncomeSource,
+                                icon: const Icon(Icons.add),
+                                label: const Text('Criar fonte'),
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                          ],
                           TextFormField(
                             controller: _description,
                             maxLength: 500,
@@ -275,3 +358,9 @@ final class _TransactionFormScreenState
     _ => 'Não foi possível salvar. Verifique os dados e tente novamente.',
   };
 }
+
+final _incomeSourcesProvider = FutureProvider.autoDispose
+    .family<List<IncomeSourceSummary>, String>(
+      (ref, householdId) =>
+          ref.read(ledgerRepositoryProvider).getIncomeSources(householdId),
+    );

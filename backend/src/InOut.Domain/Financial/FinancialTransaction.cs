@@ -15,8 +15,12 @@ public sealed class FinancialTransaction
         Guid createdBy,
         Guid? reversalOf,
         FinancialTransactionStatus status,
-        IReadOnlyList<LedgerEntry> entries)
+        IReadOnlyList<LedgerEntry> entries,
+        Guid? incomeSourceId = null)
     {
+        if (incomeSourceId is not null && (kind != FinancialTransactionKind.Income || incomeSourceId == Guid.Empty))
+            throw new FinancialRuleException(FinancialErrorCodes.InvalidIncomeSource, "Only income may have an income source.");
+        IncomeSourceId = incomeSourceId;
         if (entries.Count == 0)
         {
             throw new FinancialRuleException(
@@ -56,6 +60,8 @@ public sealed class FinancialTransaction
 
     public Guid? ReversalOf { get; }
 
+    public Guid? IncomeSourceId { get; }
+
     public FinancialTransactionStatus Status { get; }
 
     public IReadOnlyList<LedgerEntry> Entries => entries;
@@ -67,7 +73,8 @@ public sealed class FinancialTransaction
         Money amount,
         DateOnly occurredOn,
         Guid actorUserId,
-        string? description) =>
+        string? description,
+        Guid? incomeSourceId = null) =>
         SingleEntry(
             householdId,
             FinancialTransactionKind.Income,
@@ -77,7 +84,8 @@ public sealed class FinancialTransaction
             amount,
             occurredOn,
             actorUserId,
-            description);
+            description,
+            incomeSourceId);
 
     public static FinancialTransaction OpeningBalance(
         Guid householdId,
@@ -198,7 +206,8 @@ public sealed class FinancialTransaction
         Guid createdBy,
         Guid? reversalOf,
         FinancialTransactionStatus status,
-        IReadOnlyList<LedgerEntry> entries) =>
+        IReadOnlyList<LedgerEntry> entries,
+        Guid? incomeSourceId = null) =>
         new(
             id,
             householdId,
@@ -208,7 +217,8 @@ public sealed class FinancialTransaction
             createdBy,
             reversalOf,
             status,
-            entries);
+            entries,
+            incomeSourceId);
 
     public void ValidateReferences(
         IReadOnlyCollection<Account> accounts,
@@ -276,7 +286,8 @@ public sealed class FinancialTransaction
         Money amount,
         DateOnly occurredOn,
         Guid actorUserId,
-        string? description) =>
+        string? description,
+        Guid? incomeSourceId = null) =>
         new(
             Guid.NewGuid(),
             householdId,
@@ -293,7 +304,8 @@ public sealed class FinancialTransaction
                     categoryId,
                     direction,
                     Money.Positive(amount.Cents, amount.Currency)),
-            ]);
+            ],
+            incomeSourceId);
 
     private static string? NormalizeDescription(string? description)
     {

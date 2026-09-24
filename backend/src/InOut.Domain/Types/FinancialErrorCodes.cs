@@ -10,6 +10,9 @@ public static class FinancialErrorCodes
     public const string InvalidAccountId = "invalid_account_id";
     public const string InvalidAccountName = "invalid_account_name";
     public const string InvalidAmount = "invalid_amount";
+    public const string InvalidIncomeSource = "invalid_income_source";
+    public const string IncomeSourceNotFound = "income_source_not_found";
+    public const string IncomeSourceConflict = "income_source_conflict";
     public const string InvalidCategory = "invalid_category";
     public const string CategoryConflict = "category_conflict";
     public const string CategoryNotFound = "category_not_found";

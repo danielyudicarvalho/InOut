@@ -13,6 +13,10 @@ abstract final class ApiContract {
       '${ledger(householdId)}/balances';
   static String categories(String householdId) =>
       '${ledger(householdId)}/categories';
+  static String incomeSources(String householdId) =>
+      '${ledger(householdId)}/income-sources';
+  static String incomeSource(String householdId, String sourceId) =>
+      '${incomeSources(householdId)}/$sourceId';
   static String expenses(String householdId) =>
       '${ledger(householdId)}/expenses';
   static String dashboard(String householdId) =>
@@ -63,6 +67,8 @@ abstract final class ApiFields {
   static const balanceCents = 'balanceCents';
   static const balances = 'balances';
   static const categoryId = 'categoryId';
+  static const incomeSourceId = 'incomeSourceId';
+  static const incomeSourceName = 'incomeSourceName';
   static const code = 'code';
   static const createdBy = 'createdBy';
   static const currency = 'currency';
