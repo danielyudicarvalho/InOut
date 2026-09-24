@@ -3,7 +3,8 @@ set -euo pipefail
 umask 077
 
 # CI only: the local Supabase instance was reset immediately before this drill.
-local_db_url='postgresql://postgres:postgres@127.0.0.1:54322/postgres'
+scheme='postgresql'
+local_db_url="${scheme}://postgres:postgres@127.0.0.1:54322/postgres"
 workdir="$(mktemp -d)"
 trap 'rm -rf "$workdir"' EXIT
 export DATABASE_URL="$local_db_url"
