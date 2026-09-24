@@ -27,6 +27,7 @@ public sealed class OperationalLoggingTests
         await middleware.InvokeAsync(context);
 
         Assert.Equal("test-123", context.Response.Headers[CorrelationIdMiddleware.HeaderName]);
+        Assert.Contains("test-123", logger.Scopes.Single());
         Assert.Contains("403", logger.Messages.Single());
         Assert.DoesNotContain("secret-description", logger.Messages.Single());
         Assert.DoesNotContain("secret-token", logger.Messages.Single());
@@ -55,8 +56,13 @@ public sealed class OperationalLoggingTests
     private sealed class RecordingLogger<T> : ILogger<T>
     {
         public List<string> Messages { get; } = [];
+        public List<string> Scopes { get; } = [];
 
-        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull
+        {
+            Scopes.Add(state.ToString() ?? string.Empty);
+            return null;
+        }
         public bool IsEnabled(LogLevel logLevel) => true;
 
         public void Log<TState>(LogLevel logLevel, EventId eventId, TState state,
