@@ -192,7 +192,11 @@ select throws_ok(
   '42501', 'new row violates row-level security policy for table "categories"',
   'categories cannot be inserted into another home'
 );
-select is((with changed as (delete from public.household_members where household_id = 'bbbbbbbb-0000-0000-0000-000000000002' returning user_id) select count(*) from changed), 0::bigint, 'cannot remove another home member');
+select throws_ok(
+  $$ delete from public.household_members where household_id = 'bbbbbbbb-0000-0000-0000-000000000002' $$,
+  '42501', 'permission denied for table household_members',
+  'runtime cannot remove another home member'
+);
 
 set local request.jwt.claim.sub = '30000000-0000-0000-0000-000000000003';
 select results_eq('select name from public.accounts', array['Account B'::text], 'switching user switches visible household');
