@@ -104,9 +104,9 @@ insert into public.accounts (id, household_id, name, kind, created_by) values
 insert into public.categories (id, household_id, name, flow, created_by) values
   ('a2000000-0000-0000-0000-000000000001', 'aaaaaaaa-0000-0000-0000-000000000001', 'Category A', 'income', '10000000-0000-0000-0000-000000000001'),
   ('b2000000-0000-0000-0000-000000000002', 'bbbbbbbb-0000-0000-0000-000000000002', 'Category B', 'income', '30000000-0000-0000-0000-000000000003');
-insert into public.transactions (id, household_id, kind, status, occurred_on, idempotency_key, created_by, posted_at) values
-  ('a3000000-0000-0000-0000-000000000001', 'aaaaaaaa-0000-0000-0000-000000000001', 'income', 'posted', current_date, 'a4000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000001', now()),
-  ('b3000000-0000-0000-0000-000000000002', 'bbbbbbbb-0000-0000-0000-000000000002', 'income', 'posted', current_date, 'b4000000-0000-0000-0000-000000000002', '30000000-0000-0000-0000-000000000003', now());
+insert into public.transactions (id, household_id, kind, status, occurred_on, created_by, posted_at) values
+  ('a3000000-0000-0000-0000-000000000001', 'aaaaaaaa-0000-0000-0000-000000000001', 'income', 'posted', current_date, '10000000-0000-0000-0000-000000000001', now()),
+  ('b3000000-0000-0000-0000-000000000002', 'bbbbbbbb-0000-0000-0000-000000000002', 'income', 'posted', current_date, '30000000-0000-0000-0000-000000000003', now());
 insert into public.entries (household_id, transaction_id, account_id, direction, amount_cents, created_by) values
   ('aaaaaaaa-0000-0000-0000-000000000001', 'a3000000-0000-0000-0000-000000000001', 'a1000000-0000-0000-0000-000000000001', 'credit', 100, '10000000-0000-0000-0000-000000000001'),
   ('bbbbbbbb-0000-0000-0000-000000000002', 'b3000000-0000-0000-0000-000000000002', 'b1000000-0000-0000-0000-000000000002', 'credit', 200, '30000000-0000-0000-0000-000000000003');
@@ -149,9 +149,9 @@ select is((with changed as (update public.accounts set archived_at = now() where
 select throws_ok(
   $$
     insert into public.transactions (
-      household_id, kind, status, occurred_on, idempotency_key, created_by, posted_at
+      household_id, kind, status, occurred_on, created_by, posted_at
     ) values (
-      'bbbbbbbb-0000-0000-0000-000000000002', 'income', 'posted', current_date, gen_random_uuid(),
+      'bbbbbbbb-0000-0000-0000-000000000002', 'income', 'posted', current_date,
       '10000000-0000-0000-0000-000000000001', now()
     )
   $$,
@@ -162,9 +162,9 @@ select throws_ok(
 select lives_ok(
   $$
     insert into public.transactions (
-      household_id, kind, status, occurred_on, idempotency_key, created_by, posted_at
+      household_id, kind, status, occurred_on, created_by, posted_at
     ) values (
-      'aaaaaaaa-0000-0000-0000-000000000001', 'income', 'posted', current_date, gen_random_uuid(),
+      'aaaaaaaa-0000-0000-0000-000000000001', 'income', 'posted', current_date,
       '10000000-0000-0000-0000-000000000001', now()
     )
   $$,
