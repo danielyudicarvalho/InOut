@@ -144,8 +144,26 @@ select is((select count(*) from public.transactions where household_id = 'bbbbbb
 select is((select count(*) from public.entries where household_id = 'bbbbbbbb-0000-0000-0000-000000000002'), 0::bigint, 'direct entry lookup excludes other homes');
 select is((select count(*) from public.household_members where household_id = 'bbbbbbbb-0000-0000-0000-000000000002'), 0::bigint, 'direct membership lookup excludes other homes');
 select is((select count(*) from (select id from public.accounts where id = 'b1000000-0000-0000-0000-000000000002' for update) locked), 0::bigint, 'row locks cannot expose other homes');
-select is((with changed as (update public.transactions set status = 'voided' where household_id = 'bbbbbbbb-0000-0000-0000-000000000002' returning id) select count(*) from changed), 0::bigint, 'updates cannot change another home');
-select is((with changed as (update public.accounts set archived_at = now() where household_id = 'bbbbbbbb-0000-0000-0000-000000000002' returning id) select count(*) from changed), 0::bigint, 'account updates cannot change another home');
+select lives_ok($test$
+  do $block$
+  declare changed_count integer;
+  begin
+    update public.transactions set status = 'voided'
+    where household_id = 'bbbbbbbb-0000-0000-0000-000000000002';
+    get diagnostics changed_count = row_count;
+    if changed_count <> 0 then raise exception 'cross-household transaction update succeeded'; end if;
+  end $block$
+$test$, 'updates cannot change another home');
+select lives_ok($test$
+  do $block$
+  declare changed_count integer;
+  begin
+    update public.accounts set archived_at = now()
+    where household_id = 'bbbbbbbb-0000-0000-0000-000000000002';
+    get diagnostics changed_count = row_count;
+    if changed_count <> 0 then raise exception 'cross-household account update succeeded'; end if;
+  end $block$
+$test$, 'account updates cannot change another home');
 select throws_ok(
   $$
     insert into public.transactions (
