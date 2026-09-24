@@ -83,6 +83,8 @@ Coletar apenas o necessário ao funcionamento. Permitir exportar os dados. Defin
 - RTO inicial: até 4 horas.
 - Procedimento registra responsável, local do backup e passos de validação.
 
+Implementação e limitações atuais: [runbook GOM-93](runbooks/gom-93-operations.md).
+
 ## Checklist de lançamento
 
 - [ ] Ambos os usuários acessam somente a casa correta.

@@ -42,6 +42,9 @@ jobs:
       - name: Test schema and RLS policies
         run: supabase test db
 
+      - name: Exercise encrypted backup and data restoration locally
+        run: bash tool/backup_restore_drill.sh
+
       - name: Stop local Supabase
         if: always()
         run: supabase stop --no-backup
