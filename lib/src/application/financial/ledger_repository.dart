@@ -99,4 +99,10 @@ abstract interface class LedgerRepository {
   Future<List<AccountBalance>> getBalances(String householdId);
 
   Future<LedgerReconciliation> reconcile(String householdId);
+
+  Future<FinancialDashboard> getDashboard(
+    String householdId, {
+    required int year,
+    required int month,
+  });
 }

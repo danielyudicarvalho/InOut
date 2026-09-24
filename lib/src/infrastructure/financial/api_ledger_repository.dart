@@ -265,6 +265,25 @@ final class ApiLedgerRepository implements LedgerRepository {
     );
   }
 
+  @override
+  Future<FinancialDashboard> getDashboard(
+    String householdId, {
+    required int year,
+    required int month,
+  }) async {
+    final uri = Uri(
+      path: ApiContract.dashboard(householdId),
+      queryParameters: {
+        ApiQueryFields.year: '$year',
+        ApiQueryFields.month: '$month',
+      },
+    );
+    final response = await _send(ApiMethods.get, uri.toString());
+    return LedgerResponseMapper.dashboard(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
+  }
+
   Future<LedgerWriteResult> _post(
     String path,
     String idempotencyKey,

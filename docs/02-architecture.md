@@ -35,6 +35,13 @@ Domain e Application não importam ASP.NET, EF Core, Supabase SDK, Flutter ou de
 - **Classification**: categorias e subcategorias.
 - **Planning**: orçamentos, metas e projetos.
 - **Reporting**: consultas, painel e exportação.
+
+O painel mensal pertence a Reporting. O caso de uso em Application autoriza o
+ator, define o período e depende de uma porta de leitura. Infrastructure consulta
+Ledger e Planning e devolve snapshots neutros; as regras de consolidação,
+classificação de movimentos, estorno e separação por moeda permanecem no Domain.
+API e Flutter consomem um DTO próprio; nenhuma regra de saldo ou resultado é
+recalculada na apresentação ou no adaptador de banco.
 - **Operations**: auditoria, logs, backup e configuração.
 
 No MVP, são módulos internos do mesmo processo ASP.NET e do mesmo banco, não serviços independentes.
@@ -70,6 +77,13 @@ Após contabilizado, um movimento não é editado nem apagado. Erros são corrig
 ### Multiusuário seguro
 
 Toda entidade de negócio pertence a uma casa. O controle de acesso é aplicado na borda da aplicação e reforçado no banco. Identificadores enviados pelo cliente nunca bastam como autorização.
+
+Consultas sensíveis recebem explicitamente `actorUserId` e `householdId`. O caso
+de uso verifica a associação antes de consultar os dados e o adaptador PostgreSQL
+configura o ator na mesma transação das leituras, para que as políticas RLS sejam
+uma segunda barreira. A policy do endpoint, a autorização da Application e a RLS
+são controles complementares; nenhum deles autoriza acesso apenas pela posse de
+um identificador de residência.
 
 ### Operação proporcional
 

@@ -23,7 +23,8 @@ public sealed class EfLedgerStore(
         CancellationToken cancellationToken)
     {
         var account = opening.Account;
-        await using var databaseTransaction = await BeginForUserAsync(idempotencyRequest.ActorUserId, cancellationToken);
+        await using var databaseTransaction = await dbContext.BeginUserTransactionAsync(
+            idempotencyRequest.ActorUserId, cancellationToken);
         var acquisition = await idempotency.AcquireAsync<AccountCreationResult>(
             idempotencyRequest,
             cancellationToken);
@@ -147,7 +148,7 @@ public sealed class EfLedgerStore(
         Guid actorUserId,
         CancellationToken cancellationToken)
     {
-        await using var databaseTransaction = await BeginForUserAsync(actorUserId, cancellationToken);
+        await using var databaseTransaction = await dbContext.BeginUserTransactionAsync(actorUserId, cancellationToken);
         var account = await dbContext.Accounts.SingleOrDefaultAsync(
             item => item.HouseholdId == householdId && item.Id == accountId,
             cancellationToken);
@@ -218,7 +219,7 @@ public sealed class EfLedgerStore(
         CancellationToken cancellationToken)
     {
         var category = Category.Create(id, householdId, name, flow, parentId);
-        await using var databaseTransaction = await BeginForUserAsync(actorUserId, cancellationToken);
+        await using var databaseTransaction = await dbContext.BeginUserTransactionAsync(actorUserId, cancellationToken);
         var acquisition = await idempotency.AcquireAsync<CategorySummary>(
             idempotencyRequest,
             cancellationToken);
@@ -286,7 +287,7 @@ public sealed class EfLedgerStore(
     public async Task ArchiveCategoryAsync(
         Guid householdId, Guid categoryId, Guid actorUserId, CancellationToken cancellationToken)
     {
-        await using var databaseTransaction = await BeginForUserAsync(actorUserId, cancellationToken);
+        await using var databaseTransaction = await dbContext.BeginUserTransactionAsync(actorUserId, cancellationToken);
         await LockResourceAsync(householdId, categoryId, cancellationToken);
         var record = await dbContext.Categories.SingleOrDefaultAsync(
             item => item.HouseholdId == householdId && item.Id == categoryId, cancellationToken);
@@ -392,7 +393,7 @@ public sealed class EfLedgerStore(
         CancellationToken cancellationToken)
     {
         await using var databaseTransaction =
-            await BeginForUserAsync(transaction.CreatedBy, cancellationToken);
+            await dbContext.BeginUserTransactionAsync(transaction.CreatedBy, cancellationToken);
         var acquisition = await idempotency.AcquireAsync<LedgerWriteResult>(
             idempotencyRequest,
             cancellationToken);
@@ -439,7 +440,7 @@ public sealed class EfLedgerStore(
         CancellationToken cancellationToken)
     {
         await using var databaseTransaction =
-            await BeginForUserAsync(idempotencyRequest.ActorUserId, cancellationToken);
+            await dbContext.BeginUserTransactionAsync(idempotencyRequest.ActorUserId, cancellationToken);
         var acquisition = await idempotency.AcquireAsync<LedgerWriteResult>(
             idempotencyRequest,
             cancellationToken);
@@ -633,18 +634,6 @@ public sealed class EfLedgerStore(
         record.Flow,
         record.ParentId,
         record.ArchivedAt);
-
-    private async Task<Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction> BeginForUserAsync(
-        Guid userId,
-        CancellationToken cancellationToken)
-    {
-        var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
-        var subjectSetting = PersistenceVocabulary.SessionSettings.JwtSubject;
-        await dbContext.Database.ExecuteSqlInterpolatedAsync(
-            $"select set_config({subjectSetting}, {userId.ToString()}, true)",
-            cancellationToken);
-        return transaction;
-    }
 
     private Task<int> LockResourceAsync(
         Guid householdId,

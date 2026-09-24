@@ -318,4 +318,50 @@ void main() {
       ),
     );
   });
+
+  test('maps the reconciled monthly dashboard', () async {
+    late http.Request captured;
+    final repository = ApiLedgerRepository(
+      baseUrl: Uri.parse('https://api.inout.test'),
+      accessToken: () async => 'token',
+      client: MockClient((request) async {
+        captured = request;
+        return http.Response(
+          jsonEncode({
+            'periodStart': '2026-09-01',
+            'periodEnd': '2026-09-30',
+            'isReconciled': true,
+            'summaries': [
+              {
+                'currency': 'BRL',
+                'consolidatedBalanceCents': 750,
+                'incomeCents': 1000,
+                'expenseCents': 250,
+                'resultCents': 750,
+              },
+            ],
+            'accounts': <Object>[],
+            'categoryExpenses': <Object>[],
+            'budgets': <Object>[],
+            'goals': <Object>[],
+          }),
+          200,
+        );
+      }),
+    );
+
+    final dashboard = await repository.getDashboard(
+      'household-1',
+      year: 2026,
+      month: 9,
+    );
+
+    expect(
+      captured.url.path,
+      '/api/v1/households/household-1/ledger/dashboard',
+    );
+    expect(captured.url.queryParameters, {'year': '2026', 'month': '9'});
+    expect(dashboard.isReconciled, isTrue);
+    expect(dashboard.summaries.single.resultCents, 750);
+  });
 }

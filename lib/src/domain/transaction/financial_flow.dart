@@ -3,5 +3,6 @@ enum FinancialFlow {
   income,
   expense;
 
-  static FinancialFlow parse(String value) => FinancialFlow.values.byName(value);
+  static FinancialFlow parse(String value) =>
+      FinancialFlow.values.byName(value);
 }

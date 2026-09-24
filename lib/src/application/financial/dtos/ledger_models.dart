@@ -112,3 +112,97 @@ final class LedgerReconciliation {
   final int entryTransactionCount;
   final List<AccountBalance> balances;
 }
+
+final class DashboardCurrencySummary {
+  const DashboardCurrencySummary({
+    required this.currency,
+    required this.consolidatedBalanceCents,
+    required this.incomeCents,
+    required this.expenseCents,
+    required this.resultCents,
+  });
+  final String currency;
+  final int consolidatedBalanceCents;
+  final int incomeCents;
+  final int expenseCents;
+  final int resultCents;
+}
+
+final class DashboardAccountBalance {
+  const DashboardAccountBalance({
+    required this.accountId,
+    required this.accountName,
+    required this.currency,
+    required this.balanceCents,
+  });
+  final String accountId;
+  final String accountName;
+  final String currency;
+  final int balanceCents;
+}
+
+final class DashboardCategoryExpense {
+  const DashboardCategoryExpense({
+    required this.categoryId,
+    required this.categoryName,
+    required this.parentId,
+    required this.currency,
+    required this.amountCents,
+  });
+  final String categoryId;
+  final String categoryName;
+  final String? parentId;
+  final String currency;
+  final int amountCents;
+}
+
+final class DashboardBudgetProgress {
+  const DashboardBudgetProgress({
+    required this.budgetId,
+    required this.categoryId,
+    required this.categoryName,
+    required this.limitCents,
+    required this.spentCents,
+  });
+  final String budgetId;
+  final String categoryId;
+  final String categoryName;
+  final int limitCents;
+  final int spentCents;
+}
+
+final class DashboardGoalProgress {
+  const DashboardGoalProgress({
+    required this.goalId,
+    required this.name,
+    required this.targetCents,
+    required this.allocatedCents,
+    required this.targetDate,
+  });
+  final String goalId;
+  final String name;
+  final int targetCents;
+  final int allocatedCents;
+  final DateTime? targetDate;
+}
+
+final class FinancialDashboard {
+  const FinancialDashboard({
+    required this.periodStart,
+    required this.periodEnd,
+    required this.isReconciled,
+    required this.summaries,
+    required this.accounts,
+    required this.categoryExpenses,
+    required this.budgets,
+    required this.goals,
+  });
+  final DateTime periodStart;
+  final DateTime periodEnd;
+  final bool isReconciled;
+  final List<DashboardCurrencySummary> summaries;
+  final List<DashboardAccountBalance> accounts;
+  final List<DashboardCategoryExpense> categoryExpenses;
+  final List<DashboardBudgetProgress> budgets;
+  final List<DashboardGoalProgress> goals;
+}

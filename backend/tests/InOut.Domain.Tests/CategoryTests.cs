@@ -1,4 +1,5 @@
 using InOut.Domain.Financial;
+using Xunit;
 
 namespace InOut.Domain.Tests;
 

@@ -12,9 +12,8 @@ public sealed class EfHouseholdMembershipReader(InOutDbContext dbContext)
         Guid householdId,
         CancellationToken cancellationToken)
     {
-        await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
-        await dbContext.Database.ExecuteSqlInterpolatedAsync(
-            $"select set_config('request.jwt.claim.sub', {userId.ToString()}, true)",
+        await using var transaction = await dbContext.BeginUserTransactionAsync(
+            userId,
             cancellationToken);
         var isMember = await dbContext.HouseholdMembers
             .AsNoTracking()
