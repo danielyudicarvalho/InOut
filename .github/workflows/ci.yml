@@ -73,6 +73,9 @@ jobs:
       - name: Check repository for secrets
         run: ./tool/check_secrets.sh
 
+      - name: Check logging privacy
+        run: bash ./tool/check_logging_privacy.sh
+
       - name: Analyze
         run: flutter analyze --fatal-infos
 
