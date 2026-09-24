@@ -62,6 +62,28 @@ public static class LedgerEndpoints
             return Results.NoContent();
         }).WithName(ApiContract.EndpointNames.ArchiveAccount);
 
+        ledger.MapGet(ApiContract.Routes.IncomeSources, async (
+            Guid householdId, bool includeArchived, LedgerService service, CancellationToken cancellationToken) =>
+            Results.Ok(await service.GetIncomeSourcesAsync(householdId, includeArchived, cancellationToken)))
+            .WithName(ApiContract.EndpointNames.GetIncomeSources);
+
+        ledger.MapPost(ApiContract.Routes.IncomeSources, async (
+            Guid householdId, CreateIncomeSourceRequest request, ClaimsPrincipal principal,
+            LedgerService service, CancellationToken cancellationToken) =>
+        {
+            var source = await service.CreateIncomeSourceAsync(
+                householdId, UserId(principal), request.Id, request.Name, cancellationToken);
+            return Results.Created($"/api/v1/households/{householdId}/ledger/income-sources/{source.Id}", source);
+        }).WithName(ApiContract.EndpointNames.CreateIncomeSource);
+
+        ledger.MapDelete(ApiContract.Routes.IncomeSourceById, async (
+            Guid householdId, Guid sourceId, ClaimsPrincipal principal,
+            LedgerService service, CancellationToken cancellationToken) =>
+        {
+            await service.ArchiveIncomeSourceAsync(householdId, sourceId, UserId(principal), cancellationToken);
+            return Results.NoContent();
+        }).WithName(ApiContract.EndpointNames.ArchiveIncomeSource);
+
         ledger.MapGet(ApiContract.Routes.Categories, async (
             Guid householdId,
             FinancialFlow? flow,
@@ -128,7 +150,8 @@ public static class LedgerEndpoints
                     request.Currency,
                     request.OccurredOn,
                     idempotencyKey,
-                    request.Description),
+                    request.Description,
+                    request.IncomeSourceId),
                 cancellationToken);
             return WriteResult(householdId, result);
         }).WithName(ApiContract.EndpointNames.PostIncome);

@@ -55,6 +55,22 @@ abstract interface class LedgerRepository {
     String? kind,
   });
 
+  Future<List<IncomeSourceSummary>> getIncomeSources(
+    String householdId, {
+    bool includeArchived = false,
+  });
+
+  Future<IncomeSourceSummary> createIncomeSource({
+    required String householdId,
+    required String id,
+    required String name,
+  });
+
+  Future<void> archiveIncomeSource({
+    required String householdId,
+    required String sourceId,
+  });
+
   Future<LedgerWriteResult> postIncome({
     required String householdId,
     required String accountId,
@@ -64,6 +80,7 @@ abstract interface class LedgerRepository {
     required DateTime occurredOn,
     required String idempotencyKey,
     String? description,
+    String? incomeSourceId,
   });
 
   Future<LedgerWriteResult> postExpense({

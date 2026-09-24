@@ -63,6 +63,17 @@ final class CategorySummary {
   final DateTime? archivedAt;
 }
 
+final class IncomeSourceSummary {
+  const IncomeSourceSummary({
+    required this.id,
+    required this.name,
+    this.archivedAt,
+  });
+  final String id;
+  final String name;
+  final DateTime? archivedAt;
+}
+
 final class LedgerHistoryItem {
   const LedgerHistoryItem({
     required this.transactionId,
@@ -77,6 +88,8 @@ final class LedgerHistoryItem {
     required this.accountName,
     required this.categoryId,
     required this.categoryName,
+    this.incomeSourceId,
+    this.incomeSourceName,
     required this.direction,
     required this.amountCents,
     required this.currency,
@@ -94,6 +107,8 @@ final class LedgerHistoryItem {
   final String accountName;
   final String? categoryId;
   final String? categoryName;
+  final String? incomeSourceId;
+  final String? incomeSourceName;
   final String direction;
   final int amountCents;
   final String currency;

@@ -78,6 +78,18 @@ public sealed class LedgerService(ILedgerStore store)
             idempotency, cancellationToken);
     }
 
+    public Task<IReadOnlyList<IncomeSourceSummary>> GetIncomeSourcesAsync(
+        Guid householdId, bool includeArchived, CancellationToken cancellationToken) =>
+        store.GetIncomeSourcesAsync(householdId, includeArchived, cancellationToken);
+
+    public Task<IncomeSourceSummary> CreateIncomeSourceAsync(
+        Guid householdId, Guid actorUserId, Guid id, string? name, CancellationToken cancellationToken) =>
+        store.CreateIncomeSourceAsync(IncomeSource.Create(id, householdId, name), actorUserId, cancellationToken);
+
+    public Task ArchiveIncomeSourceAsync(
+        Guid householdId, Guid sourceId, Guid actorUserId, CancellationToken cancellationToken) =>
+        store.ArchiveIncomeSourceAsync(householdId, sourceId, actorUserId, cancellationToken);
+
     public Task ArchiveCategoryAsync(
         Guid householdId, Guid categoryId, Guid actorUserId, CancellationToken cancellationToken) =>
         store.ArchiveCategoryAsync(householdId, categoryId, actorUserId, cancellationToken);
@@ -110,7 +122,8 @@ public sealed class LedgerService(ILedgerStore store)
                 Money.Positive(command.AmountCents, command.Currency),
                 command.OccurredOn,
                 actorUserId,
-                command.Description),
+                command.Description,
+                command.IncomeSourceId),
             cancellationToken);
 
     public Task<LedgerWriteResult> PostExpenseAsync(
@@ -201,6 +214,7 @@ public sealed class LedgerService(ILedgerStore store)
             transaction.Kind,
             transaction.OccurredOn,
             transaction.Description,
+            transaction.IncomeSourceId,
             entries);
         return store.PostAsync(transaction, idempotency, cancellationToken);
     }

@@ -16,6 +16,8 @@ public sealed record AccountSummary(
 
 public sealed record AccountCreationResult(AccountSummary Account, bool Replayed);
 
+public sealed record IncomeSourceSummary(Guid Id, string Name, DateTimeOffset? ArchivedAt);
+
 public sealed record CategorySummary(
     Guid Id,
     string Name,
@@ -45,7 +47,9 @@ public sealed record LedgerHistoryItem(
     string? CategoryName,
     EntryDirection Direction,
     long AmountCents,
-    string Currency);
+    string Currency,
+    Guid? IncomeSourceId = null,
+    string? IncomeSourceName = null);
 
 public sealed record LedgerReconciliation(
     bool IsConsistent,
