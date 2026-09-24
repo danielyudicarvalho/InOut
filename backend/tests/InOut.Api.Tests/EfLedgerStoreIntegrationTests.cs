@@ -553,6 +553,50 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task ReleaseJourneyReconcilesKnownBalancesAfterExpenseTransferAndCorrection()
+    {
+        await PostIncomeAsync(Guid.NewGuid(), 10_000);
+
+        LedgerWriteResult expense;
+        await using (var context = CreateContext())
+        {
+            var service = new LedgerService(CreateStore(context));
+            expense = await service.PostExpenseAsync(actorUserId,
+                new PostExpenseCommand(householdId, accountId, expenseCategoryId,
+                    2_500, "BRL", new DateOnly(2026, 9, 16), Guid.NewGuid(), null),
+                CancellationToken.None);
+            await service.PostTransferAsync(actorUserId,
+                new PostTransferCommand(householdId, accountId, destinationAccountId,
+                    1_000, "BRL", new DateOnly(2026, 9, 16), Guid.NewGuid(), null),
+                CancellationToken.None);
+        }
+
+        var reversal = await ReverseAsync(expense.TransactionId, Guid.NewGuid());
+        await using (var context = CreateContext())
+        {
+            await new LedgerService(CreateStore(context)).PostExpenseAsync(actorUserId,
+                new PostExpenseCommand(householdId, accountId, expenseCategoryId,
+                    2_000, "BRL", new DateOnly(2026, 9, 16), Guid.NewGuid(), null),
+                CancellationToken.None);
+        }
+
+        await using var verification = CreateContext();
+        var store = CreateStore(verification);
+        var balances = await store.GetBalancesAsync(householdId, CancellationToken.None);
+        var reconciliation = await store.ReconcileAsync(householdId, CancellationToken.None);
+        var history = await store.GetHistoryAsync(householdId, 100, CancellationToken.None);
+
+        Assert.Equal(7_000, balances.Single(item => item.AccountId == accountId).BalanceCents);
+        Assert.Equal(1_000, balances.Single(item => item.AccountId == destinationAccountId).BalanceCents);
+        Assert.Equal(8_000, balances.Sum(item => item.BalanceCents));
+        Assert.True(reconciliation.IsConsistent);
+        Assert.Equal(FinancialTransactionStatus.Reversed,
+            history.First(item => item.TransactionId == expense.TransactionId).Status);
+        Assert.Equal(expense.TransactionId,
+            history.First(item => item.TransactionId == reversal.TransactionId).ReversalOf);
+    }
+
+    [Fact]
     public async Task CategoriesRequireActiveMatchingRootAndPreserveArchivedHistory()
     {
         var rootId = Guid.NewGuid();

@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:inout/src/application/financial/ledger_repository.dart';
 import 'package:inout/src/core/types/ledger_transaction_kind.dart';
 import 'package:inout/src/core/utils/money_utils.dart';
+import 'package:inout/src/core/utils/uuid_utils.dart';
 import 'package:inout/src/domain/household/household.dart';
+import 'package:inout/src/infrastructure/financial/api_ledger_repository.dart';
 import 'package:inout/src/presentation/providers/session_providers.dart';
 
 final class LedgerHistoryScreen extends ConsumerStatefulWidget {
@@ -24,6 +26,9 @@ final class _LedgerHistoryScreenState
   DateTime? _from;
   DateTime? _to;
   late Future<List<LedgerHistoryItem>> _history;
+  final Map<String, String> _reversalKeys = {};
+  String? _reversalError;
+  bool _reversing = false;
 
   @override
   void initState() {
@@ -42,6 +47,65 @@ final class _LedgerHistoryScreenState
           from: _from,
           to: _to,
         );
+  }
+
+  Future<void> _reverse(LedgerHistoryItem item) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Estornar lançamento?'),
+        content: const Text(
+          'O lançamento original ficará no histórico. Depois do estorno, '
+          'registre um novo lançamento com os dados corretos.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Confirmar estorno'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    setState(() {
+      _reversing = true;
+      _reversalError = null;
+    });
+    try {
+      await ref
+          .read(ledgerRepositoryProvider)
+          .reverse(
+            householdId: widget.household.id,
+            transactionId: item.transactionId,
+            occurredOn: DateTime.now(),
+            idempotencyKey: _reversalKeys.putIfAbsent(
+              item.transactionId,
+              UuidUtils.v4,
+            ),
+          );
+      _reversalKeys.remove(item.transactionId);
+      ref.invalidate(ledgerAccountsProvider(widget.household.id));
+      ref.invalidate(financialDashboardProvider);
+      if (mounted) setState(_load);
+    } on ApiLedgerException catch (error) {
+      if (mounted)
+        setState(
+          () => _reversalError = error.code == 'network_unavailable'
+              ? 'Sem conexão. O estorno não foi confirmado; tente novamente.'
+              : 'Não foi possível estornar este lançamento. Atualize o histórico.',
+        );
+    } catch (_) {
+      if (mounted)
+        setState(
+          () => _reversalError = 'Não foi possível estornar. Tente novamente.',
+        );
+    } finally {
+      if (mounted) setState(() => _reversing = false);
+    }
   }
 
   Future<void> _chooseDate({required bool start}) async {
@@ -169,6 +233,14 @@ final class _LedgerHistoryScreenState
               ],
             ),
           ),
+          if (_reversalError case final error?)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Text(
+                error,
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
+            ),
           Expanded(
             child: FutureBuilder<List<LedgerHistoryItem>>(
               future: _history,
@@ -190,14 +262,39 @@ final class _LedgerHistoryScreenState
                   itemCount: snapshot.data!.length,
                   itemBuilder: (context, index) {
                     final item = snapshot.data![index];
+                    final firstEntry = snapshot.data!
+                        .take(index)
+                        .every(
+                          (earlier) =>
+                              earlier.transactionId != item.transactionId,
+                        );
                     return ListTile(
                       title: Text(
                         item.description ?? item.categoryName ?? item.kind,
                       ),
                       subtitle: Text(
-                        '${item.accountName} · ${item.categoryName ?? "Sem categoria"} · ${item.occurredOn.day}/${item.occurredOn.month}/${item.occurredOn.year}',
+                        '${item.accountName} · ${item.categoryName ?? "Sem categoria"} · ${item.occurredOn.day}/${item.occurredOn.month}/${item.occurredOn.year}'
+                        '${item.status == 'reversed' ? ' · Estornado' : ''}'
+                        '${item.reversalOf != null ? ' · Estorno de ${item.reversalOf}' : ''}',
                       ),
-                      trailing: Text(MoneyUtils.formatBrl(item.amountCents)),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            MoneyUtils.format(item.amountCents, item.currency),
+                          ),
+                          if (firstEntry &&
+                              item.status == 'posted' &&
+                              item.kind != 'reversal')
+                            IconButton(
+                              tooltip: 'Estornar lançamento',
+                              onPressed: _reversing
+                                  ? null
+                                  : () => _reverse(item),
+                              icon: const Icon(Icons.undo),
+                            ),
+                        ],
+                      ),
                     );
                   },
                 );
