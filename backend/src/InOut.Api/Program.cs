@@ -29,6 +29,9 @@ builder.Services.ConfigureHttpJsonOptions(options =>
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<HouseholdExceptionHandler>();
 builder.Services.AddExceptionHandler<FinancialExceptionHandler>();
+builder.Services.AddExceptionHandler<UnhandledExceptionHandler>();
+builder.Services.Configure<ExceptionHandlerOptions>(options =>
+    options.SuppressDiagnosticsCallback = _ => true);
 builder.Services.AddOpenApi();
 builder.Services.AddHealthChecks();
 builder.Services.AddSupabaseAuthentication(builder.Configuration);
@@ -58,8 +61,8 @@ builder.Services.AddSingleton(TimeProvider.System);
 
 var app = builder.Build();
 
-app.UseExceptionHandler();
 app.UseMiddleware<CorrelationIdMiddleware>();
+app.UseExceptionHandler();
 app.UseCors();
 app.UseAuthentication();
 app.UseAuthorization();

@@ -1,0 +1,44 @@
+name: Encrypted database backup
+
+on:
+  schedule:
+    - cron: '17 4 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: supabase/setup-cli@46f7f98c7f948ad727d22c1e67fab04c223a0520 # v3.0.0
+        with:
+          version: 2.117.0
+      - name: Require backup credentials
+        env:
+          DATABASE_URL: ${{ secrets.INOUT_BACKUP_DATABASE_URL }}
+          BACKUP_PASSPHRASE: ${{ secrets.INOUT_BACKUP_PASSPHRASE }}
+        run: |
+          test -n "$DATABASE_URL" && test -n "$BACKUP_PASSPHRASE" || {
+            echo 'Configure the database URL and backup passphrase as repository secrets.' >&2
+            exit 1
+          }
+      - name: Dump and encrypt
+        env:
+          DATABASE_URL: ${{ secrets.INOUT_BACKUP_DATABASE_URL }}
+          BACKUP_PASSPHRASE: ${{ secrets.INOUT_BACKUP_PASSPHRASE }}
+        run: bash tool/backup_database.sh inout-backup.gpg
+      - name: Store encrypted backup for seven days
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: inout-database-${{ github.run_id }}
+          path: inout-backup.gpg
+          if-no-files-found: error
+          retention-days: 7

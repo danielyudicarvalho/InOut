@@ -11,6 +11,10 @@ public sealed class CorrelationIdMiddleware(
 
     private static readonly Func<ILogger, string, IDisposable?> BeginCorrelationScope =
         LoggerMessage.DefineScope<string>("CorrelationId: {CorrelationId}");
+    private static readonly Action<ILogger, string, string, int, double, Exception?> LogCompletion =
+        LoggerMessage.Define<string, string, int, double>(LogLevel.Information,
+            new EventId(1001, "HttpRequestCompleted"),
+            "HTTP request completed: {Method} {Endpoint} {StatusCode} in {ElapsedMs} ms");
 
     public async Task InvokeAsync(HttpContext context)
     {
@@ -18,7 +22,14 @@ public sealed class CorrelationIdMiddleware(
         context.Response.Headers[HeaderName] = correlationId;
 
         using var scope = BeginCorrelationScope(logger, correlationId);
+        var started = Stopwatch.GetTimestamp();
         await next(context);
+        LogCompletion(logger,
+            context.Request.Method,
+            context.GetEndpoint()?.DisplayName ?? "unmatched",
+            context.Response.StatusCode,
+            Stopwatch.GetElapsedTime(started).TotalMilliseconds,
+            null);
     }
 
     private static string ResolveCorrelationId(HttpContext context)
