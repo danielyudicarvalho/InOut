@@ -30,7 +30,7 @@ builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<HouseholdExceptionHandler>();
 builder.Services.AddExceptionHandler<FinancialExceptionHandler>();
 builder.Services.AddExceptionHandler<UnhandledExceptionHandler>();
-builder.Services.Configure<Microsoft.AspNetCore.Diagnostics.ExceptionHandlerOptions>(options =>
+builder.Services.Configure<ExceptionHandlerOptions>(options =>
     options.SuppressDiagnosticsCallback = _ => true);
 builder.Services.AddOpenApi();
 builder.Services.AddHealthChecks();
