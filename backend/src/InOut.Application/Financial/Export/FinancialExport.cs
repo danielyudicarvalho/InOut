@@ -1,28 +1,8 @@
 using InOut.Application.Security;
+using InOut.Domain.Financial;
 using InOut.Domain.Households;
 
 namespace InOut.Application.Financial.Export;
-
-public sealed record FinancialExportRow(
-    Guid TransactionId,
-    string Kind,
-    string Status,
-    DateOnly OccurredOn,
-    DateTimeOffset CreatedAt,
-    DateTimeOffset? PostedAt,
-    string? Description,
-    Guid? ReversalOf,
-    Guid? OpeningAccountId,
-    Guid? EntryId,
-    Guid? AccountId,
-    string? AccountName,
-    string? Currency,
-    Guid? CategoryId,
-    string? CategoryName,
-    Guid? CategoryParentId,
-    string? CategoryFlow,
-    string? Direction,
-    long? AmountCents);
 
 public interface IFinancialExportReader
 {

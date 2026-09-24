@@ -2,6 +2,7 @@ using System.Text;
 using InOut.Api.Financial;
 using InOut.Application.Financial.Export;
 using InOut.Application.Security;
+using InOut.Domain.Financial;
 using InOut.Domain.Households;
 using Xunit;
 
@@ -45,12 +46,13 @@ public sealed class FinancialCsvExportTests
         var entryId = Guid.NewGuid();
         var rows = new[]
         {
-            new FinancialExportRow(transactionId, "reversal", "posted",
+            FinancialExportRow.FromHistory(transactionId, FinancialTransactionKind.Reversal, FinancialTransactionStatus.Posted,
                 new DateOnly(2026, 9, 24), new DateTimeOffset(2026, 9, 24, 8, 0, 0, TimeSpan.Zero),
                 new DateTimeOffset(2026, 9, 24, 8, 1, 0, TimeSpan.Zero),
-                "=SUM(1;2)\n\"anotação\"", reversedId, null, entryId,
-                Guid.NewGuid(), "Conta; principal", "BRL", categoryId,
-                "Alimentação", null, "expense", "debit", 12345)
+                "=SUM(1;2)\n\"anotação\"", reversedId, null,
+                new LedgerEntry(entryId, Guid.NewGuid(), categoryId, EntryDirection.Debit,
+                    Money.Positive(12345, "BRL")),
+                "Conta; principal", "Alimentação", null, FinancialFlow.Expense)
         };
 
         var bytes = FinancialCsvWriter.Write(rows);

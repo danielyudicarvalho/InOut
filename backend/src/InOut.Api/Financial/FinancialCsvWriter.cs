@@ -1,6 +1,6 @@
 using System.Globalization;
 using System.Text;
-using InOut.Application.Financial.Export;
+using InOut.Domain.Financial;
 
 namespace InOut.Api.Financial;
 
@@ -15,16 +15,17 @@ public static class FinancialCsvWriter
         {
             var fields = new[]
             {
-                row.TransactionId.ToString(), row.Kind, row.Status,
+                row.TransactionId.ToString(), Kind(row.Kind), EnumText(row.Status),
                 row.OccurredOn.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
                 row.CreatedAt.ToString("O", CultureInfo.InvariantCulture),
                 row.PostedAt?.ToString("O", CultureInfo.InvariantCulture),
                 SafeText(row.Description), row.ReversalOf?.ToString(),
-                row.OpeningAccountId?.ToString(), row.EntryId?.ToString(),
-                row.AccountId?.ToString(), SafeText(row.AccountName), row.Currency,
-                row.CategoryId?.ToString(), SafeText(row.CategoryName),
-                row.CategoryParentId?.ToString(), row.CategoryFlow, row.Direction,
-                row.AmountCents?.ToString(CultureInfo.InvariantCulture)
+                row.OpeningAccountId?.ToString(), row.Entry?.Id.ToString(),
+                row.Entry?.AccountId.ToString(), SafeText(row.AccountName), row.Entry?.Amount.Currency,
+                row.Entry?.CategoryId?.ToString(), SafeText(row.CategoryName),
+                row.CategoryParentId?.ToString(), row.CategoryFlow is { } flow ? EnumText(flow) : null,
+                row.Entry is { } entry ? EnumText(entry.Direction) : null,
+                row.Entry?.Amount.Cents.ToString(CultureInfo.InvariantCulture)
             };
             csv.AppendJoin(';', fields.Select(Escape)).Append("\r\n");
         }
@@ -32,6 +33,12 @@ public static class FinancialCsvWriter
         var encoding = new UTF8Encoding(true);
         return [.. encoding.GetPreamble(), .. encoding.GetBytes(csv.ToString())];
     }
+
+    private static string Kind(FinancialTransactionKind kind) =>
+        kind is FinancialTransactionKind.OpeningBalance ? "opening_balance" : EnumText(kind);
+
+    private static string EnumText<T>(T value) where T : struct, Enum =>
+        value.ToString().ToLowerInvariant();
 
     private static string? SafeText(string? value)
     {

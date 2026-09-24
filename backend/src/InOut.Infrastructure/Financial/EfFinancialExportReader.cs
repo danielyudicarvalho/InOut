@@ -1,4 +1,5 @@
 using InOut.Application.Financial.Export;
+using InOut.Domain.Financial;
 using InOut.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
@@ -55,24 +56,25 @@ public sealed class EfFinancialExportReader(InOutDbContext dbContext) : IFinanci
         FinancialTransactionRecord transaction,
         EntryRecord? entry,
         AccountRecord? account,
-        CategoryRecord? category) => new(
+        CategoryRecord? category) => FinancialExportRow.FromHistory(
             transaction.Id,
-            DomainTypeStorage.TransactionKindToString(transaction.Kind),
-            DomainTypeStorage.TransactionStatusToString(transaction.Status),
+            transaction.Kind,
+            transaction.Status,
             transaction.OccurredOn,
             transaction.CreatedAt,
             transaction.PostedAt,
             transaction.Description,
             transaction.ReversalOf,
             transaction.OpeningAccountId,
-            entry?.Id,
-            entry?.AccountId,
+            entry is null ? null : new LedgerEntry(
+                entry.Id,
+                entry.AccountId,
+                entry.CategoryId,
+                entry.Direction,
+                Money.Positive(entry.AmountCents, account?.Currency ??
+                    throw new InvalidOperationException("An exported entry must reference a visible account."))),
             account?.Name,
-            account?.Currency,
-            entry?.CategoryId,
             category?.Name,
             category?.ParentId,
-            category is null ? null : DomainTypeStorage.FinancialFlowToString(category.Flow),
-            entry is null ? null : DomainTypeStorage.EntryDirectionToString(entry.Direction),
-            entry?.AmountCents);
+            category?.Flow);
 }
