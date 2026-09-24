@@ -75,17 +75,19 @@ final class _TransferFormScreenState extends ConsumerState<TransferFormScreen> {
       ref.invalidate(ledgerAccountsProvider(widget.household.id));
       if (mounted) Navigator.of(context).pop(true);
     } on ApiLedgerException catch (error) {
-      if (mounted)
+      if (mounted) {
         setState(
           () => _error = error.code == 'network_unavailable'
               ? 'Sem conexão. A transferência não foi confirmada; tente novamente.'
               : 'Não foi possível transferir. Confira as contas e o saldo.',
         );
+      }
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         setState(
           () => _error = 'Não foi possível transferir. Tente novamente.',
         );
+      }
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -156,8 +158,9 @@ final class _TransferFormScreenState extends ConsumerState<TransferFormScreen> {
                                   .toList(),
                               onChanged: (value) => setState(() {
                                 _sourceId = value;
-                                if (_destinationId == value)
+                                if (_destinationId == value) {
                                   _destinationId = null;
+                                }
                               }),
                               validator: (value) =>
                                   value == null ? 'Selecione a origem.' : null,

@@ -92,17 +92,19 @@ final class _LedgerHistoryScreenState
       ref.invalidate(financialDashboardProvider);
       if (mounted) setState(_load);
     } on ApiLedgerException catch (error) {
-      if (mounted)
+      if (mounted) {
         setState(
           () => _reversalError = error.code == 'network_unavailable'
               ? 'Sem conexão. O estorno não foi confirmado; tente novamente.'
               : 'Não foi possível estornar este lançamento. Atualize o histórico.',
         );
+      }
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         setState(
           () => _reversalError = 'Não foi possível estornar. Tente novamente.',
         );
+      }
     } finally {
       if (mounted) setState(() => _reversing = false);
     }
