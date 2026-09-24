@@ -824,6 +824,15 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
           archived_at timestamptz,
           unique (household_id, id)
         );
+        create table public.income_sources (
+          id uuid primary key,
+          household_id uuid not null references public.households(id),
+          name text not null,
+          created_by uuid not null,
+          created_at timestamptz not null default now(),
+          archived_at timestamptz,
+          unique (household_id, id)
+        );
         create table public.transactions (
           id uuid primary key,
           household_id uuid not null references public.households(id),
@@ -833,6 +842,7 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
           occurred_on date not null,
           reversal_of uuid,
           opening_account_id uuid,
+          income_source_id uuid,
           created_by uuid not null,
           created_at timestamptz not null default now(),
           posted_at timestamptz,
