@@ -28,8 +28,8 @@ public static class Forecast
             foreach (var plan in plans)
             {
                 if (plan.Status != RecurringPlanStatus.Active) continue;
-                var occurrence = plan.NextDates(from, 1).FirstOrDefault();
-                if (occurrence == default || occurrence >= nextMonth) continue;
+                var dates = plan.NextDates(from, 1);
+                if (dates.Count == 0 || dates[0] >= nextMonth) continue;
                 if (plan.Flow == FinancialFlow.Income)
                     income = checked(income + plan.Amount.Cents);
                 else
