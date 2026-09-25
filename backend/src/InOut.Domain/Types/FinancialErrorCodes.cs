@@ -11,6 +11,11 @@ public static class FinancialErrorCodes
     public const string InvalidAccountName = "invalid_account_name";
     public const string InvalidAmount = "invalid_amount";
     public const string InvalidIncomeSource = "invalid_income_source";
+    public const string InvalidRecurringPlan = "invalid_recurring_plan";
+    public const string InvalidForecast = "invalid_forecast";
+    public const string ForecastNotFound = "forecast_not_found";
+    public const string RecurringPlanNotFound = "recurring_plan_not_found";
+    public const string RecurringPlanConflict = "recurring_plan_conflict";
     public const string IncomeSourceNotFound = "income_source_not_found";
     public const string IncomeSourceConflict = "income_source_conflict";
     public const string InvalidCategory = "invalid_category";

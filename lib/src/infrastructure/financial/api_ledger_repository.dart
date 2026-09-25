@@ -228,7 +228,7 @@ final class ApiLedgerRepository implements LedgerRepository {
     ApiFields.currency: currency,
     ApiFields.occurredOn: _date(occurredOn),
     ApiFields.description: description,
-    ApiFields.incomeSourceId: incomeSourceId,
+    ApiFields.incomeSourceId: ?incomeSourceId,
   });
 
   @override

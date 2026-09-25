@@ -24,8 +24,10 @@ public sealed partial class EfLedgerStore
         await using var transaction = await dbContext.BeginUserTransactionAsync(actorUserId, cancellationToken);
         dbContext.IncomeSources.Add(new IncomeSourceRecord
         {
-            Id = source.Id, HouseholdId = source.HouseholdId,
-            Name = source.Name, CreatedBy = actorUserId,
+            Id = source.Id,
+            HouseholdId = source.HouseholdId,
+            Name = source.Name,
+            CreatedBy = actorUserId,
         });
         AddAudit(source.HouseholdId, actorUserId, "financial.income_source.created", "income_source", source.Id);
         try

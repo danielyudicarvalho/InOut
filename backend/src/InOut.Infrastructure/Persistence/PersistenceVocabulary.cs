@@ -48,6 +48,8 @@ internal static class PersistenceVocabulary
     {
         internal const string CreateAccount = "create_account";
         internal const string CreateCategory = "create_category";
+        internal const string CreateRecurringPlan = "create_recurring_plan";
+        internal const string CreateForecast = "create_forecast";
         internal const string PostExpense = "post_expense";
         internal const string PostIncome = "post_income";
         internal const string PostTransfer = "post_transfer";

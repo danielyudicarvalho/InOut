@@ -82,10 +82,13 @@ final class _TransactionFormScreenState
             name: name,
           );
       ref.invalidate(_incomeSourcesProvider(widget.household.id));
-      if (mounted) setState(() => _incomeSourceId = source.id);
+      if (mounted) {
+        setState(() => _incomeSourceId = source.id);
+      }
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         setState(() => _error = 'Não foi possível criar a fonte de receita.');
+      }
     }
   }
 
