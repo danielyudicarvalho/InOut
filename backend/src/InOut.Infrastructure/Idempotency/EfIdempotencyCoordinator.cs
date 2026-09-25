@@ -167,6 +167,7 @@ internal sealed class EfIdempotencyCoordinator(
         IdempotencyOperation.CreateAccount => PersistenceVocabulary.OperationNames.CreateAccount,
         IdempotencyOperation.CreateCategory => PersistenceVocabulary.OperationNames.CreateCategory,
         IdempotencyOperation.CreateRecurringPlan => PersistenceVocabulary.OperationNames.CreateRecurringPlan,
+        IdempotencyOperation.CreateForecast => PersistenceVocabulary.OperationNames.CreateForecast,
         IdempotencyOperation.PostIncome => PersistenceVocabulary.OperationNames.PostIncome,
         IdempotencyOperation.PostExpense => PersistenceVocabulary.OperationNames.PostExpense,
         IdempotencyOperation.PostTransfer => PersistenceVocabulary.OperationNames.PostTransfer,

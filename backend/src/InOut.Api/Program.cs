@@ -8,6 +8,7 @@ using InOut.Api.Security;
 using InOut.Application.Financial;
 using InOut.Application.Financial.Dashboard;
 using InOut.Application.Financial.Export;
+using InOut.Application.Financial.Forecasts;
 using InOut.Application.Financial.RecurringPlans;
 using InOut.Application.Households;
 using InOut.Application.Idempotency;
@@ -54,6 +55,8 @@ builder.Services.AddScoped<ILedgerStore, EfLedgerStore>();
 builder.Services.AddScoped<LedgerService>();
 builder.Services.AddScoped<IRecurringPlanStore, EfRecurringPlanStore>();
 builder.Services.AddScoped<RecurringPlanService>();
+builder.Services.AddScoped<IForecastStore, EfForecastStore>();
+builder.Services.AddScoped<ForecastService>();
 builder.Services.AddScoped<IDashboardReader, EfDashboardReader>();
 builder.Services.AddScoped<GetFinancialDashboard>();
 builder.Services.AddScoped<IFinancialExportReader, EfFinancialExportReader>();
@@ -95,6 +98,7 @@ app.MapGet(
 app.MapHouseholdEndpoints();
 app.MapLedgerEndpoints();
 app.MapRecurringPlanEndpoints();
+app.MapForecastEndpoints();
 
 app.MapHealthChecks(
     ApiContract.Routes.Liveness,

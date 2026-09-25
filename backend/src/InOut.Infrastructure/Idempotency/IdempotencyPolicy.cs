@@ -12,6 +12,7 @@ public sealed class IdempotencyPolicy : IIdempotencyPolicy
         IdempotencyOperation.CreateAccount => FinancialCommand(),
         IdempotencyOperation.CreateCategory => FinancialCommand(),
         IdempotencyOperation.CreateRecurringPlan => FinancialCommand(),
+        IdempotencyOperation.CreateForecast => FinancialCommand(),
         IdempotencyOperation.PostIncome => FinancialCommand(),
         IdempotencyOperation.PostExpense => FinancialCommand(),
         IdempotencyOperation.PostTransfer => FinancialCommand(),

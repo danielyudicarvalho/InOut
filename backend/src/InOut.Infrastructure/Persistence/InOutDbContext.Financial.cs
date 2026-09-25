@@ -13,6 +13,7 @@ public sealed partial class InOutDbContext
     internal DbSet<BudgetRecord> Budgets => Set<BudgetRecord>();
     internal DbSet<GoalRecord> Goals => Set<GoalRecord>();
     internal DbSet<RecurringPlanRecord> RecurringPlans => Set<RecurringPlanRecord>();
+    internal DbSet<ForecastRecord> Forecasts => Set<ForecastRecord>();
 
     private static void ConfigureFinancial(ModelBuilder modelBuilder)
     {
@@ -163,6 +164,22 @@ public sealed partial class InOutDbContext
             entity.Property(item => item.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("now()");
             entity.Property(item => item.UpdatedAt).HasColumnName("updated_at").HasDefaultValueSql("now()");
         });
+
+        modelBuilder.Entity<ForecastRecord>(entity =>
+        {
+            entity.ToTable("forecasts", "public");
+            entity.HasKey(item => item.Id);
+            entity.Property(item => item.Id).HasColumnName("id");
+            entity.Property(item => item.HouseholdId).HasColumnName("household_id");
+            entity.Property(item => item.AccountId).HasColumnName("account_id");
+            entity.Property(item => item.Currency).HasColumnName("currency");
+            entity.Property(item => item.AsOf).HasColumnName("as_of");
+            entity.Property(item => item.Months).HasColumnName("months");
+            entity.Property(item => item.OpeningBalanceCents).HasColumnName("opening_balance_cents");
+            entity.Property(item => item.Points).HasColumnName("points").HasColumnType("jsonb");
+            entity.Property(item => item.CalculatedAt).HasColumnName("calculated_at");
+            entity.Property(item => item.CreatedBy).HasColumnName("created_by");
+        });
     }
 }
 
@@ -269,4 +286,18 @@ internal sealed class RecurringPlanRecord
     public Guid CreatedBy { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
+}
+
+internal sealed class ForecastRecord
+{
+    public Guid Id { get; set; }
+    public Guid HouseholdId { get; set; }
+    public Guid AccountId { get; set; }
+    public string Currency { get; set; } = Money.DefaultCurrency;
+    public DateOnly AsOf { get; set; }
+    public int Months { get; set; }
+    public long OpeningBalanceCents { get; set; }
+    public string Points { get; set; } = "[]";
+    public DateTimeOffset CalculatedAt { get; set; }
+    public Guid CreatedBy { get; set; }
 }
