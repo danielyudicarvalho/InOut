@@ -1,3 +1,4 @@
+using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 
@@ -15,18 +16,36 @@ public static class SupabaseAuthenticationExtensions
             ?? throw new InvalidOperationException("Supabase:Jwt:Audience is required.");
 
         if (!Uri.TryCreate(issuer, UriKind.Absolute, out var issuerUri) ||
-            issuerUri.Scheme != Uri.UriSchemeHttps)
+            issuerUri.Scheme != Uri.UriSchemeHttps &&
+            !(string.Equals(configuration["ASPNETCORE_ENVIRONMENT"], "Development", StringComparison.OrdinalIgnoreCase)
+              && !string.IsNullOrWhiteSpace(configuration["Supabase:Jwt:LocalSecret"])
+              && issuerUri.Scheme == Uri.UriSchemeHttp))
         {
             throw new InvalidOperationException("Supabase:Jwt:Issuer must be an HTTPS URL.");
         }
 
+        var localSecret = configuration["Supabase:Jwt:LocalSecret"];
+        var localMode = string.Equals(configuration["ASPNETCORE_ENVIRONMENT"], "Development", StringComparison.OrdinalIgnoreCase)
+            && !string.IsNullOrWhiteSpace(localSecret);
+        if (localMode && issuerUri.Scheme != Uri.UriSchemeHttp)
+            throw new InvalidOperationException("Local issuer must use HTTP.");
+
         services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             .AddJwtBearer(options =>
             {
-                options.MetadataAddress = $"{issuer}/.well-known/jwks.json";
-                options.RequireHttpsMetadata = true;
+                if (localMode)
+                {
+                    options.TokenValidationParameters = CreateTokenValidationParameters(issuer, audience);
+                    options.TokenValidationParameters.IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(localSecret!));
+                    options.TokenValidationParameters.ValidAlgorithms = [SecurityAlgorithms.HmacSha256];
+                }
+                else
+                {
+                    options.MetadataAddress = $"{issuer}/.well-known/jwks.json";
+                    options.RequireHttpsMetadata = true;
+                    options.TokenValidationParameters = CreateTokenValidationParameters(issuer, audience);
+                }
                 options.MapInboundClaims = false;
-                options.TokenValidationParameters = CreateTokenValidationParameters(issuer, audience);
                 options.Events = new JwtBearerEvents
                 {
                     OnTokenValidated = context =>
