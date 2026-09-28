@@ -14,6 +14,8 @@ services:
       - host.docker.internal:host-gateway
     ports:
       - 127.0.0.1:8080:8080
+    volumes:
+      - api_logs:/var/log/inout
     restart: unless-stopped
   web:
     build:
@@ -27,4 +29,10 @@ services:
       - 127.0.0.1:8081:80
     depends_on:
       - api
+    volumes:
+      - web_logs:/var/log/inout
     restart: unless-stopped
+
+volumes:
+  api_logs:
+  web_logs:
