@@ -1,0 +1,14 @@
+FROM ghcr.io/cirruslabs/flutter:3.47.2 AS build
+WORKDIR /app
+COPY pubspec.yaml pubspec.lock ./
+RUN flutter pub get --enforce-lockfile
+COPY . .
+ARG SUPABASE_URL
+ARG SUPABASE_PUBLISHABLE_KEY
+ARG API_BASE_URL=http://localhost:8080
+RUN flutter build web --release --dart-define=SUPABASE_URL=${SUPABASE_URL} --dart-define=SUPABASE_PUBLISHABLE_KEY=${SUPABASE_PUBLISHABLE_KEY} --dart-define=API_BASE_URL=${API_BASE_URL}
+
+FROM nginx:1.27-alpine
+COPY docker/nginx.conf /etc/nginx/conf.d/default.conf
+COPY --from=build /app/build/web /usr/share/nginx/html
+EXPOSE 80
