@@ -1,0 +1,11 @@
+.git
+.github
+.dart_tool
+.pub-cache
+build
+coverage
+.env*
+**/bin
+**/obj
+**/TestResults
+project_sources
