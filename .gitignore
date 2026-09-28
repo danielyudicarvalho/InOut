@@ -32,3 +32,6 @@ ios/Flutter/flutter_export_environment.sh
 backend/artifacts/
 *.user
 *.suo
+
+# Exported local container logs
+/logs/
