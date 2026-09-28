@@ -3,25 +3,44 @@ using InOut.Domain.Financial;
 using InOut.Domain.Households;
 using InOut.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Npgsql;
 
 namespace InOut.Infrastructure.Households;
 
-public sealed class EfHouseholdStore(InOutDbContext dbContext) : IHouseholdStore
+public sealed class EfHouseholdStore(InOutDbContext dbContext, ILogger<EfHouseholdStore> logger) : IHouseholdStore
 {
+    private static readonly Action<ILogger, string, string, Exception?> LogListFailure =
+        LoggerMessage.Define<string, string>(LogLevel.Error,
+            new EventId(1101, "HouseholdListFailure"),
+            "Household listing failed at {Stage}: {ExceptionType}");
+
     public async Task<IReadOnlyList<Household>> ListAsync(
         Guid userId,
         CancellationToken cancellationToken)
     {
-        await using var transaction = await dbContext.BeginUserTransactionAsync(userId, cancellationToken);
-        var households = await dbContext.HouseholdMembers
-            .AsNoTracking()
-            .Where(member => member.UserId == userId)
-            .OrderBy(member => member.Household.Name)
-            .Select(member => new Household(member.Household.Id, member.Household.Name))
-            .ToListAsync(cancellationToken);
-        await transaction.CommitAsync(cancellationToken);
-        return households;
+        var stage = "begin_transaction";
+        try
+        {
+            await using var transaction = await dbContext.BeginUserTransactionAsync(
+                userId, cancellationToken, value => stage = value);
+            stage = "query_memberships";
+            var households = await dbContext.HouseholdMembers
+                .AsNoTracking()
+                .Where(member => member.UserId == userId)
+                .OrderBy(member => member.Household.Name)
+                .Select(member => new Household(member.Household.Id, member.Household.Name))
+                .ToListAsync(cancellationToken);
+            stage = "commit_transaction";
+            await transaction.CommitAsync(cancellationToken);
+            return households;
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            // Do not pass the exception to the logger: its message may contain SQL or credentials.
+            LogListFailure(logger, stage, exception.GetType().Name, null);
+            throw;
+        }
     }
 
     public async Task<Household> CreateAsync(

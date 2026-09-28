@@ -4,10 +4,12 @@ using InOut.Application.Idempotency;
 using InOut.Domain.Financial;
 using InOut.Domain.Households;
 using InOut.Infrastructure.Financial;
+using InOut.Infrastructure.Households;
 using InOut.Infrastructure.Idempotency;
 using InOut.Infrastructure.Persistence;
 using InOut.Infrastructure.Security;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 using Npgsql;
 using Testcontainers.PostgreSql;
 using Xunit;
@@ -69,6 +71,17 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
     }
 
     public async Task DisposeAsync() => await postgres.DisposeAsync();
+
+    [Fact]
+    public async Task NewlyRegisteredUserWithNoHouseholdGetsAnEmptyList()
+    {
+        await using var context = CreateContext();
+        var store = new EfHouseholdStore(context, NullLogger<EfHouseholdStore>.Instance);
+
+        var households = await store.ListAsync(Guid.NewGuid(), CancellationToken.None);
+
+        Assert.Empty(households);
+    }
 
     [Fact]
     public async Task ConcurrentRetriesWithSameKeyCreateOneTransaction()
