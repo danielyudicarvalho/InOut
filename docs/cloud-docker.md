@@ -15,3 +15,16 @@ Open http://localhost:8081; API liveness: http://localhost:8080/health/live. `do
 **Remote data:** signup, households, ledger writes, and other actions in the local UI/API change the configured hosted project. Use a separate Supabase development project when testing destructive flows. Never check `.env.cloud` into Git. Flutter's publishable key and project URL are intentionally embedded in the web build; keep database credentials only in the API container environment.
 
 For an isolated database and local Auth, use `bash tool/local-up.sh` instead; see [local Docker setup](local-docker.md).
+
+## Logs
+
+The API writes standard output and errors to the persistent `api_logs` volume (`api.log`). Nginx, which serves Flutter web, writes requests and server errors to `web_logs` (`access.log` and `error.log`). Both services also retain `docker compose logs` output. These named volumes survive `docker compose down`; avoid `down --volumes` if you need them.
+
+Export both volumes to ignored host files:
+
+```bash
+bash tool/export-docker-logs.sh cloud
+# For the isolated Supabase mode: bash tool/export-docker-logs.sh local
+```
+
+The resulting paths are `logs/api/api.log`, `logs/web/access.log`, and `logs/web/error.log`. They may contain personal data or request paths, so keep them private. **Flutter web runs in the browser:** JavaScript exceptions, console messages, and failed Supabase requests do not appear in the Nginx volume. For those, use browser DevTools → Console and Network, and export a sanitized HAR if needed. A client error reporting service is another option for persistent browser errors; configure scrubbing before sending financial data to one.
