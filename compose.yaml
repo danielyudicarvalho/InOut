@@ -1,0 +1,30 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__InOut: Host=host.docker.internal;Port=54322;Database=postgres;Username=inout_api_runtime;Password=${INOUT_DB_PASSWORD:?Run ./tool/local-up.sh}
+      Supabase__Jwt__Issuer: http://127.0.0.1:54321/auth/v1
+      Supabase__Jwt__Audience: authenticated
+      Supabase__Jwt__LocalSecret: ${SUPABASE_JWT_SECRET:?Run ./tool/local-up.sh}
+      Cors__AllowedOrigins__0: http://localhost:8081
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    ports:
+      - 127.0.0.1:8080:8080
+    restart: unless-stopped
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.flutter
+      args:
+        SUPABASE_URL: http://localhost:54321
+        SUPABASE_PUBLISHABLE_KEY: ${SUPABASE_ANON_KEY:?Run ./tool/local-up.sh}
+        API_BASE_URL: http://localhost:8080
+    ports:
+      - 127.0.0.1:8081:80
+    depends_on:
+      - api
+    restart: unless-stopped
