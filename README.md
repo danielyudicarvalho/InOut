@@ -35,6 +35,16 @@ Registrar entradas, saídas e transferências; organizar categorias e subcategor
 
 O cliente usa Flutter para Android, iOS e Web/PWA. Os casos de uso são publicados por uma API ASP.NET Core; Supabase fornece PostgreSQL e Auth. O Flutter não implementa regras financeiras nem cria novas dependências de RPCs de negócio.
 
+### Docker: API and Flutter with hosted Supabase
+
+```bash
+cp cloud.env.example .env.cloud
+# Fill in the project URL, publishable key, and restricted database connection string.
+docker compose -f compose.cloud.yaml --env-file .env.cloud up --build -d
+```
+
+See [hosted Supabase setup](docs/cloud-docker.md) for role and migration prerequisites, or [isolated local Supabase setup](docs/local-docker.md) to run Auth and database locally.
+
 ### Flutter
 
 ```bash

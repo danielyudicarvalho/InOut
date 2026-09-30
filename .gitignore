@@ -32,3 +32,10 @@ ios/Flutter/flutter_export_environment.sh
 backend/artifacts/
 *.user
 *.suo
+
+# Exported local container logs
+/logs/
+
+# Supabase CLI local state
+/supabase/.branches/
+/supabase/.temp/

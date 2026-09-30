@@ -1,0 +1,23 @@
+FROM debian:bookworm-slim AS build
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl git xz-utils unzip \
+    && rm -rf /var/lib/apt/lists/*
+ARG FLUTTER_VERSION=3.47.2
+RUN curl -fL --retry 3 "https://storage.googleapis.com/flutter_infra_release/releases/stable/linux/flutter_linux_${FLUTTER_VERSION}-stable.tar.xz" \
+      -o /tmp/flutter.tar.xz \
+    && tar -xJf /tmp/flutter.tar.xz -C /opt \
+    && rm /tmp/flutter.tar.xz \
+    && git config --global --add safe.directory /opt/flutter
+ENV PATH="/opt/flutter/bin:${PATH}"
+WORKDIR /app
+COPY pubspec.yaml pubspec.lock ./
+RUN flutter pub get --enforce-lockfile
+COPY . .
+ARG SUPABASE_URL
+ARG SUPABASE_PUBLISHABLE_KEY
+ARG API_BASE_URL=http://localhost:8080
+RUN flutter build web --release --dart-define=SUPABASE_URL=${SUPABASE_URL} --dart-define=SUPABASE_PUBLISHABLE_KEY=${SUPABASE_PUBLISHABLE_KEY} --dart-define=API_BASE_URL=${API_BASE_URL}
+
+FROM nginx:1.27-alpine
+COPY docker/nginx.conf /etc/nginx/conf.d/default.conf
+COPY --from=build /app/build/web /usr/share/nginx/html
+EXPOSE 80

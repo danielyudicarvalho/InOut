@@ -3,25 +3,43 @@ using InOut.Domain.Financial;
 using InOut.Domain.Households;
 using InOut.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Npgsql;
 
 namespace InOut.Infrastructure.Households;
 
-public sealed class EfHouseholdStore(InOutDbContext dbContext) : IHouseholdStore
+public sealed class EfHouseholdStore(InOutDbContext dbContext, ILogger<EfHouseholdStore> logger) : IHouseholdStore
 {
+    private static readonly Action<ILogger, string, string, Exception?> LogListFailure =
+        LoggerMessage.Define<string, string>(LogLevel.Error,
+            new EventId(1101, "HouseholdListFailure"),
+            "Household listing error at {Stage}: {Message}");
+
     public async Task<IReadOnlyList<Household>> ListAsync(
         Guid userId,
         CancellationToken cancellationToken)
     {
-        await using var transaction = await dbContext.BeginUserTransactionAsync(userId, cancellationToken);
-        var households = await dbContext.HouseholdMembers
-            .AsNoTracking()
-            .Where(member => member.UserId == userId)
-            .OrderBy(member => member.Household.Name)
-            .Select(member => new Household(member.Household.Id, member.Household.Name))
-            .ToListAsync(cancellationToken);
-        await transaction.CommitAsync(cancellationToken);
-        return households;
+        var stage = "begin_transaction";
+        try
+        {
+            await using var transaction = await dbContext.BeginUserTransactionAsync(
+                userId, cancellationToken, value => stage = value);
+            stage = "query_memberships";
+            var households = await dbContext.HouseholdMembers
+                .AsNoTracking()
+                .Where(member => member.UserId == userId)
+                .OrderBy(member => member.Household.Name)
+                .Select(member => new Household(member.Household.Id, member.Household.Name))
+                .ToListAsync(cancellationToken);
+            stage = "commit_transaction";
+            await transaction.CommitAsync(cancellationToken);
+            return households;
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            LogListFailure(logger, stage, exception.Message, exception);
+            throw;
+        }
     }
 
     public async Task<Household> CreateAsync(
@@ -30,6 +48,10 @@ public sealed class EfHouseholdStore(InOutDbContext dbContext) : IHouseholdStore
         CancellationToken cancellationToken)
     {
         await using var transaction = await dbContext.BeginUserTransactionAsync(userId, cancellationToken);
+        var dbAuthUid = await dbContext.Database
+            .SqlQueryRaw<string>("select private.auth_uid()::text as \"Value\"")
+            .FirstOrDefaultAsync(cancellationToken);
+        Console.WriteLine($"[CREATE HOUSEHOLD DEBUG] C# userId={userId}, DB private.auth_uid()={dbAuthUid}");
         var household = new HouseholdRecord
         {
             Id = Guid.NewGuid(),
@@ -44,6 +66,8 @@ public sealed class EfHouseholdStore(InOutDbContext dbContext) : IHouseholdStore
             Role = HouseholdRole.Owner,
             Household = household,
         });
+        await dbContext.SaveChangesAsync(cancellationToken);
+
         foreach (var category in DefaultCategoryCatalog.All)
         {
             dbContext.Categories.Add(new CategoryRecord

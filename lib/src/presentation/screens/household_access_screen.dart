@@ -151,9 +151,29 @@ final class _HouseholdAccessScreenState
           ),
         );
       },
-      error: (error, stackTrace) => const Scaffold(
+      error: (error, stackTrace) => Scaffold(
+        appBar: AppBar(
+          title: const Text('InOut'),
+          actions: [
+            IconButton(
+              tooltip: 'Sair',
+              onPressed: () => ref.read(authRepositoryProvider).signOut(),
+              icon: const Icon(Icons.logout),
+            ),
+          ],
+        ),
         body: Center(
-          child: Text('Não foi possível carregar suas residências.'),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('Não foi possível carregar suas residências.'),
+              const SizedBox(height: 16),
+              OutlinedButton(
+                onPressed: () => ref.read(authRepositoryProvider).signOut(),
+                child: const Text('Sair / Realizar login'),
+              ),
+            ],
+          ),
         ),
       ),
       loading: () =>

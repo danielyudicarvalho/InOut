@@ -1,3 +1,4 @@
+using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 
@@ -14,8 +15,13 @@ public static class SupabaseAuthenticationExtensions
         var audience = configuration[ApiContract.Configuration.SupabaseAudience]
             ?? throw new InvalidOperationException("Supabase:Jwt:Audience is required.");
 
+        var localSecret = configuration["Supabase:Jwt:LocalSecret"];
+        var localMode = string.Equals(configuration["ASPNETCORE_ENVIRONMENT"], "Development", StringComparison.OrdinalIgnoreCase)
+            && !string.IsNullOrWhiteSpace(localSecret);
+
         if (!Uri.TryCreate(issuer, UriKind.Absolute, out var issuerUri) ||
-            issuerUri.Scheme != Uri.UriSchemeHttps)
+            (issuerUri.Scheme != Uri.UriSchemeHttps &&
+             !(localMode && issuerUri.Scheme == Uri.UriSchemeHttp)))
         {
             throw new InvalidOperationException("Supabase:Jwt:Issuer must be an HTTPS URL.");
         }
@@ -23,12 +29,34 @@ public static class SupabaseAuthenticationExtensions
         services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             .AddJwtBearer(options =>
             {
-                options.MetadataAddress = $"{issuer}/.well-known/jwks.json";
-                options.RequireHttpsMetadata = true;
+                if (localMode)
+                {
+                    options.TokenValidationParameters = CreateTokenValidationParameters(issuer, audience);
+                    var keyBytes = Encoding.UTF8.GetBytes(localSecret!);
+                    options.TokenValidationParameters.IssuerSigningKeyResolver = (_, _, kid, _) =>
+                        [new SymmetricSecurityKey(keyBytes) { KeyId = kid }];
+                    options.TokenValidationParameters.ValidAlgorithms = [SecurityAlgorithms.HmacSha256];
+                }
+                else
+                {
+                    options.Authority = issuer;
+                    options.RequireHttpsMetadata = true;
+                    options.TokenValidationParameters = CreateTokenValidationParameters(issuer, audience);
+                }
+
                 options.MapInboundClaims = false;
-                options.TokenValidationParameters = CreateTokenValidationParameters(issuer, audience);
                 options.Events = new JwtBearerEvents
                 {
+                    OnAuthenticationFailed = context =>
+                    {
+                        Console.WriteLine($"[JwtBearer Error] Auth failed: {context.Exception}");
+                        return Task.CompletedTask;
+                    },
+                    OnChallenge = context =>
+                    {
+                        Console.WriteLine($"[JwtBearer Challenge] Error: {context.Error}, Description: {context.ErrorDescription}");
+                        return Task.CompletedTask;
+                    },
                     OnTokenValidated = context =>
                     {
                         if (!Guid.TryParse(
@@ -59,6 +87,6 @@ public static class SupabaseAuthenticationExtensions
             RequireExpirationTime = true,
             RequireSignedTokens = true,
             ClockSkew = TimeSpan.FromSeconds(30),
-            ValidAlgorithms = [SecurityAlgorithms.EcdsaSha256, SecurityAlgorithms.RsaSha256]
+            ValidAlgorithms = [SecurityAlgorithms.EcdsaSha256, SecurityAlgorithms.RsaSha256, SecurityAlgorithms.HmacSha256]
         };
 }

@@ -15,7 +15,7 @@ public sealed class UnhandledExceptionHandler(ILogger<UnhandledExceptionHandler>
         CancellationToken cancellationToken)
     {
         // Exception messages and stack traces can contain SQL, tokens or financial descriptions.
-        LogFailure(logger, exception.GetType().Name, null);
+        LogFailure(logger, exception.GetType().Name, exception);
         httpContext.Response.StatusCode = StatusCodes.Status500InternalServerError;
         await httpContext.Response.WriteAsJsonAsync(
             new ProblemDetails

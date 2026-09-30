@@ -9,10 +9,13 @@ internal static class DatabaseUserSessionExtensions
     public static async Task<IDbContextTransaction> BeginUserTransactionAsync(
         this InOutDbContext dbContext,
         Guid userId,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        Action<string>? reportStage = null)
     {
+        reportStage?.Invoke("begin_transaction");
         var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
         var subjectSetting = PersistenceVocabulary.SessionSettings.JwtSubject;
+        reportStage?.Invoke("set_user_context");
         await dbContext.Database.ExecuteSqlInterpolatedAsync(
             $"select set_config({subjectSetting}, {userId.ToString()}, true)",
             cancellationToken);
