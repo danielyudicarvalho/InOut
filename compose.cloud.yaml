@@ -10,6 +10,8 @@ services:
       Supabase__Jwt__Audience: authenticated
       Supabase__Jwt__Secret: ${SUPABASE_JWT_SECRET:-}
       Cors__AllowedOrigins__0: http://localhost:8081
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+      OTEL_SERVICE_NAME: inout-api
     ports:
       - 127.0.0.1:8080:8080
     volumes:

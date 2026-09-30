@@ -45,9 +45,9 @@ public static class LedgerEndpoints
 
         ledger.MapGet(ApiContract.Routes.Accounts, async (
             Guid householdId,
-            bool includeArchived,
-            LedgerService service,
-            CancellationToken cancellationToken) =>
+            bool includeArchived = false,
+            LedgerService service = null!,
+            CancellationToken cancellationToken = default) =>
             Results.Ok(await service.GetAccountsAsync(householdId, includeArchived, cancellationToken)))
             .WithName(ApiContract.EndpointNames.GetAccounts);
 
@@ -63,7 +63,7 @@ public static class LedgerEndpoints
         }).WithName(ApiContract.EndpointNames.ArchiveAccount);
 
         ledger.MapGet(ApiContract.Routes.IncomeSources, async (
-            Guid householdId, bool includeArchived, LedgerService service, CancellationToken cancellationToken) =>
+            Guid householdId, bool includeArchived = false, LedgerService service = null!, CancellationToken cancellationToken = default) =>
             Results.Ok(await service.GetIncomeSourcesAsync(householdId, includeArchived, cancellationToken)))
             .WithName(ApiContract.EndpointNames.GetIncomeSources);
 
@@ -86,12 +86,14 @@ public static class LedgerEndpoints
 
         ledger.MapGet(ApiContract.Routes.Categories, async (
             Guid householdId,
-            FinancialFlow? flow,
-            bool includeArchived,
-            LedgerService service,
-            CancellationToken cancellationToken) =>
-            Results.Ok(await service.GetCategoriesAsync(householdId, flow, includeArchived, cancellationToken)))
-            .WithName(ApiContract.EndpointNames.GetCategories);
+            string? flow,
+            bool includeArchived = false,
+            LedgerService service = null!,
+            CancellationToken cancellationToken = default) =>
+        {
+            FinancialFlow? parsedFlow = !string.IsNullOrWhiteSpace(flow) && Enum.TryParse<FinancialFlow>(flow, ignoreCase: true, out var f) ? f : null;
+            return Results.Ok(await service.GetCategoriesAsync(householdId, parsedFlow, includeArchived, cancellationToken));
+        }).WithName(ApiContract.EndpointNames.GetCategories);
 
         ledger.MapPost(ApiContract.Routes.Categories, async (
             Guid householdId,
@@ -125,12 +127,14 @@ public static class LedgerEndpoints
             DateOnly? to,
             Guid? accountId,
             Guid? categoryId,
-            FinancialTransactionKind? kind,
+            string? kind,
             LedgerService service,
             CancellationToken cancellationToken) =>
-            Results.Ok(await service.GetHistoryAsync(householdId, limit ?? 100,
-                new LedgerHistoryFilter(from, to, accountId, categoryId, kind), cancellationToken)))
-            .WithName(ApiContract.EndpointNames.GetLedgerHistory);
+        {
+            FinancialTransactionKind? parsedKind = !string.IsNullOrWhiteSpace(kind) && Enum.TryParse<FinancialTransactionKind>(kind, ignoreCase: true, out var k) ? k : null;
+            return Results.Ok(await service.GetHistoryAsync(householdId, limit ?? 100,
+                new LedgerHistoryFilter(from, to, accountId, categoryId, parsedKind), cancellationToken));
+        }).WithName(ApiContract.EndpointNames.GetLedgerHistory);
 
         ledger.MapPost(ApiContract.Routes.Income, async (
             Guid householdId,

@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using InOut.Api;
+using InOut.Api.Diagnostics;
 using InOut.Api.Financial;
 using InOut.Api.Households;
 using InOut.Api.Middleware;
@@ -29,6 +30,7 @@ builder.Services.ConfigureHttpJsonOptions(options =>
         new JsonStringEnumConverter(JsonNamingPolicy.CamelCase)));
 
 builder.Services.AddProblemDetails();
+builder.Services.AddCustomObservability(builder.Configuration);
 builder.Services.AddExceptionHandler<HouseholdExceptionHandler>();
 builder.Services.AddExceptionHandler<FinancialExceptionHandler>();
 builder.Services.AddExceptionHandler<UnhandledExceptionHandler>();
@@ -105,6 +107,8 @@ app.MapHealthChecks(
     new HealthCheckOptions { Predicate = _ => false });
 
 app.MapHealthChecks(ApiContract.Routes.Readiness);
+
+app.UseOpenTelemetryPrometheusScrapingEndpoint();
 
 app.Run();
 

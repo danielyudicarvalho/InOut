@@ -21,6 +21,12 @@ public sealed class CorrelationIdMiddleware(
         var correlationId = ResolveCorrelationId(context);
         context.Response.Headers[HeaderName] = correlationId;
 
+        if (Activity.Current != null)
+        {
+            Activity.Current.SetTag("correlation_id", correlationId);
+            Activity.Current.AddBaggage("correlation_id", correlationId);
+        }
+
         using var scope = BeginCorrelationScope(logger, correlationId);
         var started = Stopwatch.GetTimestamp();
         await next(context);
