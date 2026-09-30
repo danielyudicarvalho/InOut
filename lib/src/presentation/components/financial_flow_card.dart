@@ -31,13 +31,15 @@ final class FinancialFlowCard extends StatelessWidget {
             children: [
               Text(
                 label,
-                style: Theme.of(context).textTheme.titleMedium
-                    ?.copyWith(color: palette.textPrimary),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(color: palette.textPrimary),
               ),
               Text(
                 description,
-                style: Theme.of(context).textTheme.bodySmall
-                    ?.copyWith(color: palette.textSecondary),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: palette.textSecondary),
               ),
             ],
           ),
