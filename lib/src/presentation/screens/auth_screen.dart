@@ -107,7 +107,9 @@ final class _AuthScreenState extends ConsumerState<AuthScreen> {
                           controller: _email,
                           keyboardType: TextInputType.emailAddress,
                           autofillHints: const [AutofillHints.email],
-                          decoration: const InputDecoration(labelText: 'E-mail'),
+                          decoration: const InputDecoration(
+                            labelText: 'E-mail',
+                          ),
                         ),
                         const SizedBox(height: 12),
                         TextField(

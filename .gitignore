@@ -35,3 +35,7 @@ backend/artifacts/
 
 # Exported local container logs
 /logs/
+
+# Supabase CLI local state
+/supabase/.branches/
+/supabase/.temp/

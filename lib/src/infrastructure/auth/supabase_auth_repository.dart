@@ -24,7 +24,10 @@ final class SupabaseAuthRepository implements AuthRepository {
   }
 
   @override
-  Future<SignUpResult> signUp({required String email, required String password}) async {
+  Future<SignUpResult> signUp({
+    required String email,
+    required String password,
+  }) async {
     final response = await _client.auth.signUp(
       email: EmailUtils.normalize(email),
       password: password,

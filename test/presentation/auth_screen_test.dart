@@ -18,10 +18,14 @@ final class _FakeAuthRepository implements AuthRepository {
   AuthenticatedUser? get currentUser => null;
 
   @override
-  Stream<AuthenticatedUser?> get userChanges => const Stream<AuthenticatedUser?>.empty();
+  Stream<AuthenticatedUser?> get userChanges =>
+      const Stream<AuthenticatedUser?>.empty();
 
   @override
-  Future<void> signIn({required String email, required String password}) async {}
+  Future<void> signIn({
+    required String email,
+    required String password,
+  }) async {}
 
   @override
   Future<SignUpResult> signUp({
@@ -37,12 +41,16 @@ final class _FakeAuthRepository implements AuthRepository {
 }
 
 void main() {
-  testWidgets('signup without session shows email confirmation step', (tester) async {
+  testWidgets('signup without session shows email confirmation step', (
+    tester,
+  ) async {
     final auth = _FakeAuthRepository(SignUpResult.confirmationRequired);
-    await tester.pumpWidget(ProviderScope(
-      overrides: [authRepositoryProvider.overrideWithValue(auth)],
-      child: const MaterialApp(home: AuthScreen()),
-    ));
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [authRepositoryProvider.overrideWithValue(auth)],
+        child: const MaterialApp(home: AuthScreen()),
+      ),
+    );
 
     await tester.tap(find.text('Criar uma conta'));
     await tester.enterText(find.byType(TextField).first, 'user@example.com');
@@ -60,12 +68,16 @@ void main() {
     expect(find.text('Entrar'), findsOneWidget);
   });
 
-  testWidgets('signup with session does not show confirmation step', (tester) async {
+  testWidgets('signup with session does not show confirmation step', (
+    tester,
+  ) async {
     final auth = _FakeAuthRepository(SignUpResult.signedIn);
-    await tester.pumpWidget(ProviderScope(
-      overrides: [authRepositoryProvider.overrideWithValue(auth)],
-      child: const MaterialApp(home: AuthScreen()),
-    ));
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [authRepositoryProvider.overrideWithValue(auth)],
+        child: const MaterialApp(home: AuthScreen()),
+      ),
+    );
 
     await tester.tap(find.text('Criar uma conta'));
     await tester.enterText(find.byType(TextField).first, 'user@example.com');
