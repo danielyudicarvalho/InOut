@@ -7,6 +7,7 @@
     <AnalysisLevel>latest-recommended</AnalysisLevel>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <CheckSdkVulnerabilities>true</CheckSdkVulnerabilities>
+    <NoWarn>$(NoWarn);NU1902;NU1603</NoWarn>
     <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
   </PropertyGroup>
 </Project>

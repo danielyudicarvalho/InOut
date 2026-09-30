@@ -15,13 +15,23 @@ import 'package:inout/src/presentation/screens/ledger_history_screen.dart';
 import 'package:inout/src/presentation/screens/transaction_form_screen.dart';
 import 'package:inout/src/presentation/screens/transfer_form_screen.dart';
 
-final class BootstrapHomeScreen extends ConsumerWidget {
+final class BootstrapHomeScreen extends ConsumerStatefulWidget {
   const BootstrapHomeScreen({this.household, super.key});
 
   final Household? household;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<BootstrapHomeScreen> createState() =>
+      _BootstrapHomeScreenState();
+}
+
+final class _BootstrapHomeScreenState
+    extends ConsumerState<BootstrapHomeScreen> {
+  int _selectedIndex = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    final household = widget.household;
     if (household case final selected?) {
       final now = DateTime.now();
       final dashboardInput = (
@@ -31,125 +41,139 @@ final class BootstrapHomeScreen extends ConsumerWidget {
       );
       final dashboard = ref.watch(financialDashboardProvider(dashboardInput));
       final sync = ref.watch(householdSyncProvider(selected.id));
-      return InOutAdaptiveScaffold(
-        title: 'InOut',
-        selectedIndex: 0,
-        onDestinationSelected: (_) {},
-        destinations: _destinations,
-        body: Column(
-          children: [
-            SyncStatusBanner(
-              offline:
-                  sync.asData?.value == HouseholdSyncEvent.disconnected ||
-                  sync.hasError,
-            ),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: dashboard.when(
-                  data: (value) => Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Text(
-                        selected.name,
-                        style: Theme.of(context).textTheme.titleLarge,
-                      ),
-                      const SizedBox(height: 8),
-                      const SizedBox(height: 12),
-                      Wrap(
-                        spacing: 12,
-                        runSpacing: 12,
-                        children: [
-                          FinancialFlowCard(
-                            flow: FinancialFlow.income,
-                            onTap: () => _openForm(
-                              context,
-                              ref,
-                              selected,
-                              FinancialFlow.income,
-                            ),
-                          ),
-                          FinancialFlowCard(
-                            flow: FinancialFlow.expense,
-                            onTap: () => _openForm(
-                              context,
-                              ref,
-                              selected,
-                              FinancialFlow.expense,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 24),
-                      Wrap(
-                        spacing: 12,
-                        children: [
-                          OutlinedButton.icon(
-                            icon: const Icon(Icons.category_outlined),
-                            label: const Text('Categorias'),
-                            onPressed: () => Navigator.of(context).push(
-                              MaterialPageRoute<void>(
-                                builder: (_) => CategoryManagementScreen(
-                                  household: selected,
-                                ),
+
+      Widget body;
+      switch (_selectedIndex) {
+        case 1:
+          body = LedgerHistoryScreen(household: selected);
+          break;
+        case 2:
+          body = CategoryManagementScreen(household: selected);
+          break;
+        case 0:
+        default:
+          body = Column(
+            children: [
+              SyncStatusBanner(
+                offline:
+                    sync.asData?.value == HouseholdSyncEvent.disconnected ||
+                    sync.hasError,
+              ),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: dashboard.when(
+                    data: (value) => Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Text(
+                          selected.name,
+                          style: Theme.of(context).textTheme.titleLarge,
+                        ),
+                        const SizedBox(height: 8),
+                        const SizedBox(height: 12),
+                        Wrap(
+                          spacing: 12,
+                          runSpacing: 12,
+                          children: [
+                            FinancialFlowCard(
+                              flow: FinancialFlow.income,
+                              onTap: () => _openForm(
+                                context,
+                                ref,
+                                selected,
+                                FinancialFlow.income,
                               ),
                             ),
-                          ),
-                          OutlinedButton.icon(
-                            icon: const Icon(Icons.history),
-                            label: const Text('Histórico e filtros'),
-                            onPressed: () => Navigator.of(context).push(
-                              MaterialPageRoute<void>(
-                                builder: (_) =>
-                                    LedgerHistoryScreen(household: selected),
+                            FinancialFlowCard(
+                              flow: FinancialFlow.expense,
+                              onTap: () => _openForm(
+                                context,
+                                ref,
+                                selected,
+                                FinancialFlow.expense,
                               ),
                             ),
-                          ),
-                          OutlinedButton.icon(
-                            icon: const Icon(Icons.swap_horiz),
-                            label: const Text('Transferir'),
-                            onPressed: () async {
-                              final changed = await Navigator.of(context)
-                                  .push<bool>(
-                                    MaterialPageRoute(
-                                      builder: (_) => TransferFormScreen(
-                                        household: selected,
+                          ],
+                        ),
+                        const SizedBox(height: 24),
+                        Wrap(
+                          spacing: 12,
+                          children: [
+                            OutlinedButton.icon(
+                              icon: const Icon(Icons.category_outlined),
+                              label: const Text('Categorias'),
+                              onPressed: () =>
+                                  setState(() => _selectedIndex = 2),
+                            ),
+                            OutlinedButton.icon(
+                              icon: const Icon(Icons.history),
+                              label: const Text('Histórico e filtros'),
+                              onPressed: () =>
+                                  setState(() => _selectedIndex = 1),
+                            ),
+                            OutlinedButton.icon(
+                              icon: const Icon(Icons.swap_horiz),
+                              label: const Text('Transferir'),
+                              onPressed: () async {
+                                final changed = await Navigator.of(context)
+                                    .push<bool>(
+                                      MaterialPageRoute(
+                                        builder: (_) => TransferFormScreen(
+                                          household: selected,
+                                        ),
                                       ),
-                                    ),
+                                    );
+                                if (changed == true) {
+                                  ref.invalidate(
+                                    ledgerAccountsProvider(selected.id),
                                   );
-                              if (changed == true) {
-                                ref.invalidate(
-                                  ledgerAccountsProvider(selected.id),
-                                );
-                                ref.invalidate(financialDashboardProvider);
-                              }
-                            },
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      Expanded(
-                        child: FinancialDashboardPanel(dashboard: value),
-                      ),
-                    ],
+                                  ref.invalidate(financialDashboardProvider);
+                                }
+                              },
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Expanded(
+                          child: FinancialDashboardPanel(dashboard: value),
+                        ),
+                      ],
+                    ),
+                    error: (error, stackTrace) =>
+                        const Text('Não foi possível carregar o ledger.'),
+                    loading: () =>
+                        const Center(child: CircularProgressIndicator()),
                   ),
-                  error: (error, stackTrace) =>
-                      const Text('Não foi possível carregar o ledger.'),
-                  loading: () =>
-                      const Center(child: CircularProgressIndicator()),
                 ),
               ),
-            ),
-          ],
-        ),
+            ],
+          );
+          break;
+      }
+
+      return InOutAdaptiveScaffold(
+        title: 'InOut',
+        selectedIndex: _selectedIndex,
+        onDestinationSelected: (index) {
+          setState(() {
+            _selectedIndex = index;
+          });
+        },
+        destinations: _destinations,
+        body: body,
       );
     }
     final summary = ref.watch(householdSummaryProvider);
 
     return InOutAdaptiveScaffold(
       title: 'InOut',
-      selectedIndex: 0,
-      onDestinationSelected: (_) {},
+      selectedIndex: _selectedIndex,
+      onDestinationSelected: (index) {
+        setState(() {
+          _selectedIndex = index;
+        });
+      },
       destinations: _destinations,
       body: Padding(
         padding: const EdgeInsets.all(24),
