@@ -8,6 +8,7 @@ services:
       ConnectionStrings__InOut: ${INOUT_CLOUD_DATABASE_URL:?Set INOUT_CLOUD_DATABASE_URL in .env.cloud}
       Supabase__Jwt__Issuer: ${SUPABASE_URL:?Set SUPABASE_URL in .env.cloud}/auth/v1
       Supabase__Jwt__Audience: authenticated
+      Supabase__Jwt__Secret: ${SUPABASE_JWT_SECRET:-}
       Cors__AllowedOrigins__0: http://localhost:8081
     ports:
       - 127.0.0.1:8080:8080

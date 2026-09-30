@@ -13,7 +13,7 @@ public sealed class EfHouseholdStore(InOutDbContext dbContext, ILogger<EfHouseho
     private static readonly Action<ILogger, string, string, Exception?> LogListFailure =
         LoggerMessage.Define<string, string>(LogLevel.Error,
             new EventId(1101, "HouseholdListFailure"),
-            "Household listing failed at {Stage}: {ExceptionType}");
+            "Household listing error at {Stage}: {Message}");
 
     public async Task<IReadOnlyList<Household>> ListAsync(
         Guid userId,
@@ -37,8 +37,7 @@ public sealed class EfHouseholdStore(InOutDbContext dbContext, ILogger<EfHouseho
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
-            // Do not pass the exception to the logger: its message may contain SQL or credentials.
-            LogListFailure(logger, stage, exception.GetType().Name, null);
+            LogListFailure(logger, stage, exception.Message, exception);
             throw;
         }
     }
@@ -49,6 +48,10 @@ public sealed class EfHouseholdStore(InOutDbContext dbContext, ILogger<EfHouseho
         CancellationToken cancellationToken)
     {
         await using var transaction = await dbContext.BeginUserTransactionAsync(userId, cancellationToken);
+        var dbAuthUid = await dbContext.Database
+            .SqlQueryRaw<string>("select private.auth_uid()::text as \"Value\"")
+            .FirstOrDefaultAsync(cancellationToken);
+        Console.WriteLine($"[CREATE HOUSEHOLD DEBUG] C# userId={userId}, DB private.auth_uid()={dbAuthUid}");
         var household = new HouseholdRecord
         {
             Id = Guid.NewGuid(),
@@ -63,6 +66,8 @@ public sealed class EfHouseholdStore(InOutDbContext dbContext, ILogger<EfHouseho
             Role = HouseholdRole.Owner,
             Household = household,
         });
+        await dbContext.SaveChangesAsync(cancellationToken);
+
         foreach (var category in DefaultCategoryCatalog.All)
         {
             dbContext.Categories.Add(new CategoryRecord

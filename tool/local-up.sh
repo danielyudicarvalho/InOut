@@ -3,10 +3,10 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 command -v docker >/dev/null || { echo 'Docker is required' >&2; exit 1; }
-command -v supabase >/dev/null || { echo 'Supabase CLI is required' >&2; exit 1; }
+command -v npx supabase >/dev/null || { echo 'Supabase CLI is required' >&2; exit 1; }
 
-supabase start
-status="$(supabase status -o env)"
+npx supabase start
+status="$(npx supabase status -o env)"
 read_status() {
   printf '%s\n' "$status" | sed -n "s/^$1=//p" | head -n 1 | tr -d '"\r'
 }
