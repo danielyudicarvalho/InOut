@@ -734,6 +734,17 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
                 new LedgerHistoryFilter(CategoryId: childId, Kind: FinancialTransactionKind.Expense),
                 CancellationToken.None);
             Assert.Equal("Cinema", Assert.Single(history).CategoryName);
+
+            // Re-archiving is a no-op
+            await service.ArchiveCategoryAsync(householdId, childId, actorUserId, CancellationToken.None);
+
+            // New posting with archived category is rejected
+            var invalidPosting = await Assert.ThrowsAsync<FinancialRuleException>(() =>
+                service.PostExpenseAsync(actorUserId,
+                    new PostExpenseCommand(householdId, accountId, childId, 50,
+                        "BRL", new DateOnly(2026, 9, 21), Guid.NewGuid(), "New Movie"),
+                    CancellationToken.None));
+            Assert.Equal(FinancialErrorCodes.InvalidCategory, invalidPosting.Code);
         }
     }
 
