@@ -738,6 +738,29 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task SubcategoryCannotBeParentEnforcesSingleHierarchyDepth()
+    {
+        var rootId = Guid.NewGuid();
+        var subcategoryId = Guid.NewGuid();
+        var grandchildId = Guid.NewGuid();
+
+        await using (var context = CreateContext())
+        {
+            var service = new LedgerService(CreateStore(context));
+            await service.CreateCategoryAsync(householdId, actorUserId, rootId,
+                "Alimentação", FinancialFlow.Expense, null, Guid.NewGuid(), CancellationToken.None);
+            await service.CreateCategoryAsync(householdId, actorUserId, subcategoryId,
+                "Restaurante", FinancialFlow.Expense, rootId, Guid.NewGuid(), CancellationToken.None);
+
+            var ex = await Assert.ThrowsAsync<FinancialRuleException>(() => service.CreateCategoryAsync(
+                householdId, actorUserId, grandchildId,
+                "Japonês", FinancialFlow.Expense, subcategoryId, Guid.NewGuid(), CancellationToken.None));
+
+            Assert.Equal(FinancialErrorCodes.InvalidCategory, ex.Code);
+        }
+    }
+
+    [Fact]
     public async Task HistoryFiltersBeforeLimitAndKeepsUnclassifiedTransfers()
     {
         await PostIncomeAsync(Guid.NewGuid());
