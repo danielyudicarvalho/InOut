@@ -71,7 +71,8 @@ final class _AccountFormScreenState extends ConsumerState<AccountFormScreen> {
           kind: _kind,
         );
       } else {
-        final initialCents = MoneyUtils.parseBrlToCents(_initialBalance.text) ?? 0;
+        final initialCents =
+            MoneyUtils.parseBrlToCents(_initialBalance.text) ?? 0;
         final accountId = UuidUtils.v4();
         final idempotencyKey = UuidUtils.v4();
 
@@ -95,7 +96,12 @@ final class _AccountFormScreenState extends ConsumerState<AccountFormScreen> {
       }
     } on ApiLedgerException catch (error) {
       if (mounted) {
-        setState(() => _error = _messageFor(error.code, isEditing: widget.accountToEdit != null));
+        setState(
+          () => _error = _messageFor(
+            error.code,
+            isEditing: widget.accountToEdit != null,
+          ),
+        );
       }
     } catch (_) {
       if (mounted) {
@@ -112,11 +118,77 @@ final class _AccountFormScreenState extends ConsumerState<AccountFormScreen> {
     }
   }
 
+  Future<void> _archive() async {
+    final account = widget.accountToEdit;
+    if (account == null) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Arquivar conta?'),
+        content: Text(
+          'A conta "${account.name}" será arquivada e não aceitará novos lançamentos, mas seu histórico financeiro será preservado.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Arquivar'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
+
+    try {
+      final repository = ref.read(ledgerRepositoryProvider);
+      await repository.archiveAccount(
+        householdId: widget.household.id,
+        accountId: account.id,
+      );
+
+      ref.invalidate(ledgerAccountsProvider(widget.household.id));
+      ref.invalidate(financialDashboardProvider);
+
+      if (mounted) {
+        Navigator.of(context).pop(true);
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(
+          () => _error = 'Não foi possível arquivar a conta. Tente novamente.',
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _saving = false);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final isEditing = widget.accountToEdit != null;
     return Scaffold(
-      appBar: AppBar(title: Text(isEditing ? 'Editar conta' : 'Nova conta')),
+      appBar: AppBar(
+        title: Text(isEditing ? 'Editar conta' : 'Nova conta'),
+        actions: [
+          if (isEditing)
+            IconButton(
+              icon: const Icon(Icons.archive_outlined),
+              tooltip: 'Arquivar conta',
+              onPressed: _saving ? null : _archive,
+            ),
+        ],
+      ),
       body: SafeArea(
         child: Center(
           child: ConstrainedBox(
@@ -136,7 +208,8 @@ final class _AccountFormScreenState extends ConsumerState<AccountFormScreen> {
                         helperText:
                             'Ex.: Carteira, Conta Corrente Itaú, Poupança',
                       ),
-                      validator: (value) => StringUtils.trimToNull(value) == null
+                      validator: (value) =>
+                          StringUtils.trimToNull(value) == null
                           ? 'Informe o nome da conta.'
                           : null,
                     ),
@@ -208,7 +281,7 @@ final class _AccountFormScreenState extends ConsumerState<AccountFormScreen> {
                         decoration: const InputDecoration(
                           labelText: 'Saldo inicial (opcional)',
                           prefixText: 'R\$ ',
-                          helperText: 'Deixe em blank se for zero.',
+                          helperText: 'Deixe em branco se for zero.',
                         ),
                       ),
                       const SizedBox(height: 24),
@@ -216,7 +289,8 @@ final class _AccountFormScreenState extends ConsumerState<AccountFormScreen> {
                       InputDecorator(
                         decoration: const InputDecoration(
                           labelText: 'Moeda',
-                          helperText: 'Moeda e histórico financeiro não podem ser alterados.',
+                          helperText:
+                              'Moeda e histórico financeiro não podem ser alterados.',
                         ),
                         child: Text(_currency.toUpperCase()),
                       ),
@@ -240,6 +314,14 @@ final class _AccountFormScreenState extends ConsumerState<AccountFormScreen> {
                             : (isEditing ? 'Salvar alterações' : 'Criar conta'),
                       ),
                     ),
+                    if (isEditing) ...[
+                      const SizedBox(height: 12),
+                      OutlinedButton.icon(
+                        onPressed: _saving ? null : _archive,
+                        icon: const Icon(Icons.archive_outlined),
+                        label: const Text('Arquivar conta'),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -250,11 +332,13 @@ final class _AccountFormScreenState extends ConsumerState<AccountFormScreen> {
     );
   }
 
-  static String _messageFor(String code, {bool isEditing = false}) => switch (code) {
+  static String _messageFor(
+    String code, {
+    bool isEditing = false,
+  }) => switch (code) {
     'account_name_conflict' =>
       'Já existe uma conta ativa com este nome na residência.',
-    'account_archived' =>
-      'Contas arquivadas não podem ser alteradas.',
+    'account_archived' => 'Contas arquivadas não podem ser alteradas.',
     'network_unavailable' =>
       isEditing
           ? 'Sem conexão. A conta não foi atualizada; tente novamente.'
