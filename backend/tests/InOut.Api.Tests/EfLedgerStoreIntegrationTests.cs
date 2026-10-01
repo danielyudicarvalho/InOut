@@ -840,6 +840,108 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
         Assert.Equal(HouseholdErrorCodes.MembershipRequired, exception.Code);
     }
 
+    [Fact]
+    public async Task CreateIncomeSourceSucceedsAndAudits()
+    {
+        await using var context = CreateContext();
+        var store = CreateStore(context);
+        var sourceId = Guid.NewGuid();
+
+        var created = await store.CreateIncomeSourceAsync(
+            IncomeSource.Create(sourceId, householdId, "  Company Acme  "),
+            actorUserId,
+            CancellationToken.None);
+
+        Assert.Equal(sourceId, created.Id);
+        Assert.Equal("Company Acme", created.Name);
+
+        var list = await store.GetIncomeSourcesAsync(actorUserId, householdId, false, CancellationToken.None);
+        Assert.Contains(list, item => item.Id == sourceId && item.Name == "Company Acme");
+
+        Assert.Equal(1, await CountAsync("public.audit_events", "action", "financial.income_source.created"));
+    }
+
+    [Fact]
+    public async Task CreateDuplicateIncomeSourceFailsCaseInsensitively()
+    {
+        await using var context = CreateContext();
+        var store = CreateStore(context);
+        await store.CreateIncomeSourceAsync(
+            IncomeSource.Create(Guid.NewGuid(), householdId, "Freelance Work"),
+            actorUserId,
+            CancellationToken.None);
+
+        var exception = await Assert.ThrowsAsync<FinancialRuleException>(() =>
+            store.CreateIncomeSourceAsync(
+                IncomeSource.Create(Guid.NewGuid(), householdId, "freelance work"),
+                actorUserId,
+                CancellationToken.None));
+
+        Assert.Equal(FinancialErrorCodes.IncomeSourceConflict, exception.Code);
+    }
+
+    [Fact]
+    public async Task ArchiveIncomeSourceHidesFromFutureEntryAndAudits()
+    {
+        await using var context = CreateContext();
+        var store = CreateStore(context);
+        var sourceId = Guid.NewGuid();
+        await store.CreateIncomeSourceAsync(
+            IncomeSource.Create(sourceId, householdId, "Consulting"),
+            actorUserId,
+            CancellationToken.None);
+
+        await store.ArchiveIncomeSourceAsync(householdId, sourceId, actorUserId, CancellationToken.None);
+
+        var activeSources = await store.GetIncomeSourcesAsync(actorUserId, householdId, false, CancellationToken.None);
+        Assert.DoesNotContain(activeSources, item => item.Id == sourceId);
+
+        var allSources = await store.GetIncomeSourcesAsync(actorUserId, householdId, true, CancellationToken.None);
+        var archived = Assert.Single(allSources, item => item.Id == sourceId);
+        Assert.NotNull(archived.ArchivedAt);
+
+        Assert.Equal(1, await CountAsync("public.audit_events", "action", "financial.income_source.archived"));
+
+        var service = new LedgerService(store);
+        var exception = await Assert.ThrowsAsync<FinancialRuleException>(() =>
+            service.PostIncomeAsync(
+                actorUserId,
+                new PostIncomeCommand(
+                    householdId, accountId, categoryId, 5_000, "BRL",
+                    new DateOnly(2026, 9, 15), Guid.NewGuid(), "Archived Source Income", sourceId),
+                CancellationToken.None));
+        Assert.Equal(FinancialErrorCodes.InvalidIncomeSource, exception.Code);
+    }
+
+    [Fact]
+    public async Task ArchiveAlreadyArchivedIncomeSourceIsNoOp()
+    {
+        await using var context = CreateContext();
+        var store = CreateStore(context);
+        var sourceId = Guid.NewGuid();
+        await store.CreateIncomeSourceAsync(
+            IncomeSource.Create(sourceId, householdId, "Side Gig"),
+            actorUserId,
+            CancellationToken.None);
+
+        await store.ArchiveIncomeSourceAsync(householdId, sourceId, actorUserId, CancellationToken.None);
+        await store.ArchiveIncomeSourceAsync(householdId, sourceId, actorUserId, CancellationToken.None);
+
+        Assert.Equal(1, await CountAsync("public.audit_events", "action", "financial.income_source.archived"));
+    }
+
+    [Fact]
+    public async Task ArchiveNonExistentIncomeSourceThrowsNotFound()
+    {
+        await using var context = CreateContext();
+        var store = CreateStore(context);
+
+        var exception = await Assert.ThrowsAsync<FinancialRuleException>(() =>
+            store.ArchiveIncomeSourceAsync(householdId, Guid.NewGuid(), actorUserId, CancellationToken.None));
+
+        Assert.Equal(FinancialErrorCodes.IncomeSourceNotFound, exception.Code);
+    }
+
     private async Task<LedgerWriteResult> PostIncomeAsync(
         Guid idempotencyKey,
         long amountCents = 1_000,
@@ -897,7 +999,7 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
         return (long)(await command.ExecuteScalarAsync())!;
     }
 
-    private async Task<long> CountAsync(string qualifiedTable, string column, Guid value)
+    private async Task<long> CountAsync(string qualifiedTable, string column, object value)
     {
         await using var connection = new NpgsqlConnection(postgres.GetConnectionString());
         await connection.OpenAsync();

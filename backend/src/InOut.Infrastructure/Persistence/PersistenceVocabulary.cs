@@ -14,6 +14,8 @@ internal static class PersistenceVocabulary
         internal const string AccountMetadataUpdated = "financial.account.metadata_updated";
         internal const string CategoryCreated = "financial.category.created";
         internal const string CategoryArchived = "financial.category.archived";
+        internal const string IncomeSourceCreated = "financial.income_source.created";
+        internal const string IncomeSourceArchived = "financial.income_source.archived";
         internal const string HouseholdCreated = "household.created";
         internal const string InvitationAccepted = "household.invitation.accepted";
         internal const string InvitationCreated = "household.invitation.created";
@@ -28,6 +30,7 @@ internal static class PersistenceVocabulary
         internal const string Category = "category";
         internal const string Household = "household";
         internal const string HouseholdInvitation = "household_invitation";
+        internal const string IncomeSource = "income_source";
         internal const string Transaction = "transaction";
     }
 
