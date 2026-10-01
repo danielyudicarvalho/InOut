@@ -315,6 +315,19 @@ public sealed partial class EfLedgerStore(
             }
         }
 
+        var duplicateExists = await dbContext.Categories.AnyAsync(
+            item => item.HouseholdId == householdId &&
+                    item.ParentId == parentId &&
+                    item.ArchivedAt == null &&
+                    EF.Functions.ILike(item.Name, category.Name),
+            cancellationToken);
+        if (duplicateExists)
+        {
+            throw new FinancialRuleException(
+                FinancialErrorCodes.CategoryConflict,
+                "An active category with this name already exists in this scope.");
+        }
+
         dbContext.Categories.Add(new CategoryRecord
         {
             Id = category.Id,
