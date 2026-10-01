@@ -6,11 +6,13 @@ final class FinancialDashboardPanel extends StatelessWidget {
   const FinancialDashboardPanel({
     required this.dashboard,
     this.onCreateAccount,
+    this.onEditAccount,
     super.key,
   });
 
   final FinancialDashboard dashboard;
   final VoidCallback? onCreateAccount;
+  final void Function(String accountId)? onEditAccount;
 
   @override
   Widget build(BuildContext context) => ListView(
@@ -77,8 +79,21 @@ final class FinancialDashboardPanel extends StatelessWidget {
                     contentPadding: EdgeInsets.zero,
                     title: Text(item.accountName),
                     subtitle: Text(item.currency),
-                    trailing: Text(
-                      MoneyUtils.format(item.balanceCents, item.currency),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          MoneyUtils.format(item.balanceCents, item.currency),
+                        ),
+                        if (onEditAccount != null) ...[
+                          const SizedBox(width: 4),
+                          IconButton(
+                            icon: const Icon(Icons.edit_outlined, size: 20),
+                            onPressed: () => onEditAccount!(item.accountId),
+                            tooltip: 'Editar conta',
+                          ),
+                        ],
+                      ],
                     ),
                   ),
                 )

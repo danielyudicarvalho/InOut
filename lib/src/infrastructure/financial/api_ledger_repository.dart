@@ -82,6 +82,22 @@ final class ApiLedgerRepository implements LedgerRepository {
   }
 
   @override
+  Future<AccountSummary> updateAccountMetadata({
+    required String householdId,
+    required String accountId,
+    required String name,
+    required String kind,
+  }) async {
+    final response = await _send(
+      ApiMethods.put,
+      ApiContract.account(householdId, accountId),
+      body: {ApiFields.name: name, ApiFields.kind: kind},
+    );
+    final body = jsonDecode(response.body) as Map<String, dynamic>;
+    return LedgerResponseMapper.account(body);
+  }
+
+  @override
   Future<List<CategorySummary>> getCategories(
     String householdId, {
     FinancialFlow? flow,

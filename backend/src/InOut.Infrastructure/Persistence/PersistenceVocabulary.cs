@@ -11,6 +11,7 @@ internal static class PersistenceVocabulary
     {
         internal const string AccountArchived = "financial.account.archived";
         internal const string AccountCreated = "financial.account.created";
+        internal const string AccountMetadataUpdated = "financial.account.metadata_updated";
         internal const string CategoryCreated = "financial.category.created";
         internal const string CategoryArchived = "financial.category.archived";
         internal const string HouseholdCreated = "household.created";

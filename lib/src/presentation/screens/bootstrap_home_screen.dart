@@ -148,6 +148,8 @@ final class _BootstrapHomeScreenState
                             dashboard: value,
                             onCreateAccount: () =>
                                 _openAccountForm(context, ref, selected),
+                            onEditAccount: (accountId) =>
+                                _openAccountEditForm(context, ref, selected, accountId),
                           ),
                         ),
                       ],
@@ -263,6 +265,28 @@ final class _BootstrapHomeScreenState
       ),
     );
     if (created == true) {
+      ref.invalidate(ledgerAccountsProvider(household.id));
+      ref.invalidate(financialDashboardProvider);
+    }
+  }
+
+  static Future<void> _openAccountEditForm(
+    BuildContext context,
+    WidgetRef ref,
+    Household household,
+    String accountId,
+  ) async {
+    final accounts = await ref.read(ledgerAccountsProvider(household.id).future);
+    final account = accounts.firstWhere((a) => a.id == accountId);
+    final updated = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => AccountFormScreen(
+          household: household,
+          accountToEdit: account,
+        ),
+      ),
+    );
+    if (updated == true) {
       ref.invalidate(ledgerAccountsProvider(household.id));
       ref.invalidate(financialDashboardProvider);
     }

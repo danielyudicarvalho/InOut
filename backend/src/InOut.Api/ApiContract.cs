@@ -6,6 +6,7 @@ internal static class ApiContract
     {
         internal const string AcceptHouseholdInvitation = "AcceptHouseholdInvitation";
         internal const string ArchiveAccount = "ArchiveAccount";
+        internal const string UpdateAccountMetadata = "UpdateAccountMetadata";
         internal const string CheckHouseholdAccess = "CheckHouseholdAccess";
         internal const string CreateAccount = "CreateAccount";
         internal const string CreateHousehold = "CreateHousehold";

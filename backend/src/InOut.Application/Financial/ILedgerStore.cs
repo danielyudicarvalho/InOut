@@ -46,6 +46,14 @@ public interface ILedgerStore
         Guid actorUserId,
         CancellationToken cancellationToken);
 
+    Task<AccountSummary> UpdateAccountMetadataAsync(
+        Guid householdId,
+        Guid accountId,
+        Guid actorUserId,
+        string name,
+        AccountKind kind,
+        CancellationToken cancellationToken);
+
     Task<IReadOnlyList<LedgerHistoryItem>> GetHistoryAsync(
         Guid actorUserId,
         Guid householdId,

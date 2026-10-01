@@ -63,6 +63,24 @@ public static class LedgerEndpoints
             return Results.NoContent();
         }).WithName(ApiContract.EndpointNames.ArchiveAccount);
 
+        ledger.MapPut(ApiContract.Routes.AccountById, async (
+            Guid householdId,
+            Guid accountId,
+            UpdateAccountMetadataRequest request,
+            ClaimsPrincipal principal,
+            LedgerService service,
+            CancellationToken cancellationToken) =>
+        {
+            var updatedAccount = await service.UpdateAccountMetadataAsync(
+                UserId(principal),
+                householdId,
+                accountId,
+                request.Name,
+                request.Kind,
+                cancellationToken);
+            return Results.Ok(updatedAccount);
+        }).WithName(ApiContract.EndpointNames.UpdateAccountMetadata);
+
         ledger.MapGet(ApiContract.Routes.IncomeSources, async (
             Guid householdId,
             bool includeArchived = false,

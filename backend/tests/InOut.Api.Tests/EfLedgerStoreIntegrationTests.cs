@@ -348,7 +348,7 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
 
         await using var verification = CreateContext();
         var balances = await CreateStore(verification)
-            .GetBalancesAsync(householdId, CancellationToken.None);
+            .GetBalancesAsync(actorUserId, householdId, CancellationToken.None);
         Assert.All(balances, balance => Assert.Equal(0, balance.BalanceCents));
     }
 
@@ -415,6 +415,92 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
             Assert.Equal(actorUserId, opening.CreatedBy);
             Assert.Equal(new DateOnly(2026, 9, 15), opening.OccurredOn);
             Assert.Equal(25_000, opening.AmountCents);
+        }
+    }
+
+    [Fact]
+    public async Task UpdateAccountMetadataUpdatesPermittedFieldsAndEnforcesUniquenessAndActiveStatus()
+    {
+        var targetAccountId = Guid.NewGuid();
+        var secondAccountId = Guid.NewGuid();
+
+        await using (var context = CreateContext())
+        {
+            var service = new LedgerService(CreateStore(context));
+            await service.CreateAccountAsync(
+                actorUserId,
+                new CreateAccountCommand(
+                    targetAccountId,
+                    householdId,
+                    "Conta Antiga",
+                    AccountKind.Checking,
+                    "BRL",
+                    10_000,
+                    new DateOnly(2026, 9, 15),
+                    Guid.NewGuid()),
+                CancellationToken.None);
+
+            await service.CreateAccountAsync(
+                actorUserId,
+                new CreateAccountCommand(
+                    secondAccountId,
+                    householdId,
+                    "Outra Conta",
+                    AccountKind.Cash,
+                    "BRL",
+                    0,
+                    new DateOnly(2026, 9, 15),
+                    Guid.NewGuid()),
+                CancellationToken.None);
+        }
+
+        await using (var context = CreateContext())
+        {
+            var service = new LedgerService(CreateStore(context));
+            var updated = await service.UpdateAccountMetadataAsync(
+                actorUserId,
+                householdId,
+                targetAccountId,
+                "Conta Atualizada",
+                AccountKind.Savings,
+                CancellationToken.None);
+
+            Assert.Equal("Conta Atualizada", updated.Name);
+            Assert.Equal(AccountKind.Savings, updated.Kind);
+            Assert.Equal("BRL", updated.Currency);
+            Assert.Equal(10_000, updated.BalanceCents);
+        }
+
+        await using (var context = CreateContext())
+        {
+            var service = new LedgerService(CreateStore(context));
+            var conflict = await Assert.ThrowsAsync<FinancialRuleException>(() =>
+                service.UpdateAccountMetadataAsync(
+                    actorUserId,
+                    householdId,
+                    targetAccountId,
+                    "Outra Conta",
+                    AccountKind.Investment,
+                    CancellationToken.None));
+
+            Assert.Equal(FinancialErrorCodes.AccountNameConflict, conflict.Code);
+        }
+
+        await using (var context = CreateContext())
+        {
+            var service = new LedgerService(CreateStore(context));
+            await service.ArchiveAccountAsync(householdId, targetAccountId, actorUserId, CancellationToken.None);
+
+            var archivedEx = await Assert.ThrowsAsync<FinancialRuleException>(() =>
+                service.UpdateAccountMetadataAsync(
+                    actorUserId,
+                    householdId,
+                    targetAccountId,
+                    "Novo Nome",
+                    AccountKind.Checking,
+                    CancellationToken.None));
+
+            Assert.Equal(FinancialErrorCodes.AccountArchived, archivedEx.Code);
         }
     }
 

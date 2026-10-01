@@ -47,6 +47,7 @@ abstract final class ApiMethods {
   static const delete = 'DELETE';
   static const get = 'GET';
   static const post = 'POST';
+  static const put = 'PUT';
 }
 
 abstract final class ApiHeaders {

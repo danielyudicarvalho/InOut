@@ -23,6 +23,8 @@ public sealed record CreateAccountRequest(
     long InitialBalanceCents,
     DateOnly OpeningDate);
 
+public sealed record UpdateAccountMetadataRequest(string Name, AccountKind Kind);
+
 public sealed record PostExpenseRequest(
     Guid AccountId,
     Guid CategoryId,

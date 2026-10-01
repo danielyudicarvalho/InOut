@@ -183,6 +183,73 @@ public sealed partial class EfLedgerStore(
         await databaseTransaction.CommitAsync(cancellationToken);
     }
 
+    public async Task<AccountSummary> UpdateAccountMetadataAsync(
+        Guid householdId,
+        Guid accountId,
+        Guid actorUserId,
+        string name,
+        AccountKind kind,
+        CancellationToken cancellationToken)
+    {
+        await using var databaseTransaction = await dbContext.BeginUserTransactionAsync(actorUserId, cancellationToken);
+        var account = await dbContext.Accounts.SingleOrDefaultAsync(
+            item => item.HouseholdId == householdId && item.Id == accountId,
+            cancellationToken);
+        if (account is null)
+        {
+            throw new FinancialRuleException(FinancialErrorCodes.AccountNotFound, "Account was not found.");
+        }
+
+        var domain = new Account(
+            account.Id,
+            account.HouseholdId,
+            account.Name,
+            account.Kind,
+            account.Currency,
+            account.ArchivedAt);
+
+        var updatedDomain = domain.UpdateMetadata(name, kind);
+
+        var duplicateExists = await dbContext.Accounts.AnyAsync(
+            item => item.HouseholdId == householdId &&
+                    item.Id != accountId &&
+                    item.ArchivedAt == null &&
+                    EF.Functions.ILike(item.Name, updatedDomain.Name),
+            cancellationToken);
+        if (duplicateExists)
+        {
+            throw new FinancialRuleException(
+                FinancialErrorCodes.AccountNameConflict,
+                "An active account with this name already exists in the household.");
+        }
+
+        account.Name = updatedDomain.Name;
+        account.Kind = updatedDomain.Kind;
+
+        AddAudit(
+            householdId,
+            actorUserId,
+            PersistenceVocabulary.AuditActions.AccountMetadataUpdated,
+            PersistenceVocabulary.EntityTypes.Account,
+            accountId);
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        var balanceCents = await dbContext.Entries
+            .Where(entry => entry.HouseholdId == householdId && entry.AccountId == accountId)
+            .SumAsync(entry => (long?)(entry.Direction == EntryDirection.Credit ? entry.AmountCents : -entry.AmountCents), cancellationToken) ?? 0;
+
+        await databaseTransaction.CommitAsync(cancellationToken);
+
+        return new AccountSummary(
+            account.Id,
+            account.Name,
+            account.Kind,
+            account.Currency,
+            balanceCents,
+            account.ArchivedAt);
+    }
+
     public async Task<IReadOnlyList<CategorySummary>> GetCategoriesAsync(
         Guid actorUserId,
         Guid householdId,
@@ -526,7 +593,21 @@ public sealed partial class EfLedgerStore(
         Guid householdId,
         CancellationToken cancellationToken)
     {
+        if (dbContext.Database.CurrentTransaction != null)
+        {
+            return await GetBalancesInternalAsync(householdId, cancellationToken);
+        }
+
         await using var databaseTransaction = await dbContext.BeginUserTransactionAsync(actorUserId, cancellationToken);
+        var balances = await GetBalancesInternalAsync(householdId, cancellationToken);
+        await databaseTransaction.CommitAsync(cancellationToken);
+        return balances;
+    }
+
+    private async Task<IReadOnlyList<AccountBalance>> GetBalancesInternalAsync(
+        Guid householdId,
+        CancellationToken cancellationToken)
+    {
         var rows = await (
             from account in dbContext.Accounts.AsNoTracking()
             where account.HouseholdId == householdId && account.ArchivedAt == null
@@ -543,7 +624,7 @@ public sealed partial class EfLedgerStore(
             })
             .OrderBy(item => item.AccountId)
             .ToListAsync(cancellationToken);
-        await databaseTransaction.CommitAsync(cancellationToken);
+
         return rows
             .Select(item => new AccountBalance(item.AccountId, item.Currency, item.BalanceCents))
             .ToArray();

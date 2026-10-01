@@ -47,6 +47,15 @@ public sealed class LedgerService(ILedgerStore store)
         CancellationToken cancellationToken) =>
         store.ArchiveAccountAsync(householdId, accountId, actorUserId, cancellationToken);
 
+    public Task<AccountSummary> UpdateAccountMetadataAsync(
+        Guid actorUserId,
+        Guid householdId,
+        Guid accountId,
+        string name,
+        AccountKind kind,
+        CancellationToken cancellationToken) =>
+        store.UpdateAccountMetadataAsync(householdId, accountId, actorUserId, name, kind, cancellationToken);
+
     public Task<IReadOnlyList<CategorySummary>> GetCategoriesAsync(
         Guid actorUserId,
         Guid householdId,

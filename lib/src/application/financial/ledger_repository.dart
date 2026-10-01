@@ -25,6 +25,13 @@ abstract interface class LedgerRepository {
     required String accountId,
   });
 
+  Future<AccountSummary> updateAccountMetadata({
+    required String householdId,
+    required String accountId,
+    required String name,
+    required String kind,
+  });
+
   Future<List<CategorySummary>> getCategories(
     String householdId, {
     FinancialFlow? flow,
