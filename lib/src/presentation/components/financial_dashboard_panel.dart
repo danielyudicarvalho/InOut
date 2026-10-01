@@ -3,9 +3,14 @@ import 'package:inout/src/application/financial/dtos/ledger_models.dart';
 import 'package:inout/src/core/utils/money_utils.dart';
 
 final class FinancialDashboardPanel extends StatelessWidget {
-  const FinancialDashboardPanel({required this.dashboard, super.key});
+  const FinancialDashboardPanel({
+    required this.dashboard,
+    this.onCreateAccount,
+    super.key,
+  });
 
   final FinancialDashboard dashboard;
+  final VoidCallback? onCreateAccount;
 
   @override
   Widget build(BuildContext context) => ListView(
@@ -54,18 +59,30 @@ final class FinancialDashboardPanel extends StatelessWidget {
       const SizedBox(height: 24),
       _Section(
         title: 'Contas',
-        children: dashboard.accounts
-            .map(
-              (item) => ListTile(
-                contentPadding: EdgeInsets.zero,
-                title: Text(item.accountName),
-                subtitle: Text(item.currency),
-                trailing: Text(
-                  MoneyUtils.format(item.balanceCents, item.currency),
-                ),
-              ),
-            )
-            .toList(),
+        children: dashboard.accounts.isEmpty
+            ? [
+                const Text('Nenhuma conta cadastrada.'),
+                if (onCreateAccount != null) ...[
+                  const SizedBox(height: 8),
+                  OutlinedButton.icon(
+                    onPressed: onCreateAccount,
+                    icon: const Icon(Icons.add),
+                    label: const Text('Criar conta'),
+                  ),
+                ],
+              ]
+            : dashboard.accounts
+                .map(
+                  (item) => ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(item.accountName),
+                    subtitle: Text(item.currency),
+                    trailing: Text(
+                      MoneyUtils.format(item.balanceCents, item.currency),
+                    ),
+                  ),
+                )
+                .toList(),
       ),
       _Section(
         title: 'Despesas por categoria',

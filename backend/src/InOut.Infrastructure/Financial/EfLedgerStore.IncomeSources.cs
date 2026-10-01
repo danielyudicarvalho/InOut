@@ -9,13 +9,16 @@ namespace InOut.Infrastructure.Financial;
 public sealed partial class EfLedgerStore
 {
     public async Task<IReadOnlyList<IncomeSourceSummary>> GetIncomeSourcesAsync(
-        Guid householdId, bool includeArchived, CancellationToken cancellationToken)
+        Guid actorUserId, Guid householdId, bool includeArchived, CancellationToken cancellationToken)
     {
+        await using var transaction = await dbContext.BeginUserTransactionAsync(actorUserId, cancellationToken);
         var query = dbContext.IncomeSources.AsNoTracking().Where(source => source.HouseholdId == householdId);
         if (!includeArchived) query = query.Where(source => source.ArchivedAt == null);
-        return await query.OrderBy(source => source.Name)
+        var result = await query.OrderBy(source => source.Name)
             .Select(source => new IncomeSourceSummary(source.Id, source.Name, source.ArchivedAt))
             .ToArrayAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+        return result;
     }
 
     public async Task<IncomeSourceSummary> CreateIncomeSourceAsync(

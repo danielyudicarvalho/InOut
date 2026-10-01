@@ -46,9 +46,10 @@ public static class LedgerEndpoints
         ledger.MapGet(ApiContract.Routes.Accounts, async (
             Guid householdId,
             bool includeArchived = false,
+            ClaimsPrincipal principal = null!,
             LedgerService service = null!,
             CancellationToken cancellationToken = default) =>
-            Results.Ok(await service.GetAccountsAsync(householdId, includeArchived, cancellationToken)))
+            Results.Ok(await service.GetAccountsAsync(UserId(principal), householdId, includeArchived, cancellationToken)))
             .WithName(ApiContract.EndpointNames.GetAccounts);
 
         ledger.MapDelete(ApiContract.Routes.AccountById, async (
@@ -63,8 +64,12 @@ public static class LedgerEndpoints
         }).WithName(ApiContract.EndpointNames.ArchiveAccount);
 
         ledger.MapGet(ApiContract.Routes.IncomeSources, async (
-            Guid householdId, bool includeArchived = false, LedgerService service = null!, CancellationToken cancellationToken = default) =>
-            Results.Ok(await service.GetIncomeSourcesAsync(householdId, includeArchived, cancellationToken)))
+            Guid householdId,
+            bool includeArchived = false,
+            ClaimsPrincipal principal = null!,
+            LedgerService service = null!,
+            CancellationToken cancellationToken = default) =>
+            Results.Ok(await service.GetIncomeSourcesAsync(UserId(principal), householdId, includeArchived, cancellationToken)))
             .WithName(ApiContract.EndpointNames.GetIncomeSources);
 
         ledger.MapPost(ApiContract.Routes.IncomeSources, async (
@@ -88,11 +93,12 @@ public static class LedgerEndpoints
             Guid householdId,
             string? flow,
             bool includeArchived = false,
+            ClaimsPrincipal principal = null!,
             LedgerService service = null!,
             CancellationToken cancellationToken = default) =>
         {
             FinancialFlow? parsedFlow = !string.IsNullOrWhiteSpace(flow) && Enum.TryParse<FinancialFlow>(flow, ignoreCase: true, out var f) ? f : null;
-            return Results.Ok(await service.GetCategoriesAsync(householdId, parsedFlow, includeArchived, cancellationToken));
+            return Results.Ok(await service.GetCategoriesAsync(UserId(principal), householdId, parsedFlow, includeArchived, cancellationToken));
         }).WithName(ApiContract.EndpointNames.GetCategories);
 
         ledger.MapPost(ApiContract.Routes.Categories, async (
@@ -128,11 +134,12 @@ public static class LedgerEndpoints
             Guid? accountId,
             Guid? categoryId,
             string? kind,
-            LedgerService service,
-            CancellationToken cancellationToken) =>
+            ClaimsPrincipal principal = null!,
+            LedgerService service = null!,
+            CancellationToken cancellationToken = default) =>
         {
             FinancialTransactionKind? parsedKind = !string.IsNullOrWhiteSpace(kind) && Enum.TryParse<FinancialTransactionKind>(kind, ignoreCase: true, out var k) ? k : null;
-            return Results.Ok(await service.GetHistoryAsync(householdId, limit ?? 100,
+            return Results.Ok(await service.GetHistoryAsync(UserId(principal), householdId, limit ?? 100,
                 new LedgerHistoryFilter(from, to, accountId, categoryId, parsedKind), cancellationToken));
         }).WithName(ApiContract.EndpointNames.GetLedgerHistory);
 
@@ -229,16 +236,18 @@ public static class LedgerEndpoints
 
         ledger.MapGet(ApiContract.Routes.Balances, async (
             Guid householdId,
+            ClaimsPrincipal principal,
             LedgerService service,
             CancellationToken cancellationToken) =>
-            Results.Ok(await service.GetBalancesAsync(householdId, cancellationToken)))
+            Results.Ok(await service.GetBalancesAsync(UserId(principal), householdId, cancellationToken)))
             .WithName(ApiContract.EndpointNames.GetAccountBalances);
 
         ledger.MapGet(ApiContract.Routes.Reconciliation, async (
             Guid householdId,
+            ClaimsPrincipal principal,
             LedgerService service,
             CancellationToken cancellationToken) =>
-            Results.Ok(await service.ReconcileAsync(householdId, cancellationToken)))
+            Results.Ok(await service.ReconcileAsync(UserId(principal), householdId, cancellationToken)))
             .WithName(ApiContract.EndpointNames.ReconcileLedger);
 
         ledger.MapGet(ApiContract.Routes.Dashboard, async (

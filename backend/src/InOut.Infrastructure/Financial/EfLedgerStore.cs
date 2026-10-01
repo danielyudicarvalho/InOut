@@ -107,10 +107,12 @@ public sealed partial class EfLedgerStore(
     }
 
     public async Task<IReadOnlyList<AccountSummary>> GetAccountsAsync(
+        Guid actorUserId,
         Guid householdId,
         bool includeArchived,
         CancellationToken cancellationToken)
     {
+        await using var databaseTransaction = await dbContext.BeginUserTransactionAsync(actorUserId, cancellationToken);
         var query = dbContext.Accounts.AsNoTracking().Where(item => item.HouseholdId == householdId);
         if (!includeArchived)
         {
@@ -131,6 +133,7 @@ public sealed partial class EfLedgerStore(
                 item.ArchivedAt,
             })
             .ToListAsync(cancellationToken);
+        await databaseTransaction.CommitAsync(cancellationToken);
         return rows
             .Select(item => new AccountSummary(
                 item.Id,
@@ -181,11 +184,13 @@ public sealed partial class EfLedgerStore(
     }
 
     public async Task<IReadOnlyList<CategorySummary>> GetCategoriesAsync(
+        Guid actorUserId,
         Guid householdId,
         FinancialFlow? flow,
         bool includeArchived,
         CancellationToken cancellationToken)
     {
+        await using var databaseTransaction = await dbContext.BeginUserTransactionAsync(actorUserId, cancellationToken);
         var query = dbContext.Categories
             .AsNoTracking()
             .Where(item => item.HouseholdId == householdId);
@@ -198,7 +203,7 @@ public sealed partial class EfLedgerStore(
             query = query.Where(item => item.Flow == flow.Value);
         }
 
-        return await query
+        var result = await query
             .OrderBy(item => item.Name)
             .Select(item => new CategorySummary(
                 item.Id,
@@ -207,11 +212,13 @@ public sealed partial class EfLedgerStore(
                 item.ParentId,
                 item.ArchivedAt))
             .ToArrayAsync(cancellationToken);
+        await databaseTransaction.CommitAsync(cancellationToken);
+        return result;
     }
 
     public Task<IReadOnlyList<CategorySummary>> GetCategoriesAsync(
-        Guid householdId, FinancialFlow? flow, CancellationToken cancellationToken) =>
-        GetCategoriesAsync(householdId, flow, false, cancellationToken);
+        Guid actorUserId, Guid householdId, FinancialFlow? flow, CancellationToken cancellationToken) =>
+        GetCategoriesAsync(actorUserId, householdId, flow, false, cancellationToken);
 
     public async Task<CategorySummary> CreateCategoryAsync(
         Guid householdId, Guid actorUserId, Guid id, string name,
@@ -316,11 +323,13 @@ public sealed partial class EfLedgerStore(
     }
 
     public async Task<IReadOnlyList<LedgerHistoryItem>> GetHistoryAsync(
+        Guid actorUserId,
         Guid householdId,
         int limit,
         LedgerHistoryFilter filter,
         CancellationToken cancellationToken)
     {
+        await using var databaseTransaction = await dbContext.BeginUserTransactionAsync(actorUserId, cancellationToken);
         var transactions = dbContext.FinancialTransactions.AsNoTracking()
             .Where(item => item.HouseholdId == householdId);
         if (filter.From is not null)
@@ -369,6 +378,7 @@ public sealed partial class EfLedgerStore(
             })
             .Take(limit)
             .ToListAsync(cancellationToken);
+        await databaseTransaction.CommitAsync(cancellationToken);
         return rows
             .Select(item => new LedgerHistoryItem(
                 item.TransactionId,
@@ -392,8 +402,8 @@ public sealed partial class EfLedgerStore(
     }
 
     public Task<IReadOnlyList<LedgerHistoryItem>> GetHistoryAsync(
-        Guid householdId, int limit, CancellationToken cancellationToken) =>
-        GetHistoryAsync(householdId, limit, new LedgerHistoryFilter(), cancellationToken);
+        Guid actorUserId, Guid householdId, int limit, CancellationToken cancellationToken) =>
+        GetHistoryAsync(actorUserId, householdId, limit, new LedgerHistoryFilter(), cancellationToken);
 
     public async Task<LedgerWriteResult> PostAsync(
         FinancialTransaction transaction,
@@ -512,9 +522,11 @@ public sealed partial class EfLedgerStore(
     }
 
     public async Task<IReadOnlyList<AccountBalance>> GetBalancesAsync(
+        Guid actorUserId,
         Guid householdId,
         CancellationToken cancellationToken)
     {
+        await using var databaseTransaction = await dbContext.BeginUserTransactionAsync(actorUserId, cancellationToken);
         var rows = await (
             from account in dbContext.Accounts.AsNoTracking()
             where account.HouseholdId == householdId && account.ArchivedAt == null
@@ -531,15 +543,18 @@ public sealed partial class EfLedgerStore(
             })
             .OrderBy(item => item.AccountId)
             .ToListAsync(cancellationToken);
+        await databaseTransaction.CommitAsync(cancellationToken);
         return rows
             .Select(item => new AccountBalance(item.AccountId, item.Currency, item.BalanceCents))
             .ToArray();
     }
 
     public async Task<LedgerReconciliation> ReconcileAsync(
+        Guid actorUserId,
         Guid householdId,
         CancellationToken cancellationToken)
     {
+        await using var databaseTransaction = await dbContext.BeginUserTransactionAsync(actorUserId, cancellationToken);
         var postedTransactionCount = await dbContext.FinancialTransactions
             .AsNoTracking()
             .LongCountAsync(
@@ -553,7 +568,8 @@ public sealed partial class EfLedgerStore(
             .Select(item => item.TransactionId)
             .Distinct()
             .LongCountAsync(cancellationToken);
-        var balances = await GetBalancesAsync(householdId, cancellationToken);
+        var balances = await GetBalancesAsync(actorUserId, householdId, cancellationToken);
+        await databaseTransaction.CommitAsync(cancellationToken);
         return new LedgerReconciliation(
             postedTransactionCount == entryTransactionCount,
             postedTransactionCount,

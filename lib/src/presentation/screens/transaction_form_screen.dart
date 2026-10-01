@@ -10,6 +10,7 @@ import 'package:inout/src/domain/household/household.dart';
 import 'package:inout/src/domain/transaction/financial_flow.dart';
 import 'package:inout/src/infrastructure/financial/api_ledger_repository.dart';
 import 'package:inout/src/presentation/providers/session_providers.dart';
+import 'package:inout/src/presentation/screens/account_form_screen.dart';
 
 final class TransactionFormScreen extends ConsumerStatefulWidget {
   const TransactionFormScreen({
@@ -203,10 +204,42 @@ final class _TransactionFormScreenState
                     )
                   : !ready
                   ? const Center(child: CircularProgressIndicator())
-                  : accounts.value!.isEmpty || categories.value!.isEmpty
+                  : accounts.value!.isEmpty
+                  ? Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Text(
+                            'É necessário ter ao menos uma conta cadastrada para realizar lançamentos.',
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 16),
+                          FilledButton.icon(
+                            icon: const Icon(Icons.add_card),
+                            label: const Text('Criar conta'),
+                            onPressed: () async {
+                              final created = await Navigator.of(context)
+                                  .push<bool>(
+                                    MaterialPageRoute(
+                                      builder: (_) => AccountFormScreen(
+                                        household: widget.household,
+                                      ),
+                                    ),
+                                  );
+                              if (created == true) {
+                                ref.invalidate(
+                                  ledgerAccountsProvider(widget.household.id),
+                                );
+                              }
+                            },
+                          ),
+                        ],
+                      ),
+                    )
+                  : categories.value!.isEmpty
                   ? const Center(
                       child: Text(
-                        'É necessário ter uma conta e uma categoria ativa para lançar.',
+                        'É necessário ter ao menos uma categoria ativa para lançar.',
                       ),
                     )
                   : Form(
