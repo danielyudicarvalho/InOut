@@ -32,5 +32,6 @@ public static class FinancialErrorCodes
     public const string SameTransferAccount = "same_transfer_account";
     public const string TransactionNotFound = "transaction_not_found";
     public const string TransactionNotReversible = "transaction_not_reversible";
+    public const string InvalidTransactionState = "invalid_transaction_state";
     public const string TransactionWithoutEntries = "transaction_without_entries";
 }

@@ -44,3 +44,8 @@ public sealed record PostTransferRequest(
 public sealed record ReverseTransactionRequest(
     DateOnly OccurredOn,
     string? Description);
+
+public sealed record CorrectTransactionClassificationRequest(
+    Guid? CategoryId,
+    Guid? IncomeSourceId,
+    string? Description);

@@ -254,6 +254,25 @@ public static class LedgerEndpoints
             return WriteResult(householdId, result);
         }).WithName(ApiContract.EndpointNames.ReverseTransaction);
 
+        ledger.MapPatch(ApiContract.Routes.TransactionById, async (
+            Guid householdId,
+            Guid transactionId,
+            CorrectTransactionClassificationRequest request,
+            ClaimsPrincipal principal,
+            LedgerService service,
+            CancellationToken cancellationToken) =>
+        {
+            var updatedItem = await service.CorrectClassificationAsync(
+                householdId,
+                transactionId,
+                UserId(principal),
+                request.CategoryId,
+                request.IncomeSourceId,
+                request.Description,
+                cancellationToken);
+            return Results.Ok(updatedItem);
+        }).WithName(ApiContract.EndpointNames.CorrectTransactionClassification);
+
         ledger.MapGet(ApiContract.Routes.Balances, async (
             Guid householdId,
             ClaimsPrincipal principal,

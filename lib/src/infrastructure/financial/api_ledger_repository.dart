@@ -306,6 +306,28 @@ final class ApiLedgerRepository implements LedgerRepository {
       });
 
   @override
+  Future<LedgerHistoryItem> correctClassification({
+    required String householdId,
+    required String transactionId,
+    String? categoryId,
+    String? incomeSourceId,
+    String? description,
+  }) async {
+    final response = await _send(
+      ApiMethods.patch,
+      ApiContract.transaction(householdId, transactionId),
+      body: {
+        ApiFields.categoryId: categoryId,
+        ApiFields.incomeSourceId: incomeSourceId,
+        ApiFields.description: description,
+      },
+    );
+    return LedgerResponseMapper.historyItem(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
+  }
+
+  @override
   Future<List<AccountBalance>> getBalances(String householdId) async {
     final response = await _send(
       ApiMethods.get,

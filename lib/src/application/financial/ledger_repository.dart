@@ -122,6 +122,14 @@ abstract interface class LedgerRepository {
     String? description,
   });
 
+  Future<LedgerHistoryItem> correctClassification({
+    required String householdId,
+    required String transactionId,
+    String? categoryId,
+    String? incomeSourceId,
+    String? description,
+  });
+
   Future<List<AccountBalance>> getBalances(String householdId);
 
   Future<LedgerReconciliation> reconcile(String householdId);

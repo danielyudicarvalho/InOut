@@ -37,6 +37,9 @@ abstract final class ApiContract {
   static String reversals(String householdId, String transactionId) =>
       '${ledger(householdId)}/transactions/$transactionId/reversals';
 
+  static String transaction(String householdId, String transactionId) =>
+      '${ledger(householdId)}/transactions/$transactionId';
+
   static String invitations(String householdId) =>
       '${household(householdId)}/invitations';
 
@@ -46,6 +49,7 @@ abstract final class ApiContract {
 abstract final class ApiMethods {
   static const delete = 'DELETE';
   static const get = 'GET';
+  static const patch = 'PATCH';
   static const post = 'POST';
   static const put = 'PUT';
 }

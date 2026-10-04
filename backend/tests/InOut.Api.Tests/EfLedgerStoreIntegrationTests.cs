@@ -984,6 +984,51 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
         Assert.Equal(sourceId, sourceMatched.IncomeSourceId);
     }
 
+    [Fact]
+    public async Task CorrectTransactionClassificationUpdatesCategoryAndDescriptionWithoutAlteringBalances()
+    {
+        await using var context = CreateContext();
+        var store = CreateStore(context);
+        var service = new LedgerService(store);
+
+        var result = await service.PostExpenseAsync(
+            actorUserId,
+            new PostExpenseCommand(
+                householdId,
+                accountId,
+                expenseCategoryId,
+                5_000,
+                "BRL",
+                new DateOnly(2026, 9, 20),
+                Guid.NewGuid(),
+                "Original Expense Description"),
+            CancellationToken.None);
+
+        var initialBalances = await store.GetBalancesAsync(actorUserId, householdId, CancellationToken.None);
+
+        var newCategory = await store.CreateCategoryAsync(
+            householdId, actorUserId, Guid.NewGuid(), "Transport",
+            FinancialFlow.Expense, null,
+            new IdempotencyRequest(Guid.NewGuid(), actorUserId, householdId, IdempotencyOperation.CreateCategory),
+            CancellationToken.None);
+
+        var correctedItem = await service.CorrectClassificationAsync(
+            householdId,
+            result.TransactionId,
+            actorUserId,
+            newCategory.Id,
+            null,
+            "Updated Expense Description",
+            CancellationToken.None);
+
+        Assert.Equal(newCategory.Id, correctedItem.CategoryId);
+        Assert.Equal("Updated Expense Description", correctedItem.Description);
+
+        var postCorrectionBalances = await store.GetBalancesAsync(actorUserId, householdId, CancellationToken.None);
+        Assert.Equal(initialBalances.Single(b => b.AccountId == accountId).ClearedBalanceCents,
+                     postCorrectionBalances.Single(b => b.AccountId == accountId).ClearedBalanceCents);
+    }
+
     private async Task<LedgerWriteResult> PostIncomeAsync(
         Guid idempotencyKey,
         long amountCents = 1_000,

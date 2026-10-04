@@ -119,6 +119,23 @@ public sealed class LedgerService(ILedgerStore store)
         Guid actorUserId, Guid householdId, int limit, CancellationToken cancellationToken) =>
         GetHistoryAsync(actorUserId, householdId, limit, new LedgerHistoryFilter(), cancellationToken);
 
+    public Task<LedgerHistoryItem> CorrectClassificationAsync(
+        Guid householdId,
+        Guid transactionId,
+        Guid actorUserId,
+        Guid? categoryId,
+        Guid? incomeSourceId,
+        string? description,
+        CancellationToken cancellationToken) =>
+        store.CorrectClassificationAsync(
+            householdId,
+            transactionId,
+            actorUserId,
+            categoryId,
+            incomeSourceId,
+            description,
+            cancellationToken);
+
     public Task<LedgerWriteResult> PostIncomeAsync(
         Guid actorUserId,
         PostIncomeCommand command,

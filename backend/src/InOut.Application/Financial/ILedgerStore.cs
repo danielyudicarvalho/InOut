@@ -74,6 +74,15 @@ public interface ILedgerStore
         IdempotencyRequest idempotencyRequest,
         CancellationToken cancellationToken);
 
+    Task<LedgerHistoryItem> CorrectClassificationAsync(
+        Guid householdId,
+        Guid transactionId,
+        Guid actorUserId,
+        Guid? categoryId,
+        Guid? incomeSourceId,
+        string? description,
+        CancellationToken cancellationToken);
+
     Task<IReadOnlyList<AccountBalance>> GetBalancesAsync(
         Guid actorUserId,
         Guid householdId,

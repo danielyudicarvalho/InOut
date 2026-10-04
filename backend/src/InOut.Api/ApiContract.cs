@@ -29,6 +29,7 @@ internal static class ApiContract
         internal const string PostTransfer = "PostTransfer";
         internal const string ReconcileLedger = "ReconcileLedger";
         internal const string ReverseTransaction = "ReverseTransaction";
+        internal const string CorrectTransactionClassification = "CorrectTransactionClassification";
     }
 
     internal static class Claims
@@ -88,6 +89,7 @@ internal static class ApiContract
         internal const string Readiness = "/health/ready";
         internal const string Reconciliation = "/reconciliation";
         internal const string Reversals = "/transactions/{transactionId:guid}/reversals";
+        internal const string TransactionById = "/transactions/{transactionId:guid}";
         internal const string Root = "/";
         internal const string SystemInfo = "/api/v1/system/info";
         internal const string Transfers = "/transfers";
