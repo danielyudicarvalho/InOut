@@ -277,6 +277,85 @@ public sealed class FinancialTransaction
         }
     }
 
+    public FinancialTransaction CorrectClassification(
+        Category? newCategory,
+        IncomeSource? newIncomeSource,
+        string? newDescription)
+    {
+        if (Status == FinancialTransactionStatus.Reversed || ReversalOf is not null || Kind == FinancialTransactionKind.Reversal)
+        {
+            throw new FinancialRuleException(
+                FinancialErrorCodes.InvalidTransactionState,
+                "Reversed transactions cannot have their classification corrected.");
+        }
+
+        Guid? targetCategoryId = entries.Count > 0 ? entries[0].CategoryId : null;
+        if (newCategory is not null)
+        {
+            if (newCategory.HouseholdId != HouseholdId || !newCategory.IsActive)
+            {
+                throw new FinancialRuleException(
+                    FinancialErrorCodes.InvalidCategory,
+                    "Category must belong to the household.");
+            }
+
+            var expectedFlow = Kind switch
+            {
+                FinancialTransactionKind.Income => FinancialFlow.Income,
+                FinancialTransactionKind.Expense => FinancialFlow.Expense,
+                _ => (FinancialFlow?)null
+            };
+
+            if (expectedFlow is not null && newCategory.Flow != expectedFlow.Value)
+            {
+                throw new FinancialRuleException(
+                    FinancialErrorCodes.InvalidCategory,
+                    $"Category flow '{newCategory.Flow}' does not match transaction kind '{Kind}'.");
+            }
+
+            targetCategoryId = newCategory.Id;
+        }
+
+        Guid? targetIncomeSourceId = IncomeSourceId;
+        if (newIncomeSource is not null)
+        {
+            if (Kind != FinancialTransactionKind.Income)
+            {
+                throw new FinancialRuleException(
+                    FinancialErrorCodes.InvalidIncomeSource,
+                    "Income source can only be assigned to income transactions.");
+            }
+
+            if (newIncomeSource.HouseholdId != HouseholdId || !newIncomeSource.IsActive)
+            {
+                throw new FinancialRuleException(
+                    FinancialErrorCodes.InvalidIncomeSource,
+                    "Income source must belong to the household.");
+            }
+
+            targetIncomeSourceId = newIncomeSource.Id;
+        }
+
+        var updatedEntries = entries.Select(entry => new LedgerEntry(
+            entry.Id,
+            entry.AccountId,
+            targetCategoryId,
+            entry.Direction,
+            entry.Amount)).ToArray();
+
+        return new FinancialTransaction(
+            Id,
+            HouseholdId,
+            Kind,
+            newDescription,
+            OccurredOn,
+            CreatedBy,
+            ReversalOf,
+            Status,
+            updatedEntries,
+            targetIncomeSourceId);
+    }
+
     private static FinancialTransaction SingleEntry(
         Guid householdId,
         FinancialTransactionKind kind,

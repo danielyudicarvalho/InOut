@@ -25,6 +25,13 @@ abstract interface class LedgerRepository {
     required String accountId,
   });
 
+  Future<AccountSummary> updateAccountMetadata({
+    required String householdId,
+    required String accountId,
+    required String name,
+    required String kind,
+  });
+
   Future<List<CategorySummary>> getCategories(
     String householdId, {
     FinancialFlow? flow,
@@ -52,7 +59,9 @@ abstract interface class LedgerRepository {
     DateTime? to,
     String? accountId,
     String? categoryId,
+    String? incomeSourceId,
     String? kind,
+    String? search,
   });
 
   Future<List<IncomeSourceSummary>> getIncomeSources(
@@ -110,6 +119,14 @@ abstract interface class LedgerRepository {
     required String transactionId,
     required DateTime occurredOn,
     required String idempotencyKey,
+    String? description,
+  });
+
+  Future<LedgerHistoryItem> correctClassification({
+    required String householdId,
+    required String transactionId,
+    String? categoryId,
+    String? incomeSourceId,
     String? description,
   });
 

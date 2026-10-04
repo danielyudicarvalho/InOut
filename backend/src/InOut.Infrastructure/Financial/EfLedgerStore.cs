@@ -107,10 +107,12 @@ public sealed partial class EfLedgerStore(
     }
 
     public async Task<IReadOnlyList<AccountSummary>> GetAccountsAsync(
+        Guid actorUserId,
         Guid householdId,
         bool includeArchived,
         CancellationToken cancellationToken)
     {
+        await using var databaseTransaction = await dbContext.BeginUserTransactionAsync(actorUserId, cancellationToken);
         var query = dbContext.Accounts.AsNoTracking().Where(item => item.HouseholdId == householdId);
         if (!includeArchived)
         {
@@ -131,6 +133,7 @@ public sealed partial class EfLedgerStore(
                 item.ArchivedAt,
             })
             .ToListAsync(cancellationToken);
+        await databaseTransaction.CommitAsync(cancellationToken);
         return rows
             .Select(item => new AccountSummary(
                 item.Id,
@@ -180,12 +183,81 @@ public sealed partial class EfLedgerStore(
         await databaseTransaction.CommitAsync(cancellationToken);
     }
 
+    public async Task<AccountSummary> UpdateAccountMetadataAsync(
+        Guid householdId,
+        Guid accountId,
+        Guid actorUserId,
+        string name,
+        AccountKind kind,
+        CancellationToken cancellationToken)
+    {
+        await using var databaseTransaction = await dbContext.BeginUserTransactionAsync(actorUserId, cancellationToken);
+        var account = await dbContext.Accounts.SingleOrDefaultAsync(
+            item => item.HouseholdId == householdId && item.Id == accountId,
+            cancellationToken);
+        if (account is null)
+        {
+            throw new FinancialRuleException(FinancialErrorCodes.AccountNotFound, "Account was not found.");
+        }
+
+        var domain = new Account(
+            account.Id,
+            account.HouseholdId,
+            account.Name,
+            account.Kind,
+            account.Currency,
+            account.ArchivedAt);
+
+        var updatedDomain = domain.UpdateMetadata(name, kind);
+
+        var duplicateExists = await dbContext.Accounts.AnyAsync(
+            item => item.HouseholdId == householdId &&
+                    item.Id != accountId &&
+                    item.ArchivedAt == null &&
+                    EF.Functions.ILike(item.Name, updatedDomain.Name),
+            cancellationToken);
+        if (duplicateExists)
+        {
+            throw new FinancialRuleException(
+                FinancialErrorCodes.AccountNameConflict,
+                "An active account with this name already exists in the household.");
+        }
+
+        account.Name = updatedDomain.Name;
+        account.Kind = updatedDomain.Kind;
+
+        AddAudit(
+            householdId,
+            actorUserId,
+            PersistenceVocabulary.AuditActions.AccountMetadataUpdated,
+            PersistenceVocabulary.EntityTypes.Account,
+            accountId);
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        var balanceCents = await dbContext.Entries
+            .Where(entry => entry.HouseholdId == householdId && entry.AccountId == accountId)
+            .SumAsync(entry => (long?)(entry.Direction == EntryDirection.Credit ? entry.AmountCents : -entry.AmountCents), cancellationToken) ?? 0;
+
+        await databaseTransaction.CommitAsync(cancellationToken);
+
+        return new AccountSummary(
+            account.Id,
+            account.Name,
+            account.Kind,
+            account.Currency,
+            balanceCents,
+            account.ArchivedAt);
+    }
+
     public async Task<IReadOnlyList<CategorySummary>> GetCategoriesAsync(
+        Guid actorUserId,
         Guid householdId,
         FinancialFlow? flow,
         bool includeArchived,
         CancellationToken cancellationToken)
     {
+        await using var databaseTransaction = await dbContext.BeginUserTransactionAsync(actorUserId, cancellationToken);
         var query = dbContext.Categories
             .AsNoTracking()
             .Where(item => item.HouseholdId == householdId);
@@ -198,7 +270,7 @@ public sealed partial class EfLedgerStore(
             query = query.Where(item => item.Flow == flow.Value);
         }
 
-        return await query
+        var result = await query
             .OrderBy(item => item.Name)
             .Select(item => new CategorySummary(
                 item.Id,
@@ -207,11 +279,13 @@ public sealed partial class EfLedgerStore(
                 item.ParentId,
                 item.ArchivedAt))
             .ToArrayAsync(cancellationToken);
+        await databaseTransaction.CommitAsync(cancellationToken);
+        return result;
     }
 
     public Task<IReadOnlyList<CategorySummary>> GetCategoriesAsync(
-        Guid householdId, FinancialFlow? flow, CancellationToken cancellationToken) =>
-        GetCategoriesAsync(householdId, flow, false, cancellationToken);
+        Guid actorUserId, Guid householdId, FinancialFlow? flow, CancellationToken cancellationToken) =>
+        GetCategoriesAsync(actorUserId, householdId, flow, false, cancellationToken);
 
     public async Task<CategorySummary> CreateCategoryAsync(
         Guid householdId, Guid actorUserId, Guid id, string name,
@@ -239,6 +313,19 @@ public sealed partial class EfLedgerStore(
                 throw new FinancialRuleException(FinancialErrorCodes.InvalidCategory,
                     "Subcategory requires an active root category with the same flow in this household.");
             }
+        }
+
+        var duplicateExists = await dbContext.Categories.AnyAsync(
+            item => item.HouseholdId == householdId &&
+                    item.ParentId == parentId &&
+                    item.ArchivedAt == null &&
+                    EF.Functions.ILike(item.Name, category.Name),
+            cancellationToken);
+        if (duplicateExists)
+        {
+            throw new FinancialRuleException(
+                FinancialErrorCodes.CategoryConflict,
+                "An active category with this name already exists in this scope.");
         }
 
         dbContext.Categories.Add(new CategoryRecord
@@ -316,11 +403,13 @@ public sealed partial class EfLedgerStore(
     }
 
     public async Task<IReadOnlyList<LedgerHistoryItem>> GetHistoryAsync(
+        Guid actorUserId,
         Guid householdId,
         int limit,
         LedgerHistoryFilter filter,
         CancellationToken cancellationToken)
     {
+        await using var databaseTransaction = await dbContext.BeginUserTransactionAsync(actorUserId, cancellationToken);
         var transactions = dbContext.FinancialTransactions.AsNoTracking()
             .Where(item => item.HouseholdId == householdId);
         if (filter.From is not null)
@@ -329,6 +418,14 @@ public sealed partial class EfLedgerStore(
             transactions = transactions.Where(item => item.OccurredOn <= filter.To.Value);
         if (filter.Kind is not null)
             transactions = transactions.Where(item => item.Kind == filter.Kind.Value);
+        if (filter.IncomeSourceId is not null)
+            transactions = transactions.Where(item => item.IncomeSourceId == filter.IncomeSourceId.Value);
+        if (!string.IsNullOrWhiteSpace(filter.Search))
+        {
+            var search = filter.Search.Trim();
+            transactions = transactions.Where(item =>
+                item.Description != null && EF.Functions.ILike(item.Description, $"%{search}%"));
+        }
 
         var rows = await (
             from transaction in transactions
@@ -369,6 +466,7 @@ public sealed partial class EfLedgerStore(
             })
             .Take(limit)
             .ToListAsync(cancellationToken);
+        await databaseTransaction.CommitAsync(cancellationToken);
         return rows
             .Select(item => new LedgerHistoryItem(
                 item.TransactionId,
@@ -392,8 +490,8 @@ public sealed partial class EfLedgerStore(
     }
 
     public Task<IReadOnlyList<LedgerHistoryItem>> GetHistoryAsync(
-        Guid householdId, int limit, CancellationToken cancellationToken) =>
-        GetHistoryAsync(householdId, limit, new LedgerHistoryFilter(), cancellationToken);
+        Guid actorUserId, Guid householdId, int limit, CancellationToken cancellationToken) =>
+        GetHistoryAsync(actorUserId, householdId, limit, new LedgerHistoryFilter(), cancellationToken);
 
     public async Task<LedgerWriteResult> PostAsync(
         FinancialTransaction transaction,
@@ -512,6 +610,22 @@ public sealed partial class EfLedgerStore(
     }
 
     public async Task<IReadOnlyList<AccountBalance>> GetBalancesAsync(
+        Guid actorUserId,
+        Guid householdId,
+        CancellationToken cancellationToken)
+    {
+        if (dbContext.Database.CurrentTransaction != null)
+        {
+            return await GetBalancesInternalAsync(householdId, cancellationToken);
+        }
+
+        await using var databaseTransaction = await dbContext.BeginUserTransactionAsync(actorUserId, cancellationToken);
+        var balances = await GetBalancesInternalAsync(householdId, cancellationToken);
+        await databaseTransaction.CommitAsync(cancellationToken);
+        return balances;
+    }
+
+    private async Task<IReadOnlyList<AccountBalance>> GetBalancesInternalAsync(
         Guid householdId,
         CancellationToken cancellationToken)
     {
@@ -531,15 +645,18 @@ public sealed partial class EfLedgerStore(
             })
             .OrderBy(item => item.AccountId)
             .ToListAsync(cancellationToken);
+
         return rows
             .Select(item => new AccountBalance(item.AccountId, item.Currency, item.BalanceCents))
             .ToArray();
     }
 
     public async Task<LedgerReconciliation> ReconcileAsync(
+        Guid actorUserId,
         Guid householdId,
         CancellationToken cancellationToken)
     {
+        await using var databaseTransaction = await dbContext.BeginUserTransactionAsync(actorUserId, cancellationToken);
         var postedTransactionCount = await dbContext.FinancialTransactions
             .AsNoTracking()
             .LongCountAsync(
@@ -553,7 +670,8 @@ public sealed partial class EfLedgerStore(
             .Select(item => item.TransactionId)
             .Distinct()
             .LongCountAsync(cancellationToken);
-        var balances = await GetBalancesAsync(householdId, cancellationToken);
+        var balances = await GetBalancesAsync(actorUserId, householdId, cancellationToken);
+        await databaseTransaction.CommitAsync(cancellationToken);
         return new LedgerReconciliation(
             postedTransactionCount == entryTransactionCount,
             postedTransactionCount,
@@ -649,6 +767,12 @@ public sealed partial class EfLedgerStore(
         record.ParentId,
         record.ArchivedAt);
 
+    private static IncomeSource ToDomain(IncomeSourceRecord record) => new(
+        record.Id,
+        record.HouseholdId,
+        record.Name,
+        record.ArchivedAt);
+
     private Task<int> LockResourceAsync(
         Guid householdId,
         Guid resourceId,
@@ -668,6 +792,113 @@ public sealed partial class EfLedgerStore(
                 $"select id from public.accounts where household_id = {householdId} and id = {accountId} for update",
                 cancellationToken);
         }
+    }
+
+    public async Task<LedgerHistoryItem> CorrectClassificationAsync(
+        Guid householdId,
+        Guid transactionId,
+        Guid actorUserId,
+        Guid? categoryId,
+        Guid? incomeSourceId,
+        string? description,
+        CancellationToken cancellationToken)
+    {
+        await using var databaseTransaction = await dbContext.BeginUserTransactionAsync(
+            actorUserId, cancellationToken);
+
+        await dbContext.Database.ExecuteSqlInterpolatedAsync(
+            $"select id from public.transactions where household_id = {householdId} and id = {transactionId} for update",
+            cancellationToken);
+
+        var transactionRecord = await dbContext.FinancialTransactions
+            .Include(record => record.Entries)
+            .FirstOrDefaultAsync(
+                record => record.HouseholdId == householdId && record.Id == transactionId,
+                cancellationToken);
+
+        if (transactionRecord is null)
+        {
+            throw new FinancialRuleException(
+                FinancialErrorCodes.TransactionNotFound,
+                "Transaction was not found.");
+        }
+
+        CategoryRecord? categoryRecord = null;
+        if (categoryId is not null)
+        {
+            categoryRecord = await dbContext.Categories
+                .AsNoTracking()
+                .FirstOrDefaultAsync(
+                    cat => cat.HouseholdId == householdId && cat.Id == categoryId.Value,
+                    cancellationToken);
+
+            if (categoryRecord is null)
+            {
+                throw new FinancialRuleException(
+                    FinancialErrorCodes.InvalidCategory,
+                    "Category must belong to the household.");
+            }
+        }
+
+        IncomeSourceRecord? sourceRecord = null;
+        if (incomeSourceId is not null)
+        {
+            sourceRecord = await dbContext.IncomeSources
+                .AsNoTracking()
+                .FirstOrDefaultAsync(
+                    src => src.HouseholdId == householdId && src.Id == incomeSourceId.Value,
+                    cancellationToken);
+
+            if (sourceRecord is null)
+            {
+                throw new FinancialRuleException(
+                    FinancialErrorCodes.InvalidIncomeSource,
+                    "Income source must belong to the household.");
+            }
+        }
+
+        var domainTransaction = ToDomain(transactionRecord);
+        var categoryDomain = categoryRecord is null ? null : ToDomain(categoryRecord);
+        var sourceDomain = sourceRecord is null ? null : ToDomain(sourceRecord);
+
+        var correctedDomain = domainTransaction.CorrectClassification(
+            categoryDomain,
+            sourceDomain,
+            description);
+
+        transactionRecord.Description = correctedDomain.Description;
+        transactionRecord.IncomeSourceId = correctedDomain.IncomeSourceId;
+
+        foreach (var entryRecord in transactionRecord.Entries)
+        {
+            var matchingDomainEntry = correctedDomain.Entries.FirstOrDefault(e => e.Id == entryRecord.Id);
+            entryRecord.CategoryId = matchingDomainEntry?.CategoryId ?? (correctedDomain.Entries.Count > 0 ? correctedDomain.Entries[0].CategoryId : null);
+        }
+
+        AddAudit(
+            householdId,
+            actorUserId,
+            "TransactionClassificationCorrected",
+            PersistenceVocabulary.EntityTypes.Transaction,
+            transactionId);
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+        await databaseTransaction.CommitAsync(cancellationToken);
+
+        var historyList = await GetHistoryAsync(
+            actorUserId,
+            householdId,
+            200,
+            new LedgerHistoryFilter(),
+            cancellationToken);
+
+        var historyItem = historyList.FirstOrDefault(item => item.TransactionId == transactionId);
+        if (historyItem is null)
+        {
+            throw new InvalidOperationException("Failed to retrieve updated transaction history item.");
+        }
+
+        return historyItem;
     }
 
     private static FinancialTransaction ToDomain(FinancialTransactionRecord record) =>

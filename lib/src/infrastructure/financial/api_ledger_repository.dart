@@ -82,6 +82,22 @@ final class ApiLedgerRepository implements LedgerRepository {
   }
 
   @override
+  Future<AccountSummary> updateAccountMetadata({
+    required String householdId,
+    required String accountId,
+    required String name,
+    required String kind,
+  }) async {
+    final response = await _send(
+      ApiMethods.put,
+      ApiContract.account(householdId, accountId),
+      body: {ApiFields.name: name, ApiFields.kind: kind},
+    );
+    final body = jsonDecode(response.body) as Map<String, dynamic>;
+    return LedgerResponseMapper.account(body);
+  }
+
+  @override
   Future<List<CategorySummary>> getCategories(
     String householdId, {
     FinancialFlow? flow,
@@ -146,14 +162,21 @@ final class ApiLedgerRepository implements LedgerRepository {
     DateTime? to,
     String? accountId,
     String? categoryId,
+    String? incomeSourceId,
     String? kind,
+    String? search,
   }) async {
     final query = <String, String>{ApiQueryFields.limit: '$limit'};
     if (from != null) query[ApiQueryFields.from] = _date(from);
     if (to != null) query[ApiQueryFields.to] = _date(to);
     if (accountId != null) query[ApiQueryFields.accountId] = accountId;
     if (categoryId != null) query[ApiQueryFields.categoryId] = categoryId;
+    if (incomeSourceId != null)
+      query[ApiQueryFields.incomeSourceId] = incomeSourceId;
     if (kind != null) query[ApiQueryFields.kind] = kind;
+    if (search != null && search.trim().isNotEmpty) {
+      query[ApiQueryFields.search] = search.trim();
+    }
     final uri = Uri(
       path: ApiContract.history(householdId),
       queryParameters: query,
@@ -281,6 +304,28 @@ final class ApiLedgerRepository implements LedgerRepository {
         ApiFields.occurredOn: _date(occurredOn),
         ApiFields.description: description,
       });
+
+  @override
+  Future<LedgerHistoryItem> correctClassification({
+    required String householdId,
+    required String transactionId,
+    String? categoryId,
+    String? incomeSourceId,
+    String? description,
+  }) async {
+    final response = await _send(
+      ApiMethods.patch,
+      ApiContract.transaction(householdId, transactionId),
+      body: {
+        ApiFields.categoryId: categoryId,
+        ApiFields.incomeSourceId: incomeSourceId,
+        ApiFields.description: description,
+      },
+    );
+    return LedgerResponseMapper.historyItem(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
+  }
 
   @override
   Future<List<AccountBalance>> getBalances(String householdId) async {

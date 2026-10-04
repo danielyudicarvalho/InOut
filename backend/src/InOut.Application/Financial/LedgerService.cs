@@ -34,10 +34,11 @@ public sealed class LedgerService(ILedgerStore store)
     }
 
     public Task<IReadOnlyList<AccountSummary>> GetAccountsAsync(
+        Guid actorUserId,
         Guid householdId,
         bool includeArchived,
         CancellationToken cancellationToken) =>
-        store.GetAccountsAsync(householdId, includeArchived, cancellationToken);
+        store.GetAccountsAsync(actorUserId, householdId, includeArchived, cancellationToken);
 
     public Task ArchiveAccountAsync(
         Guid householdId,
@@ -46,16 +47,26 @@ public sealed class LedgerService(ILedgerStore store)
         CancellationToken cancellationToken) =>
         store.ArchiveAccountAsync(householdId, accountId, actorUserId, cancellationToken);
 
+    public Task<AccountSummary> UpdateAccountMetadataAsync(
+        Guid actorUserId,
+        Guid householdId,
+        Guid accountId,
+        string name,
+        AccountKind kind,
+        CancellationToken cancellationToken) =>
+        store.UpdateAccountMetadataAsync(householdId, accountId, actorUserId, name, kind, cancellationToken);
+
     public Task<IReadOnlyList<CategorySummary>> GetCategoriesAsync(
+        Guid actorUserId,
         Guid householdId,
         FinancialFlow? flow,
         bool includeArchived,
         CancellationToken cancellationToken) =>
-        store.GetCategoriesAsync(householdId, flow, includeArchived, cancellationToken);
+        store.GetCategoriesAsync(actorUserId, householdId, flow, includeArchived, cancellationToken);
 
     public Task<IReadOnlyList<CategorySummary>> GetCategoriesAsync(
-        Guid householdId, FinancialFlow? flow, CancellationToken cancellationToken) =>
-        GetCategoriesAsync(householdId, flow, false, cancellationToken);
+        Guid actorUserId, Guid householdId, FinancialFlow? flow, CancellationToken cancellationToken) =>
+        GetCategoriesAsync(actorUserId, householdId, flow, false, cancellationToken);
 
     public Task<CategorySummary> CreateCategoryAsync(
         Guid householdId, Guid actorUserId, Guid id, string? name,
@@ -79,8 +90,8 @@ public sealed class LedgerService(ILedgerStore store)
     }
 
     public Task<IReadOnlyList<IncomeSourceSummary>> GetIncomeSourcesAsync(
-        Guid householdId, bool includeArchived, CancellationToken cancellationToken) =>
-        store.GetIncomeSourcesAsync(householdId, includeArchived, cancellationToken);
+        Guid actorUserId, Guid householdId, bool includeArchived, CancellationToken cancellationToken) =>
+        store.GetIncomeSourcesAsync(actorUserId, householdId, includeArchived, cancellationToken);
 
     public Task<IncomeSourceSummary> CreateIncomeSourceAsync(
         Guid householdId, Guid actorUserId, Guid id, string? name, CancellationToken cancellationToken) =>
@@ -95,17 +106,35 @@ public sealed class LedgerService(ILedgerStore store)
         store.ArchiveCategoryAsync(householdId, categoryId, actorUserId, cancellationToken);
 
     public Task<IReadOnlyList<LedgerHistoryItem>> GetHistoryAsync(
+        Guid actorUserId,
         Guid householdId,
         int limit,
         LedgerHistoryFilter filter,
         CancellationToken cancellationToken) =>
         filter.From is not null && filter.To is not null && filter.From > filter.To
             ? throw new FinancialRuleException(FinancialErrorCodes.InvalidCategory, "History date range is invalid.")
-            : store.GetHistoryAsync(householdId, Math.Clamp(limit, 1, 200), filter, cancellationToken);
+            : store.GetHistoryAsync(actorUserId, householdId, Math.Clamp(limit, 1, 200), filter, cancellationToken);
 
     public Task<IReadOnlyList<LedgerHistoryItem>> GetHistoryAsync(
-        Guid householdId, int limit, CancellationToken cancellationToken) =>
-        GetHistoryAsync(householdId, limit, new LedgerHistoryFilter(), cancellationToken);
+        Guid actorUserId, Guid householdId, int limit, CancellationToken cancellationToken) =>
+        GetHistoryAsync(actorUserId, householdId, limit, new LedgerHistoryFilter(), cancellationToken);
+
+    public Task<LedgerHistoryItem> CorrectClassificationAsync(
+        Guid householdId,
+        Guid transactionId,
+        Guid actorUserId,
+        Guid? categoryId,
+        Guid? incomeSourceId,
+        string? description,
+        CancellationToken cancellationToken) =>
+        store.CorrectClassificationAsync(
+            householdId,
+            transactionId,
+            actorUserId,
+            categoryId,
+            incomeSourceId,
+            description,
+            cancellationToken);
 
     public Task<LedgerWriteResult> PostIncomeAsync(
         Guid actorUserId,
@@ -182,14 +211,16 @@ public sealed class LedgerService(ILedgerStore store)
             cancellationToken);
 
     public Task<IReadOnlyList<AccountBalance>> GetBalancesAsync(
+        Guid actorUserId,
         Guid householdId,
         CancellationToken cancellationToken) =>
-        store.GetBalancesAsync(householdId, cancellationToken);
+        store.GetBalancesAsync(actorUserId, householdId, cancellationToken);
 
     public Task<LedgerReconciliation> ReconcileAsync(
+        Guid actorUserId,
         Guid householdId,
         CancellationToken cancellationToken) =>
-        store.ReconcileAsync(householdId, cancellationToken);
+        store.ReconcileAsync(actorUserId, householdId, cancellationToken);
 
     private Task<LedgerWriteResult> PostAsync(
         Guid actorUserId,

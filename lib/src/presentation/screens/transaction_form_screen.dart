@@ -10,6 +10,7 @@ import 'package:inout/src/domain/household/household.dart';
 import 'package:inout/src/domain/transaction/financial_flow.dart';
 import 'package:inout/src/infrastructure/financial/api_ledger_repository.dart';
 import 'package:inout/src/presentation/providers/session_providers.dart';
+import 'package:inout/src/presentation/screens/account_form_screen.dart';
 
 final class TransactionFormScreen extends ConsumerStatefulWidget {
   const TransactionFormScreen({
@@ -92,7 +93,7 @@ final class _TransactionFormScreenState
     }
   }
 
-  Future<void> _submit() async {
+  Future<void> _submit(List<AccountSummary> accountsList) async {
     if (!_formKey.currentState!.validate()) return;
     setState(() {
       _saving = true;
@@ -102,6 +103,8 @@ final class _TransactionFormScreenState
     final cents = MoneyUtils.parseBrlToCents(_amount.text)!;
     final occurredOn = DateTime.now();
     final description = StringUtils.trimToNull(_description.text);
+    final selectedAccount = accountsList.firstWhere((a) => a.id == _accountId);
+    final currency = selectedAccount.currency;
     final intentSignature = [
       widget.household.id,
       widget.flow.name,
@@ -109,6 +112,7 @@ final class _TransactionFormScreenState
       _categoryId,
       _incomeSourceId,
       cents,
+      currency,
       occurredOn.toIso8601String().substring(0, 10),
       description,
     ].join('|');
@@ -121,7 +125,7 @@ final class _TransactionFormScreenState
       accountId: _accountId!,
       categoryId: _categoryId!,
       amountCents: cents,
-      currency: CurrencyCodes.brl,
+      currency: currency,
       occurredOn: occurredOn,
       idempotencyKey: _pendingIdempotencyKey!,
       description: description,
@@ -184,6 +188,17 @@ final class _TransactionFormScreenState
         accounts.hasValue &&
         categories.hasValue &&
         (!_isIncome || sources.hasValue);
+
+    if (ready && accounts.value!.isNotEmpty && _accountId == null) {
+      _accountId = accounts.value!.first.id;
+    }
+    final selectedAccount = ready && accounts.value!.isNotEmpty
+        ? accounts.value!.where((a) => a.id == _accountId).firstOrNull ??
+              accounts.value!.first
+        : null;
+    final currency = selectedAccount?.currency ?? CurrencyCodes.brl;
+    final currencySymbol = MoneyUtils.symbolFor(currency);
+
     return Scaffold(
       appBar: AppBar(title: Text(_isIncome ? 'Nova entrada' : 'Nova saída')),
       body: SafeArea(
@@ -203,17 +218,74 @@ final class _TransactionFormScreenState
                     )
                   : !ready
                   ? const Center(child: CircularProgressIndicator())
-                  : accounts.value!.isEmpty || categories.value!.isEmpty
+                  : accounts.value!.isEmpty
+                  ? Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Text(
+                            'É necessário ter ao menos uma conta cadastrada para realizar lançamentos.',
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 16),
+                          FilledButton.icon(
+                            icon: const Icon(Icons.add_card),
+                            label: const Text('Criar conta'),
+                            onPressed: () async {
+                              final created = await Navigator.of(context)
+                                  .push<bool>(
+                                    MaterialPageRoute(
+                                      builder: (_) => AccountFormScreen(
+                                        household: widget.household,
+                                      ),
+                                    ),
+                                  );
+                              if (created == true) {
+                                ref.invalidate(
+                                  ledgerAccountsProvider(widget.household.id),
+                                );
+                              }
+                            },
+                          ),
+                        ],
+                      ),
+                    )
+                  : categories.value!.isEmpty
                   ? const Center(
                       child: Text(
-                        'É necessário ter uma conta e uma categoria ativa para lançar.',
+                        'É necessário ter ao menos uma categoria ativa para lançar.',
                       ),
                     )
                   : Form(
                       key: _formKey,
                       child: ListView(
                         children: [
+                          DropdownButtonFormField<String>(
+                            value: _accountId,
+                            decoration: const InputDecoration(
+                              labelText: 'Conta',
+                            ),
+                            items: accounts.value!
+                                .map(
+                                  (item) => DropdownMenuItem(
+                                    value: item.id,
+                                    child: Text(
+                                      '${item.name} (${item.currency})',
+                                    ),
+                                  ),
+                                )
+                                .toList(),
+                            onChanged: (value) {
+                              if (value != null) {
+                                setState(() => _accountId = value);
+                              }
+                            },
+                            validator: (value) =>
+                                value == null ? 'Selecione uma conta.' : null,
+                          ),
+                          const SizedBox(height: 16),
                           TextFormField(
+                            key: ValueKey('amount_input_${_accountId}_$currency'),
                             controller: _amount,
                             autofocus: true,
                             keyboardType: const TextInputType.numberWithOptions(
@@ -224,9 +296,9 @@ final class _TransactionFormScreenState
                                 RegExp(r'[0-9,.]'),
                               ),
                             ],
-                            decoration: const InputDecoration(
+                            decoration: InputDecoration(
                               labelText: 'Valor',
-                              prefixText: 'R\$ ',
+                              prefixText: '$currencySymbol ',
                               helperText: 'Ex.: 12,50',
                             ),
                             validator: (value) =>
@@ -235,25 +307,6 @@ final class _TransactionFormScreenState
                                     0
                                 ? 'Informe um valor maior que zero.'
                                 : null,
-                          ),
-                          const SizedBox(height: 16),
-                          DropdownButtonFormField<String>(
-                            initialValue: _accountId,
-                            decoration: const InputDecoration(
-                              labelText: 'Conta',
-                            ),
-                            items: accounts.value!
-                                .map(
-                                  (item) => DropdownMenuItem(
-                                    value: item.id,
-                                    child: Text(item.name),
-                                  ),
-                                )
-                                .toList(),
-                            onChanged: (value) =>
-                                setState(() => _accountId = value),
-                            validator: (value) =>
-                                value == null ? 'Selecione uma conta.' : null,
                           ),
                           const SizedBox(height: 16),
                           DropdownButtonFormField<String>(
@@ -334,7 +387,9 @@ final class _TransactionFormScreenState
                             const SizedBox(height: 12),
                           ],
                           FilledButton.icon(
-                            onPressed: _saving ? null : _submit,
+                            onPressed: _saving
+                                ? null
+                                : () => _submit(accounts.value!),
                             icon: const Icon(Icons.check),
                             label: Text(
                               _saving ? 'Salvando…' : 'Salvar lançamento',

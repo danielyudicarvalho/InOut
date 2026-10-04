@@ -59,6 +59,19 @@ public sealed record Account(
     public Account Archive(DateTimeOffset archivedAt) =>
         IsActive ? this with { ArchivedAt = archivedAt } : this;
 
+    public Account UpdateMetadata(string? newName, AccountKind newKind)
+    {
+        if (!IsActive)
+        {
+            throw new FinancialRuleException(
+                FinancialErrorCodes.AccountArchived,
+                "Archived accounts cannot be updated.");
+        }
+
+        var normalizedName = NormalizeName(newName);
+        return this with { Name = normalizedName, Kind = newKind };
+    }
+
     public static string NormalizeName(string? name)
     {
         var normalized = StringUtils.TrimToNull(name);

@@ -10,6 +10,7 @@ import 'package:inout/src/presentation/components/sync_status_banner.dart';
 import 'package:inout/src/presentation/layout/inout_adaptive_scaffold.dart';
 import 'package:inout/src/presentation/providers/household_providers.dart';
 import 'package:inout/src/presentation/providers/session_providers.dart';
+import 'package:inout/src/presentation/screens/account_form_screen.dart';
 import 'package:inout/src/presentation/screens/category_management_screen.dart';
 import 'package:inout/src/presentation/screens/ledger_history_screen.dart';
 import 'package:inout/src/presentation/screens/transaction_form_screen.dart';
@@ -99,7 +100,14 @@ final class _BootstrapHomeScreenState
                         const SizedBox(height: 24),
                         Wrap(
                           spacing: 12,
+                          runSpacing: 12,
                           children: [
+                            OutlinedButton.icon(
+                              icon: const Icon(Icons.add_card),
+                              label: const Text('Nova conta'),
+                              onPressed: () =>
+                                  _openAccountForm(context, ref, selected),
+                            ),
                             OutlinedButton.icon(
                               icon: const Icon(Icons.category_outlined),
                               label: const Text('Categorias'),
@@ -136,7 +144,13 @@ final class _BootstrapHomeScreenState
                         ),
                         const SizedBox(height: 12),
                         Expanded(
-                          child: FinancialDashboardPanel(dashboard: value),
+                          child: FinancialDashboardPanel(
+                            dashboard: value,
+                            onCreateAccount: () =>
+                                _openAccountForm(context, ref, selected),
+                            onEditAccount: (accountId) =>
+                                _openAccountEditForm(context, ref, selected, accountId),
+                          ),
                         ),
                       ],
                     ),
@@ -238,5 +252,43 @@ final class _BootstrapHomeScreenState
     );
     ref.invalidate(ledgerAccountsProvider(household.id));
     ref.invalidate(financialDashboardProvider);
+  }
+
+  static Future<void> _openAccountForm(
+    BuildContext context,
+    WidgetRef ref,
+    Household household,
+  ) async {
+    final created = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => AccountFormScreen(household: household),
+      ),
+    );
+    if (created == true) {
+      ref.invalidate(ledgerAccountsProvider(household.id));
+      ref.invalidate(financialDashboardProvider);
+    }
+  }
+
+  static Future<void> _openAccountEditForm(
+    BuildContext context,
+    WidgetRef ref,
+    Household household,
+    String accountId,
+  ) async {
+    final accounts = await ref.read(ledgerAccountsProvider(household.id).future);
+    final account = accounts.firstWhere((a) => a.id == accountId);
+    final updated = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => AccountFormScreen(
+          household: household,
+          accountToEdit: account,
+        ),
+      ),
+    );
+    if (updated == true) {
+      ref.invalidate(ledgerAccountsProvider(household.id));
+      ref.invalidate(financialDashboardProvider);
+    }
   }
 }
