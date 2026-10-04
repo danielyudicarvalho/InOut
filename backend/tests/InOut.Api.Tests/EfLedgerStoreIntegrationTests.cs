@@ -942,6 +942,48 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
         Assert.Equal(FinancialErrorCodes.IncomeSourceNotFound, exception.Code);
     }
 
+    [Fact]
+    public async Task GetHistoryWithSearchAndIncomeSourceFilter()
+    {
+        await using var context = CreateContext();
+        var store = CreateStore(context);
+        var sourceId = Guid.NewGuid();
+        await store.CreateIncomeSourceAsync(
+            IncomeSource.Create(sourceId, householdId, "Client Alpha"),
+            actorUserId,
+            CancellationToken.None);
+
+        var service = new LedgerService(store);
+        await service.PostIncomeAsync(
+            actorUserId,
+            new PostIncomeCommand(
+                householdId, accountId, categoryId, 12_000, "BRL",
+                new DateOnly(2026, 9, 18), Guid.NewGuid(), "Monthly Consulting Payment", sourceId),
+            CancellationToken.None);
+        await service.PostIncomeAsync(
+            actorUserId,
+            new PostIncomeCommand(
+                householdId, accountId, categoryId, 3_000, "BRL",
+                new DateOnly(2026, 9, 19), Guid.NewGuid(), "Dividend payout", null),
+            CancellationToken.None);
+
+        var searchResults = await store.GetHistoryAsync(
+            actorUserId, householdId, 100,
+            new LedgerHistoryFilter(Search: "consulting"),
+            CancellationToken.None);
+
+        var matched = Assert.Single(searchResults);
+        Assert.Equal("Monthly Consulting Payment", matched.Description);
+
+        var sourceResults = await store.GetHistoryAsync(
+            actorUserId, householdId, 100,
+            new LedgerHistoryFilter(IncomeSourceId: sourceId),
+            CancellationToken.None);
+
+        var sourceMatched = Assert.Single(sourceResults);
+        Assert.Equal(sourceId, sourceMatched.IncomeSourceId);
+    }
+
     private async Task<LedgerWriteResult> PostIncomeAsync(
         Guid idempotencyKey,
         long amountCents = 1_000,

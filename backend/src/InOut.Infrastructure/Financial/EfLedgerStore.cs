@@ -418,6 +418,14 @@ public sealed partial class EfLedgerStore(
             transactions = transactions.Where(item => item.OccurredOn <= filter.To.Value);
         if (filter.Kind is not null)
             transactions = transactions.Where(item => item.Kind == filter.Kind.Value);
+        if (filter.IncomeSourceId is not null)
+            transactions = transactions.Where(item => item.IncomeSourceId == filter.IncomeSourceId.Value);
+        if (!string.IsNullOrWhiteSpace(filter.Search))
+        {
+            var search = filter.Search.Trim();
+            transactions = transactions.Where(item =>
+                item.Description != null && EF.Functions.ILike(item.Description, $"%{search}%"));
+        }
 
         var rows = await (
             from transaction in transactions

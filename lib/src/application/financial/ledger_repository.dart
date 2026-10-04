@@ -59,7 +59,9 @@ abstract interface class LedgerRepository {
     DateTime? to,
     String? accountId,
     String? categoryId,
+    String? incomeSourceId,
     String? kind,
+    String? search,
   });
 
   Future<List<IncomeSourceSummary>> getIncomeSources(

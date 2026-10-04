@@ -120,9 +120,11 @@ abstract final class ApiQueryFields {
   static const categoryId = 'categoryId';
   static const flow = 'flow';
   static const from = 'from';
+  static const incomeSourceId = 'incomeSourceId';
   static const includeArchived = 'includeArchived';
   static const kind = 'kind';
   static const limit = 'limit';
+  static const search = 'search';
   static const to = 'to';
   static const year = 'year';
   static const month = 'month';

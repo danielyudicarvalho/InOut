@@ -151,14 +151,16 @@ public static class LedgerEndpoints
             DateOnly? to,
             Guid? accountId,
             Guid? categoryId,
+            Guid? incomeSourceId,
             string? kind,
+            string? search,
             ClaimsPrincipal principal = null!,
             LedgerService service = null!,
             CancellationToken cancellationToken = default) =>
         {
             FinancialTransactionKind? parsedKind = !string.IsNullOrWhiteSpace(kind) && Enum.TryParse<FinancialTransactionKind>(kind, ignoreCase: true, out var k) ? k : null;
             return Results.Ok(await service.GetHistoryAsync(UserId(principal), householdId, limit ?? 100,
-                new LedgerHistoryFilter(from, to, accountId, categoryId, parsedKind), cancellationToken));
+                new LedgerHistoryFilter(from, to, accountId, categoryId, parsedKind, incomeSourceId, search), cancellationToken));
         }).WithName(ApiContract.EndpointNames.GetLedgerHistory);
 
         ledger.MapPost(ApiContract.Routes.Income, async (
