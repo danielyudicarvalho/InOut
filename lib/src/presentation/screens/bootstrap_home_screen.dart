@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:inout/src/application/sync/household_sync_gateway.dart';
+import 'package:inout/src/core/types/ledger_transaction_kind.dart';
 import 'package:inout/src/core/utils/money_utils.dart';
 import 'package:inout/src/domain/household/household.dart';
 import 'package:inout/src/domain/transaction/financial_flow.dart';
@@ -29,6 +30,9 @@ final class BootstrapHomeScreen extends ConsumerStatefulWidget {
 final class _BootstrapHomeScreenState
     extends ConsumerState<BootstrapHomeScreen> {
   int _selectedIndex = 0;
+  String? _historyAccountId;
+  String? _historyCategoryId;
+  LedgerTransactionKind? _historyKind;
 
   @override
   Widget build(BuildContext context) {
@@ -46,7 +50,12 @@ final class _BootstrapHomeScreenState
       Widget body;
       switch (_selectedIndex) {
         case 1:
-          body = LedgerHistoryScreen(household: selected);
+          body = LedgerHistoryScreen(
+            household: selected,
+            initialAccountId: _historyAccountId,
+            initialCategoryId: _historyCategoryId,
+            initialKind: _historyKind,
+          );
           break;
         case 2:
           body = CategoryManagementScreen(household: selected);
@@ -117,8 +126,12 @@ final class _BootstrapHomeScreenState
                             OutlinedButton.icon(
                               icon: const Icon(Icons.history),
                               label: const Text('Histórico e filtros'),
-                              onPressed: () =>
-                                  setState(() => _selectedIndex = 1),
+                              onPressed: () => setState(() {
+                                _historyAccountId = null;
+                                _historyCategoryId = null;
+                                _historyKind = null;
+                                _selectedIndex = 1;
+                              }),
                             ),
                             OutlinedButton.icon(
                               icon: const Icon(Icons.swap_horiz),
@@ -148,8 +161,30 @@ final class _BootstrapHomeScreenState
                             dashboard: value,
                             onCreateAccount: () =>
                                 _openAccountForm(context, ref, selected),
-                            onEditAccount: (accountId) =>
-                                _openAccountEditForm(context, ref, selected, accountId),
+                            onEditAccount: (accountId) => _openAccountEditForm(
+                              context,
+                              ref,
+                              selected,
+                              accountId,
+                            ),
+                            onSelectMetric: (kind) => setState(() {
+                              _historyKind = kind;
+                              _historyAccountId = null;
+                              _historyCategoryId = null;
+                              _selectedIndex = 1;
+                            }),
+                            onSelectAccount: (accountId) => setState(() {
+                              _historyAccountId = accountId;
+                              _historyCategoryId = null;
+                              _historyKind = null;
+                              _selectedIndex = 1;
+                            }),
+                            onSelectCategory: (categoryId) => setState(() {
+                              _historyCategoryId = categoryId;
+                              _historyAccountId = null;
+                              _historyKind = null;
+                              _selectedIndex = 1;
+                            }),
                           ),
                         ),
                       ],
@@ -276,14 +311,14 @@ final class _BootstrapHomeScreenState
     Household household,
     String accountId,
   ) async {
-    final accounts = await ref.read(ledgerAccountsProvider(household.id).future);
+    final accounts = await ref.read(
+      ledgerAccountsProvider(household.id).future,
+    );
     final account = accounts.firstWhere((a) => a.id == accountId);
     final updated = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
-        builder: (_) => AccountFormScreen(
-          household: household,
-          accountToEdit: account,
-        ),
+        builder: (_) =>
+            AccountFormScreen(household: household, accountToEdit: account),
       ),
     );
     if (updated == true) {

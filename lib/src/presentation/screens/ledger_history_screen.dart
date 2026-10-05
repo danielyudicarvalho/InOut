@@ -9,9 +9,18 @@ import 'package:inout/src/infrastructure/financial/api_ledger_repository.dart';
 import 'package:inout/src/presentation/providers/session_providers.dart';
 
 final class LedgerHistoryScreen extends ConsumerStatefulWidget {
-  const LedgerHistoryScreen({required this.household, super.key});
+  const LedgerHistoryScreen({
+    required this.household,
+    this.initialAccountId,
+    this.initialCategoryId,
+    this.initialKind,
+    super.key,
+  });
 
   final Household household;
+  final String? initialAccountId;
+  final String? initialCategoryId;
+  final LedgerTransactionKind? initialKind;
 
   @override
   ConsumerState<LedgerHistoryScreen> createState() =>
@@ -33,7 +42,25 @@ final class _LedgerHistoryScreenState
   @override
   void initState() {
     super.initState();
+    _accountId = widget.initialAccountId;
+    _categoryId = widget.initialCategoryId;
+    _kind = widget.initialKind;
     _load();
+  }
+
+  @override
+  void didUpdateWidget(covariant LedgerHistoryScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.initialAccountId != widget.initialAccountId ||
+        oldWidget.initialCategoryId != widget.initialCategoryId ||
+        oldWidget.initialKind != widget.initialKind) {
+      setState(() {
+        _accountId = widget.initialAccountId;
+        _categoryId = widget.initialCategoryId;
+        _kind = widget.initialKind;
+        _load();
+      });
+    }
   }
 
   void _load() {

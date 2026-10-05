@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:inout/src/application/financial/dtos/ledger_models.dart';
+import 'package:inout/src/core/types/ledger_transaction_kind.dart';
 import 'package:inout/src/core/utils/money_utils.dart';
 
 final class FinancialDashboardPanel extends StatelessWidget {
@@ -7,12 +8,18 @@ final class FinancialDashboardPanel extends StatelessWidget {
     required this.dashboard,
     this.onCreateAccount,
     this.onEditAccount,
+    this.onSelectMetric,
+    this.onSelectAccount,
+    this.onSelectCategory,
     super.key,
   });
 
   final FinancialDashboard dashboard;
   final VoidCallback? onCreateAccount;
   final void Function(String accountId)? onEditAccount;
+  final void Function(LedgerTransactionKind kind)? onSelectMetric;
+  final void Function(String accountId)? onSelectAccount;
+  final void Function(String categoryId)? onSelectCategory;
 
   @override
   Widget build(BuildContext context) => ListView(
@@ -44,11 +51,17 @@ final class FinancialDashboardPanel extends StatelessWidget {
               label: 'Receitas',
               value: summary.incomeCents,
               currency: summary.currency,
+              onTap: onSelectMetric != null
+                  ? () => onSelectMetric!(LedgerTransactionKind.income)
+                  : null,
             ),
             _Metric(
               label: 'Despesas',
               value: summary.expenseCents,
               currency: summary.currency,
+              onTap: onSelectMetric != null
+                  ? () => onSelectMetric!(LedgerTransactionKind.expense)
+                  : null,
             ),
             _Metric(
               label: 'Resultado',
@@ -77,6 +90,9 @@ final class FinancialDashboardPanel extends StatelessWidget {
                 .map(
                   (item) => ListTile(
                     contentPadding: EdgeInsets.zero,
+                    onTap: onSelectAccount != null
+                        ? () => onSelectAccount!(item.accountId)
+                        : null,
                     title: Text(item.accountName),
                     subtitle: Text(item.currency),
                     trailing: Row(
@@ -107,6 +123,9 @@ final class FinancialDashboardPanel extends StatelessWidget {
                   .map(
                     (item) => ListTile(
                       contentPadding: EdgeInsets.zero,
+                      onTap: onSelectCategory != null
+                          ? () => onSelectCategory!(item.categoryId)
+                          : null,
                       title: Text(item.categoryName),
                       trailing: Text(
                         MoneyUtils.format(item.amountCents, item.currency),
@@ -152,26 +171,32 @@ final class _Metric extends StatelessWidget {
     required this.label,
     required this.value,
     required this.currency,
+    this.onTap,
   });
   final String label;
   final int value;
   final String currency;
+  final VoidCallback? onTap;
   @override
   Widget build(BuildContext context) => SizedBox(
     width: 220,
     child: Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(label),
-            const SizedBox(height: 8),
-            Text(
-              MoneyUtils.format(value, currency),
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-          ],
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label),
+              const SizedBox(height: 8),
+              Text(
+                MoneyUtils.format(value, currency),
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+            ],
+          ),
         ),
       ),
     ),
