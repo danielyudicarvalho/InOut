@@ -4,6 +4,12 @@ public readonly record struct FinancialPeriod
 {
     private FinancialPeriod(DateOnly start, DateOnly end)
     {
+        if (start > end)
+        {
+            throw new FinancialRuleException(
+                FinancialErrorCodes.InvalidPeriod,
+                "Start date cannot be after end date.");
+        }
         Start = start;
         End = end;
     }
@@ -23,5 +29,15 @@ public readonly record struct FinancialPeriod
 
         var start = new DateOnly(year, month, 1);
         return new FinancialPeriod(start, start.AddMonths(1).AddDays(-1));
+    }
+
+    public static FinancialPeriod Weekly(DateOnly startOfWeek)
+    {
+        return new FinancialPeriod(startOfWeek, startOfWeek.AddDays(6));
+    }
+
+    public static FinancialPeriod Custom(DateOnly start, DateOnly end)
+    {
+        return new FinancialPeriod(start, end);
     }
 }

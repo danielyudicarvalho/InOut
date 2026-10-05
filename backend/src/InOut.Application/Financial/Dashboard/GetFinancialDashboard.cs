@@ -7,8 +7,10 @@ namespace InOut.Application.Financial.Dashboard;
 public sealed record GetFinancialDashboardQuery(
     Guid ActorUserId,
     Guid HouseholdId,
-    int Year,
-    int Month);
+    int? Year = null,
+    int? Month = null,
+    DateOnly? From = null,
+    DateOnly? To = null);
 
 public sealed class GetFinancialDashboard(
     IHouseholdMembershipReader membershipReader,
@@ -18,7 +20,20 @@ public sealed class GetFinancialDashboard(
         GetFinancialDashboardQuery query,
         CancellationToken cancellationToken)
     {
-        var period = FinancialPeriod.Monthly(query.Year, query.Month);
+        FinancialPeriod period;
+        if (query.From is not null && query.To is not null)
+        {
+            period = FinancialPeriod.Custom(query.From.Value, query.To.Value);
+        }
+        else if (query.Year is not null && query.Month is not null)
+        {
+            period = FinancialPeriod.Monthly(query.Year.Value, query.Month.Value);
+        }
+        else
+        {
+            var now = DateTime.UtcNow;
+            period = FinancialPeriod.Monthly(now.Year, now.Month);
+        }
         if (!await membershipReader.IsMemberAsync(
                 query.ActorUserId,
                 query.HouseholdId,

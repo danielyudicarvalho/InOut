@@ -136,7 +136,9 @@ abstract interface class LedgerRepository {
 
   Future<FinancialDashboard> getDashboard(
     String householdId, {
-    required int year,
-    required int month,
+    int? year,
+    int? month,
+    DateTime? from,
+    DateTime? to,
   });
 }

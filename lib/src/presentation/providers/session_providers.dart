@@ -62,13 +62,15 @@ final ledgerAccountsProvider = FutureProvider.autoDispose
     });
 
 final financialDashboardProvider = FutureProvider.autoDispose
-    .family<FinancialDashboard, ({String householdId, int year, int month})>(
+    .family<FinancialDashboard, ({String householdId, int? year, int? month, DateTime? from, DateTime? to})>(
       (ref, input) => ref
           .watch(ledgerRepositoryProvider)
           .getDashboard(
             input.householdId,
             year: input.year,
             month: input.month,
+            from: input.from,
+            to: input.to,
           ),
     );
 

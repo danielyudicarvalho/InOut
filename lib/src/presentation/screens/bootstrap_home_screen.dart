@@ -34,6 +34,11 @@ final class _BootstrapHomeScreenState
   String? _historyCategoryId;
   LedgerTransactionKind? _historyKind;
 
+  DateTime? _dashboardFrom;
+  DateTime? _dashboardTo;
+  int? _dashboardYear;
+  int? _dashboardMonth;
+
   @override
   Widget build(BuildContext context) {
     final household = widget.household;
@@ -41,8 +46,10 @@ final class _BootstrapHomeScreenState
       final now = DateTime.now();
       final dashboardInput = (
         householdId: selected.id,
-        year: now.year,
-        month: now.month,
+        year: _dashboardFrom == null ? (_dashboardYear ?? now.year) : null,
+        month: _dashboardFrom == null ? (_dashboardMonth ?? now.month) : null,
+        from: _dashboardFrom,
+        to: _dashboardTo,
       );
       final dashboard = ref.watch(financialDashboardProvider(dashboardInput));
       final sync = ref.watch(householdSyncProvider(selected.id));
@@ -184,6 +191,12 @@ final class _BootstrapHomeScreenState
                               _historyAccountId = null;
                               _historyKind = null;
                               _selectedIndex = 1;
+                            }),
+                            onSelectPeriodRange: (from, to) => setState(() {
+                              _dashboardFrom = from;
+                              _dashboardTo = to;
+                              _dashboardYear = null;
+                              _dashboardMonth = null;
                             }),
                           ),
                         ),

@@ -291,13 +291,15 @@ public static class LedgerEndpoints
 
         ledger.MapGet(ApiContract.Routes.Dashboard, async (
             Guid householdId,
-            int year,
-            int month,
+            int? year,
+            int? month,
+            DateOnly? from,
+            DateOnly? to,
             ClaimsPrincipal principal,
             GetFinancialDashboard useCase,
             CancellationToken cancellationToken) =>
             Results.Ok(await useCase.ExecuteAsync(
-                new GetFinancialDashboardQuery(UserId(principal), householdId, year, month),
+                new GetFinancialDashboardQuery(UserId(principal), householdId, year, month, from, to),
                 cancellationToken)))
             .WithName(ApiContract.EndpointNames.GetFinancialDashboard);
 

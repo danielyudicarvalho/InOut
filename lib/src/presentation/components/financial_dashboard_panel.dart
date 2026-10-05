@@ -11,6 +11,8 @@ final class FinancialDashboardPanel extends StatelessWidget {
     this.onSelectMetric,
     this.onSelectAccount,
     this.onSelectCategory,
+    this.onSelectPeriodRange,
+    this.onSelectMonth,
     super.key,
   });
 
@@ -20,14 +22,53 @@ final class FinancialDashboardPanel extends StatelessWidget {
   final void Function(LedgerTransactionKind kind)? onSelectMetric;
   final void Function(String accountId)? onSelectAccount;
   final void Function(String categoryId)? onSelectCategory;
+  final void Function(DateTime from, DateTime to)? onSelectPeriodRange;
+  final void Function(int year, int month)? onSelectMonth;
 
   @override
   Widget build(BuildContext context) => ListView(
     children: [
       Row(
         children: [
-          Text('Resumo do mês', style: Theme.of(context).textTheme.titleLarge),
+          Text('Resumo do período', style: Theme.of(context).textTheme.titleLarge),
+          const SizedBox(width: 12),
+          Chip(
+            label: Text(
+              '${dashboard.periodStart.day}/${dashboard.periodStart.month}/${dashboard.periodStart.year} - '
+              '${dashboard.periodEnd.day}/${dashboard.periodEnd.month}/${dashboard.periodEnd.year}',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ),
           const Spacer(),
+          if (onSelectPeriodRange != null) ...[
+            OutlinedButton.icon(
+              icon: const Icon(Icons.date_range, size: 18),
+              label: const Text('Filtrar período'),
+              onPressed: () async {
+                final picked = await showDateRangePicker(
+                  context: context,
+                  firstDate: DateTime(2000),
+                  lastDate: DateTime(2100),
+                  initialDateRange: DateTimeRange(
+                    start: DateTime(
+                      dashboard.periodStart.year,
+                      dashboard.periodStart.month,
+                      dashboard.periodStart.day,
+                    ),
+                    end: DateTime(
+                      dashboard.periodEnd.year,
+                      dashboard.periodEnd.month,
+                      dashboard.periodEnd.day,
+                    ),
+                  ),
+                );
+                if (picked != null) {
+                  onSelectPeriodRange!(picked.start, picked.end);
+                }
+              },
+            ),
+            const SizedBox(width: 8),
+          ],
           Icon(
             dashboard.isReconciled
                 ? Icons.verified_outlined

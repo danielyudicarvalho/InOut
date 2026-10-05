@@ -360,15 +360,19 @@ final class ApiLedgerRepository implements LedgerRepository {
   @override
   Future<FinancialDashboard> getDashboard(
     String householdId, {
-    required int year,
-    required int month,
+    int? year,
+    int? month,
+    DateTime? from,
+    DateTime? to,
   }) async {
+    final query = <String, String>{};
+    if (year != null) query[ApiQueryFields.year] = '$year';
+    if (month != null) query[ApiQueryFields.month] = '$month';
+    if (from != null) query[ApiQueryFields.from] = _date(from);
+    if (to != null) query[ApiQueryFields.to] = _date(to);
     final uri = Uri(
       path: ApiContract.dashboard(householdId),
-      queryParameters: {
-        ApiQueryFields.year: '$year',
-        ApiQueryFields.month: '$month',
-      },
+      queryParameters: query.isEmpty ? null : query,
     );
     final response = await _send(ApiMethods.get, uri.toString());
     return LedgerResponseMapper.dashboard(
