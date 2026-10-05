@@ -221,3 +221,61 @@ final class FinancialDashboard {
   final List<DashboardBudgetProgress> budgets;
   final List<DashboardGoalProgress> goals;
 }
+
+final class PeriodFactSummary {
+  const PeriodFactSummary({
+    required this.incomeCents,
+    required this.expenseCents,
+    required this.resultCents,
+    required this.consolidatedBalanceCents,
+  });
+  final int incomeCents;
+  final int expenseCents;
+  final int resultCents;
+  final int consolidatedBalanceCents;
+}
+
+final class PeriodInterpretationDelta {
+  const PeriodInterpretationDelta({
+    required this.incomeDeltaCents,
+    required this.expenseDeltaCents,
+    required this.resultDeltaCents,
+    this.incomePercentageChange,
+    this.expensePercentageChange,
+    this.resultPercentageChange,
+  });
+  final int incomeDeltaCents;
+  final int expenseDeltaCents;
+  final int resultDeltaCents;
+  final double? incomePercentageChange;
+  final double? expensePercentageChange;
+  final double? resultPercentageChange;
+}
+
+final class CurrencyComparisonResult {
+  const CurrencyComparisonResult({
+    required this.currency,
+    required this.currentFacts,
+    required this.previousFacts,
+    required this.deltas,
+  });
+  final String currency;
+  final PeriodFactSummary currentFacts;
+  final PeriodFactSummary previousFacts;
+  final PeriodInterpretationDelta deltas;
+}
+
+final class FinancialPeriodComparison {
+  const FinancialPeriodComparison({
+    required this.periodStart,
+    required this.periodEnd,
+    required this.previousPeriodStart,
+    required this.previousPeriodEnd,
+    required this.currencies,
+  });
+  final DateTime periodStart;
+  final DateTime periodEnd;
+  final DateTime previousPeriodStart;
+  final DateTime previousPeriodEnd;
+  final List<CurrencyComparisonResult> currencies;
+}

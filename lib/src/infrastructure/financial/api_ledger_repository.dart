@@ -380,6 +380,29 @@ final class ApiLedgerRepository implements LedgerRepository {
     );
   }
 
+  @override
+  Future<FinancialPeriodComparison> comparePeriods(
+    String householdId, {
+    int? year,
+    int? month,
+    DateTime? from,
+    DateTime? to,
+  }) async {
+    final query = <String, String>{};
+    if (year != null) query[ApiQueryFields.year] = '$year';
+    if (month != null) query[ApiQueryFields.month] = '$month';
+    if (from != null) query[ApiQueryFields.from] = _date(from);
+    if (to != null) query[ApiQueryFields.to] = _date(to);
+    final uri = Uri(
+      path: ApiContract.dashboardCompare(householdId),
+      queryParameters: query.isEmpty ? null : query,
+    );
+    final response = await _send(ApiMethods.get, uri.toString());
+    return LedgerResponseMapper.comparison(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
+  }
+
   Future<LedgerWriteResult> _post(
     String path,
     String idempotencyKey,

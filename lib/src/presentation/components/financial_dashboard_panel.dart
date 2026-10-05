@@ -6,6 +6,7 @@ import 'package:inout/src/core/utils/money_utils.dart';
 final class FinancialDashboardPanel extends StatelessWidget {
   const FinancialDashboardPanel({
     required this.dashboard,
+    this.comparison,
     this.onCreateAccount,
     this.onEditAccount,
     this.onSelectMetric,
@@ -17,6 +18,7 @@ final class FinancialDashboardPanel extends StatelessWidget {
   });
 
   final FinancialDashboard dashboard;
+  final FinancialPeriodComparison? comparison;
   final VoidCallback? onCreateAccount;
   final void Function(String accountId)? onEditAccount;
   final void Function(LedgerTransactionKind kind)? onSelectMetric;
@@ -78,8 +80,32 @@ final class FinancialDashboardPanel extends StatelessWidget {
         ],
       ),
       const SizedBox(height: 16),
-      ...dashboard.summaries.map(
-        (summary) => Wrap(
+      ...dashboard.summaries.map((summary) {
+        final currencyComp = comparison?.currencies.firstWhere(
+          (c) => c.currency == summary.currency,
+          orElse: () => CurrencyComparisonResult(
+            currency: summary.currency,
+            currentFacts: PeriodFactSummary(
+              incomeCents: summary.incomeCents,
+              expenseCents: summary.expenseCents,
+              resultCents: summary.resultCents,
+              consolidatedBalanceCents: summary.consolidatedBalanceCents,
+            ),
+            previousFacts: const PeriodFactSummary(
+              incomeCents: 0,
+              expenseCents: 0,
+              resultCents: 0,
+              consolidatedBalanceCents: 0,
+            ),
+            deltas: const PeriodInterpretationDelta(
+              incomeDeltaCents: 0,
+              expenseDeltaCents: 0,
+              resultDeltaCents: 0,
+            ),
+          ),
+        );
+
+        return Wrap(
           spacing: 12,
           runSpacing: 12,
           children: [
@@ -92,6 +118,7 @@ final class FinancialDashboardPanel extends StatelessWidget {
               label: 'Receitas',
               value: summary.incomeCents,
               currency: summary.currency,
+              pctChange: comparison != null ? currencyComp?.deltas.incomePercentageChange : null,
               onTap: onSelectMetric != null
                   ? () => onSelectMetric!(LedgerTransactionKind.income)
                   : null,
@@ -100,6 +127,7 @@ final class FinancialDashboardPanel extends StatelessWidget {
               label: 'Despesas',
               value: summary.expenseCents,
               currency: summary.currency,
+              pctChange: comparison != null ? currencyComp?.deltas.expensePercentageChange : null,
               onTap: onSelectMetric != null
                   ? () => onSelectMetric!(LedgerTransactionKind.expense)
                   : null,
@@ -108,10 +136,11 @@ final class FinancialDashboardPanel extends StatelessWidget {
               label: 'Resultado',
               value: summary.resultCents,
               currency: summary.currency,
+              pctChange: comparison != null ? currencyComp?.deltas.resultPercentageChange : null,
             ),
           ],
-        ),
-      ),
+        );
+      }),
       const SizedBox(height: 24),
       _Section(
         title: 'Contas',
@@ -212,36 +241,56 @@ final class _Metric extends StatelessWidget {
     required this.label,
     required this.value,
     required this.currency,
+    this.pctChange,
     this.onTap,
   });
   final String label;
   final int value;
   final String currency;
+  final double? pctChange;
   final VoidCallback? onTap;
   @override
-  Widget build(BuildContext context) => SizedBox(
-    width: 220,
-    child: Card(
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(label),
-              const SizedBox(height: 8),
-              Text(
-                MoneyUtils.format(value, currency),
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-            ],
+  Widget build(BuildContext context) {
+    final hasPct = pctChange != null;
+    final isPositive = (pctChange ?? 0) >= 0;
+    final pctText = hasPct
+        ? '${isPositive ? "+" : ""}${pctChange!.toStringAsFixed(1)}% vs. período anterior'
+        : null;
+
+    return SizedBox(
+      width: 220,
+      child: Card(
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label),
+                const SizedBox(height: 8),
+                Text(
+                  MoneyUtils.format(value, currency),
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+                if (pctText != null) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    pctText,
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: isPositive ? Colors.green : Colors.red,
+                    ),
+                  ),
+                ],
+              ],
+            ),
           ),
         ),
       ),
-    ),
-  );
+    );
+  }
 }
 
 final class _Section extends StatelessWidget {

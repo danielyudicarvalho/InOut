@@ -303,6 +303,20 @@ public static class LedgerEndpoints
                 cancellationToken)))
             .WithName(ApiContract.EndpointNames.GetFinancialDashboard);
 
+        ledger.MapGet(ApiContract.Routes.CompareDashboard, async (
+            Guid householdId,
+            int? year,
+            int? month,
+            DateOnly? from,
+            DateOnly? to,
+            ClaimsPrincipal principal,
+            CompareFinancialPeriods useCase,
+            CancellationToken cancellationToken) =>
+            Results.Ok(await useCase.ExecuteAsync(
+                new CompareFinancialPeriodsQuery(UserId(principal), householdId, year, month, from, to),
+                cancellationToken)))
+            .WithName(ApiContract.EndpointNames.CompareFinancialDashboard);
+
         ledger.MapGet(ApiContract.Routes.ExportCsv, async (
             Guid householdId,
             ClaimsPrincipal principal,

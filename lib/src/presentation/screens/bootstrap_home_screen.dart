@@ -52,6 +52,7 @@ final class _BootstrapHomeScreenState
         to: _dashboardTo,
       );
       final dashboard = ref.watch(financialDashboardProvider(dashboardInput));
+      final comparison = ref.watch(financialPeriodComparisonProvider(dashboardInput));
       final sync = ref.watch(householdSyncProvider(selected.id));
 
       Widget body;
@@ -166,6 +167,7 @@ final class _BootstrapHomeScreenState
                         Expanded(
                           child: FinancialDashboardPanel(
                             dashboard: value,
+                            comparison: comparison.asData?.value,
                             onCreateAccount: () =>
                                 _openAccountForm(context, ref, selected),
                             onEditAccount: (accountId) => _openAccountEditForm(

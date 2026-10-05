@@ -62,10 +62,29 @@ final ledgerAccountsProvider = FutureProvider.autoDispose
     });
 
 final financialDashboardProvider = FutureProvider.autoDispose
-    .family<FinancialDashboard, ({String householdId, int? year, int? month, DateTime? from, DateTime? to})>(
+    .family<
+      FinancialDashboard,
+      ({String householdId, int? year, int? month, DateTime? from, DateTime? to})
+    >(
       (ref, input) => ref
           .watch(ledgerRepositoryProvider)
           .getDashboard(
+            input.householdId,
+            year: input.year,
+            month: input.month,
+            from: input.from,
+            to: input.to,
+          ),
+    );
+
+final financialPeriodComparisonProvider = FutureProvider.autoDispose
+    .family<
+      FinancialPeriodComparison,
+      ({String householdId, int? year, int? month, DateTime? from, DateTime? to})
+    >(
+      (ref, input) => ref
+          .watch(ledgerRepositoryProvider)
+          .comparePeriods(
             input.householdId,
             year: input.year,
             month: input.month,
@@ -116,6 +135,7 @@ final householdSyncProvider = StreamProvider.autoDispose
           ref.invalidate(ledgerAllCategoriesProvider);
           ref.invalidate(ledgerHistoryCategoriesProvider(householdId));
           ref.invalidate(financialDashboardProvider);
+          ref.invalidate(financialPeriodComparisonProvider);
         }
         yield event;
       }

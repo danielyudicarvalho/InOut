@@ -124,6 +124,50 @@ abstract final class LedgerResponseMapper {
             .toList(growable: false),
       );
 
+  static FinancialPeriodComparison comparison(Map<String, dynamic> row) {
+    final currentPeriod = row['currentPeriod'] as Map<String, dynamic>;
+    final previousPeriod = row['previousPeriod'] as Map<String, dynamic>;
+    final currencies = (row['currencies'] as List<dynamic>)
+        .cast<Map<String, dynamic>>()
+        .map((item) {
+          final currFacts = item['currentFacts'] as Map<String, dynamic>;
+          final prevFacts = item['previousFacts'] as Map<String, dynamic>;
+          final deltas = item['deltas'] as Map<String, dynamic>;
+          return CurrencyComparisonResult(
+            currency: item['currency'] as String,
+            currentFacts: PeriodFactSummary(
+              incomeCents: currFacts['incomeCents'] as int,
+              expenseCents: currFacts['expenseCents'] as int,
+              resultCents: currFacts['resultCents'] as int,
+              consolidatedBalanceCents: currFacts['consolidatedBalanceCents'] as int,
+            ),
+            previousFacts: PeriodFactSummary(
+              incomeCents: prevFacts['incomeCents'] as int,
+              expenseCents: prevFacts['expenseCents'] as int,
+              resultCents: prevFacts['resultCents'] as int,
+              consolidatedBalanceCents: prevFacts['consolidatedBalanceCents'] as int,
+            ),
+            deltas: PeriodInterpretationDelta(
+              incomeDeltaCents: deltas['incomeDeltaCents'] as int,
+              expenseDeltaCents: deltas['expenseDeltaCents'] as int,
+              resultDeltaCents: deltas['resultDeltaCents'] as int,
+              incomePercentageChange: (deltas['incomePercentageChange'] as num?)?.toDouble(),
+              expensePercentageChange: (deltas['expensePercentageChange'] as num?)?.toDouble(),
+              resultPercentageChange: (deltas['resultPercentageChange'] as num?)?.toDouble(),
+            ),
+          );
+        })
+        .toList(growable: false);
+
+    return FinancialPeriodComparison(
+      periodStart: DateTime.parse(currentPeriod['start'] as String),
+      periodEnd: DateTime.parse(currentPeriod['end'] as String),
+      previousPeriodStart: DateTime.parse(previousPeriod['start'] as String),
+      previousPeriodEnd: DateTime.parse(previousPeriod['end'] as String),
+      currencies: currencies,
+    );
+  }
+
   static Iterable<Map<String, dynamic>> _rows(
     Map<String, dynamic> row,
     String field,

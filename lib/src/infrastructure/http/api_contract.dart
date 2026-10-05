@@ -21,6 +21,8 @@ abstract final class ApiContract {
       '${ledger(householdId)}/expenses';
   static String dashboard(String householdId) =>
       '${ledger(householdId)}/dashboard';
+  static String dashboardCompare(String householdId) =>
+      '${ledger(householdId)}/dashboard/compare';
   static String history(String householdId) => '${ledger(householdId)}/history';
   static String income(String householdId) => '${ledger(householdId)}/income';
   static String reconciliation(String householdId) =>

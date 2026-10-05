@@ -141,4 +141,12 @@ abstract interface class LedgerRepository {
     DateTime? from,
     DateTime? to,
   });
+
+  Future<FinancialPeriodComparison> comparePeriods(
+    String householdId, {
+    int? year,
+    int? month,
+    DateTime? from,
+    DateTime? to,
+  });
 }

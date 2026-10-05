@@ -40,4 +40,18 @@ public readonly record struct FinancialPeriod
     {
         return new FinancialPeriod(start, end);
     }
+
+    public FinancialPeriod GetPreviousPeriod()
+    {
+        if (Start.Day == 1 && End == Start.AddMonths(1).AddDays(-1))
+        {
+            var monthlyPrevStart = Start.AddMonths(-1);
+            return Monthly(monthlyPrevStart.Year, monthlyPrevStart.Month);
+        }
+
+        var durationDays = (End.DayNumber - Start.DayNumber) + 1;
+        var prevEnd = Start.AddDays(-1);
+        var prevStart = prevEnd.AddDays(-(durationDays - 1));
+        return Custom(prevStart, prevEnd);
+    }
 }
