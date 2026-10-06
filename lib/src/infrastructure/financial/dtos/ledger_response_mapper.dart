@@ -84,6 +84,9 @@ abstract final class LedgerResponseMapper {
                 accountName: item[ApiFields.accountName]! as String,
                 currency: item[ApiFields.currency]! as String,
                 balanceCents: item[ApiFields.balanceCents]! as int,
+                inflowCents: item['inflowCents'] as int? ?? 0,
+                outflowCents: item['outflowCents'] as int? ?? 0,
+                netChangeCents: item['netChangeCents'] as int? ?? 0,
               ),
             )
             .toList(growable: false),
@@ -93,6 +96,16 @@ abstract final class LedgerResponseMapper {
                 categoryId: item[ApiFields.categoryId]! as String,
                 categoryName: item[ApiFields.categoryName]! as String,
                 parentId: item[ApiFields.parentId] as String?,
+                currency: item[ApiFields.currency]! as String,
+                amountCents: item[ApiFields.amountCents]! as int,
+              ),
+            )
+            .toList(growable: false),
+        incomeSources: _rows(row, 'incomeSources')
+            .map(
+              (item) => DashboardIncomeSourceIncome(
+                incomeSourceId: item['incomeSourceId'] as String?,
+                sourceName: item['sourceName']! as String,
                 currency: item[ApiFields.currency]! as String,
                 amountCents: item[ApiFields.amountCents]! as int,
               ),

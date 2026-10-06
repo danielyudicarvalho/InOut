@@ -149,11 +149,17 @@ final class DashboardAccountBalance {
     required this.accountName,
     required this.currency,
     required this.balanceCents,
+    this.inflowCents = 0,
+    this.outflowCents = 0,
+    this.netChangeCents = 0,
   });
   final String accountId;
   final String accountName;
   final String currency;
   final int balanceCents;
+  final int inflowCents;
+  final int outflowCents;
+  final int netChangeCents;
 }
 
 final class DashboardCategoryExpense {
@@ -167,6 +173,19 @@ final class DashboardCategoryExpense {
   final String categoryId;
   final String categoryName;
   final String? parentId;
+  final String currency;
+  final int amountCents;
+}
+
+final class DashboardIncomeSourceIncome {
+  const DashboardIncomeSourceIncome({
+    required this.incomeSourceId,
+    required this.sourceName,
+    required this.currency,
+    required this.amountCents,
+  });
+  final String? incomeSourceId;
+  final String sourceName;
   final String currency;
   final int amountCents;
 }
@@ -209,6 +228,7 @@ final class FinancialDashboard {
     required this.summaries,
     required this.accounts,
     required this.categoryExpenses,
+    required this.incomeSources,
     required this.budgets,
     required this.goals,
   });
@@ -218,6 +238,7 @@ final class FinancialDashboard {
   final List<DashboardCurrencySummary> summaries;
   final List<DashboardAccountBalance> accounts;
   final List<DashboardCategoryExpense> categoryExpenses;
+  final List<DashboardIncomeSourceIncome> incomeSources;
   final List<DashboardBudgetProgress> budgets;
   final List<DashboardGoalProgress> goals;
 }

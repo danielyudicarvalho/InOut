@@ -70,6 +70,18 @@ public sealed class GetFinancialDashboard(
             })
             .ToArray();
 
+        var activitiesByAccount = totals.AccountActivities.ToDictionary(a => a.AccountId);
+        var incomeSourcesMap = source.IncomeSources.ToDictionary(s => s.Id, s => s.Name);
+        var incomeSourceIncomes = totals.IncomeSources
+            .Select(total => new DashboardIncomeSourceIncome(
+                total.IncomeSourceId,
+                total.IncomeSourceId is { } srcId && incomeSourcesMap.TryGetValue(srcId, out var srcName)
+                    ? srcName
+                    : "Sem fonte definida",
+                total.Currency,
+                total.AmountCents))
+            .ToArray();
+
         return new FinancialDashboard(
             period.Start,
             period.End,
@@ -80,12 +92,20 @@ public sealed class GetFinancialDashboard(
                 total.IncomeCents,
                 total.ExpenseCents,
                 total.ResultCents)).ToArray(),
-            source.Accounts.Select(account => new DashboardAccountBalance(
-                account.Id,
-                account.Name,
-                account.Currency,
-                account.BalanceCents)).ToArray(),
+            source.Accounts.Select(account =>
+            {
+                activitiesByAccount.TryGetValue(account.Id, out var activity);
+                return new DashboardAccountBalance(
+                    account.Id,
+                    account.Name,
+                    account.Currency,
+                    account.BalanceCents,
+                    activity?.InflowCents ?? 0,
+                    activity?.OutflowCents ?? 0,
+                    activity?.NetChangeCents ?? 0);
+            }).ToArray(),
             categoryExpenses,
+            incomeSourceIncomes,
             source.Budgets
                 .Where(budget => categories.ContainsKey(budget.CategoryId))
                 .Select(budget => new DashboardBudgetProgress(

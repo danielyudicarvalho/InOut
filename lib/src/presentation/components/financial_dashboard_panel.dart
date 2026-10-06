@@ -158,32 +158,75 @@ final class FinancialDashboardPanel extends StatelessWidget {
               ]
             : dashboard.accounts
                 .map(
-                  (item) => ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    onTap: onSelectAccount != null
-                        ? () => onSelectAccount!(item.accountId)
-                        : null,
-                    title: Text(item.accountName),
-                    subtitle: Text(item.currency),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          MoneyUtils.format(item.balanceCents, item.currency),
-                        ),
-                        if (onEditAccount != null) ...[
-                          const SizedBox(width: 4),
-                          IconButton(
-                            icon: const Icon(Icons.edit_outlined, size: 20),
-                            onPressed: () => onEditAccount!(item.accountId),
-                            tooltip: 'Editar conta',
+                  (item) {
+                    final netSign = item.netChangeCents >= 0 ? '+' : '';
+                    final activityText = item.inflowCents > 0 || item.outflowCents > 0
+                        ? '${item.currency} · Entradas: ${MoneyUtils.format(item.inflowCents, item.currency)} · Saídas: ${MoneyUtils.format(item.outflowCents, item.currency)} (Variação: $netSign${MoneyUtils.format(item.netChangeCents, item.currency)})'
+                        : item.currency;
+
+                    return ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      onTap: onSelectAccount != null
+                          ? () => onSelectAccount!(item.accountId)
+                          : null,
+                      title: Text(item.accountName),
+                      subtitle: Text(activityText, style: const TextStyle(fontSize: 12)),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            MoneyUtils.format(item.balanceCents, item.currency),
+                            style: const TextStyle(fontWeight: FontWeight.bold),
                           ),
+                          if (onEditAccount != null) ...[
+                            const SizedBox(width: 4),
+                            IconButton(
+                              icon: const Icon(Icons.edit_outlined, size: 20),
+                              onPressed: () => onEditAccount!(item.accountId),
+                              tooltip: 'Editar conta',
+                            ),
+                          ],
                         ],
-                      ],
-                    ),
-                  ),
+                      ),
+                    );
+                  },
                 )
                 .toList(),
+      ),
+      _Section(
+        title: 'Receitas por fonte',
+        children: dashboard.incomeSources.isEmpty
+            ? const [Text('Nenhuma receita por fonte neste período.')]
+            : dashboard.incomeSources
+                  .map(
+                    (item) {
+                      final summary = dashboard.summaries.firstWhere(
+                        (s) => s.currency == item.currency,
+                        orElse: () => DashboardCurrencySummary(
+                          currency: item.currency,
+                          consolidatedBalanceCents: 0,
+                          incomeCents: 0,
+                          expenseCents: 0,
+                          resultCents: 0,
+                        ),
+                      );
+                      final totalInc = summary.incomeCents;
+                      final pct = totalInc > 0
+                          ? ((item.amountCents / totalInc) * 100).toStringAsFixed(1)
+                          : null;
+
+                      return ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: Text(item.sourceName),
+                        subtitle: pct != null ? Text('$pct% do total de receitas') : null,
+                        trailing: Text(
+                          MoneyUtils.format(item.amountCents, item.currency),
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      );
+                    },
+                  )
+                  .toList(),
       ),
       _Section(
         title: 'Despesas por categoria',
@@ -191,16 +234,35 @@ final class FinancialDashboardPanel extends StatelessWidget {
             ? const [Text('Nenhuma despesa neste período.')]
             : dashboard.categoryExpenses
                   .map(
-                    (item) => ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      onTap: onSelectCategory != null
-                          ? () => onSelectCategory!(item.categoryId)
-                          : null,
-                      title: Text(item.categoryName),
-                      trailing: Text(
-                        MoneyUtils.format(item.amountCents, item.currency),
-                      ),
-                    ),
+                    (item) {
+                      final summary = dashboard.summaries.firstWhere(
+                        (s) => s.currency == item.currency,
+                        orElse: () => DashboardCurrencySummary(
+                          currency: item.currency,
+                          consolidatedBalanceCents: 0,
+                          incomeCents: 0,
+                          expenseCents: 0,
+                          resultCents: 0,
+                        ),
+                      );
+                      final totalExp = summary.expenseCents;
+                      final pct = totalExp > 0
+                          ? ((item.amountCents / totalExp) * 100).toStringAsFixed(1)
+                          : null;
+
+                      return ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        onTap: onSelectCategory != null
+                            ? () => onSelectCategory!(item.categoryId)
+                            : null,
+                        title: Text(item.categoryName),
+                        subtitle: pct != null ? Text('$pct% das despesas totais') : null,
+                        trailing: Text(
+                          MoneyUtils.format(item.amountCents, item.currency),
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      );
+                    },
                   )
                   .toList(),
       ),

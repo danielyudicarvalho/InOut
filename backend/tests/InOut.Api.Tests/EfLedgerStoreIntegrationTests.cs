@@ -140,6 +140,55 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task ProcessingLeaseTimeoutAllowsSafeReclaimWithoutBusinessFailure()
+    {
+        var idempotencyKey = Guid.NewGuid();
+        var request = IdempotencyRequest.Create(
+            householdId,
+            actorUserId,
+            IdempotencyOperation.PostIncome,
+            idempotencyKey,
+            accountId,
+            categoryId,
+            1_000,
+            "BRL",
+            new DateOnly(2026, 9, 16),
+            (string?)null,
+            (Guid?)null);
+
+        await using (var connection = new NpgsqlConnection(postgres.GetConnectionString()))
+        {
+            await connection.OpenAsync();
+            await using var command = connection.CreateCommand();
+            command.CommandText = """
+                insert into private.idempotency_requests (
+                    tenant_id, operation, idempotency_key, actor_user_id,
+                    request_fingerprint, status, attempt_count, locked_until,
+                    created_at, updated_at, expires_at)
+                values (
+                    @household_id, 'post_income', @key, @actor_user_id,
+                    @fingerprint, 'processing', 1, now() - interval '1 minute',
+                    now() - interval '5 minutes', now() - interval '5 minutes', now() + interval '90 days');
+                """;
+            command.Parameters.AddWithValue("household_id", householdId);
+            command.Parameters.AddWithValue("key", idempotencyKey);
+            command.Parameters.AddWithValue("actor_user_id", actorUserId);
+            command.Parameters.AddWithValue("fingerprint", request.RequestFingerprint);
+            await command.ExecuteNonQueryAsync();
+        }
+
+        var result = await PostIncomeAsync(idempotencyKey, 1_000);
+
+        Assert.NotNull(result);
+        Assert.False(result.Replayed);
+
+        await using var context = CreateContext();
+        var store = CreateStore(context);
+        var balances = await store.GetBalancesAsync(actorUserId, householdId, CancellationToken.None);
+        Assert.Equal(1_000, balances.Single(b => b.AccountId == accountId).BalanceCents);
+    }
+
+    [Fact]
     public async Task ZeroBalanceAccountCreationCanBeSafelyRetried()
     {
         var createdAccountId = Guid.NewGuid();
