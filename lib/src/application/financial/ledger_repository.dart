@@ -134,6 +134,16 @@ abstract interface class LedgerRepository {
 
   Future<LedgerReconciliation> reconcile(String householdId);
 
+  Future<void> setBudget({
+    required String householdId,
+    required String categoryId,
+    required DateTime periodStart,
+    required DateTime periodEnd,
+    required int limitCents,
+    required String idempotencyKey,
+    String? budgetId,
+  });
+
   Future<FinancialDashboard> getDashboard(
     String householdId, {
     int? year,

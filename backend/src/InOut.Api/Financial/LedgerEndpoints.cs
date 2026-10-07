@@ -289,6 +289,34 @@ public static class LedgerEndpoints
             Results.Ok(await service.ReconcileAsync(UserId(principal), householdId, cancellationToken)))
             .WithName(ApiContract.EndpointNames.ReconcileLedger);
 
+        ledger.MapPost(ApiContract.Routes.Budgets, async (
+            Guid householdId,
+            SetBudgetRequest request,
+            [FromHeader(Name = ApiContract.Headers.IdempotencyKey)] Guid idempotencyKey,
+            ClaimsPrincipal principal,
+            LedgerService service,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await service.SetBudgetAsync(
+                UserId(principal),
+                new SetBudgetCommand(
+                    request.Id,
+                    householdId,
+                    request.CategoryId,
+                    request.PeriodStart,
+                    request.PeriodEnd,
+                    request.LimitCents,
+                    idempotencyKey),
+                cancellationToken);
+
+            return result.Replayed
+                ? Results.Ok(result)
+                : Results.Created(
+                    $"/api/v1/households/{householdId}/ledger/budgets/{result.Id}",
+                    result);
+        }).WithName(ApiContract.EndpointNames.SetBudget);
+
+
         ledger.MapGet(ApiContract.Routes.Dashboard, async (
             Guid householdId,
             int? year,

@@ -85,7 +85,7 @@ public sealed class GetFinancialDashboardTests
             WasCalled = true;
             ActorUserId = actorUserId;
             HouseholdId = householdId;
-            return Task.FromResult(new DashboardSourceData([], [], [], [], [], 0, 0));
+            return Task.FromResult(new DashboardSourceData([], [], [], [], [], [], 0, 0));
         }
     }
 }

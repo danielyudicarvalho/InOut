@@ -8,6 +8,7 @@ final class FinancialDashboardPanel extends StatelessWidget {
     required this.dashboard,
     this.comparison,
     this.onCreateAccount,
+    this.onDefineBudget,
     this.onEditAccount,
     this.onSelectMetric,
     this.onSelectAccount,
@@ -20,12 +21,14 @@ final class FinancialDashboardPanel extends StatelessWidget {
   final FinancialDashboard dashboard;
   final FinancialPeriodComparison? comparison;
   final VoidCallback? onCreateAccount;
+  final VoidCallback? onDefineBudget;
   final void Function(String accountId)? onEditAccount;
   final void Function(LedgerTransactionKind kind)? onSelectMetric;
   final void Function(String accountId)? onSelectAccount;
   final void Function(String categoryId)? onSelectCategory;
   final void Function(DateTime from, DateTime to)? onSelectPeriodRange;
   final void Function(int year, int month)? onSelectMonth;
+
 
   @override
   Widget build(BuildContext context) => ListView(
@@ -268,6 +271,13 @@ final class FinancialDashboardPanel extends StatelessWidget {
       ),
       _Section(
         title: 'Orçamentos',
+        action: onDefineBudget != null
+            ? TextButton.icon(
+                icon: const Icon(Icons.add, size: 18),
+                label: const Text('Definir orçamento'),
+                onPressed: onDefineBudget,
+              )
+            : null,
         children: dashboard.budgets.isEmpty
             ? const [Text('Nenhum orçamento configurado para o período.')]
             : dashboard.budgets
@@ -356,8 +366,9 @@ final class _Metric extends StatelessWidget {
 }
 
 final class _Section extends StatelessWidget {
-  const _Section({required this.title, required this.children});
+  const _Section({required this.title, required this.children, this.action});
   final String title;
+  final Widget? action;
   final List<Widget> children;
   @override
   Widget build(BuildContext context) => Padding(
@@ -365,7 +376,13 @@ final class _Section extends StatelessWidget {
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(title, style: Theme.of(context).textTheme.titleMedium),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(title, style: Theme.of(context).textTheme.titleMedium),
+            if (action != null) action!,
+          ],
+        ),
         const SizedBox(height: 8),
         ...children,
       ],

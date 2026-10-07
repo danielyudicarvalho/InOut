@@ -143,18 +143,34 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
     public async Task ProcessingLeaseTimeoutAllowsSafeReclaimWithoutBusinessFailure()
     {
         var idempotencyKey = Guid.NewGuid();
+        var transaction = FinancialTransaction.Income(
+            householdId,
+            accountId,
+            categoryId,
+            new Money(1_000, "BRL"),
+            new DateOnly(2026, 9, 14),
+            actorUserId,
+            "Salary");
+
+        var entries = string.Join(
+            ';',
+            transaction.Entries
+                .OrderBy(entry => entry.AccountId)
+                .ThenBy(entry => entry.CategoryId)
+                .ThenBy(entry => entry.Direction)
+                .Select(entry =>
+                    $"{entry.AccountId:D},{entry.CategoryId?.ToString("D")},{entry.Direction},{entry.Amount.Cents},{entry.Amount.Currency}"));
+
         var request = IdempotencyRequest.Create(
             householdId,
             actorUserId,
             IdempotencyOperation.PostIncome,
             idempotencyKey,
-            accountId,
-            categoryId,
-            1_000,
-            "BRL",
-            new DateOnly(2026, 9, 16),
-            (string?)null,
-            (Guid?)null);
+            transaction.Kind,
+            transaction.OccurredOn,
+            transaction.Description,
+            transaction.IncomeSourceId,
+            entries);
 
         await using (var connection = new NpgsqlConnection(postgres.GetConnectionString()))
         {
@@ -877,6 +893,90 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task SetBudgetSucceedsUpsertsLimitAndCalculatesDashboardProgress()
+    {
+        var periodStart = new DateOnly(2026, 9, 1);
+        var periodEnd = new DateOnly(2026, 9, 30);
+        var initialLimit = 150_000L;
+        var updatedLimit = 200_000L;
+
+        await using (var context = CreateContext())
+        {
+            var service = new LedgerService(CreateStore(context));
+            var result = await service.SetBudgetAsync(
+                actorUserId,
+                new SetBudgetCommand(null, householdId, expenseCategoryId, periodStart, periodEnd, initialLimit, Guid.NewGuid()),
+                CancellationToken.None);
+
+            Assert.Equal(expenseCategoryId, result.CategoryId);
+            Assert.Equal(initialLimit, result.LimitCents);
+            Assert.False(result.Replayed);
+        }
+
+        await PostIncomeAsync(Guid.NewGuid(), 500_000);
+        await using (var context = CreateContext())
+        {
+            var service = new LedgerService(CreateStore(context));
+            await service.PostExpenseAsync(
+                actorUserId,
+                new PostExpenseCommand(householdId, accountId, expenseCategoryId, 50_000, "BRL", new DateOnly(2026, 9, 15), Guid.NewGuid(), "Supermarket"),
+                CancellationToken.None);
+        }
+
+        await using (var context = CreateContext())
+        {
+            var dashboard = await CreateDashboardUseCase(context).ExecuteAsync(
+                new GetFinancialDashboardQuery(actorUserId, householdId, 2026, 9),
+                CancellationToken.None);
+
+            var budgetProgress = Assert.Single(dashboard.Budgets);
+            Assert.Equal(expenseCategoryId, budgetProgress.CategoryId);
+            Assert.Equal(initialLimit, budgetProgress.LimitCents);
+            Assert.Equal(50_000L, budgetProgress.SpentCents);
+        }
+
+        await using (var context = CreateContext())
+        {
+            var service = new LedgerService(CreateStore(context));
+            var updatedResult = await service.SetBudgetAsync(
+                actorUserId,
+                new SetBudgetCommand(null, householdId, expenseCategoryId, periodStart, periodEnd, updatedLimit, Guid.NewGuid()),
+                CancellationToken.None);
+
+            Assert.Equal(updatedLimit, updatedResult.LimitCents);
+        }
+
+        await using (var context = CreateContext())
+        {
+            var dashboard = await CreateDashboardUseCase(context).ExecuteAsync(
+                new GetFinancialDashboardQuery(actorUserId, householdId, 2026, 9),
+                CancellationToken.None);
+
+            var budgetProgress = Assert.Single(dashboard.Budgets);
+            Assert.Equal(updatedLimit, budgetProgress.LimitCents);
+            Assert.Equal(50_000L, budgetProgress.SpentCents);
+        }
+    }
+
+    [Fact]
+    public async Task SetBudgetRejectsNonExpenseCategory()
+    {
+        var periodStart = new DateOnly(2026, 9, 1);
+        var periodEnd = new DateOnly(2026, 9, 30);
+
+        await using var context = CreateContext();
+        var service = new LedgerService(CreateStore(context));
+
+        var ex = await Assert.ThrowsAsync<FinancialRuleException>(() =>
+            service.SetBudgetAsync(
+                actorUserId,
+                new SetBudgetCommand(null, householdId, categoryId, periodStart, periodEnd, 100_000, Guid.NewGuid()),
+                CancellationToken.None));
+
+        Assert.Equal(FinancialErrorCodes.InvalidCategory, ex.Code);
+    }
+
+    [Fact]
     public async Task DashboardRejectsAnActorOutsideTheHousehold()
     {
         await using var context = CreateContext();
@@ -1058,7 +1158,7 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
         var newCategory = await store.CreateCategoryAsync(
             householdId, actorUserId, Guid.NewGuid(), "Transport",
             FinancialFlow.Expense, null,
-            new IdempotencyRequest(Guid.NewGuid(), actorUserId, householdId, IdempotencyOperation.CreateCategory),
+            IdempotencyRequest.Create(householdId, actorUserId, IdempotencyOperation.CreateCategory, Guid.NewGuid()),
             CancellationToken.None);
 
         var correctedItem = await service.CorrectClassificationAsync(
@@ -1074,8 +1174,8 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
         Assert.Equal("Updated Expense Description", correctedItem.Description);
 
         var postCorrectionBalances = await store.GetBalancesAsync(actorUserId, householdId, CancellationToken.None);
-        Assert.Equal(initialBalances.Single(b => b.AccountId == accountId).ClearedBalanceCents,
-                     postCorrectionBalances.Single(b => b.AccountId == accountId).ClearedBalanceCents);
+        Assert.Equal(initialBalances.Single(b => b.AccountId == accountId).BalanceCents,
+                     postCorrectionBalances.Single(b => b.AccountId == accountId).BalanceCents);
     }
 
     private async Task<LedgerWriteResult> PostIncomeAsync(

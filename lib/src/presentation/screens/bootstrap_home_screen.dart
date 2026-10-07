@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:inout/src/application/sync/household_sync_gateway.dart';
 import 'package:inout/src/core/types/ledger_transaction_kind.dart';
 import 'package:inout/src/core/utils/money_utils.dart';
+import 'package:inout/src/core/utils/uuid_utils.dart';
 import 'package:inout/src/domain/household/household.dart';
 import 'package:inout/src/domain/transaction/financial_flow.dart';
 import 'package:inout/src/presentation/components/financial_dashboard_panel.dart';
@@ -170,6 +171,13 @@ final class _BootstrapHomeScreenState
                             comparison: comparison.asData?.value,
                             onCreateAccount: () =>
                                 _openAccountForm(context, ref, selected),
+                            onDefineBudget: () => _openDefineBudgetDialog(
+                              context,
+                              ref,
+                              selected,
+                              value.periodStart,
+                              value.periodEnd,
+                            ),
                             onEditAccount: (accountId) => _openAccountEditForm(
                               context,
                               ref,
@@ -341,4 +349,114 @@ final class _BootstrapHomeScreenState
       ref.invalidate(financialDashboardProvider);
     }
   }
+
+  static Future<void> _openDefineBudgetDialog(
+    BuildContext context,
+    WidgetRef ref,
+    Household household,
+    DateTime periodStart,
+    DateTime periodEnd,
+  ) async {
+    final categories = await ref.read(
+      ledgerCategoriesProvider((
+        householdId: household.id,
+        flow: FinancialFlow.expense,
+      )).future,
+    );
+    final expenseCategories =
+        categories.where((c) => c.archivedAt == null).toList();
+
+    if (!context.mounted) return;
+
+    if (expenseCategories.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Nenhuma categoria de despesa cadastrada.'),
+        ),
+      );
+      return;
+    }
+
+    String selectedCategoryId = expenseCategories.first.id;
+    final limitController = TextEditingController();
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Definir Orçamento'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              DropdownButtonFormField<String>(
+                value: selectedCategoryId,
+                decoration: const InputDecoration(
+                  labelText: 'Categoria de Despesa',
+                ),
+                items: expenseCategories
+                    .map(
+                      (cat) => DropdownMenuItem<String>(
+                        value: cat.id,
+                        child: Text(cat.name),
+                      ),
+                    )
+                    .toList(),
+                onChanged: (val) {
+                  if (val != null) {
+                    setDialogState(() => selectedCategoryId = val);
+                  }
+                },
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: limitController,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                decoration: const InputDecoration(
+                  labelText: 'Limite do Orçamento (R\$)',
+                  prefixText: 'R\$ ',
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Cancelar'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('Salvar'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (confirmed == true && limitController.text.trim().isNotEmpty) {
+      final parsed =
+          double.tryParse(limitController.text.replaceAll(',', '.')) ?? 0;
+      final cents = (parsed * 100).round();
+      if (cents <= 0) return;
+
+      final repository = ref.read(ledgerRepositoryProvider);
+      await repository.setBudget(
+        householdId: household.id,
+        categoryId: selectedCategoryId,
+        periodStart: periodStart,
+        periodEnd: periodEnd,
+        limitCents: cents,
+        idempotencyKey: UuidUtils.v4(),
+      );
+
+      ref.invalidate(financialDashboardProvider);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Orçamento definido com sucesso!')),
+        );
+      }
+    }
+  }
 }
+

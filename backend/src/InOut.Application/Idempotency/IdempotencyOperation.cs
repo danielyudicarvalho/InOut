@@ -10,4 +10,5 @@ public enum IdempotencyOperation
     PostExpense,
     PostTransfer,
     ReverseTransaction,
+    SetBudget,
 }

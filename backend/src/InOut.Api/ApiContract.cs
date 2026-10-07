@@ -31,6 +31,7 @@ internal static class ApiContract
         internal const string ReconcileLedger = "ReconcileLedger";
         internal const string ReverseTransaction = "ReverseTransaction";
         internal const string CorrectTransactionClassification = "CorrectTransactionClassification";
+        internal const string SetBudget = "SetBudget";
     }
 
     internal static class Claims
@@ -73,6 +74,7 @@ internal static class ApiContract
         internal const string Accounts = "/accounts";
         internal const string AccountById = "/accounts/{accountId:guid}";
         internal const string Balances = "/balances";
+        internal const string Budgets = "/budgets";
         internal const string Categories = "/categories";
         internal const string CategoryById = "/categories/{categoryId:guid}";
         internal const string Expenses = "/expenses";

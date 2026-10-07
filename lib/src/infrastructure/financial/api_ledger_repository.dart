@@ -358,6 +358,33 @@ final class ApiLedgerRepository implements LedgerRepository {
   }
 
   @override
+  Future<void> setBudget({
+    required String householdId,
+    required String categoryId,
+    required DateTime periodStart,
+    required DateTime periodEnd,
+    required int limitCents,
+    required String idempotencyKey,
+    String? budgetId,
+  }) async {
+    final payload = <String, dynamic>{
+      if (budgetId != null) ApiFields.id: budgetId,
+      ApiFields.categoryId: categoryId,
+      ApiFields.periodStart: _date(periodStart),
+      ApiFields.periodEnd: _date(periodEnd),
+      ApiFields.limitCents: limitCents,
+    };
+
+    await _send(
+      ApiMethods.post,
+      ApiContract.budgets(householdId),
+      body: payload,
+      idempotencyKey: idempotencyKey,
+    );
+  }
+
+
+  @override
   Future<FinancialDashboard> getDashboard(
     String householdId, {
     int? year,

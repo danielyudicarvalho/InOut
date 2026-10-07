@@ -49,3 +49,11 @@ public sealed record CorrectTransactionClassificationRequest(
     Guid? CategoryId,
     Guid? IncomeSourceId,
     string? Description);
+
+public sealed record SetBudgetRequest(
+    Guid? Id,
+    Guid CategoryId,
+    DateOnly PeriodStart,
+    DateOnly PeriodEnd,
+    long LimitCents);
+

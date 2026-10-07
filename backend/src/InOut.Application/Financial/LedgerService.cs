@@ -222,6 +222,25 @@ public sealed class LedgerService(ILedgerStore store)
         CancellationToken cancellationToken) =>
         store.ReconcileAsync(actorUserId, householdId, cancellationToken);
 
+    public Task<BudgetResult> SetBudgetAsync(
+        Guid actorUserId,
+        SetBudgetCommand command,
+        CancellationToken cancellationToken) =>
+        store.SetBudgetAsync(
+            actorUserId,
+            command,
+            IdempotencyRequest.Create(
+                command.HouseholdId,
+                actorUserId,
+                IdempotencyOperation.SetBudget,
+                command.IdempotencyKey,
+                command.CategoryId,
+                command.PeriodStart,
+                command.PeriodEnd,
+                command.LimitCents),
+            cancellationToken);
+
+
     private Task<LedgerWriteResult> PostAsync(
         Guid actorUserId,
         IdempotencyOperation operation,

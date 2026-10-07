@@ -92,4 +92,11 @@ public interface ILedgerStore
         Guid actorUserId,
         Guid householdId,
         CancellationToken cancellationToken);
+
+    Task<BudgetResult> SetBudgetAsync(
+        Guid actorUserId,
+        SetBudgetCommand command,
+        IdempotencyRequest idempotencyRequest,
+        CancellationToken cancellationToken);
 }
+

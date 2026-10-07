@@ -97,3 +97,13 @@ public sealed record FinancialDashboard(
     IReadOnlyList<DashboardIncomeSourceIncome> IncomeSources,
     IReadOnlyList<DashboardBudgetProgress> Budgets,
     IReadOnlyList<DashboardGoalProgress> Goals);
+
+public sealed record BudgetResult(
+    Guid Id,
+    Guid HouseholdId,
+    Guid CategoryId,
+    DateOnly PeriodStart,
+    DateOnly PeriodEnd,
+    long LimitCents,
+    bool Replayed);
+
