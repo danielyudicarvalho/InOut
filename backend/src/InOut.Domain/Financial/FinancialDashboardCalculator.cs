@@ -10,7 +10,14 @@ public sealed record DashboardPosting(
     Guid? CategoryId,
     FinancialTransactionKind Kind,
     FinancialTransactionKind? ReversedKind,
-    long AmountCents);
+    long AmountCents,
+    Guid? IncomeSourceId = null);
+
+public sealed record DashboardAccountActivity(
+    Guid AccountId,
+    long InflowCents,
+    long OutflowCents,
+    long NetChangeCents);
 
 public sealed record DashboardCurrencyTotals(
     string Currency,
@@ -26,9 +33,16 @@ public sealed record DashboardCategoryTotal(
     string Currency,
     long AmountCents);
 
+public sealed record DashboardIncomeSourceTotal(
+    Guid? IncomeSourceId,
+    string Currency,
+    long AmountCents);
+
 public sealed record FinancialDashboardTotals(
     IReadOnlyList<DashboardCurrencyTotals> Currencies,
-    IReadOnlyList<DashboardCategoryTotal> Categories);
+    IReadOnlyList<DashboardCategoryTotal> Categories,
+    IReadOnlyList<DashboardAccountActivity> AccountActivities,
+    IReadOnlyList<DashboardIncomeSourceTotal> IncomeSources);
 
 public static class FinancialDashboardCalculator
 {
@@ -71,7 +85,28 @@ public static class FinancialDashboardCalculator
             .OrderByDescending(item => item.AmountCents)
             .ToArray();
 
-        return new FinancialDashboardTotals(currencies, categories);
+        var accountActivities = accounts
+            .Select(account =>
+            {
+                var accEffects = effects.Where(e => e.AccountId == account.AccountId).ToArray();
+                var inflow = accEffects.Where(e => e.Kind == FinancialTransactionKind.Income).Sum(e => e.SignedAmountCents);
+                var outflow = accEffects.Where(e => e.Kind == FinancialTransactionKind.Expense).Sum(e => e.SignedAmountCents);
+                return new DashboardAccountActivity(account.AccountId, inflow, outflow, inflow - outflow);
+            })
+            .ToArray();
+
+        var incomeSources = effects
+            .Where(effect => effect.Kind == FinancialTransactionKind.Income)
+            .GroupBy(effect => new { effect.IncomeSourceId, effect.Currency })
+            .Select(group => new DashboardIncomeSourceTotal(
+                group.Key.IncomeSourceId,
+                group.Key.Currency,
+                group.Sum(effect => effect.SignedAmountCents)))
+            .Where(item => item.AmountCents != 0)
+            .OrderByDescending(item => item.AmountCents)
+            .ToArray();
+
+        return new FinancialDashboardTotals(currencies, categories, accountActivities, incomeSources);
     }
 
     private static PostingEffect? ToEffect(DashboardPosting posting, string currency)
@@ -86,14 +121,18 @@ public static class FinancialDashboardCalculator
 
         var multiplier = posting.Kind == FinancialTransactionKind.Reversal ? -1L : 1L;
         return new PostingEffect(
+            posting.AccountId,
             posting.CategoryId,
+            posting.IncomeSourceId,
             currency,
             effectiveKind.Value,
             checked(posting.AmountCents * multiplier));
     }
 
     private sealed record PostingEffect(
+        Guid AccountId,
         Guid? CategoryId,
+        Guid? IncomeSourceId,
         string Currency,
         FinancialTransactionKind Kind,
         long SignedAmountCents);

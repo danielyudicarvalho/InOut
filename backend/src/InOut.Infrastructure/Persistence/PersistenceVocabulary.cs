@@ -11,22 +11,28 @@ internal static class PersistenceVocabulary
     {
         internal const string AccountArchived = "financial.account.archived";
         internal const string AccountCreated = "financial.account.created";
+        internal const string AccountMetadataUpdated = "financial.account.metadata_updated";
         internal const string CategoryCreated = "financial.category.created";
         internal const string CategoryArchived = "financial.category.archived";
+        internal const string IncomeSourceCreated = "financial.income_source.created";
+        internal const string IncomeSourceArchived = "financial.income_source.archived";
         internal const string HouseholdCreated = "household.created";
         internal const string InvitationAccepted = "household.invitation.accepted";
         internal const string InvitationCreated = "household.invitation.created";
         internal const string OpeningBalancePosted = "financial.opening_balance.posted";
         internal const string TransactionPosted = "financial.transaction.posted";
         internal const string TransactionReversed = "financial.transaction.reversed";
+        internal const string BudgetSet = "financial.budget.set";
     }
 
     internal static class EntityTypes
     {
         internal const string Account = "account";
+        internal const string Budget = "budget";
         internal const string Category = "category";
         internal const string Household = "household";
         internal const string HouseholdInvitation = "household_invitation";
+        internal const string IncomeSource = "income_source";
         internal const string Transaction = "transaction";
     }
 
@@ -54,6 +60,7 @@ internal static class PersistenceVocabulary
         internal const string PostIncome = "post_income";
         internal const string PostTransfer = "post_transfer";
         internal const string ReverseTransaction = "reverse_transaction";
+        internal const string SetBudget = "set_budget";
     }
 
     internal static class MetricTags

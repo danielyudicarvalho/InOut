@@ -124,6 +124,7 @@ public sealed partial class InOutDbContext
             entity.Property(item => item.PeriodStart).HasColumnName("period_start");
             entity.Property(item => item.PeriodEnd).HasColumnName("period_end");
             entity.Property(item => item.LimitCents).HasColumnName("limit_cents");
+            entity.Property(item => item.CreatedBy).HasColumnName("created_by");
         });
 
         modelBuilder.Entity<GoalRecord>(entity =>
@@ -255,6 +256,7 @@ internal sealed class BudgetRecord
     public DateOnly PeriodStart { get; set; }
     public DateOnly PeriodEnd { get; set; }
     public long LimitCents { get; set; }
+    public Guid CreatedBy { get; set; }
 }
 
 internal sealed class GoalRecord

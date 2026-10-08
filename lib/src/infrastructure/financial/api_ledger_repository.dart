@@ -82,6 +82,22 @@ final class ApiLedgerRepository implements LedgerRepository {
   }
 
   @override
+  Future<AccountSummary> updateAccountMetadata({
+    required String householdId,
+    required String accountId,
+    required String name,
+    required String kind,
+  }) async {
+    final response = await _send(
+      ApiMethods.put,
+      ApiContract.account(householdId, accountId),
+      body: {ApiFields.name: name, ApiFields.kind: kind},
+    );
+    final body = jsonDecode(response.body) as Map<String, dynamic>;
+    return LedgerResponseMapper.account(body);
+  }
+
+  @override
   Future<List<CategorySummary>> getCategories(
     String householdId, {
     FinancialFlow? flow,
@@ -146,14 +162,21 @@ final class ApiLedgerRepository implements LedgerRepository {
     DateTime? to,
     String? accountId,
     String? categoryId,
+    String? incomeSourceId,
     String? kind,
+    String? search,
   }) async {
     final query = <String, String>{ApiQueryFields.limit: '$limit'};
     if (from != null) query[ApiQueryFields.from] = _date(from);
     if (to != null) query[ApiQueryFields.to] = _date(to);
     if (accountId != null) query[ApiQueryFields.accountId] = accountId;
     if (categoryId != null) query[ApiQueryFields.categoryId] = categoryId;
+    if (incomeSourceId != null)
+      query[ApiQueryFields.incomeSourceId] = incomeSourceId;
     if (kind != null) query[ApiQueryFields.kind] = kind;
+    if (search != null && search.trim().isNotEmpty) {
+      query[ApiQueryFields.search] = search.trim();
+    }
     final uri = Uri(
       path: ApiContract.history(householdId),
       queryParameters: query,
@@ -228,7 +251,7 @@ final class ApiLedgerRepository implements LedgerRepository {
     ApiFields.currency: currency,
     ApiFields.occurredOn: _date(occurredOn),
     ApiFields.description: description,
-    ApiFields.incomeSourceId: ?incomeSourceId,
+    if (incomeSourceId != null) ApiFields.incomeSourceId: incomeSourceId,
   });
 
   @override
@@ -283,6 +306,28 @@ final class ApiLedgerRepository implements LedgerRepository {
       });
 
   @override
+  Future<LedgerHistoryItem> correctClassification({
+    required String householdId,
+    required String transactionId,
+    String? categoryId,
+    String? incomeSourceId,
+    String? description,
+  }) async {
+    final response = await _send(
+      ApiMethods.patch,
+      ApiContract.transaction(householdId, transactionId),
+      body: {
+        ApiFields.categoryId: categoryId,
+        ApiFields.incomeSourceId: incomeSourceId,
+        ApiFields.description: description,
+      },
+    );
+    return LedgerResponseMapper.historyItem(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
+  }
+
+  @override
   Future<List<AccountBalance>> getBalances(String householdId) async {
     final response = await _send(
       ApiMethods.get,
@@ -313,20 +358,74 @@ final class ApiLedgerRepository implements LedgerRepository {
   }
 
   @override
+  Future<void> setBudget({
+    required String householdId,
+    required String categoryId,
+    required DateTime periodStart,
+    required DateTime periodEnd,
+    required int limitCents,
+    required String idempotencyKey,
+    String? budgetId,
+  }) async {
+    final payload = <String, dynamic>{
+      if (budgetId != null) ApiFields.id: budgetId,
+      ApiFields.categoryId: categoryId,
+      ApiFields.periodStart: _date(periodStart),
+      ApiFields.periodEnd: _date(periodEnd),
+      ApiFields.limitCents: limitCents,
+    };
+
+    await _send(
+      ApiMethods.post,
+      ApiContract.budgets(householdId),
+      body: payload,
+      idempotencyKey: idempotencyKey,
+    );
+  }
+
+
+  @override
   Future<FinancialDashboard> getDashboard(
     String householdId, {
-    required int year,
-    required int month,
+    int? year,
+    int? month,
+    DateTime? from,
+    DateTime? to,
   }) async {
+    final query = <String, String>{};
+    if (year != null) query[ApiQueryFields.year] = '$year';
+    if (month != null) query[ApiQueryFields.month] = '$month';
+    if (from != null) query[ApiQueryFields.from] = _date(from);
+    if (to != null) query[ApiQueryFields.to] = _date(to);
     final uri = Uri(
       path: ApiContract.dashboard(householdId),
-      queryParameters: {
-        ApiQueryFields.year: '$year',
-        ApiQueryFields.month: '$month',
-      },
+      queryParameters: query.isEmpty ? null : query,
     );
     final response = await _send(ApiMethods.get, uri.toString());
     return LedgerResponseMapper.dashboard(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
+  }
+
+  @override
+  Future<FinancialPeriodComparison> comparePeriods(
+    String householdId, {
+    int? year,
+    int? month,
+    DateTime? from,
+    DateTime? to,
+  }) async {
+    final query = <String, String>{};
+    if (year != null) query[ApiQueryFields.year] = '$year';
+    if (month != null) query[ApiQueryFields.month] = '$month';
+    if (from != null) query[ApiQueryFields.from] = _date(from);
+    if (to != null) query[ApiQueryFields.to] = _date(to);
+    final uri = Uri(
+      path: ApiContract.dashboardCompare(householdId),
+      queryParameters: query.isEmpty ? null : query,
+    );
+    final response = await _send(ApiMethods.get, uri.toString());
+    return LedgerResponseMapper.comparison(
       jsonDecode(response.body) as Map<String, dynamic>,
     );
   }

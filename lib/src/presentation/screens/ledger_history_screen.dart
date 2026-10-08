@@ -9,9 +9,18 @@ import 'package:inout/src/infrastructure/financial/api_ledger_repository.dart';
 import 'package:inout/src/presentation/providers/session_providers.dart';
 
 final class LedgerHistoryScreen extends ConsumerStatefulWidget {
-  const LedgerHistoryScreen({required this.household, super.key});
+  const LedgerHistoryScreen({
+    required this.household,
+    this.initialAccountId,
+    this.initialCategoryId,
+    this.initialKind,
+    super.key,
+  });
 
   final Household household;
+  final String? initialAccountId;
+  final String? initialCategoryId;
+  final LedgerTransactionKind? initialKind;
 
   @override
   ConsumerState<LedgerHistoryScreen> createState() =>
@@ -33,7 +42,25 @@ final class _LedgerHistoryScreenState
   @override
   void initState() {
     super.initState();
+    _accountId = widget.initialAccountId;
+    _categoryId = widget.initialCategoryId;
+    _kind = widget.initialKind;
     _load();
+  }
+
+  @override
+  void didUpdateWidget(covariant LedgerHistoryScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.initialAccountId != widget.initialAccountId ||
+        oldWidget.initialCategoryId != widget.initialCategoryId ||
+        oldWidget.initialKind != widget.initialKind) {
+      setState(() {
+        _accountId = widget.initialAccountId;
+        _categoryId = widget.initialCategoryId;
+        _kind = widget.initialKind;
+        _load();
+      });
+    }
   }
 
   void _load() {
@@ -107,6 +134,132 @@ final class _LedgerHistoryScreenState
       }
     } finally {
       if (mounted) setState(() => _reversing = false);
+    }
+  }
+
+  Future<void> _correctClassification(LedgerHistoryItem item) async {
+    try {
+      final repository = ref.read(ledgerRepositoryProvider);
+      final categories = await repository.getCategories(widget.household.id);
+      final incomeSources = item.kind == 'income'
+          ? await repository.getIncomeSources(widget.household.id)
+          : <IncomeSourceSummary>[];
+
+      if (!mounted) return;
+
+      String? selectedCategoryId = item.categoryId;
+      String? selectedIncomeSourceId = item.incomeSourceId;
+      final descriptionController = TextEditingController(
+        text: item.description ?? '',
+      );
+
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => StatefulBuilder(
+          builder: (context, setModalState) => AlertDialog(
+            title: const Text('Corrigir Lançamento'),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Valor: ${MoneyUtils.format(item.amountCents, item.currency)}',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 16),
+                  DropdownButtonFormField<String?>(
+                    value: selectedCategoryId,
+                    decoration: const InputDecoration(labelText: 'Categoria'),
+                    items: [
+                      const DropdownMenuItem(
+                        value: null,
+                        child: Text('Sem categoria'),
+                      ),
+                      ...categories
+                          .where(
+                            (cat) => item.kind == 'income'
+                                ? cat.flow.name == 'income'
+                                : (item.kind == 'expense'
+                                      ? cat.flow.name == 'expense'
+                                      : true),
+                          )
+                          .map(
+                            (cat) => DropdownMenuItem(
+                              value: cat.id,
+                              child: Text(cat.name),
+                            ),
+                          ),
+                    ],
+                    onChanged: (val) =>
+                        setModalState(() => selectedCategoryId = val),
+                  ),
+                  if (item.kind == 'income') ...[
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<String?>(
+                      value: selectedIncomeSourceId,
+                      decoration: const InputDecoration(
+                        labelText: 'Fonte de Renda',
+                      ),
+                      items: [
+                        const DropdownMenuItem(
+                          value: null,
+                          child: Text('Sem fonte'),
+                        ),
+                        ...incomeSources.map(
+                          (src) => DropdownMenuItem(
+                            value: src.id,
+                            child: Text(src.name),
+                          ),
+                        ),
+                      ],
+                      onChanged: (val) =>
+                          setModalState(() => selectedIncomeSourceId = val),
+                    ),
+                  ],
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: descriptionController,
+                    decoration: const InputDecoration(labelText: 'Descrição'),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(false),
+                child: const Text('Cancelar'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.of(dialogContext).pop(true),
+                child: const Text('Salvar'),
+              ),
+            ],
+          ),
+        ),
+      );
+
+      if (confirmed != true || !mounted) return;
+
+      await repository.correctClassification(
+        householdId: widget.household.id,
+        transactionId: item.transactionId,
+        categoryId: selectedCategoryId,
+        incomeSourceId: selectedIncomeSourceId,
+        description: descriptionController.text.trim().isEmpty
+            ? null
+            : descriptionController.text.trim(),
+      );
+      ref.invalidate(ledgerAccountsProvider(widget.household.id));
+      ref.invalidate(financialDashboardProvider);
+      if (mounted) setState(_load);
+    } catch (_) {
+      if (mounted) {
+        setState(
+          () => _reversalError =
+              'Não foi possível corrigir a classificação do lançamento.',
+        );
+      }
     }
   }
 
@@ -271,6 +424,12 @@ final class _LedgerHistoryScreenState
                               earlier.transactionId != item.transactionId,
                         );
                     return ListTile(
+                      onTap:
+                          (firstEntry &&
+                              item.status == 'posted' &&
+                              item.kind != 'reversal')
+                          ? () => _correctClassification(item)
+                          : null,
                       title: Text(
                         item.description ?? item.categoryName ?? item.kind,
                       ),
@@ -287,7 +446,12 @@ final class _LedgerHistoryScreenState
                           ),
                           if (firstEntry &&
                               item.status == 'posted' &&
-                              item.kind != 'reversal')
+                              item.kind != 'reversal') ...[
+                            IconButton(
+                              tooltip: 'Corrigir lançamento',
+                              onPressed: () => _correctClassification(item),
+                              icon: const Icon(Icons.edit_note),
+                            ),
                             IconButton(
                               tooltip: 'Estornar lançamento',
                               onPressed: _reversing
@@ -295,6 +459,7 @@ final class _LedgerHistoryScreenState
                                   : () => _reverse(item),
                               icon: const Icon(Icons.undo),
                             ),
+                          ],
                         ],
                       ),
                     );

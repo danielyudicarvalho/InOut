@@ -60,4 +60,35 @@ public sealed class AccountTests
         Assert.False(archived.IsActive);
         Assert.Equal(archivedAt, archived.ArchivedAt);
     }
+
+    [Fact]
+    public void UpdateMetadataModifiesNameAndKindForActiveAccount()
+    {
+        var account = Account.Create(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            "Conta Antiga",
+            AccountKind.Checking,
+            "BRL");
+
+        var updated = account.UpdateMetadata("  Conta Nova  ", AccountKind.Savings);
+
+        Assert.Equal("Conta Nova", updated.Name);
+        Assert.Equal(AccountKind.Savings, updated.Kind);
+        Assert.Equal(account.Currency, updated.Currency);
+    }
+
+    [Fact]
+    public void UpdateMetadataThrowsWhenAccountIsArchived()
+    {
+        var account = Account.Create(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            "Conta",
+            AccountKind.Checking,
+            "BRL").Archive(DateTimeOffset.UtcNow);
+
+        var ex = Assert.Throws<FinancialRuleException>(() => account.UpdateMetadata("Novo Nome", AccountKind.Savings));
+        Assert.Equal(FinancialErrorCodes.AccountArchived, ex.Code);
+    }
 }

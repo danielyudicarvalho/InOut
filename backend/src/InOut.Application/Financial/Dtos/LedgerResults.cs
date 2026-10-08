@@ -30,7 +30,9 @@ public sealed record LedgerHistoryFilter(
     DateOnly? To = null,
     Guid? AccountId = null,
     Guid? CategoryId = null,
-    FinancialTransactionKind? Kind = null);
+    FinancialTransactionKind? Kind = null,
+    Guid? IncomeSourceId = null,
+    string? Search = null);
 
 public sealed record LedgerHistoryItem(
     Guid TransactionId,
@@ -58,7 +60,19 @@ public sealed record LedgerReconciliation(
     IReadOnlyList<AccountBalance> Balances);
 
 public sealed record DashboardAccountBalance(
-    Guid AccountId, string AccountName, string Currency, long BalanceCents);
+    Guid AccountId,
+    string AccountName,
+    string Currency,
+    long BalanceCents,
+    long InflowCents = 0,
+    long OutflowCents = 0,
+    long NetChangeCents = 0);
+
+public sealed record DashboardIncomeSourceIncome(
+    Guid? IncomeSourceId,
+    string SourceName,
+    string Currency,
+    long AmountCents);
 
 public sealed record DashboardCurrencySummary(
     string Currency, long ConsolidatedBalanceCents, long IncomeCents,
@@ -80,5 +94,16 @@ public sealed record FinancialDashboard(
     IReadOnlyList<DashboardCurrencySummary> Summaries,
     IReadOnlyList<DashboardAccountBalance> Accounts,
     IReadOnlyList<DashboardCategoryExpense> CategoryExpenses,
+    IReadOnlyList<DashboardIncomeSourceIncome> IncomeSources,
     IReadOnlyList<DashboardBudgetProgress> Budgets,
     IReadOnlyList<DashboardGoalProgress> Goals);
+
+public sealed record BudgetResult(
+    Guid Id,
+    Guid HouseholdId,
+    Guid CategoryId,
+    DateOnly PeriodStart,
+    DateOnly PeriodEnd,
+    long LimitCents,
+    bool Replayed);
+

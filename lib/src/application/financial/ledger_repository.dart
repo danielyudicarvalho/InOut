@@ -25,6 +25,13 @@ abstract interface class LedgerRepository {
     required String accountId,
   });
 
+  Future<AccountSummary> updateAccountMetadata({
+    required String householdId,
+    required String accountId,
+    required String name,
+    required String kind,
+  });
+
   Future<List<CategorySummary>> getCategories(
     String householdId, {
     FinancialFlow? flow,
@@ -52,7 +59,9 @@ abstract interface class LedgerRepository {
     DateTime? to,
     String? accountId,
     String? categoryId,
+    String? incomeSourceId,
     String? kind,
+    String? search,
   });
 
   Future<List<IncomeSourceSummary>> getIncomeSources(
@@ -113,13 +122,41 @@ abstract interface class LedgerRepository {
     String? description,
   });
 
+  Future<LedgerHistoryItem> correctClassification({
+    required String householdId,
+    required String transactionId,
+    String? categoryId,
+    String? incomeSourceId,
+    String? description,
+  });
+
   Future<List<AccountBalance>> getBalances(String householdId);
 
   Future<LedgerReconciliation> reconcile(String householdId);
 
+  Future<void> setBudget({
+    required String householdId,
+    required String categoryId,
+    required DateTime periodStart,
+    required DateTime periodEnd,
+    required int limitCents,
+    required String idempotencyKey,
+    String? budgetId,
+  });
+
   Future<FinancialDashboard> getDashboard(
     String householdId, {
-    required int year,
-    required int month,
+    int? year,
+    int? month,
+    DateTime? from,
+    DateTime? to,
+  });
+
+  Future<FinancialPeriodComparison> comparePeriods(
+    String householdId, {
+    int? year,
+    int? month,
+    DateTime? from,
+    DateTime? to,
   });
 }

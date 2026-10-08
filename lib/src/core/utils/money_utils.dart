@@ -27,4 +27,11 @@ abstract final class MoneyUtils {
     if (amount == null || !amount.isFinite) return null;
     return (amount * 100).round();
   }
+
+  static String symbolFor(String currency) => switch (currency.toUpperCase()) {
+        'BRL' => r'R$',
+        'USD' => r'$',
+        'EUR' => r'€',
+        _ => currency,
+      };
 }
