@@ -95,6 +95,7 @@ public sealed partial class EfLedgerStore
             ParentId = category.ParentId,
             Name = category.Name,
             Flow = category.Flow,
+            Status = category.Status,
             CreatedBy = actorUserId,
         });
         AddAudit(householdId, actorUserId, PersistenceVocabulary.AuditActions.CategoryCreated,
@@ -154,6 +155,7 @@ public sealed partial class EfLedgerStore
             }
 
             record.ArchivedAt = DateTimeOffset.UtcNow;
+            record.Status = CategoryStatus.Archived;
             AddAudit(householdId, actorUserId, PersistenceVocabulary.AuditActions.CategoryArchived,
                 PersistenceVocabulary.EntityTypes.Category, categoryId);
             await dbContext.SaveChangesAsync(cancellationToken);
@@ -168,5 +170,6 @@ public sealed partial class EfLedgerStore
         record.Name,
         record.Flow,
         record.ParentId,
-        record.ArchivedAt);
+        record.ArchivedAt,
+        record.Status);
 }

@@ -52,10 +52,10 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
             insert into public.categories (id, household_id, name, flow, created_by)
             values (@expense_category_id, @household_id, 'Food', 'expense', @actor_user_id);
             insert into public.budgets (
-              id, household_id, category_id, period_start, period_end, limit_cents)
+              id, household_id, category_id, period_start, period_end, limit_cents, created_by)
             values (
               gen_random_uuid(), @household_id, @expense_category_id,
-              '2026-09-01', '2026-09-30', 500);
+              '2026-09-01', '2026-09-30', 500, @actor_user_id);
             insert into public.goals (
               id, household_id, name, target_cents, allocated_cents, target_date)
             values (
@@ -1274,12 +1274,50 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
           joined_at timestamptz not null default now(),
           primary key (household_id, user_id)
         );
+        create table public.status_types (
+          code text primary key,
+          name text not null,
+          description text,
+          created_at timestamptz not null default now()
+        );
+        create table public.status_values (
+          id int primary key,
+          type_code text not null references public.status_types(code) on delete cascade,
+          code text not null,
+          name text not null,
+          description text,
+          created_at timestamptz not null default now(),
+          unique (type_code, code)
+        );
+        insert into public.status_types (code, name) values
+          ('account_status', 'Account Status'),
+          ('category_status', 'Category Status'),
+          ('income_source_status', 'Income Source Status'),
+          ('goal_status', 'Goal Status'),
+          ('recurring_plan_status', 'Recurring Plan Status');
+        insert into public.status_values (id, type_code, code, name) values
+          (1, 'account_status', 'active', 'Active'),
+          (2, 'account_status', 'frozen', 'Frozen'),
+          (3, 'account_status', 'archived', 'Archived'),
+          (4, 'category_status', 'active', 'Active'),
+          (5, 'category_status', 'deprecated', 'Deprecated'),
+          (6, 'category_status', 'archived', 'Archived'),
+          (7, 'income_source_status', 'active', 'Active'),
+          (8, 'income_source_status', 'archived', 'Archived'),
+          (9, 'goal_status', 'active', 'Active'),
+          (10, 'goal_status', 'paused', 'Paused'),
+          (11, 'goal_status', 'completed', 'Completed'),
+          (12, 'goal_status', 'archived', 'Archived'),
+          (13, 'recurring_plan_status', 'active', 'Active'),
+          (14, 'recurring_plan_status', 'paused', 'Paused'),
+          (15, 'recurring_plan_status', 'archived', 'Archived');
         create table public.accounts (
           id uuid primary key,
           household_id uuid not null references public.households(id),
           name text not null,
           kind text not null,
           currency text not null,
+          status_id int not null default 1 references public.status_values(id),
           created_by uuid not null,
           created_at timestamptz not null default now(),
           archived_at timestamptz,
@@ -1291,6 +1329,7 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
           parent_id uuid,
           name text not null,
           flow text not null,
+          status_id int not null default 4 references public.status_values(id),
           created_by uuid not null,
           created_at timestamptz not null default now(),
           archived_at timestamptz,
@@ -1300,6 +1339,7 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
           id uuid primary key,
           household_id uuid not null references public.households(id),
           name text not null,
+          status_id int not null default 7 references public.status_values(id),
           created_by uuid not null,
           created_at timestamptz not null default now(),
           archived_at timestamptz,
@@ -1347,7 +1387,8 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
           category_id uuid not null,
           period_start date not null,
           period_end date not null,
-          limit_cents bigint not null
+          limit_cents bigint not null,
+          created_by uuid
         );
         create table public.goals (
           id uuid primary key,
@@ -1356,6 +1397,7 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
           target_cents bigint not null,
           allocated_cents bigint not null,
           target_date date,
+          status_id int not null default 9 references public.status_values(id),
           archived_at timestamptz
         );
         create table public.audit_events (

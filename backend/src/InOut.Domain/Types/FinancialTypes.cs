@@ -57,28 +57,28 @@ public enum AccountStatus
 
 public enum CategoryStatus
 {
-    Active = 1,
-    Deprecated = 2,
-    Archived = 3,
+    Active = 4,
+    Deprecated = 5,
+    Archived = 6,
 }
 
 public enum IncomeSourceStatus
 {
-    Active = 1,
-    Archived = 2,
+    Active = 7,
+    Archived = 8,
 }
 
 public enum GoalStatus
 {
-    Active = 1,
-    Paused = 2,
-    Completed = 3,
-    Archived = 4,
+    Active = 9,
+    Paused = 10,
+    Completed = 11,
+    Archived = 12,
 }
 
 public enum RecurringPlanStatus
 {
-    Active = 1,
-    Paused = 2,
-    Archived = 3,
+    Active = 13,
+    Paused = 14,
+    Archived = 15,
 }

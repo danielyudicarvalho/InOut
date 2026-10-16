@@ -38,6 +38,7 @@ public sealed partial class EfLedgerStore
             Id = source.Id,
             HouseholdId = source.HouseholdId,
             Name = source.Name,
+            Status = source.Status,
             CreatedBy = actorUserId,
         });
         AddAudit(source.HouseholdId, actorUserId, PersistenceVocabulary.AuditActions.IncomeSourceCreated, PersistenceVocabulary.EntityTypes.IncomeSource, source.Id);
@@ -63,8 +64,10 @@ public sealed partial class EfLedgerStore
             throw new FinancialRuleException(FinancialErrorCodes.IncomeSourceNotFound, "Income source was not found.");
         if (source.ArchivedAt is null)
         {
-            source.ArchivedAt = new IncomeSource(source.Id, source.HouseholdId, source.Name, null)
-                .Archive(timeProvider.GetUtcNow()).ArchivedAt;
+            var archived = new IncomeSource(source.Id, source.HouseholdId, source.Name, null, source.Status)
+                .Archive(timeProvider.GetUtcNow());
+            source.ArchivedAt = archived.ArchivedAt;
+            source.Status = archived.Status;
             AddAudit(householdId, actorUserId, PersistenceVocabulary.AuditActions.IncomeSourceArchived, PersistenceVocabulary.EntityTypes.IncomeSource, sourceId);
             await dbContext.SaveChangesAsync(cancellationToken);
         }
@@ -75,5 +78,6 @@ public sealed partial class EfLedgerStore
         record.Id,
         record.HouseholdId,
         record.Name,
-        record.ArchivedAt);
+        record.ArchivedAt,
+        record.Status);
 }

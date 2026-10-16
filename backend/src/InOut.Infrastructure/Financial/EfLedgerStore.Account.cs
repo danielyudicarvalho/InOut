@@ -46,6 +46,7 @@ public sealed partial class EfLedgerStore
             Name = account.Name,
             Kind = account.Kind,
             Currency = account.Currency,
+            Status = account.Status,
             CreatedBy = idempotencyRequest.ActorUserId,
         };
         dbContext.Accounts.Add(record);
@@ -158,11 +159,13 @@ public sealed partial class EfLedgerStore
             account.Name,
             account.Kind,
             account.Currency,
-            account.ArchivedAt)
+            account.ArchivedAt,
+            account.Status)
             .Archive(DateTimeOffset.UtcNow);
-        if (account.ArchivedAt != archived.ArchivedAt)
+        if (account.ArchivedAt != archived.ArchivedAt || account.Status != archived.Status)
         {
             account.ArchivedAt = archived.ArchivedAt;
+            account.Status = archived.Status;
             AddAudit(
                 householdId,
                 actorUserId,
@@ -198,7 +201,8 @@ public sealed partial class EfLedgerStore
             account.Name,
             account.Kind,
             account.Currency,
-            account.ArchivedAt);
+            account.ArchivedAt,
+            account.Status);
 
         var updatedDomain = domain.UpdateMetadata(name, kind);
 
@@ -248,5 +252,6 @@ public sealed partial class EfLedgerStore
         record.Name,
         record.Kind,
         record.Currency,
-        record.ArchivedAt);
+        record.ArchivedAt,
+        record.Status);
 }
