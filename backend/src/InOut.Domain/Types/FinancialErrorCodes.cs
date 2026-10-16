@@ -11,6 +11,7 @@ public static class FinancialErrorCodes
     public const string InvalidAccount = "invalid_account";
     public const string InvalidAccountId = "invalid_account_id";
     public const string InvalidAccountName = "invalid_account_name";
+    public const string InvalidGoalName = "invalid_goal_name";
     public const string InvalidAmount = "invalid_amount";
     public const string InvalidIncomeSource = "invalid_income_source";
     public const string InvalidRecurringPlan = "invalid_recurring_plan";

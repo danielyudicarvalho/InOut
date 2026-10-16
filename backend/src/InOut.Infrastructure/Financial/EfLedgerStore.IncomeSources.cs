@@ -70,4 +70,10 @@ public sealed partial class EfLedgerStore
         }
         await transaction.CommitAsync(cancellationToken);
     }
+
+    private static IncomeSource ToDomain(IncomeSourceRecord record) => new(
+        record.Id,
+        record.HouseholdId,
+        record.Name,
+        record.ArchivedAt);
 }
