@@ -138,21 +138,27 @@ select results_eq('select user_id from public.household_members', array['1000000
 select results_eq('select name from public.categories', array['Category A'::text], 'categories exclude other homes');
 select results_eq('select id from public.transactions', array['a3000000-0000-0000-0000-000000000001'::uuid], 'transactions exclude other homes');
 select results_eq('select amount_cents from public.entries', array[100::bigint], 'entries exclude other homes');
-select results_eq(
-  $$ update public.entries
-     set category_id = 'a2000000-0000-0000-0000-000000000001'
-     where transaction_id = 'a3000000-0000-0000-0000-000000000001'
-     returning category_id $$,
-  array['a2000000-0000-0000-0000-000000000001'::uuid],
-  'runtime can correct an entry classification in its own household'
-);
-select results_eq(
-  $$ update public.entries set category_id = null
-     where household_id = 'bbbbbbbb-0000-0000-0000-000000000002'
-     returning id $$,
-  array[]::uuid[],
-  'entry classification updates cannot change another household'
-);
+select lives_ok($test$
+  do $block$
+  declare changed_count integer;
+  begin
+    update public.entries
+    set category_id = 'a2000000-0000-0000-0000-000000000001'
+    where transaction_id = 'a3000000-0000-0000-000000000001';
+    get diagnostics changed_count = row_count;
+    if changed_count <> 1 then raise exception 'entry classification correction failed'; end if;
+  end $block$
+$test$, 'runtime can correct an entry classification in its own household');
+select lives_ok($test$
+  do $block$
+  declare changed_count integer;
+  begin
+    update public.entries set category_id = null
+    where household_id = 'bbbbbbbb-0000-0000-0000-000000000002';
+    get diagnostics changed_count = row_count;
+    if changed_count <> 0 then raise exception 'cross-household entry update succeeded'; end if;
+  end $block$
+$test$, 'entry classification updates cannot change another household');
 select is((select count(*) from public.budgets), 0::bigint, 'dashboard budgets exclude other homes');
 select is((select count(*) from public.goals), 0::bigint, 'dashboard goals exclude other homes');
 select is((select count(*) from public.accounts where household_id = 'bbbbbbbb-0000-0000-0000-000000000002'), 0::bigint, 'direct account lookup excludes other homes');
