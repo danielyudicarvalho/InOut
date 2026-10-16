@@ -8,7 +8,6 @@ import 'package:inout/src/core/utils/string_utils.dart';
 import 'package:inout/src/core/utils/uuid_utils.dart';
 import 'package:inout/src/domain/household/household.dart';
 import 'package:inout/src/infrastructure/financial/api_ledger_repository.dart';
-import 'package:inout/src/presentation/providers/household_providers.dart';
 import 'package:inout/src/presentation/providers/session_providers.dart';
 
 final class AccountFormScreen extends ConsumerStatefulWidget {
@@ -215,7 +214,7 @@ final class _AccountFormScreenState extends ConsumerState<AccountFormScreen> {
                     ),
                     const SizedBox(height: 16),
                     DropdownButtonFormField<String>(
-                      value: _kind,
+                      initialValue: _kind,
                       decoration: const InputDecoration(
                         labelText: 'Tipo de conta',
                       ),
@@ -247,7 +246,7 @@ final class _AccountFormScreenState extends ConsumerState<AccountFormScreen> {
                     const SizedBox(height: 16),
                     if (!isEditing) ...[
                       DropdownButtonFormField<String>(
-                        value: _currency,
+                        initialValue: _currency,
                         decoration: const InputDecoration(labelText: 'Moeda'),
                         items: const [
                           DropdownMenuItem(

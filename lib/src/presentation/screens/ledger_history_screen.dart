@@ -169,7 +169,7 @@ final class _LedgerHistoryScreenState
                   ),
                   const SizedBox(height: 16),
                   DropdownButtonFormField<String?>(
-                    value: selectedCategoryId,
+                    initialValue: selectedCategoryId,
                     decoration: const InputDecoration(labelText: 'Categoria'),
                     items: [
                       const DropdownMenuItem(
@@ -197,7 +197,7 @@ final class _LedgerHistoryScreenState
                   if (item.kind == 'income') ...[
                     const SizedBox(height: 12),
                     DropdownButtonFormField<String?>(
-                      value: selectedIncomeSourceId,
+                      initialValue: selectedIncomeSourceId,
                       decoration: const InputDecoration(
                         labelText: 'Fonte de Renda',
                       ),

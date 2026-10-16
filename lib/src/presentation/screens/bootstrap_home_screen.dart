@@ -339,6 +339,7 @@ final class _BootstrapHomeScreenState
     final accounts = await ref.read(
       ledgerAccountsProvider(household.id).future,
     );
+    if (!context.mounted) return;
     final account = accounts.firstWhere((a) => a.id == accountId);
     final updated = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
@@ -392,7 +393,7 @@ final class _BootstrapHomeScreenState
             mainAxisSize: MainAxisSize.min,
             children: [
               DropdownButtonFormField<String>(
-                value: selectedCategoryId,
+                initialValue: selectedCategoryId,
                 decoration: const InputDecoration(
                   labelText: 'Categoria de Despesa',
                 ),

@@ -384,7 +384,7 @@ final class _Section extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(title, style: Theme.of(context).textTheme.titleMedium),
-            if (action != null) action!,
+            ?action,
           ],
         ),
         const SizedBox(height: 8),

@@ -171,8 +171,9 @@ final class ApiLedgerRepository implements LedgerRepository {
     if (to != null) query[ApiQueryFields.to] = _date(to);
     if (accountId != null) query[ApiQueryFields.accountId] = accountId;
     if (categoryId != null) query[ApiQueryFields.categoryId] = categoryId;
-    if (incomeSourceId != null)
+    if (incomeSourceId != null) {
       query[ApiQueryFields.incomeSourceId] = incomeSourceId;
+    }
     if (kind != null) query[ApiQueryFields.kind] = kind;
     if (search != null && search.trim().isNotEmpty) {
       query[ApiQueryFields.search] = search.trim();
@@ -251,7 +252,7 @@ final class ApiLedgerRepository implements LedgerRepository {
     ApiFields.currency: currency,
     ApiFields.occurredOn: _date(occurredOn),
     ApiFields.description: description,
-    if (incomeSourceId != null) ApiFields.incomeSourceId: incomeSourceId,
+    ApiFields.incomeSourceId: ?incomeSourceId,
   });
 
   @override
@@ -368,7 +369,7 @@ final class ApiLedgerRepository implements LedgerRepository {
     String? budgetId,
   }) async {
     final payload = <String, dynamic>{
-      if (budgetId != null) ApiFields.id: budgetId,
+      ApiFields.id: ?budgetId,
       ApiFields.categoryId: categoryId,
       ApiFields.periodStart: _date(periodStart),
       ApiFields.periodEnd: _date(periodEnd),

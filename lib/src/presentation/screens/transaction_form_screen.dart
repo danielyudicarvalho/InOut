@@ -261,7 +261,7 @@ final class _TransactionFormScreenState
                       child: ListView(
                         children: [
                           DropdownButtonFormField<String>(
-                            value: _accountId,
+                            initialValue: _accountId,
                             decoration: const InputDecoration(
                               labelText: 'Conta',
                             ),
