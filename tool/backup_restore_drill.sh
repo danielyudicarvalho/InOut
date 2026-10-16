@@ -21,12 +21,12 @@ gpg --batch --yes --pinentry-mode loopback --quiet --passphrase-file "$workdir/k
   --decrypt --output "$workdir/backup.tar.gz" "$workdir/backup.gpg"
 tar -xzf "$workdir/backup.tar.gz" -C "$workdir" --no-same-owner data.sql
 
-# Restore into empty public tables, including lookup rows seeded by migrations.
+# Restore into empty application tables, including lookup rows seeded by migrations.
 # Keep truncation and import atomic in this disposable local database.
 psql --no-psqlrc --single-transaction --set ON_ERROR_STOP=1 --dbname "$local_db_url" \
   --command "do \$drill\$ declare tables text; begin
     select string_agg(format('%I.%I', schemaname, tablename), ', ')
-      into tables from pg_tables where schemaname = 'public';
+      into tables from pg_tables where schemaname in ('public', 'private');
     execute 'truncate table ' || tables;
   end \$drill\$;" \
   --file "$workdir/data.sql" > /dev/null
