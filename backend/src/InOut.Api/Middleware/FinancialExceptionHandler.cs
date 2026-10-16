@@ -32,6 +32,7 @@ public sealed class FinancialExceptionHandler : IExceptionHandler
             FinancialErrorCodes.AccountConflict or
             FinancialErrorCodes.AccountNameConflict or
             FinancialErrorCodes.AccountArchived or
+            FinancialErrorCodes.AccountFrozen or
             FinancialErrorCodes.CategoryConflict or
             FinancialErrorCodes.IncomeSourceConflict or
             FinancialErrorCodes.RecurringPlanConflict or

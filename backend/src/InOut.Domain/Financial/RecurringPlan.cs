@@ -2,14 +2,24 @@ using InOut.Domain.Utils;
 
 namespace InOut.Domain.Financial;
 
-public enum RecurringPlanStatus { Active, Paused, Archived }
-
 public sealed record RecurringPlan(
     Guid Id, Guid HouseholdId, string Name, FinancialFlow Flow,
     Guid AccountId, Guid CategoryId, Guid? IncomeSourceId,
     Money Amount, int DayOfMonth, DateOnly StartsOn, DateOnly? EndsOn,
     RecurringPlanStatus Status)
 {
+    public bool CanExecute => Status == RecurringPlanStatus.Active;
+    public bool CanPause => Status == RecurringPlanStatus.Active;
+    public bool CanResume => Status == RecurringPlanStatus.Paused;
+
+    public void EnsureCanExecute()
+    {
+        if (Status == RecurringPlanStatus.Archived)
+            throw new FinancialRuleException(FinancialErrorCodes.InvalidRecurringPlan, "Archived plan cannot be executed.");
+        if (Status == RecurringPlanStatus.Paused)
+            throw new FinancialRuleException(FinancialErrorCodes.InvalidRecurringPlan, "Paused plan cannot be executed.");
+    }
+
     public static RecurringPlan Create(
         Guid id, Guid householdId, string? name, FinancialFlow flow,
         Guid accountId, Guid categoryId, Guid? incomeSourceId,
@@ -42,12 +52,12 @@ public sealed record RecurringPlan(
 
     public void ValidateReferences(Account? account, Category? category, IncomeSource? source)
     {
-        if (account is null || account.HouseholdId != HouseholdId || !account.IsActive ||
+        if (account is null || account.HouseholdId != HouseholdId || !account.CanTransact ||
             account.Id != AccountId || account.Currency != Amount.Currency ||
-            category is null || category.HouseholdId != HouseholdId || !category.IsActive ||
+            category is null || category.HouseholdId != HouseholdId || !category.CanAssignTransaction ||
             category.Id != CategoryId || category.Flow != Flow ||
             IncomeSourceId is not null && (source is null || source.Id != IncomeSourceId ||
-                source.HouseholdId != HouseholdId || !source.IsActive))
+                source.HouseholdId != HouseholdId || !source.CanAssignTransaction))
             throw new FinancialRuleException(FinancialErrorCodes.InvalidRecurringPlan,
                 "Plan references must be active and belong to the same household.");
     }
@@ -57,7 +67,7 @@ public sealed record RecurringPlan(
         if (count is < 1 or > 24)
             throw new FinancialRuleException(FinancialErrorCodes.InvalidRecurringPlan,
                 "Preview count must be between 1 and 24.");
-        if (Status != RecurringPlanStatus.Active) return [];
+        if (!CanExecute) return [];
 
         var dates = new List<DateOnly>(count);
         var cursor = new DateOnly(Math.Max(from.Year, StartsOn.Year),

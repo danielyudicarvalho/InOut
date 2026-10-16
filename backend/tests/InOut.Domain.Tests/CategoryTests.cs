@@ -71,4 +71,24 @@ public sealed class CategoryTests
 
         Assert.Equal(archivedAt1, reArchived.ArchivedAt);
     }
+
+    [Fact]
+    public void DeprecateTransitionsCategoryStateAndPreventsAssignment()
+    {
+        var category = Category.Create(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            "Streaming",
+            FinancialFlow.Expense);
+
+        Assert.Equal(CategoryStatus.Active, category.Status);
+        Assert.True(category.CanAssignTransaction);
+
+        var deprecated = category.Deprecate();
+        Assert.Equal(CategoryStatus.Deprecated, deprecated.Status);
+        Assert.False(deprecated.CanAssignTransaction);
+
+        var ex = Assert.Throws<FinancialRuleException>(() => deprecated.EnsureCanAssignTransaction(FinancialFlow.Expense));
+        Assert.Equal(FinancialErrorCodes.InvalidCategory, ex.Code);
+    }
 }

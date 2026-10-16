@@ -3,6 +3,7 @@ namespace InOut.Domain.Financial;
 public static class FinancialErrorCodes
 {
     public const string AccountArchived = "account_archived";
+    public const string AccountFrozen = "account_frozen";
     public const string AccountNameConflict = "account_name_conflict";
     public const string AccountConflict = "account_conflict";
     public const string AccountNotFound = "account_not_found";

@@ -229,11 +229,16 @@ public sealed class FinancialTransaction
             .Where(account => accountIds.Contains(account.Id))
             .ToArray();
         if (referencedAccounts.Length != accountIds.Length ||
-            referencedAccounts.Any(account => account.HouseholdId != HouseholdId || !account.IsActive))
+            referencedAccounts.Any(account => account.HouseholdId != HouseholdId || !account.CanTransact))
         {
             throw new FinancialRuleException(
                 FinancialErrorCodes.InvalidAccount,
                 "Every account must be active and belong to the household.");
+        }
+
+        foreach (var account in referencedAccounts)
+        {
+            account.EnsureCanTransact();
         }
 
         if (referencedAccounts.Any(account =>
@@ -266,14 +271,16 @@ public sealed class FinancialTransaction
             .Where(category => categoryIds.Contains(category.Id))
             .ToArray();
         if (referencedCategories.Length != categoryIds.Length ||
-            referencedCategories.Any(category =>
-                category.HouseholdId != HouseholdId ||
-                !category.IsActive ||
-                category.Flow != expectedFlow))
+            referencedCategories.Any(category => category.HouseholdId != HouseholdId))
         {
             throw new FinancialRuleException(
                 FinancialErrorCodes.InvalidCategory,
                 "Every category must be active, belong to the household, and match the transaction flow.");
+        }
+
+        foreach (var category in referencedCategories)
+        {
+            category.EnsureCanAssignTransaction(expectedFlow);
         }
     }
 
@@ -292,7 +299,7 @@ public sealed class FinancialTransaction
         Guid? targetCategoryId = entries.Count > 0 ? entries[0].CategoryId : null;
         if (newCategory is not null)
         {
-            if (newCategory.HouseholdId != HouseholdId || !newCategory.IsActive)
+            if (newCategory.HouseholdId != HouseholdId)
             {
                 throw new FinancialRuleException(
                     FinancialErrorCodes.InvalidCategory,
@@ -306,11 +313,15 @@ public sealed class FinancialTransaction
                 _ => (FinancialFlow?)null
             };
 
-            if (expectedFlow is not null && newCategory.Flow != expectedFlow.Value)
+            if (expectedFlow is not null)
+            {
+                newCategory.EnsureCanAssignTransaction(expectedFlow.Value);
+            }
+            else if (!newCategory.CanAssignTransaction)
             {
                 throw new FinancialRuleException(
                     FinancialErrorCodes.InvalidCategory,
-                    $"Category flow '{newCategory.Flow}' does not match transaction kind '{Kind}'.");
+                    "Category must belong to the household.");
             }
 
             targetCategoryId = newCategory.Id;
@@ -326,13 +337,8 @@ public sealed class FinancialTransaction
                     "Income source can only be assigned to income transactions.");
             }
 
-            if (newIncomeSource.HouseholdId != HouseholdId || !newIncomeSource.IsActive)
-            {
-                throw new FinancialRuleException(
-                    FinancialErrorCodes.InvalidIncomeSource,
-                    "Income source must belong to the household.");
-            }
-
+            newIncomeSource.EnsureBelongsToHousehold(HouseholdId);
+            newIncomeSource.EnsureCanAssignTransaction();
             targetIncomeSourceId = newIncomeSource.Id;
         }
 
