@@ -64,7 +64,13 @@ final ledgerAccountsProvider = FutureProvider.autoDispose
 final financialDashboardProvider = FutureProvider.autoDispose
     .family<
       FinancialDashboard,
-      ({String householdId, int? year, int? month, DateTime? from, DateTime? to})
+      ({
+        String householdId,
+        int? year,
+        int? month,
+        DateTime? from,
+        DateTime? to,
+      })
     >(
       (ref, input) => ref
           .watch(ledgerRepositoryProvider)
@@ -80,7 +86,13 @@ final financialDashboardProvider = FutureProvider.autoDispose
 final financialPeriodComparisonProvider = FutureProvider.autoDispose
     .family<
       FinancialPeriodComparison,
-      ({String householdId, int? year, int? month, DateTime? from, DateTime? to})
+      ({
+        String householdId,
+        int? year,
+        int? month,
+        DateTime? from,
+        DateTime? to,
+      })
     >(
       (ref, input) => ref
           .watch(ledgerRepositoryProvider)

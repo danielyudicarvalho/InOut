@@ -383,7 +383,6 @@ final class ApiLedgerRepository implements LedgerRepository {
     );
   }
 
-
   @override
   Future<FinancialDashboard> getDashboard(
     String householdId, {

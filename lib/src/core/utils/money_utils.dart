@@ -29,9 +29,9 @@ abstract final class MoneyUtils {
   }
 
   static String symbolFor(String currency) => switch (currency.toUpperCase()) {
-        'BRL' => r'R$',
-        'USD' => r'$',
-        'EUR' => r'€',
-        _ => currency,
-      };
+    'BRL' => r'R$',
+    'USD' => r'$',
+    'EUR' => r'€',
+    _ => currency,
+  };
 }

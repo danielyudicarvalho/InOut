@@ -97,8 +97,8 @@ public sealed record Account
                 "Archived account cannot be frozen.");
         }
 
-        return Status == AccountStatus.Frozen 
-            ? this 
+        return Status == AccountStatus.Frozen
+            ? this
             : this with { Status = AccountStatus.Frozen };
     }
 
@@ -111,8 +111,8 @@ public sealed record Account
                 "Archived account cannot be unfrozen.");
         }
 
-        return Status == AccountStatus.Frozen 
-            ? this with { Status = AccountStatus.Active } 
+        return Status == AccountStatus.Frozen
+            ? this with { Status = AccountStatus.Active }
             : this;
     }
 

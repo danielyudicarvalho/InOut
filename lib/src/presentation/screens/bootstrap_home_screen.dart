@@ -53,7 +53,9 @@ final class _BootstrapHomeScreenState
         to: _dashboardTo,
       );
       final dashboard = ref.watch(financialDashboardProvider(dashboardInput));
-      final comparison = ref.watch(financialPeriodComparisonProvider(dashboardInput));
+      final comparison = ref.watch(
+        financialPeriodComparisonProvider(dashboardInput),
+      );
       final sync = ref.watch(householdSyncProvider(selected.id));
 
       Widget body;
@@ -363,8 +365,9 @@ final class _BootstrapHomeScreenState
         flow: FinancialFlow.expense,
       )).future,
     );
-    final expenseCategories =
-        categories.where((c) => c.archivedAt == null).toList();
+    final expenseCategories = categories
+        .where((c) => c.archivedAt == null)
+        .toList();
 
     if (!context.mounted) return;
 
@@ -459,4 +462,3 @@ final class _BootstrapHomeScreenState
     }
   }
 }
-

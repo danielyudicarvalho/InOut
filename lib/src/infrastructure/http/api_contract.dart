@@ -11,8 +11,7 @@ abstract final class ApiContract {
       '${ledger(householdId)}/accounts';
   static String balances(String householdId) =>
       '${ledger(householdId)}/balances';
-  static String budgets(String householdId) =>
-      '${ledger(householdId)}/budgets';
+  static String budgets(String householdId) => '${ledger(householdId)}/budgets';
   static String categories(String householdId) =>
       '${ledger(householdId)}/categories';
   static String incomeSources(String householdId) =>

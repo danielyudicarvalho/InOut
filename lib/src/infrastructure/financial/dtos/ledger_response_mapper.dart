@@ -152,21 +152,26 @@ abstract final class LedgerResponseMapper {
               incomeCents: currFacts['incomeCents'] as int,
               expenseCents: currFacts['expenseCents'] as int,
               resultCents: currFacts['resultCents'] as int,
-              consolidatedBalanceCents: currFacts['consolidatedBalanceCents'] as int,
+              consolidatedBalanceCents:
+                  currFacts['consolidatedBalanceCents'] as int,
             ),
             previousFacts: PeriodFactSummary(
               incomeCents: prevFacts['incomeCents'] as int,
               expenseCents: prevFacts['expenseCents'] as int,
               resultCents: prevFacts['resultCents'] as int,
-              consolidatedBalanceCents: prevFacts['consolidatedBalanceCents'] as int,
+              consolidatedBalanceCents:
+                  prevFacts['consolidatedBalanceCents'] as int,
             ),
             deltas: PeriodInterpretationDelta(
               incomeDeltaCents: deltas['incomeDeltaCents'] as int,
               expenseDeltaCents: deltas['expenseDeltaCents'] as int,
               resultDeltaCents: deltas['resultDeltaCents'] as int,
-              incomePercentageChange: (deltas['incomePercentageChange'] as num?)?.toDouble(),
-              expensePercentageChange: (deltas['expensePercentageChange'] as num?)?.toDouble(),
-              resultPercentageChange: (deltas['resultPercentageChange'] as num?)?.toDouble(),
+              incomePercentageChange: (deltas['incomePercentageChange'] as num?)
+                  ?.toDouble(),
+              expensePercentageChange:
+                  (deltas['expensePercentageChange'] as num?)?.toDouble(),
+              resultPercentageChange: (deltas['resultPercentageChange'] as num?)
+                  ?.toDouble(),
             ),
           );
         })

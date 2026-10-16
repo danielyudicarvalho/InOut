@@ -285,7 +285,9 @@ final class _TransactionFormScreenState
                           ),
                           const SizedBox(height: 16),
                           TextFormField(
-                            key: ValueKey('amount_input_${_accountId}_$currency'),
+                            key: ValueKey(
+                              'amount_input_${_accountId}_$currency',
+                            ),
                             controller: _amount,
                             autofocus: true,
                             keyboardType: const TextInputType.numberWithOptions(

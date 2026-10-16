@@ -79,14 +79,15 @@ select ok(
   'the API runtime can operate transactions without delete'
 );
 select ok(
-  has_table_privilege('inout_api_runtime', 'public.entries', 'select,insert'),
-  'the API runtime can append and query entries without update or delete'
+  has_table_privilege('inout_api_runtime', 'public.entries', 'select')
+  and has_table_privilege('inout_api_runtime', 'public.entries', 'insert')
+  and has_table_privilege('inout_api_runtime', 'public.entries', 'update'),
+  'the API runtime can append, query and correct entry classifications'
 );
 select ok(
-  not has_table_privilege('inout_api_runtime', 'public.entries', 'update')
-  and not has_table_privilege('inout_api_runtime', 'public.entries', 'delete')
+  not has_table_privilege('inout_api_runtime', 'public.entries', 'delete')
   and not has_table_privilege('inout_api_runtime', 'public.transactions', 'delete'),
-  'runtime cannot mutate immutable ledger entries or delete transactions'
+  'runtime cannot delete ledger entries or transactions'
 );
 
 insert into auth.users (id, email) values
@@ -137,6 +138,21 @@ select results_eq('select user_id from public.household_members', array['1000000
 select results_eq('select name from public.categories', array['Category A'::text], 'categories exclude other homes');
 select results_eq('select id from public.transactions', array['a3000000-0000-0000-0000-000000000001'::uuid], 'transactions exclude other homes');
 select results_eq('select amount_cents from public.entries', array[100::bigint], 'entries exclude other homes');
+select results_eq(
+  $$ update public.entries
+     set category_id = 'a2000000-0000-0000-0000-000000000001'
+     where transaction_id = 'a3000000-0000-0000-0000-000000000001'
+     returning category_id $$,
+  array['a2000000-0000-0000-0000-000000000001'::uuid],
+  'runtime can correct an entry classification in its own household'
+);
+select results_eq(
+  $$ update public.entries set category_id = null
+     where household_id = 'bbbbbbbb-0000-0000-0000-000000000002'
+     returning id $$,
+  array[]::uuid[],
+  'entry classification updates cannot change another household'
+);
 select is((select count(*) from public.budgets), 0::bigint, 'dashboard budgets exclude other homes');
 select is((select count(*) from public.goals), 0::bigint, 'dashboard goals exclude other homes');
 select is((select count(*) from public.accounts where household_id = 'bbbbbbbb-0000-0000-0000-000000000002'), 0::bigint, 'direct account lookup excludes other homes');
