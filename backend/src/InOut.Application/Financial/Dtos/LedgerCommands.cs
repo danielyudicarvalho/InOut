@@ -49,3 +49,13 @@ public sealed record ReverseTransactionCommand(
     DateOnly OccurredOn,
     Guid IdempotencyKey,
     string? Description);
+
+public sealed record SetBudgetCommand(
+    Guid? Id,
+    Guid HouseholdId,
+    Guid CategoryId,
+    DateOnly PeriodStart,
+    DateOnly PeriodEnd,
+    long LimitCents,
+    Guid IdempotencyKey);
+

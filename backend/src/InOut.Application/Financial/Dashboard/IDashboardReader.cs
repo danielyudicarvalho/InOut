@@ -17,6 +17,7 @@ public sealed record DashboardSourceData(
     IReadOnlyList<DashboardPosting> Postings,
     IReadOnlyList<DashboardBudgetSource> Budgets,
     IReadOnlyList<DashboardGoalSource> Goals,
+    IReadOnlyList<DashboardIncomeSourceSource> IncomeSources,
     long PostedTransactionCount,
     long EntryTransactionCount);
 
@@ -27,6 +28,8 @@ public sealed record DashboardAccountSource(
     long BalanceCents);
 
 public sealed record DashboardCategorySource(Guid Id, string Name, Guid? ParentId);
+
+public sealed record DashboardIncomeSourceSource(Guid Id, string Name);
 
 public sealed record DashboardBudgetSource(Guid Id, Guid CategoryId, long LimitCents);
 

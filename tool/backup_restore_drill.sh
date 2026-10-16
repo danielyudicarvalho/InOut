@@ -21,9 +21,14 @@ gpg --batch --yes --pinentry-mode loopback --quiet --passphrase-file "$workdir/k
   --decrypt --output "$workdir/backup.tar.gz" "$workdir/backup.gpg"
 tar -xzf "$workdir/backup.tar.gz" -C "$workdir" --no-same-owner data.sql
 
-psql --no-psqlrc --set ON_ERROR_STOP=1 --dbname "$local_db_url" \
-  --command 'delete from public.gom93_restore_probe where id = 93' > /dev/null
+# Restore into empty application tables, including lookup rows seeded by migrations.
+# Keep truncation and import atomic in this disposable local database.
 psql --no-psqlrc --single-transaction --set ON_ERROR_STOP=1 --dbname "$local_db_url" \
+  --command "do \$drill\$ declare tables text; begin
+    select string_agg(format('%I.%I', schemaname, tablename), ', ')
+      into tables from pg_tables where schemaname in ('public', 'private');
+    execute 'truncate table ' || tables;
+  end \$drill\$;" \
   --file "$workdir/data.sql" > /dev/null
 
 result="$(psql --no-psqlrc --tuples-only --no-align --set ON_ERROR_STOP=1 \

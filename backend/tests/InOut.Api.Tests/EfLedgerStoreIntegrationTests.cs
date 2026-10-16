@@ -52,10 +52,10 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
             insert into public.categories (id, household_id, name, flow, created_by)
             values (@expense_category_id, @household_id, 'Food', 'expense', @actor_user_id);
             insert into public.budgets (
-              id, household_id, category_id, period_start, period_end, limit_cents)
+              id, household_id, category_id, period_start, period_end, limit_cents, created_by)
             values (
               gen_random_uuid(), @household_id, @expense_category_id,
-              '2026-09-01', '2026-09-30', 500);
+              '2026-09-01', '2026-09-30', 500, @actor_user_id);
             insert into public.goals (
               id, household_id, name, target_cents, allocated_cents, target_date)
             values (
@@ -98,8 +98,8 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
 
         await using var context = CreateContext();
         var store = CreateStore(context);
-        var balances = await store.GetBalancesAsync(householdId, CancellationToken.None);
-        var reconciliation = await store.ReconcileAsync(householdId, CancellationToken.None);
+        var balances = await store.GetBalancesAsync(actorUserId, householdId, CancellationToken.None);
+        var reconciliation = await store.ReconcileAsync(actorUserId, householdId, CancellationToken.None);
         Assert.Equal(1_000, balances.Single(item => item.AccountId == accountId).BalanceCents);
         Assert.True(reconciliation.IsConsistent);
         Assert.Equal(1, reconciliation.PostedTransactionCount);
@@ -120,8 +120,8 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
         Assert.Equal("idempotency_conflict", exception.Code);
         await using var context = CreateContext();
         var store = CreateStore(context);
-        var balances = await store.GetBalancesAsync(householdId, CancellationToken.None);
-        var history = await store.GetHistoryAsync(householdId, 100, CancellationToken.None);
+        var balances = await store.GetBalancesAsync(actorUserId, householdId, CancellationToken.None);
+        var history = await store.GetHistoryAsync(actorUserId, householdId, 100, CancellationToken.None);
         Assert.Equal(1_000, balances.Single(item => item.AccountId == accountId).BalanceCents);
         Assert.All(history, item => Assert.Equal(original.TransactionId, item.TransactionId));
     }
@@ -137,6 +137,71 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
 
         Assert.Equal("idempotency_conflict", exception.Code);
         Assert.Equal(1, await CountAsync("public.transactions"));
+    }
+
+    [Fact]
+    public async Task ProcessingLeaseTimeoutAllowsSafeReclaimWithoutBusinessFailure()
+    {
+        var idempotencyKey = Guid.NewGuid();
+        var transaction = FinancialTransaction.Income(
+            householdId,
+            accountId,
+            categoryId,
+            new Money(1_000, "BRL"),
+            new DateOnly(2026, 9, 14),
+            actorUserId,
+            "Salary");
+
+        var entries = string.Join(
+            ';',
+            transaction.Entries
+                .OrderBy(entry => entry.AccountId)
+                .ThenBy(entry => entry.CategoryId)
+                .ThenBy(entry => entry.Direction)
+                .Select(entry =>
+                    $"{entry.AccountId:D},{entry.CategoryId?.ToString("D")},{entry.Direction},{entry.Amount.Cents},{entry.Amount.Currency}"));
+
+        var request = IdempotencyRequest.Create(
+            householdId,
+            actorUserId,
+            IdempotencyOperation.PostIncome,
+            idempotencyKey,
+            transaction.Kind,
+            transaction.OccurredOn,
+            transaction.Description,
+            transaction.IncomeSourceId,
+            entries);
+
+        await using (var connection = new NpgsqlConnection(postgres.GetConnectionString()))
+        {
+            await connection.OpenAsync();
+            await using var command = connection.CreateCommand();
+            command.CommandText = """
+                insert into private.idempotency_requests (
+                    tenant_id, operation, idempotency_key, actor_user_id,
+                    request_fingerprint, status, attempt_count, locked_until,
+                    created_at, updated_at, expires_at)
+                values (
+                    @household_id, 'post_income', @key, @actor_user_id,
+                    @fingerprint, 'processing', 1, now() - interval '1 minute',
+                    now() - interval '5 minutes', now() - interval '5 minutes', now() + interval '90 days');
+                """;
+            command.Parameters.AddWithValue("household_id", householdId);
+            command.Parameters.AddWithValue("key", idempotencyKey);
+            command.Parameters.AddWithValue("actor_user_id", actorUserId);
+            command.Parameters.AddWithValue("fingerprint", request.RequestFingerprint);
+            await command.ExecuteNonQueryAsync();
+        }
+
+        var result = await PostIncomeAsync(idempotencyKey, 1_000);
+
+        Assert.NotNull(result);
+        Assert.False(result.Replayed);
+
+        await using var context = CreateContext();
+        var store = CreateStore(context);
+        var balances = await store.GetBalancesAsync(actorUserId, householdId, CancellationToken.None);
+        Assert.Equal(1_000, balances.Single(b => b.AccountId == accountId).BalanceCents);
     }
 
     [Fact]
@@ -296,8 +361,8 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
 
         await using var verification = CreateContext();
         var store = CreateStore(verification);
-        var balances = await store.GetBalancesAsync(householdId, CancellationToken.None);
-        var history = await store.GetHistoryAsync(householdId, 100, CancellationToken.None);
+        var balances = await store.GetBalancesAsync(actorUserId, householdId, CancellationToken.None);
+        var history = await store.GetHistoryAsync(actorUserId, householdId, 100, CancellationToken.None);
 
         Assert.Equal(7_500, balances.Single(item => item.AccountId == accountId).BalanceCents);
         Assert.Equal(0, balances.Single(item => item.AccountId == destinationAccountId).BalanceCents);
@@ -348,7 +413,7 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
 
         await using var verification = CreateContext();
         var balances = await CreateStore(verification)
-            .GetBalancesAsync(householdId, CancellationToken.None);
+            .GetBalancesAsync(actorUserId, householdId, CancellationToken.None);
         Assert.All(balances, balance => Assert.Equal(0, balance.BalanceCents));
     }
 
@@ -404,9 +469,9 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
         await using (var context = CreateContext())
         {
             var service = new LedgerService(CreateStore(context));
-            var active = await service.GetAccountsAsync(householdId, false, CancellationToken.None);
-            var all = await service.GetAccountsAsync(householdId, true, CancellationToken.None);
-            var history = await service.GetHistoryAsync(householdId, 100, CancellationToken.None);
+            var active = await service.GetAccountsAsync(actorUserId, householdId, false, CancellationToken.None);
+            var all = await service.GetAccountsAsync(actorUserId, householdId, true, CancellationToken.None);
+            var history = await service.GetHistoryAsync(actorUserId, householdId, 100, CancellationToken.None);
 
             Assert.DoesNotContain(active, item => item.Id == createdAccountId);
             Assert.NotNull(Assert.Single(all, item => item.Id == createdAccountId).ArchivedAt);
@@ -415,6 +480,92 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
             Assert.Equal(actorUserId, opening.CreatedBy);
             Assert.Equal(new DateOnly(2026, 9, 15), opening.OccurredOn);
             Assert.Equal(25_000, opening.AmountCents);
+        }
+    }
+
+    [Fact]
+    public async Task UpdateAccountMetadataUpdatesPermittedFieldsAndEnforcesUniquenessAndActiveStatus()
+    {
+        var targetAccountId = Guid.NewGuid();
+        var secondAccountId = Guid.NewGuid();
+
+        await using (var context = CreateContext())
+        {
+            var service = new LedgerService(CreateStore(context));
+            await service.CreateAccountAsync(
+                actorUserId,
+                new CreateAccountCommand(
+                    targetAccountId,
+                    householdId,
+                    "Conta Antiga",
+                    AccountKind.Checking,
+                    "BRL",
+                    10_000,
+                    new DateOnly(2026, 9, 15),
+                    Guid.NewGuid()),
+                CancellationToken.None);
+
+            await service.CreateAccountAsync(
+                actorUserId,
+                new CreateAccountCommand(
+                    secondAccountId,
+                    householdId,
+                    "Outra Conta",
+                    AccountKind.Cash,
+                    "BRL",
+                    0,
+                    new DateOnly(2026, 9, 15),
+                    Guid.NewGuid()),
+                CancellationToken.None);
+        }
+
+        await using (var context = CreateContext())
+        {
+            var service = new LedgerService(CreateStore(context));
+            var updated = await service.UpdateAccountMetadataAsync(
+                actorUserId,
+                householdId,
+                targetAccountId,
+                "Conta Atualizada",
+                AccountKind.Savings,
+                CancellationToken.None);
+
+            Assert.Equal("Conta Atualizada", updated.Name);
+            Assert.Equal(AccountKind.Savings, updated.Kind);
+            Assert.Equal("BRL", updated.Currency);
+            Assert.Equal(10_000, updated.BalanceCents);
+        }
+
+        await using (var context = CreateContext())
+        {
+            var service = new LedgerService(CreateStore(context));
+            var conflict = await Assert.ThrowsAsync<FinancialRuleException>(() =>
+                service.UpdateAccountMetadataAsync(
+                    actorUserId,
+                    householdId,
+                    targetAccountId,
+                    "Outra Conta",
+                    AccountKind.Investment,
+                    CancellationToken.None));
+
+            Assert.Equal(FinancialErrorCodes.AccountNameConflict, conflict.Code);
+        }
+
+        await using (var context = CreateContext())
+        {
+            var service = new LedgerService(CreateStore(context));
+            await service.ArchiveAccountAsync(householdId, targetAccountId, actorUserId, CancellationToken.None);
+
+            var archivedEx = await Assert.ThrowsAsync<FinancialRuleException>(() =>
+                service.UpdateAccountMetadataAsync(
+                    actorUserId,
+                    householdId,
+                    targetAccountId,
+                    "Novo Nome",
+                    AccountKind.Checking,
+                    CancellationToken.None));
+
+            Assert.Equal(FinancialErrorCodes.AccountArchived, archivedEx.Code);
         }
     }
 
@@ -444,8 +595,9 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
         await using (var context = CreateContext())
         {
             var store = CreateStore(context);
-            var balances = await store.GetBalancesAsync(householdId, CancellationToken.None);
+            var balances = await store.GetBalancesAsync(actorUserId, householdId, CancellationToken.None);
             var transferEntries = (await store.GetHistoryAsync(
+                    actorUserId,
                     householdId,
                     100,
                     CancellationToken.None))
@@ -501,9 +653,9 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
         await using (var context = CreateContext())
         {
             var balances = await CreateStore(context)
-                .GetBalancesAsync(householdId, CancellationToken.None);
+                .GetBalancesAsync(actorUserId, householdId, CancellationToken.None);
             var reconciliation = await CreateStore(context)
-                .ReconcileAsync(householdId, CancellationToken.None);
+                .ReconcileAsync(actorUserId, householdId, CancellationToken.None);
 
             Assert.Equal(1_000, balances.Single(item => item.AccountId == accountId).BalanceCents);
             Assert.Equal(0, balances.Single(item => item.AccountId == destinationAccountId).BalanceCents);
@@ -528,7 +680,7 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
 
         await using var context = CreateContext();
         var balances = await CreateStore(context)
-            .GetBalancesAsync(householdId, CancellationToken.None);
+            .GetBalancesAsync(actorUserId, householdId, CancellationToken.None);
         Assert.Equal(0, balances.Single(item => item.AccountId == accountId).BalanceCents);
     }
 
@@ -541,8 +693,8 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
 
         await using var context = CreateContext();
         var store = CreateStore(context);
-        var history = await store.GetHistoryAsync(householdId, 100, CancellationToken.None);
-        var balance = await store.GetBalancesAsync(householdId, CancellationToken.None);
+        var history = await store.GetHistoryAsync(actorUserId, householdId, 100, CancellationToken.None);
+        var balance = await store.GetBalancesAsync(actorUserId, householdId, CancellationToken.None);
 
         var originalItem = Assert.Single(history, item => item.TransactionId == original.TransactionId);
         var reversalItem = Assert.Single(history, item => item.TransactionId == reversal.TransactionId);
@@ -595,9 +747,9 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
 
         await using var verification = CreateContext();
         var store = CreateStore(verification);
-        var balances = await store.GetBalancesAsync(householdId, CancellationToken.None);
-        var reconciliation = await store.ReconcileAsync(householdId, CancellationToken.None);
-        var history = await store.GetHistoryAsync(householdId, 100, CancellationToken.None);
+        var balances = await store.GetBalancesAsync(actorUserId, householdId, CancellationToken.None);
+        var reconciliation = await store.ReconcileAsync(actorUserId, householdId, CancellationToken.None);
+        var history = await store.GetHistoryAsync(actorUserId, householdId, 100, CancellationToken.None);
 
         Assert.Equal(7_000, balances.Single(item => item.AccountId == accountId).BalanceCents);
         Assert.Equal(1_000, balances.Single(item => item.AccountId == destinationAccountId).BalanceCents);
@@ -638,15 +790,49 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
             await service.ArchiveCategoryAsync(householdId, childId, actorUserId, CancellationToken.None);
             await service.ArchiveCategoryAsync(householdId, rootId, actorUserId, CancellationToken.None);
 
-            Assert.DoesNotContain(await service.GetCategoriesAsync(householdId, FinancialFlow.Expense,
+            Assert.DoesNotContain(await service.GetCategoriesAsync(actorUserId, householdId, FinancialFlow.Expense,
                 false, CancellationToken.None), item => item.Id == childId);
-            var archived = await service.GetCategoriesAsync(householdId, FinancialFlow.Expense,
+            var archived = await service.GetCategoriesAsync(actorUserId, householdId, FinancialFlow.Expense,
                 true, CancellationToken.None);
             Assert.Equal(rootId, Assert.Single(archived, item => item.Id == childId).ParentId);
-            var history = await service.GetHistoryAsync(householdId, 100,
+            var history = await service.GetHistoryAsync(actorUserId, householdId, 100,
                 new LedgerHistoryFilter(CategoryId: childId, Kind: FinancialTransactionKind.Expense),
                 CancellationToken.None);
             Assert.Equal("Cinema", Assert.Single(history).CategoryName);
+
+            // Re-archiving is a no-op
+            await service.ArchiveCategoryAsync(householdId, childId, actorUserId, CancellationToken.None);
+
+            // New posting with archived category is rejected
+            var invalidPosting = await Assert.ThrowsAsync<FinancialRuleException>(() =>
+                service.PostExpenseAsync(actorUserId,
+                    new PostExpenseCommand(householdId, accountId, childId, 50,
+                        "BRL", new DateOnly(2026, 9, 21), Guid.NewGuid(), "New Movie"),
+                    CancellationToken.None));
+            Assert.Equal(FinancialErrorCodes.InvalidCategory, invalidPosting.Code);
+        }
+    }
+
+    [Fact]
+    public async Task SubcategoryCannotBeParentEnforcesSingleHierarchyDepth()
+    {
+        var rootId = Guid.NewGuid();
+        var subcategoryId = Guid.NewGuid();
+        var grandchildId = Guid.NewGuid();
+
+        await using (var context = CreateContext())
+        {
+            var service = new LedgerService(CreateStore(context));
+            await service.CreateCategoryAsync(householdId, actorUserId, rootId,
+                "Alimentação", FinancialFlow.Expense, null, Guid.NewGuid(), CancellationToken.None);
+            await service.CreateCategoryAsync(householdId, actorUserId, subcategoryId,
+                "Restaurante", FinancialFlow.Expense, rootId, Guid.NewGuid(), CancellationToken.None);
+
+            var ex = await Assert.ThrowsAsync<FinancialRuleException>(() => service.CreateCategoryAsync(
+                householdId, actorUserId, grandchildId,
+                "Japonês", FinancialFlow.Expense, subcategoryId, Guid.NewGuid(), CancellationToken.None));
+
+            Assert.Equal(FinancialErrorCodes.InvalidCategory, ex.Code);
         }
     }
 
@@ -661,11 +847,11 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
                 new PostTransferCommand(householdId, accountId, destinationAccountId,
                     100, "BRL", new DateOnly(2026, 9, 15), Guid.NewGuid(), null),
                 CancellationToken.None);
-            var filtered = await service.GetHistoryAsync(householdId, 1,
+            var filtered = await service.GetHistoryAsync(actorUserId, householdId, 1,
                 new LedgerHistoryFilter(From: new DateOnly(2026, 9, 14),
                     To: new DateOnly(2026, 9, 14), CategoryId: categoryId), CancellationToken.None);
             Assert.Equal(FinancialTransactionKind.Income, Assert.Single(filtered).Kind);
-            var transfer = await service.GetHistoryAsync(householdId, 10,
+            var transfer = await service.GetHistoryAsync(actorUserId, householdId, 10,
                 new LedgerHistoryFilter(Kind: FinancialTransactionKind.Transfer), CancellationToken.None);
             Assert.Equal(2, transfer.Count);
             Assert.All(transfer, item => Assert.Null(item.CategoryId));
@@ -707,6 +893,90 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task SetBudgetSucceedsUpsertsLimitAndCalculatesDashboardProgress()
+    {
+        var periodStart = new DateOnly(2026, 9, 1);
+        var periodEnd = new DateOnly(2026, 9, 30);
+        var initialLimit = 150_000L;
+        var updatedLimit = 200_000L;
+
+        await using (var context = CreateContext())
+        {
+            var service = new LedgerService(CreateStore(context));
+            var result = await service.SetBudgetAsync(
+                actorUserId,
+                new SetBudgetCommand(null, householdId, expenseCategoryId, periodStart, periodEnd, initialLimit, Guid.NewGuid()),
+                CancellationToken.None);
+
+            Assert.Equal(expenseCategoryId, result.CategoryId);
+            Assert.Equal(initialLimit, result.LimitCents);
+            Assert.False(result.Replayed);
+        }
+
+        await PostIncomeAsync(Guid.NewGuid(), 500_000);
+        await using (var context = CreateContext())
+        {
+            var service = new LedgerService(CreateStore(context));
+            await service.PostExpenseAsync(
+                actorUserId,
+                new PostExpenseCommand(householdId, accountId, expenseCategoryId, 50_000, "BRL", new DateOnly(2026, 9, 15), Guid.NewGuid(), "Supermarket"),
+                CancellationToken.None);
+        }
+
+        await using (var context = CreateContext())
+        {
+            var dashboard = await CreateDashboardUseCase(context).ExecuteAsync(
+                new GetFinancialDashboardQuery(actorUserId, householdId, 2026, 9),
+                CancellationToken.None);
+
+            var budgetProgress = Assert.Single(dashboard.Budgets);
+            Assert.Equal(expenseCategoryId, budgetProgress.CategoryId);
+            Assert.Equal(initialLimit, budgetProgress.LimitCents);
+            Assert.Equal(50_000L, budgetProgress.SpentCents);
+        }
+
+        await using (var context = CreateContext())
+        {
+            var service = new LedgerService(CreateStore(context));
+            var updatedResult = await service.SetBudgetAsync(
+                actorUserId,
+                new SetBudgetCommand(null, householdId, expenseCategoryId, periodStart, periodEnd, updatedLimit, Guid.NewGuid()),
+                CancellationToken.None);
+
+            Assert.Equal(updatedLimit, updatedResult.LimitCents);
+        }
+
+        await using (var context = CreateContext())
+        {
+            var dashboard = await CreateDashboardUseCase(context).ExecuteAsync(
+                new GetFinancialDashboardQuery(actorUserId, householdId, 2026, 9),
+                CancellationToken.None);
+
+            var budgetProgress = Assert.Single(dashboard.Budgets);
+            Assert.Equal(updatedLimit, budgetProgress.LimitCents);
+            Assert.Equal(50_000L, budgetProgress.SpentCents);
+        }
+    }
+
+    [Fact]
+    public async Task SetBudgetRejectsNonExpenseCategory()
+    {
+        var periodStart = new DateOnly(2026, 9, 1);
+        var periodEnd = new DateOnly(2026, 9, 30);
+
+        await using var context = CreateContext();
+        var service = new LedgerService(CreateStore(context));
+
+        var ex = await Assert.ThrowsAsync<FinancialRuleException>(() =>
+            service.SetBudgetAsync(
+                actorUserId,
+                new SetBudgetCommand(null, householdId, categoryId, periodStart, periodEnd, 100_000, Guid.NewGuid()),
+                CancellationToken.None));
+
+        Assert.Equal(FinancialErrorCodes.InvalidCategory, ex.Code);
+    }
+
+    [Fact]
     public async Task DashboardRejectsAnActorOutsideTheHousehold()
     {
         await using var context = CreateContext();
@@ -717,6 +987,195 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
                 CancellationToken.None));
 
         Assert.Equal(HouseholdErrorCodes.MembershipRequired, exception.Code);
+    }
+
+    [Fact]
+    public async Task CreateIncomeSourceSucceedsAndAudits()
+    {
+        await using var context = CreateContext();
+        var store = CreateStore(context);
+        var sourceId = Guid.NewGuid();
+
+        var created = await store.CreateIncomeSourceAsync(
+            IncomeSource.Create(sourceId, householdId, "  Company Acme  "),
+            actorUserId,
+            CancellationToken.None);
+
+        Assert.Equal(sourceId, created.Id);
+        Assert.Equal("Company Acme", created.Name);
+
+        var list = await store.GetIncomeSourcesAsync(actorUserId, householdId, false, CancellationToken.None);
+        Assert.Contains(list, item => item.Id == sourceId && item.Name == "Company Acme");
+
+        Assert.Equal(1, await CountAsync("public.audit_events", "action", "financial.income_source.created"));
+    }
+
+    [Fact]
+    public async Task CreateDuplicateIncomeSourceFailsCaseInsensitively()
+    {
+        await using var context = CreateContext();
+        var store = CreateStore(context);
+        await store.CreateIncomeSourceAsync(
+            IncomeSource.Create(Guid.NewGuid(), householdId, "Freelance Work"),
+            actorUserId,
+            CancellationToken.None);
+
+        var exception = await Assert.ThrowsAsync<FinancialRuleException>(() =>
+            store.CreateIncomeSourceAsync(
+                IncomeSource.Create(Guid.NewGuid(), householdId, "freelance work"),
+                actorUserId,
+                CancellationToken.None));
+
+        Assert.Equal(FinancialErrorCodes.IncomeSourceConflict, exception.Code);
+    }
+
+    [Fact]
+    public async Task ArchiveIncomeSourceHidesFromFutureEntryAndAudits()
+    {
+        await using var context = CreateContext();
+        var store = CreateStore(context);
+        var sourceId = Guid.NewGuid();
+        await store.CreateIncomeSourceAsync(
+            IncomeSource.Create(sourceId, householdId, "Consulting"),
+            actorUserId,
+            CancellationToken.None);
+
+        await store.ArchiveIncomeSourceAsync(householdId, sourceId, actorUserId, CancellationToken.None);
+
+        var activeSources = await store.GetIncomeSourcesAsync(actorUserId, householdId, false, CancellationToken.None);
+        Assert.DoesNotContain(activeSources, item => item.Id == sourceId);
+
+        var allSources = await store.GetIncomeSourcesAsync(actorUserId, householdId, true, CancellationToken.None);
+        var archived = Assert.Single(allSources, item => item.Id == sourceId);
+        Assert.NotNull(archived.ArchivedAt);
+
+        Assert.Equal(1, await CountAsync("public.audit_events", "action", "financial.income_source.archived"));
+
+        var service = new LedgerService(store);
+        var exception = await Assert.ThrowsAsync<FinancialRuleException>(() =>
+            service.PostIncomeAsync(
+                actorUserId,
+                new PostIncomeCommand(
+                    householdId, accountId, categoryId, 5_000, "BRL",
+                    new DateOnly(2026, 9, 15), Guid.NewGuid(), "Archived Source Income", sourceId),
+                CancellationToken.None));
+        Assert.Equal(FinancialErrorCodes.InvalidIncomeSource, exception.Code);
+    }
+
+    [Fact]
+    public async Task ArchiveAlreadyArchivedIncomeSourceIsNoOp()
+    {
+        await using var context = CreateContext();
+        var store = CreateStore(context);
+        var sourceId = Guid.NewGuid();
+        await store.CreateIncomeSourceAsync(
+            IncomeSource.Create(sourceId, householdId, "Side Gig"),
+            actorUserId,
+            CancellationToken.None);
+
+        await store.ArchiveIncomeSourceAsync(householdId, sourceId, actorUserId, CancellationToken.None);
+        await store.ArchiveIncomeSourceAsync(householdId, sourceId, actorUserId, CancellationToken.None);
+
+        Assert.Equal(1, await CountAsync("public.audit_events", "action", "financial.income_source.archived"));
+    }
+
+    [Fact]
+    public async Task ArchiveNonExistentIncomeSourceThrowsNotFound()
+    {
+        await using var context = CreateContext();
+        var store = CreateStore(context);
+
+        var exception = await Assert.ThrowsAsync<FinancialRuleException>(() =>
+            store.ArchiveIncomeSourceAsync(householdId, Guid.NewGuid(), actorUserId, CancellationToken.None));
+
+        Assert.Equal(FinancialErrorCodes.IncomeSourceNotFound, exception.Code);
+    }
+
+    [Fact]
+    public async Task GetHistoryWithSearchAndIncomeSourceFilter()
+    {
+        await using var context = CreateContext();
+        var store = CreateStore(context);
+        var sourceId = Guid.NewGuid();
+        await store.CreateIncomeSourceAsync(
+            IncomeSource.Create(sourceId, householdId, "Client Alpha"),
+            actorUserId,
+            CancellationToken.None);
+
+        var service = new LedgerService(store);
+        await service.PostIncomeAsync(
+            actorUserId,
+            new PostIncomeCommand(
+                householdId, accountId, categoryId, 12_000, "BRL",
+                new DateOnly(2026, 9, 18), Guid.NewGuid(), "Monthly Consulting Payment", sourceId),
+            CancellationToken.None);
+        await service.PostIncomeAsync(
+            actorUserId,
+            new PostIncomeCommand(
+                householdId, accountId, categoryId, 3_000, "BRL",
+                new DateOnly(2026, 9, 19), Guid.NewGuid(), "Dividend payout", null),
+            CancellationToken.None);
+
+        var searchResults = await store.GetHistoryAsync(
+            actorUserId, householdId, 100,
+            new LedgerHistoryFilter(Search: "consulting"),
+            CancellationToken.None);
+
+        var matched = Assert.Single(searchResults);
+        Assert.Equal("Monthly Consulting Payment", matched.Description);
+
+        var sourceResults = await store.GetHistoryAsync(
+            actorUserId, householdId, 100,
+            new LedgerHistoryFilter(IncomeSourceId: sourceId),
+            CancellationToken.None);
+
+        var sourceMatched = Assert.Single(sourceResults);
+        Assert.Equal(sourceId, sourceMatched.IncomeSourceId);
+    }
+
+    [Fact]
+    public async Task CorrectTransactionClassificationUpdatesCategoryAndDescriptionWithoutAlteringBalances()
+    {
+        await using var context = CreateContext();
+        var store = CreateStore(context);
+        var service = new LedgerService(store);
+
+        var result = await service.PostExpenseAsync(
+            actorUserId,
+            new PostExpenseCommand(
+                householdId,
+                accountId,
+                expenseCategoryId,
+                5_000,
+                "BRL",
+                new DateOnly(2026, 9, 20),
+                Guid.NewGuid(),
+                "Original Expense Description"),
+            CancellationToken.None);
+
+        var initialBalances = await store.GetBalancesAsync(actorUserId, householdId, CancellationToken.None);
+
+        var newCategory = await store.CreateCategoryAsync(
+            householdId, actorUserId, Guid.NewGuid(), "Transport",
+            FinancialFlow.Expense, null,
+            IdempotencyRequest.Create(householdId, actorUserId, IdempotencyOperation.CreateCategory, Guid.NewGuid()),
+            CancellationToken.None);
+
+        var correctedItem = await service.CorrectClassificationAsync(
+            householdId,
+            result.TransactionId,
+            actorUserId,
+            newCategory.Id,
+            null,
+            "Updated Expense Description",
+            CancellationToken.None);
+
+        Assert.Equal(newCategory.Id, correctedItem.CategoryId);
+        Assert.Equal("Updated Expense Description", correctedItem.Description);
+
+        var postCorrectionBalances = await store.GetBalancesAsync(actorUserId, householdId, CancellationToken.None);
+        Assert.Equal(initialBalances.Single(b => b.AccountId == accountId).BalanceCents,
+                     postCorrectionBalances.Single(b => b.AccountId == accountId).BalanceCents);
     }
 
     private async Task<LedgerWriteResult> PostIncomeAsync(
@@ -776,7 +1235,7 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
         return (long)(await command.ExecuteScalarAsync())!;
     }
 
-    private async Task<long> CountAsync(string qualifiedTable, string column, Guid value)
+    private async Task<long> CountAsync(string qualifiedTable, string column, object value)
     {
         await using var connection = new NpgsqlConnection(postgres.GetConnectionString());
         await connection.OpenAsync();
@@ -815,12 +1274,50 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
           joined_at timestamptz not null default now(),
           primary key (household_id, user_id)
         );
+        create table public.status_types (
+          code text primary key,
+          name text not null,
+          description text,
+          created_at timestamptz not null default now()
+        );
+        create table public.status_values (
+          id int primary key,
+          type_code text not null references public.status_types(code) on delete cascade,
+          code text not null,
+          name text not null,
+          description text,
+          created_at timestamptz not null default now(),
+          unique (type_code, code)
+        );
+        insert into public.status_types (code, name) values
+          ('account_status', 'Account Status'),
+          ('category_status', 'Category Status'),
+          ('income_source_status', 'Income Source Status'),
+          ('goal_status', 'Goal Status'),
+          ('recurring_plan_status', 'Recurring Plan Status');
+        insert into public.status_values (id, type_code, code, name) values
+          (1, 'account_status', 'active', 'Active'),
+          (2, 'account_status', 'frozen', 'Frozen'),
+          (3, 'account_status', 'archived', 'Archived'),
+          (4, 'category_status', 'active', 'Active'),
+          (5, 'category_status', 'deprecated', 'Deprecated'),
+          (6, 'category_status', 'archived', 'Archived'),
+          (7, 'income_source_status', 'active', 'Active'),
+          (8, 'income_source_status', 'archived', 'Archived'),
+          (9, 'goal_status', 'active', 'Active'),
+          (10, 'goal_status', 'paused', 'Paused'),
+          (11, 'goal_status', 'completed', 'Completed'),
+          (12, 'goal_status', 'archived', 'Archived'),
+          (13, 'recurring_plan_status', 'active', 'Active'),
+          (14, 'recurring_plan_status', 'paused', 'Paused'),
+          (15, 'recurring_plan_status', 'archived', 'Archived');
         create table public.accounts (
           id uuid primary key,
           household_id uuid not null references public.households(id),
           name text not null,
           kind text not null,
           currency text not null,
+          status_id int not null default 1 references public.status_values(id),
           created_by uuid not null,
           created_at timestamptz not null default now(),
           archived_at timestamptz,
@@ -832,6 +1329,7 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
           parent_id uuid,
           name text not null,
           flow text not null,
+          status_id int not null default 4 references public.status_values(id),
           created_by uuid not null,
           created_at timestamptz not null default now(),
           archived_at timestamptz,
@@ -841,6 +1339,7 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
           id uuid primary key,
           household_id uuid not null references public.households(id),
           name text not null,
+          status_id int not null default 7 references public.status_values(id),
           created_by uuid not null,
           created_at timestamptz not null default now(),
           archived_at timestamptz,
@@ -888,7 +1387,8 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
           category_id uuid not null,
           period_start date not null,
           period_end date not null,
-          limit_cents bigint not null
+          limit_cents bigint not null,
+          created_by uuid
         );
         create table public.goals (
           id uuid primary key,
@@ -897,6 +1397,7 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
           target_cents bigint not null,
           allocated_cents bigint not null,
           target_date date,
+          status_id int not null default 9 references public.status_values(id),
           archived_at timestamptz
         );
         create table public.audit_events (

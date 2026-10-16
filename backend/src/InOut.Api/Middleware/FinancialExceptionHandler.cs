@@ -25,11 +25,14 @@ public sealed class FinancialExceptionHandler : IExceptionHandler
 
         var status = code switch
         {
-            FinancialErrorCodes.TransactionNotFound or FinancialErrorCodes.CategoryNotFound or FinancialErrorCodes.IncomeSourceNotFound or FinancialErrorCodes.RecurringPlanNotFound or FinancialErrorCodes.ForecastNotFound => StatusCodes.Status404NotFound,
+            FinancialErrorCodes.AccountNotFound or FinancialErrorCodes.TransactionNotFound or FinancialErrorCodes.CategoryNotFound or FinancialErrorCodes.IncomeSourceNotFound or FinancialErrorCodes.RecurringPlanNotFound or FinancialErrorCodes.ForecastNotFound => StatusCodes.Status404NotFound,
             FinancialErrorCodes.TransactionNotReversible or
             IdempotencyErrorCodes.Conflict or
             IdempotencyErrorCodes.InProgress or
             FinancialErrorCodes.AccountConflict or
+            FinancialErrorCodes.AccountNameConflict or
+            FinancialErrorCodes.AccountArchived or
+            FinancialErrorCodes.AccountFrozen or
             FinancialErrorCodes.CategoryConflict or
             FinancialErrorCodes.IncomeSourceConflict or
             FinancialErrorCodes.RecurringPlanConflict or

@@ -41,6 +41,24 @@ public sealed class GetFinancialDashboardTests
         Assert.Equal(new DateOnly(2026, 9, 30), dashboard.PeriodEnd);
     }
 
+    [Fact]
+    public async Task PassesCustomDateRangePeriodToReader()
+    {
+        var actorUserId = Guid.NewGuid();
+        var householdId = Guid.NewGuid();
+        var reader = new RecordingDashboardReader();
+        var useCase = new GetFinancialDashboard(new MembershipReader(true), reader);
+
+        var from = new DateOnly(2026, 10, 5);
+        var to = new DateOnly(2026, 10, 11);
+        var dashboard = await useCase.ExecuteAsync(
+            new GetFinancialDashboardQuery(actorUserId, householdId, From: from, To: to),
+            CancellationToken.None);
+
+        Assert.Equal(from, dashboard.PeriodStart);
+        Assert.Equal(to, dashboard.PeriodEnd);
+    }
+
     private sealed class MembershipReader(bool isMember) : IHouseholdMembershipReader
     {
         public Task<bool> IsMemberAsync(
@@ -67,7 +85,7 @@ public sealed class GetFinancialDashboardTests
             WasCalled = true;
             ActorUserId = actorUserId;
             HouseholdId = householdId;
-            return Task.FromResult(new DashboardSourceData([], [], [], [], [], 0, 0));
+            return Task.FromResult(new DashboardSourceData([], [], [], [], [], [], 0, 0));
         }
     }
 }

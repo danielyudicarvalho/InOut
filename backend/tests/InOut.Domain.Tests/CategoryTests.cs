@@ -38,4 +38,57 @@ public sealed class CategoryTests
 
         Assert.Equal(FinancialErrorCodes.InvalidCategory, exception.Code);
     }
+
+    [Fact]
+    public void ArchiveSetsArchivedAtForActiveCategory()
+    {
+        var category = Category.Create(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            "Lazer",
+            FinancialFlow.Expense);
+        var archivedAt = new DateTimeOffset(2026, 10, 1, 12, 0, 0, TimeSpan.Zero);
+
+        var archived = category.Archive(archivedAt);
+
+        Assert.True(category.IsActive);
+        Assert.False(archived.IsActive);
+        Assert.Equal(archivedAt, archived.ArchivedAt);
+    }
+
+    [Fact]
+    public void ArchiveIsNoOpForAlreadyArchivedCategory()
+    {
+        var archivedAt1 = new DateTimeOffset(2026, 9, 1, 12, 0, 0, TimeSpan.Zero);
+        var archivedAt2 = new DateTimeOffset(2026, 10, 1, 12, 0, 0, TimeSpan.Zero);
+        var category = Category.Create(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            "Lazer",
+            FinancialFlow.Expense).Archive(archivedAt1);
+
+        var reArchived = category.Archive(archivedAt2);
+
+        Assert.Equal(archivedAt1, reArchived.ArchivedAt);
+    }
+
+    [Fact]
+    public void DeprecateTransitionsCategoryStateAndPreventsAssignment()
+    {
+        var category = Category.Create(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            "Streaming",
+            FinancialFlow.Expense);
+
+        Assert.Equal(CategoryStatus.Active, category.Status);
+        Assert.True(category.CanAssignTransaction);
+
+        var deprecated = category.Deprecate();
+        Assert.Equal(CategoryStatus.Deprecated, deprecated.Status);
+        Assert.False(deprecated.CanAssignTransaction);
+
+        var ex = Assert.Throws<FinancialRuleException>(() => deprecated.EnsureCanAssignTransaction(FinancialFlow.Expense));
+        Assert.Equal(FinancialErrorCodes.InvalidCategory, ex.Code);
+    }
 }

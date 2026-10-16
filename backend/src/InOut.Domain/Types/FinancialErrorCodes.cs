@@ -2,6 +2,9 @@ namespace InOut.Domain.Financial;
 
 public static class FinancialErrorCodes
 {
+    public const string AccountArchived = "account_archived";
+    public const string AccountFrozen = "account_frozen";
+    public const string AccountNameConflict = "account_name_conflict";
     public const string AccountConflict = "account_conflict";
     public const string AccountNotFound = "account_not_found";
     public const string CurrencyMismatch = "currency_mismatch";
@@ -9,6 +12,7 @@ public static class FinancialErrorCodes
     public const string InvalidAccount = "invalid_account";
     public const string InvalidAccountId = "invalid_account_id";
     public const string InvalidAccountName = "invalid_account_name";
+    public const string InvalidGoalName = "invalid_goal_name";
     public const string InvalidAmount = "invalid_amount";
     public const string InvalidIncomeSource = "invalid_income_source";
     public const string InvalidRecurringPlan = "invalid_recurring_plan";
@@ -30,5 +34,6 @@ public static class FinancialErrorCodes
     public const string SameTransferAccount = "same_transfer_account";
     public const string TransactionNotFound = "transaction_not_found";
     public const string TransactionNotReversible = "transaction_not_reversible";
+    public const string InvalidTransactionState = "invalid_transaction_state";
     public const string TransactionWithoutEntries = "transaction_without_entries";
 }

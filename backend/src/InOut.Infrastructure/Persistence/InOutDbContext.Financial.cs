@@ -14,6 +14,8 @@ public sealed partial class InOutDbContext
     internal DbSet<GoalRecord> Goals => Set<GoalRecord>();
     internal DbSet<RecurringPlanRecord> RecurringPlans => Set<RecurringPlanRecord>();
     internal DbSet<ForecastRecord> Forecasts => Set<ForecastRecord>();
+    internal DbSet<StatusTypeRecord> StatusTypes => Set<StatusTypeRecord>();
+    internal DbSet<StatusValueRecord> StatusValues => Set<StatusValueRecord>();
 
     private static void ConfigureFinancial(ModelBuilder modelBuilder)
     {
@@ -30,6 +32,9 @@ public sealed partial class InOutDbContext
                     value => DomainTypeStorage.AccountKindToString(value),
                     value => DomainTypeStorage.AccountKindFromString(value));
             entity.Property(item => item.Currency).HasColumnName("currency");
+            entity.Property(item => item.Status)
+                .HasColumnName("status_id")
+                .HasConversion<int>();
             entity.Property(item => item.CreatedBy).HasColumnName("created_by");
             entity.Property(item => item.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("now()");
             entity.Property(item => item.ArchivedAt).HasColumnName("archived_at");
@@ -48,6 +53,9 @@ public sealed partial class InOutDbContext
                 .HasConversion(
                     value => DomainTypeStorage.FinancialFlowToString(value),
                     value => DomainTypeStorage.FinancialFlowFromString(value));
+            entity.Property(item => item.Status)
+                .HasColumnName("status_id")
+                .HasConversion<int>();
             entity.Property(item => item.CreatedBy).HasColumnName("created_by");
             entity.Property(item => item.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("now()");
             entity.Property(item => item.ArchivedAt).HasColumnName("archived_at");
@@ -60,6 +68,9 @@ public sealed partial class InOutDbContext
             entity.Property(item => item.Id).HasColumnName("id");
             entity.Property(item => item.HouseholdId).HasColumnName("household_id");
             entity.Property(item => item.Name).HasColumnName("name");
+            entity.Property(item => item.Status)
+                .HasColumnName("status_id")
+                .HasConversion<int>();
             entity.Property(item => item.CreatedBy).HasColumnName("created_by");
             entity.Property(item => item.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("now()");
             entity.Property(item => item.ArchivedAt).HasColumnName("archived_at");
@@ -124,6 +135,7 @@ public sealed partial class InOutDbContext
             entity.Property(item => item.PeriodStart).HasColumnName("period_start");
             entity.Property(item => item.PeriodEnd).HasColumnName("period_end");
             entity.Property(item => item.LimitCents).HasColumnName("limit_cents");
+            entity.Property(item => item.CreatedBy).HasColumnName("created_by");
         });
 
         modelBuilder.Entity<GoalRecord>(entity =>
@@ -136,6 +148,9 @@ public sealed partial class InOutDbContext
             entity.Property(item => item.TargetCents).HasColumnName("target_cents");
             entity.Property(item => item.AllocatedCents).HasColumnName("allocated_cents");
             entity.Property(item => item.TargetDate).HasColumnName("target_date");
+            entity.Property(item => item.Status)
+                .HasColumnName("status_id")
+                .HasConversion<int>();
             entity.Property(item => item.ArchivedAt).HasColumnName("archived_at");
         });
 
@@ -157,9 +172,9 @@ public sealed partial class InOutDbContext
             entity.Property(item => item.DayOfMonth).HasColumnName("day_of_month");
             entity.Property(item => item.StartsOn).HasColumnName("starts_on");
             entity.Property(item => item.EndsOn).HasColumnName("ends_on");
-            entity.Property(item => item.Status).HasColumnName("status").HasConversion(
-                value => value.ToString().ToLowerInvariant(),
-                value => Enum.Parse<RecurringPlanStatus>(value, true));
+            entity.Property(item => item.Status)
+                .HasColumnName("status_id")
+                .HasConversion<int>();
             entity.Property(item => item.CreatedBy).HasColumnName("created_by");
             entity.Property(item => item.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("now()");
             entity.Property(item => item.UpdatedAt).HasColumnName("updated_at").HasDefaultValueSql("now()");
@@ -180,6 +195,28 @@ public sealed partial class InOutDbContext
             entity.Property(item => item.CalculatedAt).HasColumnName("calculated_at");
             entity.Property(item => item.CreatedBy).HasColumnName("created_by");
         });
+
+        modelBuilder.Entity<StatusTypeRecord>(entity =>
+        {
+            entity.ToTable("status_types", "public");
+            entity.HasKey(item => item.Code);
+            entity.Property(item => item.Code).HasColumnName("code");
+            entity.Property(item => item.Name).HasColumnName("name");
+            entity.Property(item => item.Description).HasColumnName("description");
+            entity.Property(item => item.CreatedAt).HasColumnName("created_at");
+        });
+
+        modelBuilder.Entity<StatusValueRecord>(entity =>
+        {
+            entity.ToTable("status_values", "public");
+            entity.HasKey(item => item.Id);
+            entity.Property(item => item.Id).HasColumnName("id");
+            entity.Property(item => item.TypeCode).HasColumnName("type_code");
+            entity.Property(item => item.Code).HasColumnName("code");
+            entity.Property(item => item.Name).HasColumnName("name");
+            entity.Property(item => item.Description).HasColumnName("description");
+            entity.Property(item => item.CreatedAt).HasColumnName("created_at");
+        });
     }
 }
 
@@ -190,6 +227,7 @@ internal sealed class AccountRecord
     public string Name { get; set; } = string.Empty;
     public AccountKind Kind { get; set; }
     public string Currency { get; set; } = Money.DefaultCurrency;
+    public AccountStatus Status { get; set; } = AccountStatus.Active;
     public Guid CreatedBy { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset? ArchivedAt { get; set; }
@@ -202,6 +240,7 @@ internal sealed class CategoryRecord
     public Guid? ParentId { get; set; }
     public string Name { get; set; } = string.Empty;
     public FinancialFlow Flow { get; set; }
+    public CategoryStatus Status { get; set; } = CategoryStatus.Active;
     public Guid CreatedBy { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset? ArchivedAt { get; set; }
@@ -212,6 +251,7 @@ internal sealed class IncomeSourceRecord
     public Guid Id { get; set; }
     public Guid HouseholdId { get; set; }
     public string Name { get; set; } = string.Empty;
+    public IncomeSourceStatus Status { get; set; } = IncomeSourceStatus.Active;
     public Guid CreatedBy { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset? ArchivedAt { get; set; }
@@ -255,6 +295,7 @@ internal sealed class BudgetRecord
     public DateOnly PeriodStart { get; set; }
     public DateOnly PeriodEnd { get; set; }
     public long LimitCents { get; set; }
+    public Guid CreatedBy { get; set; }
 }
 
 internal sealed class GoalRecord
@@ -265,6 +306,7 @@ internal sealed class GoalRecord
     public long TargetCents { get; set; }
     public long AllocatedCents { get; set; }
     public DateOnly? TargetDate { get; set; }
+    public GoalStatus Status { get; set; } = GoalStatus.Active;
     public DateTimeOffset? ArchivedAt { get; set; }
 }
 
@@ -300,4 +342,22 @@ internal sealed class ForecastRecord
     public string Points { get; set; } = "[]";
     public DateTimeOffset CalculatedAt { get; set; }
     public Guid CreatedBy { get; set; }
+}
+
+internal sealed class StatusTypeRecord
+{
+    public string Code { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
+}
+
+internal sealed class StatusValueRecord
+{
+    public string TypeCode { get; set; } = string.Empty;
+    public int Id { get; set; }
+    public string Code { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
 }

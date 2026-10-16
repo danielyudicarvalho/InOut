@@ -61,6 +61,7 @@ builder.Services.AddScoped<IForecastStore, EfForecastStore>();
 builder.Services.AddScoped<ForecastService>();
 builder.Services.AddScoped<IDashboardReader, EfDashboardReader>();
 builder.Services.AddScoped<GetFinancialDashboard>();
+builder.Services.AddScoped<CompareFinancialPeriods>();
 builder.Services.AddScoped<IFinancialExportReader, EfFinancialExportReader>();
 builder.Services.AddScoped<ExportFinancialData>();
 builder.Services.AddSingleton<IIdempotencyPolicy, IdempotencyPolicy>();

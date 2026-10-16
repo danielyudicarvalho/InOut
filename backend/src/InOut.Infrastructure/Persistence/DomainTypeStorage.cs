@@ -32,6 +32,21 @@ internal static class DomainTypeStorage
     internal static string HouseholdRoleToString(HouseholdRole value) => Lower(value);
     internal static HouseholdRole HouseholdRoleFromString(string value) => Parse<HouseholdRole>(value);
 
+    internal static string AccountStatusToString(AccountStatus value) => Lower(value);
+    internal static AccountStatus AccountStatusFromString(string value) => Parse<AccountStatus>(value);
+
+    internal static string CategoryStatusToString(CategoryStatus value) => Lower(value);
+    internal static CategoryStatus CategoryStatusFromString(string value) => Parse<CategoryStatus>(value);
+
+    internal static string IncomeSourceStatusToString(IncomeSourceStatus value) => Lower(value);
+    internal static IncomeSourceStatus IncomeSourceStatusFromString(string value) => Parse<IncomeSourceStatus>(value);
+
+    internal static string GoalStatusToString(GoalStatus value) => Lower(value);
+    internal static GoalStatus GoalStatusFromString(string value) => Parse<GoalStatus>(value);
+
+    internal static string RecurringPlanStatusToString(RecurringPlanStatus value) => Lower(value);
+    internal static RecurringPlanStatus RecurringPlanStatusFromString(string value) => Parse<RecurringPlanStatus>(value);
+
     private static string Lower<T>(T value) where T : struct, Enum =>
         StringUtils.NormalizeLower(value.ToString());
 

@@ -229,11 +229,16 @@ public sealed class FinancialTransaction
             .Where(account => accountIds.Contains(account.Id))
             .ToArray();
         if (referencedAccounts.Length != accountIds.Length ||
-            referencedAccounts.Any(account => account.HouseholdId != HouseholdId || !account.IsActive))
+            referencedAccounts.Any(account => account.HouseholdId != HouseholdId || !account.CanTransact))
         {
             throw new FinancialRuleException(
                 FinancialErrorCodes.InvalidAccount,
                 "Every account must be active and belong to the household.");
+        }
+
+        foreach (var account in referencedAccounts)
+        {
+            account.EnsureCanTransact();
         }
 
         if (referencedAccounts.Any(account =>
@@ -266,15 +271,95 @@ public sealed class FinancialTransaction
             .Where(category => categoryIds.Contains(category.Id))
             .ToArray();
         if (referencedCategories.Length != categoryIds.Length ||
-            referencedCategories.Any(category =>
-                category.HouseholdId != HouseholdId ||
-                !category.IsActive ||
-                category.Flow != expectedFlow))
+            referencedCategories.Any(category => category.HouseholdId != HouseholdId))
         {
             throw new FinancialRuleException(
                 FinancialErrorCodes.InvalidCategory,
                 "Every category must be active, belong to the household, and match the transaction flow.");
         }
+
+        foreach (var category in referencedCategories)
+        {
+            category.EnsureCanAssignTransaction(expectedFlow);
+        }
+    }
+
+    public FinancialTransaction CorrectClassification(
+        Category? newCategory,
+        IncomeSource? newIncomeSource,
+        string? newDescription)
+    {
+        if (Status == FinancialTransactionStatus.Reversed || ReversalOf is not null || Kind == FinancialTransactionKind.Reversal)
+        {
+            throw new FinancialRuleException(
+                FinancialErrorCodes.InvalidTransactionState,
+                "Reversed transactions cannot have their classification corrected.");
+        }
+
+        Guid? targetCategoryId = entries.Count > 0 ? entries[0].CategoryId : null;
+        if (newCategory is not null)
+        {
+            if (newCategory.HouseholdId != HouseholdId)
+            {
+                throw new FinancialRuleException(
+                    FinancialErrorCodes.InvalidCategory,
+                    "Category must belong to the household.");
+            }
+
+            var expectedFlow = Kind switch
+            {
+                FinancialTransactionKind.Income => FinancialFlow.Income,
+                FinancialTransactionKind.Expense => FinancialFlow.Expense,
+                _ => (FinancialFlow?)null
+            };
+
+            if (expectedFlow is not null)
+            {
+                newCategory.EnsureCanAssignTransaction(expectedFlow.Value);
+            }
+            else if (!newCategory.CanAssignTransaction)
+            {
+                throw new FinancialRuleException(
+                    FinancialErrorCodes.InvalidCategory,
+                    "Category must belong to the household.");
+            }
+
+            targetCategoryId = newCategory.Id;
+        }
+
+        Guid? targetIncomeSourceId = IncomeSourceId;
+        if (newIncomeSource is not null)
+        {
+            if (Kind != FinancialTransactionKind.Income)
+            {
+                throw new FinancialRuleException(
+                    FinancialErrorCodes.InvalidIncomeSource,
+                    "Income source can only be assigned to income transactions.");
+            }
+
+            newIncomeSource.EnsureBelongsToHousehold(HouseholdId);
+            newIncomeSource.EnsureCanAssignTransaction();
+            targetIncomeSourceId = newIncomeSource.Id;
+        }
+
+        var updatedEntries = entries.Select(entry => new LedgerEntry(
+            entry.Id,
+            entry.AccountId,
+            targetCategoryId,
+            entry.Direction,
+            entry.Amount)).ToArray();
+
+        return new FinancialTransaction(
+            Id,
+            HouseholdId,
+            Kind,
+            newDescription,
+            OccurredOn,
+            CreatedBy,
+            ReversalOf,
+            Status,
+            updatedEntries,
+            targetIncomeSourceId);
     }
 
     private static FinancialTransaction SingleEntry(

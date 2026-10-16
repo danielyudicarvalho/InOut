@@ -11,11 +11,13 @@ public interface ILedgerStore
         CancellationToken cancellationToken);
 
     Task<IReadOnlyList<AccountSummary>> GetAccountsAsync(
+        Guid actorUserId,
         Guid householdId,
         bool includeArchived,
         CancellationToken cancellationToken);
 
     Task<IReadOnlyList<CategorySummary>> GetCategoriesAsync(
+        Guid actorUserId,
         Guid householdId,
         FinancialFlow? flow,
         bool includeArchived,
@@ -27,7 +29,7 @@ public interface ILedgerStore
         CancellationToken cancellationToken);
 
     Task<IReadOnlyList<IncomeSourceSummary>> GetIncomeSourcesAsync(
-        Guid householdId, bool includeArchived, CancellationToken cancellationToken);
+        Guid actorUserId, Guid householdId, bool includeArchived, CancellationToken cancellationToken);
 
     Task<IncomeSourceSummary> CreateIncomeSourceAsync(
         IncomeSource source, Guid actorUserId, CancellationToken cancellationToken);
@@ -44,7 +46,16 @@ public interface ILedgerStore
         Guid actorUserId,
         CancellationToken cancellationToken);
 
+    Task<AccountSummary> UpdateAccountMetadataAsync(
+        Guid householdId,
+        Guid accountId,
+        Guid actorUserId,
+        string name,
+        AccountKind kind,
+        CancellationToken cancellationToken);
+
     Task<IReadOnlyList<LedgerHistoryItem>> GetHistoryAsync(
+        Guid actorUserId,
         Guid householdId,
         int limit,
         LedgerHistoryFilter filter,
@@ -63,11 +74,29 @@ public interface ILedgerStore
         IdempotencyRequest idempotencyRequest,
         CancellationToken cancellationToken);
 
+    Task<LedgerHistoryItem> CorrectClassificationAsync(
+        Guid householdId,
+        Guid transactionId,
+        Guid actorUserId,
+        Guid? categoryId,
+        Guid? incomeSourceId,
+        string? description,
+        CancellationToken cancellationToken);
+
     Task<IReadOnlyList<AccountBalance>> GetBalancesAsync(
+        Guid actorUserId,
         Guid householdId,
         CancellationToken cancellationToken);
 
     Task<LedgerReconciliation> ReconcileAsync(
+        Guid actorUserId,
         Guid householdId,
         CancellationToken cancellationToken);
+
+    Task<BudgetResult> SetBudgetAsync(
+        Guid actorUserId,
+        SetBudgetCommand command,
+        IdempotencyRequest idempotencyRequest,
+        CancellationToken cancellationToken);
 }
+

@@ -23,6 +23,8 @@ public sealed record CreateAccountRequest(
     long InitialBalanceCents,
     DateOnly OpeningDate);
 
+public sealed record UpdateAccountMetadataRequest(string Name, AccountKind Kind);
+
 public sealed record PostExpenseRequest(
     Guid AccountId,
     Guid CategoryId,
@@ -42,3 +44,16 @@ public sealed record PostTransferRequest(
 public sealed record ReverseTransactionRequest(
     DateOnly OccurredOn,
     string? Description);
+
+public sealed record CorrectTransactionClassificationRequest(
+    Guid? CategoryId,
+    Guid? IncomeSourceId,
+    string? Description);
+
+public sealed record SetBudgetRequest(
+    Guid? Id,
+    Guid CategoryId,
+    DateOnly PeriodStart,
+    DateOnly PeriodEnd,
+    long LimitCents);
+

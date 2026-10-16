@@ -19,6 +19,7 @@ public sealed class EfDashboardReader(InOutDbContext dbContext) : IDashboardRead
 
         var accounts = await ReadAccountsAsync(householdId, period.End, cancellationToken);
         var categories = await ReadCategoriesAsync(householdId, cancellationToken);
+        var incomeSources = await ReadIncomeSourcesAsync(householdId, cancellationToken);
         var postings = await ReadPostingsAsync(householdId, period, cancellationToken);
         var budgets = await ReadBudgetsAsync(householdId, period, cancellationToken);
         var goals = await ReadGoalsAsync(householdId, cancellationToken);
@@ -31,6 +32,7 @@ public sealed class EfDashboardReader(InOutDbContext dbContext) : IDashboardRead
             postings,
             budgets,
             goals,
+            incomeSources,
             reconciliation.PostedTransactionCount,
             reconciliation.EntryTransactionCount);
     }
@@ -69,6 +71,16 @@ public sealed class EfDashboardReader(InOutDbContext dbContext) : IDashboardRead
                 category.ParentId))
             .ToArrayAsync(cancellationToken);
 
+    private async Task<IReadOnlyList<DashboardIncomeSourceSource>> ReadIncomeSourcesAsync(
+        Guid householdId,
+        CancellationToken cancellationToken) =>
+        await dbContext.IncomeSources.AsNoTracking()
+            .Where(source => source.HouseholdId == householdId)
+            .Select(source => new DashboardIncomeSourceSource(
+                source.Id,
+                source.Name))
+            .ToArrayAsync(cancellationToken);
+
     private async Task<IReadOnlyList<DashboardPosting>> ReadPostingsAsync(
         Guid householdId,
         FinancialPeriod period,
@@ -96,7 +108,8 @@ public sealed class EfDashboardReader(InOutDbContext dbContext) : IDashboardRead
                     transaction.ReversalOf is { } reversalOf && reversedKinds.TryGetValue(reversalOf, out var kind)
                         ? kind
                         : null,
-                    entry.AmountCents)))
+                    entry.AmountCents,
+                    transaction.IncomeSourceId)))
             .ToArray();
     }
 
