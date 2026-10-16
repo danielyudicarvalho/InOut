@@ -144,7 +144,7 @@ select lives_ok($test$
   begin
     update public.entries
     set category_id = 'a2000000-0000-0000-0000-000000000001'
-    where transaction_id = 'a3000000-0000-0000-000000000001';
+    where transaction_id = 'a3000000-0000-0000-0000-000000000001';
     get diagnostics changed_count = row_count;
     if changed_count <> 1 then raise exception 'entry classification correction failed'; end if;
   end $block$

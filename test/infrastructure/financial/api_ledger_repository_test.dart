@@ -342,6 +342,14 @@ void main() {
             ],
             'accounts': <Object>[],
             'categoryExpenses': <Object>[],
+            'incomeSources': [
+              {
+                'incomeSourceId': 'source-1',
+                'sourceName': 'Salary',
+                'currency': 'BRL',
+                'amountCents': 1000,
+              },
+            ],
             'budgets': <Object>[],
             'goals': <Object>[],
           }),
@@ -363,5 +371,8 @@ void main() {
     expect(captured.url.queryParameters, {'year': '2026', 'month': '9'});
     expect(dashboard.isReconciled, isTrue);
     expect(dashboard.summaries.single.resultCents, 750);
+    expect(dashboard.incomeSources.single.incomeSourceId, 'source-1');
+    expect(dashboard.incomeSources.single.sourceName, 'Salary');
+    expect(dashboard.incomeSources.single.amountCents, 1000);
   });
 }
