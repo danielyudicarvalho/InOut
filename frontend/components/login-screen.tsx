@@ -87,17 +87,9 @@ export function LoginScreen() {
                 {visible ? <EyeSlash size={21} /> : <Eye size={21} />}
               </button>
             </div>
-            <button
-              className="signin-forgot"
-              type="button"
-              onClick={() =>
-                setNotice(
-                  "A recuperação de senha ainda não está disponível nesta prévia.",
-                )
-              }
-            >
+            <Link href="/esqueci-senha" className="signin-forgot">
               Esqueci minha senha
-            </button>
+            </Link>
             <button className="primary signin-submit" type="submit">
               Entrar <CaretRight size={20} />
             </button>

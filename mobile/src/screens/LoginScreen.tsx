@@ -112,11 +112,7 @@ export function LoginScreen() {
           </View>
           <Pressable
             accessibilityRole="button"
-            onPress={() =>
-              setNotice(
-                "A recuperação de senha ainda não está disponível nesta prévia.",
-              )
-            }
+            onPress={() => router.push("/esqueci-senha")}
             style={s.forgot}
           >
             <Text style={s.link}>Esqueci minha senha</Text>

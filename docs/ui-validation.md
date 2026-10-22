@@ -40,3 +40,11 @@ Antes de integrar à main, revisar desktop e larguras de 360/390/430px, navegaç
 - Preview-state navigation permits reviewing all three screens without simulating actual verification. No authentication status is changed.
 - Registration remains unintegrated and does not imply that a confirmation email was sent.
 - Exact envelope artwork, browser visual/interaction checks and native-device verification remain pending.
+
+## Password recovery — 2026-10-22
+
+- Added `/esqueci-senha` for web and mobile and connected both login recovery links.
+- Email validation precedes the check-email presentation; users can return to login or enter another email.
+- The result uses conditional account-neutral wording. A persistent preview notice explicitly says delivery is unintegrated and no email was sent.
+- No API calls, persistence, password changes or recovery-token handling added.
+- Reuses existing Pipo artwork; the key/envelope illustration and visual/native-device acceptance remain pending.

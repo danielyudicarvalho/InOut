@@ -796,3 +796,40 @@ dialog .primary {
     font-size: 29px;
   }
 }
+
+.recovery-copy {
+  font-family: Georgia, serif;
+  font-size: 18px;
+  line-height: 1.5;
+  margin: 12px 0 26px;
+}
+.recovery-submit {
+  margin-top: 26px;
+}
+.recovery-preview {
+  font-size: 11px;
+  line-height: 1.6;
+  color: #615543;
+  margin: 20px 0;
+}
+.recovery-back {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+}
+@media (max-width: 760px) {
+  .recovery .signin-art {
+    min-height: 180px;
+    max-height: 230px;
+    height: 27svh;
+  }
+  .recovery .signin-form > h1,
+  .recovery-copy {
+    text-align: center;
+  }
+  .recovery .signin-panel {
+    padding-top: 14px;
+  }
+}
