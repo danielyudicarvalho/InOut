@@ -24,3 +24,18 @@ npm run build:ios
 `src/screens/WelcomeScreen.tsx` contém a tela; `src/theme.ts` contém os tokens visuais; `assets/pipo-home.webp` é a ilustração local. Safe area, rolagem, descrições acessíveis e fechamento do modal com o botão voltar do Android estão contemplados. Fontes são empacotadas localmente.
 
 Cards e CTAs abrem explicações em modal. Login/cadastro e integração de API ainda não foram implementados. Ao adicionar navegação, usar Expo Router e `src/app/` conforme AGENTS.md. Não editar manualmente projetos nativos gerados.
+
+## Code quality
+
+Install the recommended VS Code ESLint and Prettier extensions for formatting on save.
+Both apps share the root `.prettierrc.json` (2 spaces, 80-column wrapping).
+ESLint checks Next.js/TypeScript or Expo/React Native conventions; Prettier handles formatting.
+
+```sh
+npm run format       # Format source files
+npm run lint:fix     # Fix supported lint issues
+npm run check        # Check formatting, lint (zero warnings), and TypeScript
+```
+
+GitHub Actions runs `npm run check` for both apps when UI code or quality configuration changes.
+Generated files and dependency lockfiles are excluded from formatting.

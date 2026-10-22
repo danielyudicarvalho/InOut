@@ -65,7 +65,10 @@ export function WelcomeScreen({ fontsReady }: { fontsReady: boolean }) {
   };
   const sans = { fontFamily: fontsReady ? t.sans : undefined };
   const next = (register: boolean) => {
-    if (!register) { router.push("/entrar"); return; }
+    if (!register) {
+      router.push("/entrar");
+      return;
+    }
     setContent({
       title: register
         ? "Vamos preparar seu ninho?"

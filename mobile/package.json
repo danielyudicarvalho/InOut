@@ -24,6 +24,8 @@
   },
   "devDependencies": {
     "@types/react": "~19.3.0",
+    "eslint-config-prettier": "^10.1.8",
+    "prettier": "^3.9.10",
     "typescript": "~6.0.3"
   },
   "scripts": {
@@ -32,9 +34,13 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "typecheck": "tsc --noEmit",
-    "lint": "expo lint",
+    "lint": "eslint . --max-warnings 0",
     "build:android": "expo export --platform android",
-    "build:ios": "expo export --platform ios"
+    "build:ios": "expo export --platform ios",
+    "lint:fix": "eslint . --fix --max-warnings 0",
+    "format": "prettier --write . --ignore-path ../.prettierignore",
+    "format:check": "prettier --check . --ignore-path ../.prettierignore",
+    "check": "npm run format:check && npm run lint && npm run typecheck"
   },
   "private": true
 }

@@ -412,6 +412,194 @@ dialog .primary {
     transition: none;
   }
 }
-.signin{display:grid;grid-template-columns:55% 45%;min-height:100svh;background:#fcf8ee}.signin-art{position:relative;min-height:680px;overflow:hidden}.signin-art>img{object-fit:cover;object-position:center}.signin-art-copy{position:relative;z-index:1;padding:42px;color:#352219;text-shadow:0 1px 8px #fff8}.signin-art-copy h1{font-family:Lora,Georgia,serif;font-size:clamp(34px,4vw,58px);line-height:1.06;letter-spacing:-2px;margin:34px 0 12px}.signin-art-copy p{font-family:Georgia,serif;font-size:19px}.signin-panel{padding:44px clamp(26px,5vw,90px);display:flex;flex-direction:column}.signin-form{width:100%;max-width:390px;margin:auto}.signin-form h2{font-family:Lora,Georgia,serif;font-size:44px;margin:40px 0 4px}.signin-form>p{font-family:Georgia,serif;font-size:19px;margin:0 0 34px}.signin-form label{display:block;font-size:13px;margin:20px 0 8px}.signin-input{display:flex;align-items:center;gap:13px;border:1px solid var(--line);border-radius:11px;padding:0 13px;min-height:50px}.signin-input:focus-within{outline:2px solid var(--green);outline-offset:2px}.signin-input input{border:0;background:transparent;min-width:0;width:100%;font:inherit;color:var(--ink);outline:none}.signin-input button{background:none;border:0;display:flex;align-items:center;justify-content:center;min-width:44px;min-height:46px}.signin-forgot{display:block;margin:5px 0 18px auto;background:none;border:0;text-decoration:underline;min-height:44px;font-size:12px;color:#30473c}.signin-submit{width:100%;border-radius:11px}.signin-notice{font-size:13px;line-height:1.5;margin:12px 0}.signin-divider{display:flex;align-items:center;gap:14px;font-size:12px;margin-top:22px}.signin-divider:before,.signin-divider:after{content:"";height:1px;background:var(--line);flex:1}.signin-register{display:block;margin:3px auto;background:none;border:0;text-decoration:underline;min-height:44px;color:#30473c}.signin-back{display:block;text-align:center;font-size:12px;color:#615543;margin-top:18px}.signin a{text-decoration:none}.signin-back{text-decoration:underline!important}@media(max-width:760px){.signin{display:flex;flex-direction:column}.signin-art{min-height:240px;height:30svh;max-height:320px}.signin-art-copy{padding:20px}.signin-art-copy h1,.signin-art-copy p{display:none}.signin-panel{padding:18px 24px 30px}.signin-panel>.brand{display:none}.signin-form{max-width:440px}.signin-form h2{font-size:36px;margin:0 0 8px}.signin-desktop-title{display:none}.signin-mobile-title{display:block}.signin-form>p{font-size:17px;margin-bottom:24px}}
+.signin {
+  display: grid;
+  grid-template-columns: 55% 45%;
+  min-height: 100svh;
+  background: #fcf8ee;
+}
+.signin-art {
+  position: relative;
+  min-height: 680px;
+  overflow: hidden;
+}
+.signin-art > img {
+  object-fit: cover;
+  object-position: center;
+}
+.signin-art-copy {
+  position: relative;
+  z-index: 1;
+  padding: 42px;
+  color: #352219;
+  text-shadow: 0 1px 8px #fff8;
+}
+.signin-art-copy h1 {
+  font-family: Lora, Georgia, serif;
+  font-size: clamp(34px, 4vw, 58px);
+  line-height: 1.06;
+  letter-spacing: -2px;
+  margin: 34px 0 12px;
+}
+.signin-art-copy p {
+  font-family: Georgia, serif;
+  font-size: 19px;
+}
+.signin-panel {
+  padding: 44px clamp(26px, 5vw, 90px);
+  display: flex;
+  flex-direction: column;
+}
+.signin-form {
+  width: 100%;
+  max-width: 390px;
+  margin: auto;
+}
+.signin-form h2 {
+  font-family: Lora, Georgia, serif;
+  font-size: 44px;
+  margin: 40px 0 4px;
+}
+.signin-form > p {
+  font-family: Georgia, serif;
+  font-size: 19px;
+  margin: 0 0 34px;
+}
+.signin-form label {
+  display: block;
+  font-size: 13px;
+  margin: 20px 0 8px;
+}
+.signin-input {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  padding: 0 13px;
+  min-height: 50px;
+}
+.signin-input:focus-within {
+  outline: 2px solid var(--green);
+  outline-offset: 2px;
+}
+.signin-input input {
+  border: 0;
+  background: transparent;
+  min-width: 0;
+  width: 100%;
+  font: inherit;
+  color: var(--ink);
+  outline: none;
+}
+.signin-input button {
+  background: none;
+  border: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 46px;
+}
+.signin-forgot {
+  display: block;
+  margin: 5px 0 18px auto;
+  background: none;
+  border: 0;
+  text-decoration: underline;
+  min-height: 44px;
+  font-size: 12px;
+  color: #30473c;
+}
+.signin-submit {
+  width: 100%;
+  border-radius: 11px;
+}
+.signin-notice {
+  font-size: 13px;
+  line-height: 1.5;
+  margin: 12px 0;
+}
+.signin-divider {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 12px;
+  margin-top: 22px;
+}
+.signin-divider:before,
+.signin-divider:after {
+  content: "";
+  height: 1px;
+  background: var(--line);
+  flex: 1;
+}
+.signin-register {
+  display: block;
+  margin: 3px auto;
+  background: none;
+  border: 0;
+  text-decoration: underline;
+  min-height: 44px;
+  color: #30473c;
+}
+.signin-back {
+  display: block;
+  text-align: center;
+  font-size: 12px;
+  color: #615543;
+  margin-top: 18px;
+}
+.signin a {
+  text-decoration: none;
+}
+.signin-back {
+  text-decoration: underline !important;
+}
+@media (max-width: 760px) {
+  .signin {
+    display: flex;
+    flex-direction: column;
+  }
+  .signin-art {
+    min-height: 240px;
+    height: 30svh;
+    max-height: 320px;
+  }
+  .signin-art-copy {
+    padding: 20px;
+  }
+  .signin-art-copy h1,
+  .signin-art-copy p {
+    display: none;
+  }
+  .signin-panel {
+    padding: 18px 24px 30px;
+  }
+  .signin-panel > .brand {
+    display: none;
+  }
+  .signin-form {
+    max-width: 440px;
+  }
+  .signin-form h2 {
+    font-size: 36px;
+    margin: 0 0 8px;
+  }
+  .signin-desktop-title {
+    display: none;
+  }
+  .signin-mobile-title {
+    display: block;
+  }
+  .signin-form > p {
+    font-size: 17px;
+    margin-bottom: 24px;
+  }
+}
 
-@media(min-width:761px){.signin-mobile-title{display:none}}
+@media (min-width: 761px) {
+  .signin-mobile-title {
+    display: none;
+  }
+}

@@ -1,6 +1,7 @@
 "use client";
 import { useRef, useState, useEffect } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   ArrowDown,
@@ -55,7 +56,10 @@ export function WelcomeScreen() {
     if (content && !dialog.current?.open) dialog.current?.showModal();
   }, [content]);
   const next = (kind: "register" | "login") => {
-    if (kind === "login") { router.push("/entrar"); return; }
+    if (kind === "login") {
+      router.push("/entrar");
+      return;
+    }
     setContent({
       title:
         kind === "register"
@@ -79,10 +83,10 @@ export function WelcomeScreen() {
         />
       </div>
       <header>
-        <a href="/" className="brand" aria-label="Ninho, início">
+        <Link href="/" className="brand" aria-label="Ninho, início">
           <Plant weight="duotone" size={35} aria-hidden="true" />
           ninho<span className="brand-caption">por InOut</span>
-        </a>
+        </Link>
         <button className="skip" onClick={() => next("login")}>
           Pular
         </button>
