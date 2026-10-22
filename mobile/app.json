@@ -26,7 +26,8 @@
     "scheme": "inout",
     "backgroundColor": "#fbf6e8",
     "plugins": [
-      "expo-font"
+      "expo-font",
+      "expo-router"
     ]
   }
 }

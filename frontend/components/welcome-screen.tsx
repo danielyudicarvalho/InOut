@@ -1,6 +1,7 @@
 "use client";
 import { useRef, useState, useEffect } from "react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import {
   ArrowDown,
   ArrowsLeftRight,
@@ -44,6 +45,7 @@ const features = [
   },
 ];
 export function WelcomeScreen() {
+  const router = useRouter();
   const [content, setContent] = useState<{
     title: string;
     description: string;
@@ -52,7 +54,8 @@ export function WelcomeScreen() {
   useEffect(() => {
     if (content && !dialog.current?.open) dialog.current?.showModal();
   }, [content]);
-  const next = (kind: "register" | "login") =>
+  const next = (kind: "register" | "login") => {
+    if (kind === "login") { router.push("/entrar"); return; }
     setContent({
       title:
         kind === "register"
@@ -63,6 +66,7 @@ export function WelcomeScreen() {
           ? "O próximo passo será criar seu usuário e depois criar uma residência ou participar por convite. Essa tela será construída na próxima etapa."
           : "A tela de entrar com e-mail e senha será construída na próxima etapa. Seu ninho está esperando por você.",
     });
+  };
   return (
     <main className="welcome">
       <div className="artwork">
