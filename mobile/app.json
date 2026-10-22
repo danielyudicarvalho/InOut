@@ -1,0 +1,32 @@
+{
+  "expo": {
+    "name": "Ninho • InOut",
+    "slug": "inout-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.inout.mobile"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#fbf6e8",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "package": "com.inout.mobile"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "scheme": "inout",
+    "backgroundColor": "#fbf6e8",
+    "plugins": [
+      "expo-font"
+    ]
+  }
+}

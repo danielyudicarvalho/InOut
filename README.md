@@ -84,3 +84,11 @@ Integração bancária, OCR de comprovantes, cartões/faturas complexos, investi
 ## Referência arquitetural
 
 As decisões adotam de forma proporcional os princípios do livro *Full Cycle*: sustentabilidade desde o dia zero, requisitos arquiteturais explícitos, organização e componentização, linguagem de domínio, separação entre negócio e tecnologia, limites arquiteturais, automação de entrega e observabilidade.
+
+## Novos clientes de UI/UX — branch `UI`
+
+- [Web em Next.js (`frontend/`)](frontend/README.md).
+- [Android/iOS em React Native + Expo (`mobile/`)](mobile/README.md).
+- [ADR-009: decisão e limites desta entrega](docs/adr/009-react-ui-clients.md).
+
+A primeira tela implementa as boas-vindas da referência Ninho/Pipo. Os CTAs apresentam a continuidade planejada; autenticação e demais telas serão integradas nas próximas entregas.
