@@ -108,16 +108,9 @@ export function LoginScreen() {
           <div className="signin-divider">
             <span>Ainda não tem conta?</span>
           </div>
-          <button
-            className="signin-register"
-            onClick={() =>
-              setNotice(
-                "A tela de criar conta será implementada na próxima etapa.",
-              )
-            }
-          >
+          <Link href="/criar-conta" className="signin-register">
             Criar conta
-          </button>
+          </Link>
           <Link href="/" className="signin-back">
             Voltar ao início
           </Link>

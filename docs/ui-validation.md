@@ -20,3 +20,13 @@ Antes de integrar à main, revisar desktop e larguras de 360/390/430px, navegaç
 - Reuses the Pipo illustration already committed for welcome, rather than the different artwork in the login reference.
 - Passed: Next production build, mobile TypeScript/lint, Android and iOS Metro exports.
 - Browser preview renders, but clicks did not produce observable React state changes in this preview environment. Interaction QA remains blocked; do not treat build/export success as device or browser interaction verification.
+
+## Create account screen — 2026-10-22
+
+- Added `/criar-conta` in Next.js and Expo Router; welcome and login link to it.
+- Name, email, password and confirmation fields; independent password visibility controls.
+- Required fields, email syntax, minimum eight-character password and matching confirmation checked locally. These UI checks are not the final backend password policy.
+- Explicitly distinguishes user registration from later financial-account setup.
+- Registration does not send or persist credentials; valid submission explains that authentication integration is pending. Legal-document controls report their unavailable preview state.
+- Reuses the existing Pipo illustration, which differs from the supplied registration reference.
+- Formatting, ESLint and TypeScript checked in both clients. Native device and browser visual/interaction QA remain pending.

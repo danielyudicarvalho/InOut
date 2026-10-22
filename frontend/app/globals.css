@@ -603,3 +603,83 @@ dialog .primary {
     display: none;
   }
 }
+
+.register .signin-panel {
+  padding-top: 28px;
+  padding-bottom: 28px;
+}
+.register .signin-form h2 {
+  font-size: 36px;
+  line-height: 1.05;
+  margin-top: 22px;
+}
+.register .signin-form > p {
+  font-size: 16px;
+  margin-bottom: 14px;
+}
+.register .signin-form label {
+  margin-top: 12px;
+}
+.register-help {
+  font-size: 11px;
+  color: #615543;
+  line-height: 1.5;
+}
+.register-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  margin: 16px 0;
+  background: #f7ecdc;
+  border: 1px solid #ecdcc6;
+  border-radius: 11px;
+}
+.register-info strong {
+  display: block;
+  font-family: Georgia, serif;
+  font-size: 14px;
+}
+.register-info span {
+  display: block;
+  font-size: 11px;
+  margin-top: 4px;
+}
+.register-info svg {
+  flex-shrink: 0;
+  color: #80532e;
+}
+.register-login {
+  text-decoration: underline !important;
+  margin-left: 10px;
+  color: #30473c;
+}
+.register-terms {
+  text-align: center;
+  font-size: 10px;
+  line-height: 1.8;
+  color: #615543;
+  margin-top: 16px;
+}
+.register-terms button {
+  font: inherit;
+  color: #30473c;
+  border: 0;
+  padding: 0;
+  background: none;
+  text-decoration: underline;
+}
+@media (max-width: 760px) {
+  .register .signin-art {
+    min-height: 160px;
+    height: 23svh;
+    max-height: 220px;
+  }
+  .register .signin-panel {
+    padding-top: 10px;
+  }
+  .register .signin-form h2 {
+    font-size: 30px;
+    margin-top: 0;
+  }
+}

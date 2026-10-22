@@ -149,11 +149,7 @@ export function LoginScreen() {
           </View>
           <Pressable
             accessibilityRole="button"
-            onPress={() =>
-              setNotice(
-                "A tela de criar conta será implementada na próxima etapa.",
-              )
-            }
+            onPress={() => router.push("/criar-conta")}
             style={s.register}
           >
             <Text style={s.link}>Criar conta</Text>

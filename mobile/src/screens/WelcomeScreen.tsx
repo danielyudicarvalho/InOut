@@ -65,18 +65,7 @@ export function WelcomeScreen({ fontsReady }: { fontsReady: boolean }) {
   };
   const sans = { fontFamily: fontsReady ? t.sans : undefined };
   const next = (register: boolean) => {
-    if (!register) {
-      router.push("/entrar");
-      return;
-    }
-    setContent({
-      title: register
-        ? "Vamos preparar seu ninho?"
-        : "Que bom ter você de volta!",
-      description: register
-        ? "O próximo passo será criar seu usuário e depois criar uma residência ou participar por convite. Essa tela será construída na próxima etapa."
-        : "A tela de entrar com e-mail e senha será construída na próxima etapa. Seu ninho está esperando por você.",
-    });
+    router.push(register ? "/criar-conta" : "/entrar");
   };
   return (
     <SafeAreaView style={s.safe}>

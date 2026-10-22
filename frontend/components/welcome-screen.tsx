@@ -56,20 +56,7 @@ export function WelcomeScreen() {
     if (content && !dialog.current?.open) dialog.current?.showModal();
   }, [content]);
   const next = (kind: "register" | "login") => {
-    if (kind === "login") {
-      router.push("/entrar");
-      return;
-    }
-    setContent({
-      title:
-        kind === "register"
-          ? "Vamos preparar seu ninho?"
-          : "Que bom ter você de volta!",
-      description:
-        kind === "register"
-          ? "O próximo passo será criar seu usuário e depois criar uma residência ou participar por convite. Essa tela será construída na próxima etapa."
-          : "A tela de entrar com e-mail e senha será construída na próxima etapa. Seu ninho está esperando por você.",
-    });
+    router.push(kind === "login" ? "/entrar" : "/criar-conta");
   };
   return (
     <main className="welcome">
