@@ -30,3 +30,13 @@ Antes de integrar à main, revisar desktop e larguras de 360/390/430px, navegaç
 - Registration does not send or persist credentials; valid submission explains that authentication integration is pending. Legal-document controls report their unavailable preview state.
 - Reuses the existing Pipo illustration, which differs from the supplied registration reference.
 - Formatting, ESLint and TypeScript checked in both clients. Native device and browser visual/interaction QA remain pending.
+
+## Email confirmation states — 2026-10-22
+
+- Added `/confirmar-email`, `/email-confirmado` and `/link-invalido` to web and mobile.
+- Pending, confirmed and invalid/expired-link presentations follow the supplied reference layout and copy, reusing the existing Pipo asset.
+- All screens explicitly identify themselves as UI previews. The displayed email is illustrative; no email, token or account information is read from URL parameters.
+- Login links navigate to `/entrar`; resend/request actions state that delivery is not integrated and do not claim an email was sent.
+- Preview-state navigation permits reviewing all three screens without simulating actual verification. No authentication status is changed.
+- Registration remains unintegrated and does not imply that a confirmation email was sent.
+- Exact envelope artwork, browser visual/interaction checks and native-device verification remain pending.

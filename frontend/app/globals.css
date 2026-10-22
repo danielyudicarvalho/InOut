@@ -683,3 +683,116 @@ dialog .primary {
     margin-top: 0;
   }
 }
+
+.confirmation-title {
+  font-family: Lora, Georgia, serif;
+  font-size: clamp(28px, 3vw, 40px);
+  line-height: 1.15;
+  letter-spacing: -1px;
+  margin: 18px 0 12px;
+}
+.signin-form > .confirmation-preview {
+  font-family: "DM Sans", Arial, sans-serif;
+  font-size: 11px;
+  line-height: 1.5;
+  margin: 24px 0 12px;
+  color: #615543;
+}
+.signin-form > .confirmation-recipient {
+  font-size: 16px;
+  line-height: 1.5;
+  margin-bottom: 16px;
+}
+.confirmation-recipient small {
+  display: block;
+  font-family: "DM Sans", Arial, sans-serif;
+  font-size: 10px;
+  color: #615543;
+  margin-top: 4px;
+}
+.confirmation-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #fbead0;
+  color: #874400;
+  border-radius: 22px;
+  padding: 8px 12px;
+  font-size: 12px;
+}
+.confirmation-confirmed .confirmation-badge {
+  background: #e1ecd7;
+  color: #35502a;
+}
+.signin-form > .confirmation-description {
+  font-size: 16px;
+  line-height: 1.5;
+  margin: 24px 0 4px;
+}
+.confirmation-next {
+  font-size: 12px;
+  color: #615543;
+  margin: 0 0 22px;
+}
+.confirmation-tip {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  border-top: 1px solid var(--line);
+  padding-top: 16px;
+  margin: 20px 0;
+  font-size: 11px;
+  line-height: 1.5;
+}
+.confirmation-tip svg {
+  flex-shrink: 0;
+}
+.confirmation-resend {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid var(--green);
+  border-radius: 9px;
+  margin-top: 12px;
+  background: transparent;
+  color: #35502a;
+}
+.confirmation-resend.primary {
+  background: var(--green);
+  color: white;
+}
+.confirmation-demo {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  justify-content: center;
+  margin: 30px 0 0;
+  font-size: 11px;
+  line-height: 1.8;
+  color: #615543;
+}
+.confirmation-demo a {
+  color: #35502a;
+  text-decoration: underline;
+  padding: 8px 0;
+}
+.confirmation-confirmed .confirmation-description,
+.confirmation-invalid .confirmation-description {
+  margin-bottom: 24px;
+}
+@media (max-width: 760px) {
+  .confirmation .signin-art {
+    height: 25svh;
+    min-height: 180px;
+    max-height: 230px;
+  }
+  .confirmation .signin-form {
+    text-align: center;
+  }
+  .confirmation .signin-panel {
+    padding-top: 10px;
+  }
+  .confirmation .confirmation-title {
+    font-size: 29px;
+  }
+}
