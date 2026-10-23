@@ -117,6 +117,13 @@ export function ForgotPasswordScreen() {
               </Pressable>
             </>
           )}
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => router.push("/redefinir-senha")}
+            style={s.back}
+          >
+            <Text style={s.link}>Ver prévia da nova senha</Text>
+          </Pressable>
           <Text style={s.preview}>
             Prévia de interface. O envio ainda não está integrado; nenhum e-mail
             foi enviado.

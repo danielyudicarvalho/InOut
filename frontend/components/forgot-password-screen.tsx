@@ -41,6 +41,9 @@ export function ForgotPasswordScreen() {
           ninho
         </Link>
         <div className="signin-form">
+          <Link href="/redefinir-senha" className="signin-back">
+            Ver prévia da nova senha
+          </Link>
           <h1 className="confirmation-title">
             {submitted ? "Confira seu e-mail" : "Esqueceu sua senha?"}
           </h1>

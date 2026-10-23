@@ -48,3 +48,10 @@ Antes de integrar à main, revisar desktop e larguras de 360/390/430px, navegaç
 - The result uses conditional account-neutral wording. A persistent preview notice explicitly says delivery is unintegrated and no email was sent.
 - No API calls, persistence, password changes or recovery-token handling added.
 - Reuses existing Pipo artwork; the key/envelope illustration and visual/native-device acceptance remain pending.
+
+## Set new password — 2026-10-22
+
+- Added `/redefinir-senha` in web and mobile with independent password visibility, minimum eight characters and matching confirmation validation.
+- Submission clears password inputs and shows the reference completion state with an explicit preview notice: no password is actually updated.
+- No token handling, API call, credential persistence or authentication/session change. Backend recovery validation remains required.
+- Login navigation and reviewing the form work locally. Existing Pipo art is reused; reference-specific key artwork and visual/device acceptance remain pending.
