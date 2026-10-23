@@ -1308,3 +1308,170 @@ dialog .primary {
     max-height: 210px;
   }
 }
+
+.account-header {
+  justify-content: flex-start;
+  gap: 22px;
+}
+.account-header > span {
+  border-left: 1px solid var(--line);
+  padding-left: 22px;
+  font-family: Georgia, serif;
+  color: #615543;
+}
+.account-story h1 {
+  font-family: Lora, Georgia, serif;
+  font-size: 38px;
+  letter-spacing: -1px;
+  line-height: 1.15;
+  margin: 0 0 14px;
+}
+.account-story > p {
+  max-width: 380px;
+  font:
+    20px/1.4 Georgia,
+    serif;
+}
+.account-desktop-art {
+  width: 100%;
+  height: auto;
+  border-radius: 22px;
+}
+.account-mobile-art {
+  display: none;
+}
+.account-panel h2 {
+  font-size: 30px;
+}
+.account-panel > p {
+  font:
+    16px/1.4 Georgia,
+    serif;
+}
+.account-panel label {
+  margin: 15px 0 7px;
+}
+.account-info {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 13px;
+  background: #edf3e1;
+  border-radius: 10px;
+  font-size: 13px;
+  line-height: 1.6;
+  margin-top: 14px;
+}
+.account-info svg {
+  flex-shrink: 0;
+  color: #366747;
+}
+.account-balance-help {
+  background: #fbf1d6;
+}
+.account-balance-help svg {
+  color: #885408;
+}
+.initial-account .primary {
+  background: #00835c;
+}
+.account-notice {
+  text-align: center;
+  max-width: 700px;
+  margin: 18px auto;
+}
+.account-ready {
+  max-width: 1100px;
+  margin: 65px auto;
+  display: grid;
+  grid-template-columns: 0.8fr 1.2fr;
+  align-items: center;
+  gap: 30px;
+}
+.account-ready > img {
+  width: 100%;
+  height: auto;
+}
+.account-ready h1 {
+  font:
+    bold 32px/1.2 Lora,
+    Georgia,
+    serif;
+}
+.account-next-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 22px;
+}
+.account-next-actions button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 48px;
+  flex: 1;
+  padding: 10px;
+}
+.account-expense {
+  color: #ad3a28;
+  border: 1px solid #ad3a28;
+  background: transparent;
+  border-radius: 10px;
+  font: inherit;
+  cursor: pointer;
+}
+.account-text-button {
+  display: block;
+  margin: 15px auto;
+  background: transparent;
+  border: 0;
+  color: #35502a;
+  text-decoration: underline;
+  font: inherit;
+  cursor: pointer;
+  min-height: 44px;
+}
+@media (max-width: 760px) {
+  .account-header {
+    gap: 12px;
+  }
+  .account-header > span {
+    font-size: 12px;
+    padding-left: 12px;
+  }
+  .account-mobile-art {
+    display: block;
+    width: 100%;
+    height: 155px;
+    object-fit: contain;
+  }
+  .account-desktop-art {
+    display: none;
+  }
+  .account-story h1 {
+    font-size: 29px;
+  }
+  .account-story > p {
+    font-size: 16px;
+    margin-bottom: 0;
+  }
+  .account-panel h2,
+  .account-panel > p,
+  .account-panel > .account-info {
+    display: none;
+  }
+  .account-ready {
+    display: block;
+    margin: 20px auto;
+  }
+  .account-ready > img {
+    max-height: 220px;
+    object-fit: contain;
+  }
+  .account-ready h1 {
+    font-size: 29px;
+  }
+  .account-next-actions {
+    flex-direction: column;
+  }
+}

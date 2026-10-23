@@ -140,8 +140,8 @@ export function CreateHouseholdScreen() {
               {notice}
             </p>
           </form>
-          <Link href="/comecar" className="signin-back">
-            Voltar
+          <Link href="/configuracao-inicial" className="signin-back">
+            Prévia: configurar primeira conta
           </Link>
           <p className="household-preview">
             Prévia de interface. Nenhuma residência é criada. Sair retorna à

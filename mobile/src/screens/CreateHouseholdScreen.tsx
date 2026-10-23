@@ -171,6 +171,13 @@ export function CreateHouseholdScreen() {
           <Text accessibilityLiveRegion="polite" style={s.notice}>
             {notice}
           </Text>
+          <Pressable
+            accessibilityRole="button"
+            style={s.linkTarget}
+            onPress={() => router.push("/configuracao-inicial")}
+          >
+            <Text style={s.link}>Prévia: configurar primeira conta</Text>
+          </Pressable>
           <Text style={s.preview}>
             Prévia de interface. Nenhuma residência é criada. Sair retorna à
             tela de entrada.
