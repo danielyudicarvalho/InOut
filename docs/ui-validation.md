@@ -55,3 +55,11 @@ Antes de integrar à main, revisar desktop e larguras de 360/390/430px, navegaç
 - Submission clears password inputs and shows the reference completion state with an explicit preview notice: no password is actually updated.
 - No token handling, API call, credential persistence or authentication/session change. Backend recovery validation remains required.
 - Login navigation and reviewing the form work locally. Existing Pipo art is reused; reference-specific key artwork and visual/device acceptance remain pending.
+
+## Session restoration states — 2026-10-22
+
+- Added `/preparando`, `/sessao-expirada` and `/falha-acesso` for web and mobile.
+- Centered loading, expired-session login action and restore-error retry/login actions.
+- Explicit preview notices and demo-state navigation. Retry displays loading for 1.2 seconds then returns to the error preview; timer is cleaned up on unmount. No session check, network request, logout or token change occurs.
+- Loading preview has a login escape; web spinner respects reduced motion.
+- Existing Pipo illustration reused; reference-specific imagery and visual/device QA remain pending.

@@ -833,3 +833,82 @@ dialog .primary {
     padding-top: 14px;
   }
 }
+
+.session-screen {
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: #fcf8ee;
+  padding: 40px 24px;
+  text-align: center;
+}
+.session-art {
+  width: min(320px, 85vw);
+  height: 235px;
+  object-fit: cover;
+  border-radius: 24px;
+  margin-top: 20px;
+}
+.session-state-icon {
+  color: #608762;
+  margin: 20px 0 12px;
+  height: 40px;
+}
+.session-screen h1 {
+  font-size: clamp(25px, 3vw, 36px);
+  line-height: 1.2;
+  letter-spacing: -0.8px;
+  margin: 0 0 12px;
+}
+.session-description {
+  font-family: Georgia, serif;
+  font-size: 18px;
+  line-height: 1.5;
+  max-width: 440px;
+  margin: 0 auto 20px;
+}
+.session-action {
+  width: min(320px, 100%);
+  text-decoration: none;
+}
+.session-login {
+  color: #35502a;
+  padding: 14px;
+  min-height: 44px;
+  font-size: 13px;
+}
+.session-preview {
+  max-width: 400px;
+  font-size: 11px;
+  line-height: 1.6;
+  color: #615543;
+  margin-top: 22px;
+}
+.session-spinner {
+  animation: session-spin 1s linear infinite;
+}
+@keyframes session-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .session-spinner {
+    animation: none;
+  }
+}
+@media (max-width: 760px) {
+  .session-screen {
+    padding: 30px 22px;
+  }
+  .session-art {
+    width: 260px;
+    max-width: 100%;
+    height: 195px;
+  }
+  .session-description {
+    font-size: 16px;
+  }
+}
