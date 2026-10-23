@@ -1,5 +1,8 @@
 "use client";
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
+import { useRouter } from "next/navigation";
+import { authMessage } from "@inout/identity";
+import { getAuth, rememberEmail } from "../lib/auth/composition";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -13,11 +16,28 @@ import {
 export function LoginScreen() {
   const [visible, setVisible] = useState(false);
   const [notice, setNotice] = useState("");
-  function submit(event: FormEvent<HTMLFormElement>) {
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  const running = useRef(false);
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setNotice(
-      "A integração com a autenticação será disponibilizada em uma próxima etapa.",
-    );
+    if (running.current) return;
+    const data = new FormData(event.currentTarget);
+    const email = String(data.get("email"));
+    running.current = true;
+    setBusy(true);
+    setNotice("");
+    try {
+      await getAuth().signIn({ email, password: String(data.get("password")) });
+      rememberEmail(email);
+      router.replace("/comecar");
+    } catch (error) {
+      rememberEmail(email);
+      setNotice(authMessage(error));
+    } finally {
+      running.current = false;
+      setBusy(false);
+    }
   }
   return (
     <main className="signin">
@@ -57,12 +77,13 @@ export function LoginScreen() {
             </span>
           </h2>
           <p>Acesse seu cantinho financeiro.</p>
-          <form onSubmit={submit}>
+          <form method="post" onSubmit={submit}>
             <label htmlFor="email">E-mail</label>
             <div className="signin-input">
               <EnvelopeSimple size={21} aria-hidden="true" />
               <input
                 id="email"
+                name="email"
                 type="email"
                 autoComplete="email"
                 placeholder="voce@exemplo.com"
@@ -74,6 +95,7 @@ export function LoginScreen() {
               <LockSimple size={21} aria-hidden="true" />
               <input
                 id="password"
+                name="password"
                 type={visible ? "text" : "password"}
                 autoComplete="current-password"
                 required
@@ -90,13 +112,21 @@ export function LoginScreen() {
             <Link href="/esqueci-senha" className="signin-forgot">
               Esqueci minha senha
             </Link>
-            <button className="primary signin-submit" type="submit">
-              Entrar <CaretRight size={20} />
+            <button
+              className="primary signin-submit"
+              type="submit"
+              disabled={busy}
+              aria-busy={busy}
+            >
+              {busy ? "Entrando…" : "Entrar"} <CaretRight size={20} />
             </button>
             <p role="status" className="signin-notice">
               {notice}
             </p>
           </form>
+          <Link href="/confirmar-email" className="signin-back">
+            Confirmar meu e-mail
+          </Link>
           <div className="signin-divider">
             <span>Ainda não tem conta?</span>
           </div>

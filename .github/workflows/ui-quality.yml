@@ -1,9 +1,23 @@
 name: UI quality
 on:
   push:
-    paths: ["frontend/**", "mobile/**", ".prettier*", ".github/workflows/ui-quality.yml"]
+    paths:
+      [
+        "frontend/**",
+        "mobile/**",
+        "packages/identity/**",
+        ".prettier*",
+        ".github/workflows/ui-quality.yml",
+      ]
   pull_request:
-    paths: ["frontend/**", "mobile/**", ".prettier*", ".github/workflows/ui-quality.yml"]
+    paths:
+      [
+        "frontend/**",
+        "mobile/**",
+        "packages/identity/**",
+        ".prettier*",
+        ".github/workflows/ui-quality.yml",
+      ]
 permissions:
   contents: read
 jobs:
@@ -23,4 +37,5 @@ jobs:
           cache: npm
           cache-dependency-path: ${{ matrix.app }}/package-lock.json
       - run: npm ci
+      - run: npm run test
       - run: npm run check

@@ -114,3 +114,10 @@ Antes de integrar à main, revisar desktop e larguras de 360/390/430px, navegaç
 - Assets: `frontend/public/images/pipo-first-account-{desktop,mobile,success}.webp`; mobile and success copied identically to `mobile/assets/`. Desktop 1200×960, transparent variants 1200×480. All three artwork compositions inspected directly; desktop screen inspected in browser.
 - Cloud preview rendered the form but submitted it as a native GET instead of applying the React event handler, consistent with earlier preview interaction limitations. Browser interaction acceptance and native-device QA remain pending.
 - Both clients passed Prettier, ESLint and TypeScript checks; web production build passed with both new routes. React checklist reviewed: event-driven state, static native asset requires, input labels, keyboard avoidance and accessible action targets. Direct success route in cloud preview remained stale after reload, so success visual acceptance also remains pending.
+
+## React client authentication — 2026-10-23
+
+- Replaced signup/signin/confirmation placeholders with application operations behind the shared identity port and Supabase adapter. Confirmation routes now verify real provider state rather than presenting arbitrary success.
+- Added pending/safe errors, reentrancy guards, normalized identity email, OTP/resend, fixed PKCE callbacks, session restoration and sign-out. `/comecar` verifies identity without querying household membership.
+- Shared application and adapter tests plus actual SDK tests with mocked HTTP Auth transport; no live account, email or data mutation performed. Connected InOut project public settings were obtained and saved only in ignored local environment files. The live public Auth settings endpoint returned HTTP 200, email enabled, confirmation required, and signup enabled. Live email/account flows and device verification remain pending.
+- Formatting, ESLint and TypeScript passed for both clients; Next production build and Android/iOS Metro exports passed. See `docs/auth-react-clients.md` for setup, remaining checks and book rationale.

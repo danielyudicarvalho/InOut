@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useConfirmation } from "../lib/auth/use-confirmation";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -32,11 +32,12 @@ const content = {
 };
 
 export function EmailConfirmationScreen({
-  state = "pending",
+  state: initialState = "pending",
 }: {
   state?: ConfirmationState;
 }) {
-  const [notice, setNotice] = useState("");
+  const { state, email, setEmail, token, setToken, notice, busy, act } =
+    useConfirmation(initialState);
   const current = content[state];
   const Icon = current.icon;
   return (
@@ -77,16 +78,12 @@ export function EmailConfirmationScreen({
           ninho
         </Link>
         <div className="signin-form">
-          <p className="confirmation-preview">
-            Prévia de interface · sem validação de e-mail integrada
-          </p>
           <h1 className="confirmation-title">{current.title}</h1>
           {state === "pending" && (
             <p className="confirmation-recipient">
-              Enviamos um link de confirmação para
+              Confira o e-mail informado no cadastro
               <br />
-              <strong>voce@exemplo.com</strong>
-              <small>Endereço ilustrativo desta prévia.</small>
+              <strong>{email}</strong>
             </p>
           )}
           <div className="confirmation-badge">
@@ -117,22 +114,55 @@ export function EmailConfirmationScreen({
             </Link>
           )}
           {state !== "confirmed" && (
-            <button
-              className={
-                state === "invalid"
-                  ? "primary confirmation-resend"
-                  : "confirmation-resend"
-              }
-              onClick={() =>
-                setNotice(
-                  "O reenvio estará disponível quando a autenticação for integrada. Nenhum e-mail foi enviado nesta prévia.",
-                )
-              }
+            <form
+              method="post"
+              onSubmit={(event) => {
+                event.preventDefault();
+                void act("confirm");
+              }}
             >
-              {state === "invalid"
-                ? "Solicitar novo e-mail"
-                : "Reenviar e-mail"}
-            </button>
+              <label htmlFor="confirmation-email">E-mail do cadastro</label>
+              <div className="signin-input">
+                <input
+                  id="confirmation-email"
+                  type="email"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  autoComplete="email"
+                  required
+                />
+              </div>
+              <label htmlFor="confirmation-code">
+                Código recebido por e-mail
+              </label>
+              <div className="signin-input">
+                <input
+                  id="confirmation-code"
+                  value={token}
+                  onChange={(event) => setToken(event.target.value)}
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  maxLength={10}
+                  required
+                />
+              </div>
+              <button
+                className="primary signin-submit"
+                type="submit"
+                disabled={busy}
+                aria-busy={busy}
+              >
+                {busy ? "Aguarde…" : "Confirmar código"}
+              </button>
+              <button
+                className="confirmation-resend"
+                type="button"
+                disabled={busy}
+                onClick={() => void act("resend")}
+              >
+                Reenviar e-mail
+              </button>
+            </form>
           )}
           <p role="status" className="signin-notice">
             {notice}
@@ -140,15 +170,6 @@ export function EmailConfirmationScreen({
           <Link href="/entrar" className="signin-back">
             Voltar para entrar
           </Link>
-          <nav
-            aria-label="Estados de demonstração"
-            className="confirmation-demo"
-          >
-            <span>Ver prévias:</span>
-            <Link href="/confirmar-email">Pendente</Link>
-            <Link href="/email-confirmado">Confirmado</Link>
-            <Link href="/link-invalido">Link inválido</Link>
-          </nav>
         </div>
       </section>
     </main>

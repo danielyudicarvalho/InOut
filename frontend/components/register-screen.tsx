@@ -1,6 +1,9 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
+import { useRouter } from "next/navigation";
+import { authMessage } from "@inout/identity";
+import { getAuth, rememberEmail } from "../lib/auth/composition";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -19,21 +22,36 @@ export function RegisterScreen() {
     confirmation: false,
   });
   const [notice, setNotice] = useState("");
-  function submit(event: FormEvent<HTMLFormElement>) {
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  const running = useRef(false);
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const data = new FormData(event.currentTarget);
-    if (!String(data.get("name")).trim()) {
-      setNotice("Informe seu nome.");
-      return;
+    if (running.current) return;
+    const form = event.currentTarget;
+    const data = new FormData(form);
+    const email = String(data.get("email"));
+    running.current = true;
+    setBusy(true);
+    setNotice("");
+    try {
+      const result = await getAuth().signUp({
+        name: String(data.get("name")),
+        email,
+        password: String(data.get("password")),
+        confirmation: String(data.get("confirmation")),
+      });
+      rememberEmail(email);
+      form.reset();
+      router.replace(result === "signedIn" ? "/comecar" : "/confirmar-email");
+    } catch (error) {
+      setNotice(authMessage(error));
+    } finally {
+      running.current = false;
+      setBusy(false);
     }
-    if (data.get("password") !== data.get("confirmation")) {
-      setNotice("As senhas precisam ser iguais.");
-      return;
-    }
-    setNotice(
-      "Seu formulário está pronto. A criação de usuário será disponibilizada quando a autenticação estiver integrada.",
-    );
   }
+
   return (
     <main className="signin register">
       <section
@@ -73,7 +91,7 @@ export function RegisterScreen() {
             ao Ninho.
           </h2>
           <p>Seu cantinho financeiro começa aqui.</p>
-          <form onSubmit={submit} onChange={() => setNotice("")}>
+          <form method="post" onSubmit={submit} onChange={() => setNotice("")}>
             <label htmlFor="name">Nome</label>
             <div className="signin-input">
               <User size={21} aria-hidden="true" />
@@ -146,8 +164,13 @@ export function RegisterScreen() {
                 <span>Suas contas financeiras serão adicionadas depois.</span>
               </div>
             </aside>
-            <button className="primary signin-submit" type="submit">
-              Criar meu acesso
+            <button
+              className="primary signin-submit"
+              type="submit"
+              disabled={busy}
+              aria-busy={busy}
+            >
+              {busy ? "Criando acesso…" : "Criar meu acesso"}
             </button>
             <p role="status" className="signin-notice">
               {notice}

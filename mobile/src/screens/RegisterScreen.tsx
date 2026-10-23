@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   View,
   Text,
@@ -13,6 +13,8 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
+import { authMessage } from "@inout/identity";
+import { getAuth, rememberEmail } from "../auth/composition";
 import { theme as t } from "../theme";
 
 export function RegisterScreen() {
@@ -27,26 +29,24 @@ export function RegisterScreen() {
     confirmation: false,
   });
   const [notice, setNotice] = useState("");
-  function submit() {
-    if (!values.name.trim()) {
-      setNotice("Informe seu nome.");
-      return;
+  const [busy, setBusy] = useState(false);
+  const running = useRef(false);
+  async function submit() {
+    if (running.current) return;
+    running.current = true;
+    setBusy(true);
+    setNotice("");
+    try {
+      const result = await getAuth().signUp(values);
+      rememberEmail(values.email);
+      setValues({ ...values, password: "", confirmation: "" });
+      router.replace(result === "signedIn" ? "/comecar" : "/confirmar-email");
+    } catch (error) {
+      setNotice(authMessage(error));
+    } finally {
+      running.current = false;
+      setBusy(false);
     }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email.trim())) {
-      setNotice("Informe um e-mail válido.");
-      return;
-    }
-    if (values.password.length < 8) {
-      setNotice("Use uma senha com pelo menos 8 caracteres.");
-      return;
-    }
-    if (values.password !== values.confirmation) {
-      setNotice("As senhas precisam ser iguais.");
-      return;
-    }
-    setNotice(
-      "Seu formulário está pronto. A criação de usuário será disponibilizada quando a autenticação estiver integrada.",
-    );
   }
   const fields = [
     {
@@ -177,8 +177,12 @@ export function RegisterScreen() {
             accessibilityRole="button"
             style={({ pressed }) => [s.submit, pressed && { opacity: 0.75 }]}
             onPress={submit}
+            disabled={busy}
+            accessibilityState={{ disabled: busy, busy }}
           >
-            <Text style={s.submitText}>Criar meu acesso</Text>
+            <Text style={s.submitText}>
+              {busy ? "Criando acesso…" : "Criar meu acesso"}
+            </Text>
           </Pressable>
           {notice ? (
             <Text

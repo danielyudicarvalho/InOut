@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useConfirmation } from "../auth/use-confirmation";
 import {
   View,
   Text,
+  TextInput,
   Image,
   Pressable,
   ScrollView,
@@ -35,11 +36,12 @@ const content = {
   },
 } as const;
 export function EmailConfirmationScreen({
-  state = "pending",
+  state: initialState = "pending",
 }: {
   state?: ConfirmationState;
 }) {
-  const [notice, setNotice] = useState("");
+  const { state, email, setEmail, token, setToken, notice, busy, act } =
+    useConfirmation(initialState);
   const current = content[state];
   return (
     <SafeAreaView style={s.safe}>
@@ -59,17 +61,13 @@ export function EmailConfirmationScreen({
           resizeMode="cover"
           accessibilityLabel="Pipo em seu ninho entre plantas"
         />
-        <Text style={s.preview}>
-          Prévia de interface · sem validação de e-mail integrada
-        </Text>
         <Text accessibilityRole="header" style={s.title}>
           {current.title}
         </Text>
         {state === "pending" && (
           <>
-            <Text style={s.text}>Enviamos um link para</Text>
-            <Text style={s.email}>voce@exemplo.com</Text>
-            <Text style={s.preview}>Endereço ilustrativo desta prévia.</Text>
+            <Text style={s.text}>Confira o e-mail do cadastro</Text>
+            <Text style={s.email}>{email}</Text>
           </>
         )}
         <View style={[s.badge, state === "confirmed" && s.confirmed]}>
@@ -114,21 +112,49 @@ export function EmailConfirmationScreen({
           </Pressable>
         )}
         {state !== "confirmed" && (
-          <Pressable
-            accessibilityRole="button"
-            style={state === "invalid" ? s.primary : s.secondary}
-            onPress={() =>
-              setNotice(
-                "O reenvio estará disponível quando a autenticação for integrada. Nenhum e-mail foi enviado nesta prévia.",
-              )
-            }
-          >
-            <Text style={state === "invalid" ? s.primaryText : s.secondaryText}>
-              {state === "invalid"
-                ? "Solicitar novo e-mail"
-                : "Reenviar e-mail"}
-            </Text>
-          </Pressable>
+          <>
+            <Text style={s.help}>E-mail do cadastro</Text>
+            <TextInput
+              accessibilityLabel="E-mail do cadastro"
+              style={s.authInput}
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
+              autoComplete="email"
+            />
+            <Text style={s.help}>Código recebido por e-mail</Text>
+            <TextInput
+              accessibilityLabel="Código recebido por e-mail"
+              style={s.authInput}
+              value={token}
+              onChangeText={setToken}
+              keyboardType="number-pad"
+              autoComplete="one-time-code"
+              maxLength={10}
+            />
+            <Pressable
+              accessibilityRole="button"
+              disabled={busy}
+              accessibilityState={{ disabled: busy, busy }}
+              style={s.primary}
+              onPress={() => void act("confirm")}
+            >
+              <Text style={s.primaryText}>
+                {busy ? "Aguarde…" : "Confirmar código"}
+              </Text>
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              disabled={busy}
+              accessibilityState={{ disabled: busy, busy }}
+              style={s.secondary}
+              onPress={() => void act("resend")}
+            >
+              <Text style={s.secondaryText}>Reenviar e-mail</Text>
+            </Pressable>
+          </>
         )}
         {notice ? (
           <Text
@@ -146,30 +172,22 @@ export function EmailConfirmationScreen({
         >
           <Text style={s.link}>Voltar para entrar</Text>
         </Pressable>
-        <Text style={s.preview}>Ver estados de demonstração:</Text>
-        <View style={s.demos}>
-          {(
-            [
-              { route: "/confirmar-email", label: "Pendente" },
-              { route: "/email-confirmado", label: "Confirmado" },
-              { route: "/link-invalido", label: "Link inválido" },
-            ] as const
-          ).map(({ route, label }) => (
-            <Pressable
-              accessibilityRole="button"
-              key={route}
-              onPress={() => router.replace(route)}
-              style={s.linkTarget}
-            >
-              <Text style={s.link}>{label}</Text>
-            </Pressable>
-          ))}
-        </View>
       </ScrollView>
     </SafeAreaView>
   );
 }
 const s = StyleSheet.create({
+  authInput: {
+    minHeight: 48,
+    borderWidth: 1,
+    borderColor: t.line,
+    borderRadius: 9,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    color: t.ink,
+    fontFamily: t.sans,
+    marginVertical: 8,
+  },
   safe: { flex: 1, backgroundColor: t.cream },
   content: {
     width: "100%",

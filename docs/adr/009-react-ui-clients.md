@@ -19,3 +19,7 @@ A pedido do proprietário, a branch `UI` passa a concentrar a implementação da
 ## Consequências
 
 Há dois novos clientes a manter. A substituição completa do Flutter e a integração de autenticação serão decisões futuras; esta entrega é apenas a fundação de UI. SDKs e pacotes estão registrados nos lockfiles de cada aplicação.
+
+## Evolução — 2026-10-23
+
+Login, cadastro e confirmação de e-mail passam a usar Supabase Auth, seguindo ADR-004 e o port/adaptador do cliente Flutter. O pacote `packages/identity` compartilha os casos de uso e o contrato; composição e armazenamento são específicos de cada plataforma. O backend financeiro permanece como limite das regras e autorização por residência. [Decisões, configuração e validação](../auth-react-clients.md).

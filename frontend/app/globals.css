@@ -1475,3 +1475,15 @@ dialog .primary {
     flex-direction: column;
   }
 }
+
+.auth-exit {
+  border: 0;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}

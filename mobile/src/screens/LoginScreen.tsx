@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   View,
   Text,
@@ -13,21 +13,35 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
+import { authMessage } from "@inout/identity";
+import { getAuth, rememberEmail } from "../auth/composition";
 import { theme as t } from "../theme";
 export function LoginScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [visible, setVisible] = useState(false);
   const [notice, setNotice] = useState("");
-  function submit() {
-    setNotice(
-      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())
-        ? "Informe um e-mail válido."
-        : !password
-          ? "Informe sua senha."
-          : "A integração com a autenticação será disponibilizada em uma próxima etapa.",
-    );
+  const [busy, setBusy] = useState(false);
+  const running = useRef(false);
+  async function submit() {
+    if (running.current) return;
+    running.current = true;
+    setBusy(true);
+    setNotice("");
+    try {
+      await getAuth().signIn({ email, password });
+      rememberEmail(email);
+      setPassword("");
+      router.replace("/comecar");
+    } catch (error) {
+      rememberEmail(email);
+      setNotice(authMessage(error));
+    } finally {
+      running.current = false;
+      setBusy(false);
+    }
   }
+
   return (
     <SafeAreaView style={s.safe}>
       <KeyboardAvoidingView
@@ -120,9 +134,11 @@ export function LoginScreen() {
           <Pressable
             accessibilityRole="button"
             onPress={submit}
+            disabled={busy}
+            accessibilityState={{ disabled: busy, busy }}
             style={({ pressed }) => [s.submit, pressed && { opacity: 0.75 }]}
           >
-            <Text style={s.submitText}>Entrar</Text>
+            <Text style={s.submitText}>{busy ? "Entrando…" : "Entrar"}</Text>
             <MaterialCommunityIcons
               name="chevron-right"
               size={22}
@@ -138,6 +154,13 @@ export function LoginScreen() {
               {notice}
             </Text>
           ) : null}
+          <Pressable
+            accessibilityRole="button"
+            style={s.register}
+            onPress={() => router.push("/confirmar-email")}
+          >
+            <Text style={s.link}>Confirmar meu e-mail</Text>
+          </Pressable>
           <View style={s.divider}>
             <View style={s.line} />
             <Text style={s.caption}>Ainda não tem conta?</Text>

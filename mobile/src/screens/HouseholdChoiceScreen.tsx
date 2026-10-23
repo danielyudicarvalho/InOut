@@ -11,6 +11,8 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
+import { authMessage } from "@inout/identity";
+import { getAuth } from "../auth/composition";
 import { theme as t } from "../theme";
 
 const choices = [
@@ -36,6 +38,21 @@ const choices = [
   },
 ] as const;
 export function HouseholdChoiceScreen() {
+  const [exitBusy, setExitBusy] = useState(false);
+  const [exitNotice, setExitNotice] = useState("");
+  async function signOut() {
+    if (exitBusy) return;
+    setExitBusy(true);
+    try {
+      await getAuth().signOut();
+      router.replace("/entrar");
+    } catch (error) {
+      setExitNotice(authMessage(error));
+    } finally {
+      setExitBusy(false);
+    }
+  }
+
   const [selected, setSelected] = useState<(typeof choices)[number] | null>(
     null,
   );
@@ -54,13 +71,20 @@ export function HouseholdChoiceScreen() {
           </Pressable>
           <Pressable
             accessibilityRole="button"
-            onPress={() => router.replace("/entrar")}
+            disabled={exitBusy}
+            accessibilityState={{ disabled: exitBusy, busy: exitBusy }}
+            onPress={() => void signOut()}
             style={s.exit}
           >
-            <Text style={s.exitText}>Sair</Text>
+            <Text style={s.exitText}>{exitBusy ? "Saindo…" : "Sair"}</Text>
             <MaterialCommunityIcons name="logout" size={21} color={t.green} />
           </Pressable>
         </View>
+        {exitNotice ? (
+          <Text accessibilityLiveRegion="polite" style={s.subtitle}>
+            {exitNotice}
+          </Text>
+        ) : null}
         <Image
           source={require("../../assets/pipo-home.webp")}
           style={s.hero}

@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { authMessage } from "@inout/identity";
+import { getAuth } from "../lib/auth/composition";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -36,6 +38,21 @@ const choices = [
 ] as const;
 export function HouseholdChoiceScreen() {
   const router = useRouter();
+  const [exitBusy, setExitBusy] = useState(false);
+  const [exitNotice, setExitNotice] = useState("");
+  async function signOut() {
+    if (exitBusy) return;
+    setExitBusy(true);
+    try {
+      await getAuth().signOut();
+      router.replace("/entrar");
+    } catch (error) {
+      setExitNotice(authMessage(error));
+    } finally {
+      setExitBusy(false);
+    }
+  }
+
   const [selected, setSelected] = useState<(typeof choices)[number] | null>(
     null,
   );
@@ -50,11 +67,19 @@ export function HouseholdChoiceScreen() {
           <Plant size={34} weight="duotone" aria-hidden="true" />
           ninho
         </Link>
-        <Link href="/entrar" className="household-exit">
-          Sair
+        <button
+          type="button"
+          className="household-exit auth-exit"
+          disabled={exitBusy}
+          onClick={() => void signOut()}
+        >
+          {exitBusy ? "Saindo…" : "Sair"}
           <SignOut size={22} aria-hidden="true" />
-        </Link>
+        </button>
       </header>
+      <p role="status" className="signin-notice">
+        {exitNotice}
+      </p>
       <section aria-labelledby="household-title" className="household-content">
         <Image
           src="/images/pipo-home.webp"
