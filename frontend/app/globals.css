@@ -1245,3 +1245,66 @@ dialog .primary {
     font-size: 30px;
   }
 }
+
+.invitation-result {
+  min-height: 100svh;
+  background: #fcf8ee;
+  padding: 28px clamp(22px, 5vw, 80px);
+}
+.invitation-result-header {
+  max-width: 1100px;
+  margin: 0 auto;
+}
+.invitation-result-content {
+  max-width: 760px;
+  margin: 30px auto;
+  text-align: center;
+}
+.invitation-result-art {
+  width: min(600px, 100%);
+  height: auto;
+  max-height: 300px;
+  object-fit: contain;
+}
+.invitation-result h1 {
+  font-size: clamp(26px, 3.5vw, 40px);
+  line-height: 1.2;
+  letter-spacing: -1px;
+  margin: 18px 0 10px;
+}
+.invitation-result-description {
+  max-width: 540px;
+  margin: 0 auto 24px;
+  font-family: Georgia, serif;
+  font-size: 19px;
+  line-height: 1.45;
+}
+.invitation-result-action {
+  width: min(390px, 100%);
+  margin: 0 auto;
+  text-decoration: none;
+}
+.invitation-result-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  margin-top: 8px;
+  color: #35502a;
+  font-size: 13px;
+}
+.invitation-result .household-preview {
+  max-width: 500px;
+  margin: 18px auto 0;
+}
+@media (max-width: 760px) {
+  .invitation-result-content {
+    margin-top: 24px;
+  }
+  .invitation-result-description {
+    font-size: 16px;
+  }
+  .invitation-result-art {
+    max-height: 210px;
+  }
+}

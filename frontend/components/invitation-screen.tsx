@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Plant,
   ArrowLeft,
@@ -12,11 +13,25 @@ import {
 } from "@phosphor-icons/react";
 
 export function InvitationScreen() {
+  const router = useRouter();
   const [step, setStep] = useState<"code" | "review">("code");
   const [code, setCode] = useState("");
   const [notice, setNotice] = useState("");
   function verify(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const demoCode = code.trim().toUpperCase();
+    if (demoCode === "NINHO-EXPIRADO") {
+      router.push("/convite-expirado");
+      return;
+    }
+    if (demoCode === "NINHO-INVALIDO") {
+      router.push("/convite-invalido");
+      return;
+    }
+    if (demoCode === "NINHO-USADO") {
+      router.push("/convite-utilizado");
+      return;
+    }
     if (code.trim().toUpperCase() !== "NINHO-7K2M") {
       setNotice(
         "Nesta prévia, use o código de demonstração NINHO-7K2M. Nenhum convite real foi consultado.",
@@ -155,11 +170,7 @@ export function InvitationScreen() {
               </aside>
               <button
                 className="primary signin-submit"
-                onClick={() =>
-                  setNotice(
-                    "Prévia concluída. Aceitar convites ainda não está integrado; você não foi adicionado a nenhuma residência.",
-                  )
-                }
+                onClick={() => router.push("/convite-aceito")}
               >
                 Confirmar participação
               </button>
@@ -173,7 +184,8 @@ export function InvitationScreen() {
           </p>
           <p className="household-preview">
             Prévia com dados fictícios. Use NINHO-7K2M para revisar o exemplo.
-            Nenhum convite é verificado ou aceito no servidor.
+            Outros estados: NINHO-EXPIRADO, NINHO-INVALIDO e NINHO-USADO. Nenhum
+            convite é verificado ou aceito no servidor.
           </p>
         </section>
       </div>

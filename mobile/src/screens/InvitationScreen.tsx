@@ -20,6 +20,19 @@ export function InvitationScreen() {
   const [code, setCode] = useState("");
   const [notice, setNotice] = useState("");
   function verify() {
+    const demoCode = code.trim().toUpperCase();
+    if (demoCode === "NINHO-EXPIRADO") {
+      router.push("/convite-expirado");
+      return;
+    }
+    if (demoCode === "NINHO-INVALIDO") {
+      router.push("/convite-invalido");
+      return;
+    }
+    if (demoCode === "NINHO-USADO") {
+      router.push("/convite-utilizado");
+      return;
+    }
     if (code.trim().toUpperCase() !== "NINHO-7K2M") {
       setNotice(
         "Nesta prévia, use o código de demonstração NINHO-7K2M. Nenhum convite real foi consultado.",
@@ -170,11 +183,7 @@ export function InvitationScreen() {
               <Pressable
                 accessibilityRole="button"
                 style={s.primary}
-                onPress={() =>
-                  setNotice(
-                    "Prévia concluída. Aceitar convites ainda não está integrado; você não foi adicionado a nenhuma residência.",
-                  )
-                }
+                onPress={() => router.push("/convite-aceito")}
               >
                 <Text style={s.primaryText}>Confirmar participação</Text>
               </Pressable>
@@ -192,7 +201,8 @@ export function InvitationScreen() {
           </Text>
           <Text style={s.preview}>
             Prévia com dados fictícios. Use NINHO-7K2M para revisar o exemplo.
-            Nenhum convite é verificado ou aceito no servidor.
+            Outros estados: NINHO-EXPIRADO, NINHO-INVALIDO e NINHO-USADO. Nenhum
+            convite é verificado ou aceito no servidor.
           </Text>
         </ScrollView>
       </KeyboardAvoidingView>

@@ -96,3 +96,11 @@ Antes de integrar à main, revisar desktop e larguras de 360/390/430px, navegaç
 - Confirmation explicitly states no residence was joined. No financial data is shown.
 - Four dedicated built-in image-generation assets based on the supplied reference: desktop envelope scene and transparent mobile envelope illustration; desktop welcome-by-cottage scene and transparent mobile welcome illustration. Prompts preserve Pipo's yellow body, leafy tuft, brown wings and red scarf; warm storybook style; no UI/text.
 - All four generated images inspected directly; desktop entry artwork placement inspected in cloud browser. The cloud preview did not show the step transition after filling/clicking, so browser interaction acceptance and native-device QA remain pending.
+
+## Invitation results — 2026-10-23
+
+- Added accepted, expired, invalid and already-used result previews in web and mobile: `/convite-aceito`, `/convite-expirado`, `/convite-invalido`, `/convite-utilizado`.
+- Review confirmation opens accepted preview. Demo codes NINHO-EXPIRADO, NINHO-INVALIDO and NINHO-USADO open matching result screens; NINHO-7K2M keeps review first.
+- All result screens clearly state no invitation lookup, acceptance or membership mutation occurred. Residence access/listing buttons explain that those features are not implemented; retry/code-edit links return to entry.
+- Four distinct transparent built-in generated illustrations, shared between web/mobile: accepted Pipo with cottage/checkmark; concerned Pipo with envelope/clock; puzzled Pipo with envelope/question mark; Pipo with open envelope/information badge. Reference-guided storybook style, no interface text.
+- All four illustrations inspected directly; accepted desktop layout inspected in browser preview. Both clients passed formatting, lint and TypeScript checks; web production build passed. Browser interaction acceptance and native-device QA remain pending.
