@@ -63,3 +63,10 @@ Antes de integrar à main, revisar desktop e larguras de 360/390/430px, navegaç
 - Explicit preview notices and demo-state navigation. Retry displays loading for 1.2 seconds then returns to the error preview; timer is cleaned up on unmount. No session check, network request, logout or token change occurs.
 - Loading preview has a login escape; web spinner respects reduced motion.
 - Existing Pipo illustration reused; reference-specific imagery and visual/device QA remain pending.
+
+## Household onboarding choice — 2026-10-23
+
+- Added `/comecar` for web and mobile with create-residence and invitation cards.
+- Card actions explain the upcoming flows; no household or membership is created. Exit navigates to login, without claiming to revoke an authenticated session.
+- Web dialog supports Escape/close; native modal supports Android back. Both include an explicit dismissal action.
+- Existing Pipo asset and library icons reused; exact house/envelope illustrations and browser/device acceptance remain pending.

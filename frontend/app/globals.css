@@ -912,3 +912,147 @@ dialog .primary {
     font-size: 16px;
   }
 }
+
+.household-choice {
+  min-height: 100svh;
+  background: #fcf8ee;
+  padding: 28px clamp(22px, 5vw, 80px);
+}
+.household-header {
+  max-width: 1100px;
+  margin: auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.household-exit {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  color: #35502a;
+  font-size: 14px;
+  text-decoration: none;
+}
+.household-content {
+  max-width: 940px;
+  margin: auto;
+  text-align: center;
+}
+.household-hero {
+  width: min(520px, 100%);
+  height: 220px;
+  object-fit: cover;
+  border-radius: 24px;
+  margin: 12px auto 18px;
+}
+.household-content h1 {
+  font-size: clamp(29px, 4vw, 46px);
+  line-height: 1.15;
+  margin: 0 0 12px;
+  letter-spacing: -1px;
+}
+.household-subtitle {
+  font-family: Georgia, serif;
+  font-size: 18px;
+  line-height: 1.5;
+  margin: 0 0 24px;
+}
+.household-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+}
+.household-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  border: 1px solid #eadfc9;
+  border-radius: 17px;
+  background: #fffcf4;
+  padding: 24px;
+  box-shadow: 0 3px 12px #694b250a;
+}
+.household-card-icon {
+  color: #64804b;
+  margin-bottom: 12px;
+}
+.household-card h2 {
+  font-family: Lora, Georgia, serif;
+  font-size: 27px;
+  line-height: 1.2;
+  margin: 0 0 12px;
+  letter-spacing: -0.6px;
+}
+.household-card p {
+  font-family: Georgia, serif;
+  font-size: 17px;
+  line-height: 1.45;
+  margin: 0 0 20px;
+  max-width: 330px;
+}
+.household-card button {
+  width: 100%;
+  margin-top: auto;
+}
+.household-secondary {
+  min-height: 52px;
+  border: 1px solid #567146;
+  border-radius: 14px;
+  color: #35502a;
+  background: transparent;
+  padding: 14px 24px;
+  font-size: 17px;
+}
+.household-secondary:hover {
+  background: #edf1e5;
+}
+.household-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  font-family: Georgia, serif;
+  font-size: 15px;
+  line-height: 1.5;
+  margin: 24px 0 12px;
+}
+.household-footer svg {
+  flex-shrink: 0;
+  color: #64804b;
+}
+.household-preview {
+  font-size: 11px;
+  line-height: 1.6;
+  color: #615543;
+  margin: 0 auto;
+  max-width: 600px;
+}
+@media (max-width: 760px) {
+  .household-choice {
+    padding: 20px;
+  }
+  .household-hero {
+    height: 170px;
+    margin-top: 16px;
+  }
+  .household-options {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+  .household-card {
+    padding: 20px;
+  }
+  .household-card h2 {
+    font-size: 25px;
+  }
+  .household-card p {
+    font-size: 16px;
+  }
+  .household-subtitle {
+    font-size: 16px;
+  }
+  .household-footer {
+    font-size: 12px;
+  }
+}
