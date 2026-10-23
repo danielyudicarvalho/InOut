@@ -44,11 +44,20 @@ export function CreateHouseholdScreen() {
       <div className="create-household-grid">
         <section className="create-household-story">
           <Image
-            src="/images/pipo-home.webp"
-            alt="Pipo e uma casinha entre plantas"
+            src="/images/pipo-create-residence-desktop.webp"
+            className="create-residence-desktop-art"
+            alt="Pipo construindo um ninho com um ramo, ao lado de uma casinha de telhado verde"
             width={520}
             height={420}
             priority
+          />
+          <Image
+            src="/images/pipo-create-residence-mobile.webp"
+            className="create-residence-mobile-art"
+            alt="Pipo ao lado de uma casinha de telhado verde, cercados por flores e folhas"
+            width={640}
+            height={256}
+            sizes="(max-width: 760px) 100vw, 1px"
           />
           <h1>Seu Ninho começa aqui.</h1>
           <p>

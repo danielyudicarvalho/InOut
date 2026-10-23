@@ -81,10 +81,10 @@ export function CreateHouseholdScreen() {
             <Text style={s.link}>Voltar</Text>
           </Pressable>
           <Image
-            source={require("../../assets/pipo-home.webp")}
+            source={require("../../assets/pipo-create-residence-mobile.webp")}
             style={s.art}
-            resizeMode="cover"
-            accessibilityLabel="Pipo e uma casinha entre plantas"
+            resizeMode="contain"
+            accessibilityLabel="Pipo ao lado de uma casinha de telhado verde, cercados por flores e folhas"
           />
           <Text accessibilityRole="header" style={s.title}>
             Criar residência

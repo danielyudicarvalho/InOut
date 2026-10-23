@@ -1151,3 +1151,24 @@ dialog .primary {
     font-size: 32px;
   }
 }
+
+.create-household-story .create-residence-desktop-art {
+  object-fit: contain;
+  height: auto;
+  aspect-ratio: 5 / 4;
+}
+.create-household-story .create-residence-mobile-art {
+  display: none;
+}
+@media (max-width: 760px) {
+  .create-household-story .create-residence-desktop-art {
+    display: none;
+  }
+  .create-household-story .create-residence-mobile-art {
+    display: block;
+    width: 100%;
+    height: auto;
+    max-height: 210px;
+    object-fit: contain;
+  }
+}
