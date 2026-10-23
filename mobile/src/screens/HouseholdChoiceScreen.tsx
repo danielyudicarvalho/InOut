@@ -90,7 +90,7 @@ export function HouseholdChoiceScreen() {
               onPress={() =>
                 choice.id === "create"
                   ? router.push("/criar-residencia")
-                  : setSelected(choice)
+                  : router.push("/entrar-convite")
               }
               style={({ pressed }) => [
                 s.button,

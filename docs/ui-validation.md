@@ -87,3 +87,12 @@ Antes de integrar à main, revisar desktop e larguras de 360/390/430px, navegaç
 - Web assets: `frontend/public/images/pipo-create-residence-desktop.webp` (1200×960) and `pipo-create-residence-mobile.webp` (1000×400, alpha preserved).
 - Native asset: `mobile/assets/pipo-create-residence-mobile.webp`, identical to the narrow-web image. Native uses contain; web switches artwork at 760px and preserves full compositions.
 - Generated artwork inspected directly and desktop placement inspected in cloud-browser preview. Both apps passed formatting, lint and TypeScript checks. Native-device verification remains pending.
+
+## Invitation entry and review — 2026-10-23
+
+- Added `/entrar-convite` in Next.js and Expo Router, connected from onboarding.
+- Entry and review are separate local states; back preserves entered code, and Agora não returns to onboarding.
+- Explicit demo code NINHO-7K2M reveals only the fixed fictitious residence Ninho da Família and inviter Ana. Other codes report demo-only validation. No remote invitation lookup, acceptance or membership mutation occurs.
+- Confirmation explicitly states no residence was joined. No financial data is shown.
+- Four dedicated built-in image-generation assets based on the supplied reference: desktop envelope scene and transparent mobile envelope illustration; desktop welcome-by-cottage scene and transparent mobile welcome illustration. Prompts preserve Pipo's yellow body, leafy tuft, brown wings and red scarf; warm storybook style; no UI/text.
+- All four generated images inspected directly; desktop entry artwork placement inspected in cloud browser. The cloud preview did not show the step transition after filling/clicking, so browser interaction acceptance and native-device QA remain pending.

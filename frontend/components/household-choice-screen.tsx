@@ -84,9 +84,7 @@ export function HouseholdChoiceScreen() {
                 onClick={() =>
                   choice.id === "create"
                     ? router.push("/criar-residencia")
-                    : setSelected(
-                        choices.find((item) => item.id === choice.id)!,
-                      )
+                    : router.push("/entrar-convite")
                 }
               >
                 {choice.action}

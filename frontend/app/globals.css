@@ -1172,3 +1172,76 @@ dialog .primary {
     object-fit: contain;
   }
 }
+
+.invitation-grid {
+  align-items: center;
+}
+.invitation-title {
+  font-family: Lora, Georgia, serif;
+  font-size: 36px;
+  line-height: 1.15;
+  letter-spacing: -1px;
+  margin: 0 0 12px;
+}
+.invitation-art img {
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+}
+.invitation-art .invitation-mobile-art {
+  display: none;
+}
+.invitation-back {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  padding: 0;
+}
+.invitation-details {
+  margin: 20px 0;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 0 14px;
+}
+.invitation-details > div {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  padding: 14px 0;
+}
+.invitation-details > div + div {
+  border-top: 1px solid var(--line);
+}
+.invitation-details svg {
+  color: #77624c;
+  flex-shrink: 0;
+}
+.invitation-details dt {
+  font-size: 12px;
+  color: #615543;
+  margin-bottom: 4px;
+}
+.invitation-details dd {
+  margin: 0;
+  font-family: Georgia, serif;
+  font-size: 20px;
+}
+.invitation .register-info span {
+  font-size: 12px;
+  line-height: 1.5;
+}
+.invitation .register-info svg {
+  flex-shrink: 0;
+}
+@media (max-width: 760px) {
+  .invitation-art .invitation-desktop-art {
+    display: none;
+  }
+  .invitation-art .invitation-mobile-art {
+    display: block;
+    max-height: 210px;
+  }
+  .invitation-title {
+    font-size: 30px;
+  }
+}
