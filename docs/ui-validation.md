@@ -70,3 +70,11 @@ Antes de integrar à main, revisar desktop e larguras de 360/390/430px, navegaç
 - Card actions explain the upcoming flows; no household or membership is created. Exit navigates to login, without claiming to revoke an authenticated session.
 - Web dialog supports Escape/close; native modal supports Android back. Both include an explicit dismissal action.
 - Existing Pipo asset and library icons reused; exact house/envelope illustrations and browser/device acceptance remain pending.
+
+## Create residence — 2026-10-23
+
+- Added `/criar-residencia` in both clients and connected the create action from `/comecar`.
+- Name defaults to Meu Ninho; BRL and America/Cuiaba selected initially. Currency and IANA time-zone selections are interactive, with supporting text.
+- Name must contain non-whitespace text and is limited to 100 characters. Submission reports that nothing was persisted; API integration and authoritative validation remain pending.
+- Native option modals have selected states, cancellation and Android back dismissal. Back returns to onboarding; exit returns to login.
+- Existing illustration reused. Exact reference artwork and visual/device QA remain pending.

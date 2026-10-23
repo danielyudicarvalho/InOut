@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Plant,
   House,
@@ -34,6 +35,7 @@ const choices = [
   },
 ] as const;
 export function HouseholdChoiceScreen() {
+  const router = useRouter();
   const [selected, setSelected] = useState<(typeof choices)[number] | null>(
     null,
   );
@@ -80,7 +82,11 @@ export function HouseholdChoiceScreen() {
                   choice.id === "create" ? "primary" : "household-secondary"
                 }
                 onClick={() =>
-                  setSelected(choices.find((item) => item.id === choice.id)!)
+                  choice.id === "create"
+                    ? router.push("/criar-residencia")
+                    : setSelected(
+                        choices.find((item) => item.id === choice.id)!,
+                      )
                 }
               >
                 {choice.action}

@@ -87,7 +87,11 @@ export function HouseholdChoiceScreen() {
             <Text style={s.description}>{choice.description}</Text>
             <Pressable
               accessibilityRole="button"
-              onPress={() => setSelected(choice)}
+              onPress={() =>
+                choice.id === "create"
+                  ? router.push("/criar-residencia")
+                  : setSelected(choice)
+              }
               style={({ pressed }) => [
                 s.button,
                 choice.id === "create" ? s.primary : s.secondary,
