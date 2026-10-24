@@ -59,26 +59,24 @@ export function ResetPasswordScreen() {
           <Image
             source={
               complete
-                ? require("../../assets/pipo-recovery-sent.webp")
-                : require("../../assets/pipo-recovery-mobile.webp")
+                ? require("../../assets/pipo-reset-success.webp")
+                : require("../../assets/pipo-reset-mobile.webp")
             }
             style={s.art}
             resizeMode="contain"
-            accessibilityLabel="Pipo com um envelope de recuperação de senha"
+            accessibilityLabel={
+              complete
+                ? "Pipo com uma chave e um cadeado confirmado"
+                : "Pipo segurando uma chave dourada entre flores"
+            }
           />
           <Text accessibilityRole="header" style={s.title}>
             {complete ? "Senha alterada!" : "Definir nova senha"}
           </Text>
           {complete ? (
             <View accessibilityLiveRegion="polite">
-              <MaterialCommunityIcons
-                name="check-circle-outline"
-                size={38}
-                color={t.green}
-                style={s.success}
-              />
               <Text style={s.copy}>
-                Sua senha foi alterada. Entre no Ninho para continuar.
+                Sua nova senha foi salva. Entre no Ninho para continuar.
               </Text>
             </View>
           ) : status !== "ready" ? (
@@ -125,6 +123,7 @@ export function ResetPasswordScreen() {
                         setValues({ ...values, [field]: value });
                         setError("");
                       }}
+                      editable={!busy}
                       secureTextEntry={!visible[field]}
                       autoCapitalize="none"
                       autoCorrect={false}
@@ -143,6 +142,7 @@ export function ResetPasswordScreen() {
                     />
                     <Pressable
                       accessibilityRole="button"
+                      disabled={busy}
                       accessibilityLabel={`${visible[field] ? "Ocultar" : "Mostrar"} ${field === "password" ? "nova senha" : "confirmação de senha"}`}
                       accessibilityState={{ selected: visible[field] }}
                       onPress={() =>

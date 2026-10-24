@@ -10,7 +10,6 @@ import {
   Eye,
   EyeSlash,
   ArrowLeft,
-  CheckCircle,
 } from "@phosphor-icons/react";
 
 export function ResetPasswordScreen() {
@@ -43,8 +42,8 @@ export function ResetPasswordScreen() {
         aria-label="Um novo começo, com segurança"
       >
         <Image
-          src="/images/pipo-recovery-desktop.webp"
-          alt="Pipo com uma chave e um envelope em seu ninho"
+          src="/images/pipo-reset-desktop.webp"
+          alt="Pipo segurando uma chave dourada, com um caderno verde em seu ninho"
           fill
           priority
           sizes="(max-width: 760px) 100vw, 55vw"
@@ -70,10 +69,14 @@ export function ResetPasswordScreen() {
           <Image
             src={
               complete
-                ? "/images/pipo-recovery-sent.webp"
-                : "/images/pipo-recovery-mobile.webp"
+                ? "/images/pipo-reset-success.webp"
+                : "/images/pipo-reset-mobile.webp"
             }
-            alt="Pipo com um envelope"
+            alt={
+              complete
+                ? "Pipo com uma chave ao lado de um cadeado confirmado"
+                : "Pipo segurando uma chave dourada entre flores"
+            }
             width={600}
             height={240}
             className="recovery-mobile-art"
@@ -84,9 +87,8 @@ export function ResetPasswordScreen() {
           </h1>
           {complete ? (
             <div role="status">
-              <CheckCircle size={38} color="#35502a" aria-hidden="true" />
               <p className="recovery-copy">
-                Sua senha foi alterada. Entre no Ninho para continuar.
+                Sua nova senha foi salva. Entre no Ninho para continuar.
               </p>
             </div>
           ) : status !== "ready" ? (
@@ -131,12 +133,14 @@ export function ResetPasswordScreen() {
                             : "Repita sua nova senha"
                         }
                         autoComplete="new-password"
+                        readOnly={busy}
                         required
                         minLength={8}
                         aria-describedby="reset-help"
                       />
                       <button
                         type="button"
+                        disabled={busy}
                         aria-label={`${visible[field] ? "Ocultar" : "Mostrar"} ${field === "password" ? "nova senha" : "confirmação de senha"}`}
                         aria-pressed={visible[field]}
                         onClick={() =>

@@ -130,3 +130,12 @@ Antes de integrar à main, revisar desktop e larguras de 360/390/430px, navegaç
 - Assets: `frontend/public/images/pipo-recovery-{desktop,mobile,sent}.webp` (1122×1402 desktop, 1200×480 transparent variants); native copies of mobile/sent in `mobile/assets/`. Alpha preserved. Request and reset screens use this artwork.
 - Live email/password changes and device deep-link acceptance remain pending. Additional Supabase recovery redirect URLs must be configured; connected tools do not expose those settings.
 - Thirty shared/SDK tests passed. Both clients passed formatting, ESLint and TypeScript; Next production build and Android/iOS bundle exports passed. Desktop request layout inspected in browser; actual email/password flows and device QA remain pending.
+
+## Reset-password reference refinement — 2026-10-24
+
+- Applied the supplied Definir nova senha / Senha alterada reference to the existing integrated web and native screens. Desktop success uses a compact two-column panel; mobile remains vertical. Success copy now states that the new password was saved, and duplicate generic check icons were removed.
+- New dedicated built-in image-generation assets, inspected directly: desktop Pipo holding a golden key beside a closed green notebook, pencil, mug and nest at a sunlit window; transparent mobile Pipo/key among leaves and white flowers; transparent success Pipo/key beside a golden padlock with a green check badge. Golden body, leafy tuft, layered brown wings, red scarf; cozy 3D storybook style; no lettering, UI or envelopes.
+- Web paths: `frontend/public/images/pipo-reset-{desktop,mobile,success}.webp`. Native copies: `mobile/assets/pipo-reset-{mobile,success}.webp`. Desktop preserves portrait framing; mobile/success retain alpha and contain sizing.
+- Password fields and visibility toggles are blocked while saving. The existing application service, recovery-grant validation, provider update, error handling and local sign-out continue to determine actual completion; no demo success bypass was introduced.
+- Real email/reset and native-device acceptance remain pending; the Supabase recovery redirect setup from `auth-react-clients.md` still applies.
+- All thirty existing authentication regression tests passed; both clients passed formatting, ESLint and TypeScript. Next production build and Android/iOS exports passed after the finalized assets were copied. Actual ready/success screenshots through a live recovery link and device QA remain pending.
