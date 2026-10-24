@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import { usePasswordReset } from "../lib/auth/use-password-recovery";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -17,30 +18,33 @@ export function ResetPasswordScreen() {
     password: false,
     confirmation: false,
   });
-  const [notice, setNotice] = useState("");
-  const [complete, setComplete] = useState(false);
-  function submit(event: FormEvent<HTMLFormElement>) {
+  const { status, complete, busy, notice, setNotice, reset, signOut } =
+    usePasswordReset();
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = event.currentTarget;
     const data = new FormData(form);
-    if (data.get("password") !== data.get("confirmation")) {
-      setNotice("As senhas precisam ser iguais.");
-      return;
+    if (
+      await reset({
+        password: String(data.get("password")),
+        confirmation: String(data.get("confirmation")),
+      })
+    ) {
+      form.reset();
+      setVisible({ password: false, confirmation: false });
     }
-    form.reset();
-    setVisible({ password: false, confirmation: false });
-    setNotice("");
-    setComplete(true);
   }
   return (
-    <main className="signin recovery">
+    <main
+      className={`signin recovery password-reset ${complete ? "recovery-sent" : ""}`}
+    >
       <section
         className="signin-art"
         aria-label="Um novo começo, com segurança"
       >
         <Image
-          src="/images/pipo-home.webp"
-          alt="Pipo em seu ninho entre plantas"
+          src="/images/pipo-recovery-desktop.webp"
+          alt="Pipo com uma chave e um envelope em seu ninho"
           fill
           priority
           sizes="(max-width: 760px) 100vw, 55vw"
@@ -63,6 +67,18 @@ export function ResetPasswordScreen() {
           ninho
         </Link>
         <div className="signin-form">
+          <Image
+            src={
+              complete
+                ? "/images/pipo-recovery-sent.webp"
+                : "/images/pipo-recovery-mobile.webp"
+            }
+            alt="Pipo com um envelope"
+            width={600}
+            height={240}
+            className="recovery-mobile-art"
+            priority
+          />
           <h1 className="confirmation-title">
             {complete ? "Senha alterada!" : "Definir nova senha"}
           </h1>
@@ -70,8 +86,19 @@ export function ResetPasswordScreen() {
             <div role="status">
               <CheckCircle size={38} color="#35502a" aria-hidden="true" />
               <p className="recovery-copy">
-                Prévia da conclusão. Entre no Ninho para continuar.
+                Sua senha foi alterada. Entre no Ninho para continuar.
               </p>
+            </div>
+          ) : status !== "ready" ? (
+            <div role="status">
+              <p className="recovery-copy">
+                {status === "checking"
+                  ? "Validando o link de recuperação…"
+                  : "Este link não está disponível ou expirou. Solicite outro e-mail de recuperação."}
+              </p>
+              <Link href="/esqueci-senha" className="primary">
+                Solicitar novo link
+              </Link>
             </div>
           ) : (
             <>
@@ -80,7 +107,11 @@ export function ResetPasswordScreen() {
                 <br />
                 acessar seu Ninho.
               </p>
-              <form onSubmit={submit} onChange={() => setNotice("")}>
+              <form
+                method="post"
+                onSubmit={submit}
+                onChange={() => setNotice("")}
+              >
                 {(["password", "confirmation"] as const).map((field) => (
                   <div key={field}>
                     <label htmlFor={field}>
@@ -132,17 +163,20 @@ export function ResetPasswordScreen() {
                 </p>
                 <button
                   type="submit"
+                  disabled={busy}
+                  aria-busy={busy}
                   className="primary signin-submit recovery-submit"
                 >
-                  Salvar nova senha
+                  {busy ? "Salvando…" : "Salvar nova senha"}
                 </button>
               </form>
             </>
           )}
-          <p className="recovery-preview">
-            Prévia de interface. Nenhuma senha foi alterada. A validação do link
-            e a atualização da senha ainda não estão integradas.
-          </p>
+          {status !== "ready" || complete ? (
+            <p role="status" className="signin-notice">
+              {notice}
+            </p>
+          ) : null}
           <Link
             href="/entrar"
             className={complete ? "primary" : "signin-back recovery-back"}
@@ -150,12 +184,13 @@ export function ResetPasswordScreen() {
             {!complete && <ArrowLeft size={18} aria-hidden="true" />}
             {complete ? "Ir para entrar" : "Voltar para entrar"}
           </Link>
-          {complete && (
+          {complete && notice && (
             <button
               className="confirmation-resend"
-              onClick={() => setComplete(false)}
+              disabled={busy}
+              onClick={() => void signOut()}
             >
-              Rever formulário
+              Encerrar sessão
             </button>
           )}
         </div>

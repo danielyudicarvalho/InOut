@@ -1,25 +1,30 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { type FormEvent } from "react";
+import { useRecoveryRequest } from "../lib/auth/use-password-recovery";
 import Image from "next/image";
 import Link from "next/link";
 import { Plant, EnvelopeSimple, ArrowLeft } from "@phosphor-icons/react";
 
 export function ForgotPasswordScreen() {
-  const [submitted, setSubmitted] = useState(false);
+  const { submitted, setSubmitted, busy, notice, request } =
+    useRecoveryRequest();
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setSubmitted(true);
+    const data = new FormData(event.currentTarget);
+    void request(String(data.get("email")));
   }
   return (
-    <main className="signin recovery">
+    <main
+      className={`signin recovery password-recovery ${submitted ? "recovery-sent" : ""}`}
+    >
       <section
         className="signin-art"
         aria-label="Vamos encontrar o caminho de volta"
       >
         <Image
-          src="/images/pipo-home.webp"
-          alt="Pipo em seu ninho entre plantas"
+          src="/images/pipo-recovery-desktop.webp"
+          alt="Pipo segurando uma chave dourada ao lado de um envelope em seu ninho"
           fill
           priority
           sizes="(max-width: 760px) 100vw, 55vw"
@@ -41,9 +46,22 @@ export function ForgotPasswordScreen() {
           ninho
         </Link>
         <div className="signin-form">
-          <Link href="/redefinir-senha" className="signin-back">
-            Ver prévia da nova senha
-          </Link>
+          <Image
+            src={
+              submitted
+                ? "/images/pipo-recovery-sent.webp"
+                : "/images/pipo-recovery-mobile.webp"
+            }
+            alt={
+              submitted
+                ? "Pipo abraçando um envelope"
+                : "Pipo com uma chave e um envelope"
+            }
+            width={600}
+            height={240}
+            className="recovery-mobile-art"
+            priority
+          />
           <h1 className="confirmation-title">
             {submitted ? "Confira seu e-mail" : "Esqueceu sua senha?"}
           </h1>
@@ -63,7 +81,7 @@ export function ForgotPasswordScreen() {
                 Tudo bem. Vamos ajudar você
                 <br />a voltar ao seu Ninho.
               </p>
-              <form onSubmit={submit}>
+              <form method="post" onSubmit={submit}>
                 <label htmlFor="recovery-email">E-mail</label>
                 <div className="signin-input">
                   <EnvelopeSimple size={21} aria-hidden="true" />
@@ -83,15 +101,16 @@ export function ForgotPasswordScreen() {
                 <button
                   className="primary signin-submit recovery-submit"
                   type="submit"
+                  disabled={busy}
+                  aria-busy={busy}
                 >
-                  Enviar link de recuperação
+                  {busy ? "Enviando…" : "Enviar link de recuperação"}
                 </button>
               </form>
             </>
           )}
-          <p className="recovery-preview">
-            Prévia de interface. O envio ainda não está integrado; nenhum e-mail
-            foi enviado.
+          <p role="status" className="signin-notice">
+            {notice}
           </p>
           <Link
             href="/entrar"

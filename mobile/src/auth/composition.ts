@@ -31,6 +31,7 @@ export function getAuth() {
     createSupabaseAuthRepository(
       getAuthClient(),
       Linking.createURL("auth/callback"),
+      Linking.createURL("auth/recuperar"),
     ),
   );
 }

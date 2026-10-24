@@ -21,6 +21,17 @@ const messages = {
     "Muitas tentativas. Aguarde alguns minutos e tente novamente.",
   otp_expired: "O código ou link expirou. Solicite um novo e-mail.",
   invalid_token: "Informe o código recebido por e-mail.",
+  recovery_required:
+    "Abra um link de recuperação válido neste navegador ou aplicativo. Se necessário, solicite outro e-mail.",
+  same_password: "Escolha uma senha diferente da anterior.",
+  reauthentication_needed:
+    "Solicite um novo link de recuperação para continuar.",
+  flow_state_expired:
+    "Este link expirou. Solicite outro e-mail de recuperação.",
+  flow_state_not_found:
+    "Este link não está disponível. Solicite outro e-mail de recuperação.",
+  bad_code_verifier:
+    "Abra o link no mesmo navegador ou aplicativo em que fez a solicitação.",
   session_missing: "Entre novamente para continuar.",
 };
 export function authMessage(error) {
@@ -63,6 +74,20 @@ export function createAuthService(repository) {
     async exchangeCode(code) {
       if (!code || code.length > 4096) throw new AuthFailure("invalid_token");
       await repository.exchangeCode(code);
+    },
+    async requestPasswordReset(value) {
+      await repository.requestPasswordReset(email(value));
+    },
+    async exchangeRecoveryCode(code) {
+      if (!code || code.length > 4096)
+        throw new AuthFailure("recovery_required");
+      await repository.exchangeRecoveryCode(code);
+    },
+    canResetPassword: () => repository.canResetPassword(),
+    async resetPassword({ password, confirmation }) {
+      if (password.length < 8) throw new AuthFailure("weak_password");
+      if (password !== confirmation) throw new AuthFailure("password_mismatch");
+      return repository.resetPassword(password);
     },
     signOut: () => repository.signOut(),
     subscribe: (listener) => repository.subscribe(listener),

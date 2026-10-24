@@ -13,6 +13,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
+import { usePasswordReset } from "../auth/use-password-recovery";
 import { theme as t } from "../theme";
 
 export function ResetPasswordScreen() {
@@ -21,21 +22,20 @@ export function ResetPasswordScreen() {
     password: false,
     confirmation: false,
   });
-  const [error, setError] = useState("");
-  const [complete, setComplete] = useState(false);
-  function submit() {
-    if (values.password.length < 8) {
-      setError("Use uma senha com pelo menos 8 caracteres.");
-      return;
+  const {
+    status,
+    complete,
+    busy,
+    notice: error,
+    setNotice: setError,
+    reset,
+    signOut,
+  } = usePasswordReset();
+  async function submit() {
+    if (await reset(values)) {
+      setValues({ password: "", confirmation: "" });
+      setVisible({ password: false, confirmation: false });
     }
-    if (values.password !== values.confirmation) {
-      setError("As senhas precisam ser iguais.");
-      return;
-    }
-    setValues({ password: "", confirmation: "" });
-    setVisible({ password: false, confirmation: false });
-    setError("");
-    setComplete(true);
   }
   return (
     <SafeAreaView style={s.safe}>
@@ -57,10 +57,14 @@ export function ResetPasswordScreen() {
             <Text style={s.brandText}>ninho</Text>
           </Pressable>
           <Image
-            source={require("../../assets/pipo-home.webp")}
+            source={
+              complete
+                ? require("../../assets/pipo-recovery-sent.webp")
+                : require("../../assets/pipo-recovery-mobile.webp")
+            }
             style={s.art}
-            resizeMode="cover"
-            accessibilityLabel="Pipo em seu ninho entre plantas"
+            resizeMode="contain"
+            accessibilityLabel="Pipo com um envelope de recuperação de senha"
           />
           <Text accessibilityRole="header" style={s.title}>
             {complete ? "Senha alterada!" : "Definir nova senha"}
@@ -74,8 +78,23 @@ export function ResetPasswordScreen() {
                 style={s.success}
               />
               <Text style={s.copy}>
-                Prévia da conclusão. Entre no Ninho para continuar.
+                Sua senha foi alterada. Entre no Ninho para continuar.
               </Text>
+            </View>
+          ) : status !== "ready" ? (
+            <View>
+              <Text accessibilityLiveRegion="polite" style={s.copy}>
+                {status === "checking"
+                  ? "Validando o link de recuperação…"
+                  : "Este link não está disponível ou expirou. Solicite outro e-mail de recuperação."}
+              </Text>
+              <Pressable
+                accessibilityRole="button"
+                style={s.primary}
+                onPress={() => router.replace("/esqueci-senha")}
+              >
+                <Text style={s.primaryText}>Solicitar novo link</Text>
+              </Pressable>
             </View>
           ) : (
             <>
@@ -160,16 +179,21 @@ export function ResetPasswordScreen() {
               <Pressable
                 accessibilityRole="button"
                 onPress={submit}
+                disabled={busy}
+                accessibilityState={{ disabled: busy, busy }}
                 style={s.primary}
               >
-                <Text style={s.primaryText}>Salvar nova senha</Text>
+                <Text style={s.primaryText}>
+                  {busy ? "Salvando…" : "Salvar nova senha"}
+                </Text>
               </Pressable>
             </>
           )}
-          <Text style={s.preview}>
-            Prévia de interface. Nenhuma senha foi alterada. A validação do link
-            e a atualização da senha ainda não estão integradas.
-          </Text>
+          {(complete || status !== "ready") && error ? (
+            <Text accessibilityLiveRegion="polite" style={s.error}>
+              {error}
+            </Text>
+          ) : null}
           <Pressable
             accessibilityRole="button"
             onPress={() => router.replace("/entrar")}
@@ -179,15 +203,16 @@ export function ResetPasswordScreen() {
               {complete ? "Ir para entrar" : "Voltar para entrar"}
             </Text>
           </Pressable>
-          {complete && (
+          {complete && error ? (
             <Pressable
               accessibilityRole="button"
-              onPress={() => setComplete(false)}
               style={s.back}
+              disabled={busy}
+              onPress={() => void signOut()}
             >
-              <Text style={s.link}>Rever formulário</Text>
+              <Text style={s.link}>Encerrar sessão</Text>
             </Pressable>
-          )}
+          ) : null}
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>

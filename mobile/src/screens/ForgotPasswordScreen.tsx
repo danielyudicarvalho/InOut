@@ -13,20 +13,21 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
+import { useRecoveryRequest } from "../auth/use-password-recovery";
 import { theme as t } from "../theme";
 
 export function ForgotPasswordScreen() {
   const [email, setEmail] = useState("");
-  const [error, setError] = useState("");
-  const [submitted, setSubmitted] = useState(false);
+  const {
+    submitted,
+    setSubmitted,
+    busy,
+    notice: error,
+    setNotice: setError,
+    request,
+  } = useRecoveryRequest();
   function submit() {
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-      setError("Informe um e-mail válido.");
-      return;
-    }
-    setError("");
-    setEmail("");
-    setSubmitted(true);
+    void request(email);
   }
   return (
     <SafeAreaView style={s.safe}>
@@ -48,10 +49,18 @@ export function ForgotPasswordScreen() {
             <Text style={s.brandText}>ninho</Text>
           </Pressable>
           <Image
-            source={require("../../assets/pipo-home.webp")}
+            source={
+              submitted
+                ? require("../../assets/pipo-recovery-sent.webp")
+                : require("../../assets/pipo-recovery-mobile.webp")
+            }
             style={s.art}
-            resizeMode="cover"
-            accessibilityLabel="Pipo em seu ninho entre plantas"
+            resizeMode="contain"
+            accessibilityLabel={
+              submitted
+                ? "Pipo abraçando um envelope"
+                : "Pipo segurando uma chave ao lado de um envelope"
+            }
           />
           <Text accessibilityRole="header" style={s.title}>
             {submitted ? "Confira seu e-mail" : "Esqueceu sua senha?"}
@@ -111,23 +120,16 @@ export function ForgotPasswordScreen() {
               <Pressable
                 accessibilityRole="button"
                 onPress={submit}
+                disabled={busy}
+                accessibilityState={{ disabled: busy, busy }}
                 style={s.primary}
               >
-                <Text style={s.primaryText}>Enviar link de recuperação</Text>
+                <Text style={s.primaryText}>
+                  {busy ? "Enviando…" : "Enviar link de recuperação"}
+                </Text>
               </Pressable>
             </>
           )}
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => router.push("/redefinir-senha")}
-            style={s.back}
-          >
-            <Text style={s.link}>Ver prévia da nova senha</Text>
-          </Pressable>
-          <Text style={s.preview}>
-            Prévia de interface. O envio ainda não está integrado; nenhum e-mail
-            foi enviado.
-          </Text>
           <Pressable
             accessibilityRole="button"
             onPress={() => router.replace("/entrar")}

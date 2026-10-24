@@ -4,7 +4,7 @@
 
 Web and Expo now implement email/password sign-in, sign-up, resend, signup OTP confirmation, PKCE email callbacks, session restoration and sign-out. Successful authentication opens `/comecar`; an account without household membership can reach onboarding without any household lookup.
 
-This follows the existing Flutter `AuthRepository` → `SupabaseAuthRepository` flow and ADR-004. `confirmationRequired` means that signup did **not** return an authenticated session. Authentication never creates a financial account or household. The residence/account/invitation screens remain previews. Password recovery/reset remain previews too.
+This follows the existing Flutter `AuthRepository` → `SupabaseAuthRepository` flow and ADR-004. `confirmationRequired` means that signup did **not** return an authenticated session. Authentication never creates a financial account or household. The residence/account/invitation screens remain previews. Password recovery/reset are integrated as described below.
 
 ## Boundaries
 
@@ -76,3 +76,21 @@ npx expo export --platform android --platform ios
 Tests cover normalized emails, unchanged passwords, rejected registrations, session-less vs immediate-session signup, OTP/session validation, server-validated user mapping, restored sessions, sign-out, rate limits, rejected privileged configuration, and absence of household calls. Transport fixtures contain only synthetic users/tokens and make no external requests.
 
 Live email delivery, cold/warm native deep links, invalid/expired links, refresh after backgrounding, and cross-tab/device behavior still require an environment configured with the project's public Auth settings and a disposable test account. Exported native bundles do not replace device testing.
+
+## Password recovery — 2026-10-24
+
+`/esqueci-senha` calls the shared `requestPasswordReset` application operation. The Supabase adapter invokes `resetPasswordForEmail` with a fixed, separate callback. The UI reports the same generic success for registered and unknown addresses, displays provider/network failures, prevents concurrent submissions and applies a one-minute resend interval.
+
+Add these exact callback destinations to the existing Supabase project's redirect allowlist:
+
+- `http://localhost:3000/auth/recuperar` for local web (adjust only to the actual development origin).
+- `https://YOUR_WEB_ORIGIN/auth/recuperar` for production web.
+- `inout://auth/recuperar` for an installed Expo build.
+
+The **Reset password** email template must preserve `{{ .ConfirmationURL }}`. The signup callback `/auth/callback` remains separate. No dashboard redirects or templates were changed in this implementation because the connected tools do not expose Auth configuration updates.
+
+The callback exchanges a PKCE code and requires the SDK's recovery redirect type and an authenticated user. A signup code or an existing normal session does not unlock the recovery form. A short-lived, in-memory UI grant is tied to that user and expires after fifteen minutes; the user is checked again with `getUser` before `updateUser({password})`. Supabase remains the authority for credential changes: this client grant is flow gating, not an additional server authorization boundary. The email must open in the same browser/app that requested it, where the PKCE verifier is stored. Reloading/closing the recovery screen loses its in-memory grant; request a fresh link in that case.
+
+Password length and matching are validated through the application boundary. After the provider confirms the update, the UI clears password fields and signs out the local session. A sign-out failure is reported separately from a successful password change, with a retry action; the screen does not encourage resubmitting an already successful password update. Other active devices are not explicitly revoked by this client.
+
+Tests include real Supabase SDK recovery requests, PKCE recovery code exchange, authenticated user validation, password update and local sign-out over a mocked transport. Additional tests cover enumeration-safe responses, rate limits, missing/wrong/expired recovery grants, mismatched identity, password validation, provider failures and sign-out failure. No real recovery email or password change was performed. Live delivery and cold/warm native deep links still need testing with a disposable account after allowlist setup.

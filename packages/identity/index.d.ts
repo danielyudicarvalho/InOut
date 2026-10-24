@@ -9,6 +9,10 @@ export interface AuthRepository {
   resend(email: string): Promise<void>;
   confirm(email: string, token: string): Promise<void>;
   exchangeCode(code: string): Promise<void>;
+  requestPasswordReset(email: string): Promise<void>;
+  exchangeRecoveryCode(code: string): Promise<void>;
+  canResetPassword(): Promise<boolean>;
+  resetPassword(password: string): Promise<"signedOut" | "signOutRequired">;
   signOut(): Promise<void>;
   subscribe(listener: () => void): () => void;
 }
@@ -24,6 +28,13 @@ export function createAuthService(repository: AuthRepository): {
   resend(email: string): Promise<void>;
   confirm(email: string, token: string): Promise<void>;
   exchangeCode(code: string): Promise<void>;
+  requestPasswordReset(email: string): Promise<void>;
+  exchangeRecoveryCode(code: string): Promise<void>;
+  canResetPassword(): Promise<boolean>;
+  resetPassword(input: {
+    password: string;
+    confirmation: string;
+  }): Promise<"signedOut" | "signOutRequired">;
   signOut(): Promise<void>;
   subscribe(listener: () => void): () => void;
 };

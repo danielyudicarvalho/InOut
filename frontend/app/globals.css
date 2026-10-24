@@ -1487,3 +1487,49 @@ button:disabled {
   cursor: wait;
   opacity: 0.6;
 }
+
+.recovery-mobile-art {
+  display: none;
+}
+.password-recovery.recovery-sent .recovery-mobile-art {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 220px;
+  object-fit: contain;
+}
+@media (max-width: 760px) {
+  .password-recovery .recovery-mobile-art {
+    display: block;
+    width: 100%;
+    height: 180px;
+    object-fit: contain;
+    margin: 12px 0;
+  }
+}
+
+.password-reset.recovery-sent .recovery-mobile-art {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 220px;
+  object-fit: contain;
+}
+@media (max-width: 760px) {
+  .password-recovery .signin-art,
+  .password-reset .signin-art {
+    display: none;
+  }
+  .password-recovery .signin-panel > .brand,
+  .password-reset .signin-panel > .brand {
+    display: flex;
+    justify-content: center;
+  }
+  .password-reset .recovery-mobile-art {
+    display: block;
+    width: 100%;
+    height: 180px;
+    object-fit: contain;
+    margin: 12px 0;
+  }
+}

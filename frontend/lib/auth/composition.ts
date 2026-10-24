@@ -25,6 +25,7 @@ export function getAuth() {
     createSupabaseAuthRepository(
       getAuthClient(),
       `${window.location.origin}/auth/callback`,
+      `${window.location.origin}/auth/recuperar`,
     ),
   );
 }

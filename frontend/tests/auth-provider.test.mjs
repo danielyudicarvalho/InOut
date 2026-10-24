@@ -42,6 +42,7 @@ function fixture(handler, storage) {
       createSupabaseAuthRepository(
         client,
         "https://app.example.test/auth/callback",
+        "https://app.example.test/auth/recuperar",
       ),
     ),
     calls,
@@ -112,6 +113,7 @@ test("real SDK signup sends callback and display name but creates no membership"
   assert.equal(
     new URL(calls[0].url).searchParams.get("redirect_to"),
     "https://app.example.test/auth/callback",
+    "https://app.example.test/auth/recuperar",
   );
 });
 test("real SDK maps invalid credentials and email rate limit without exposing server messages", async () => {
@@ -175,4 +177,34 @@ test("real SDK PKCE callback exchanges the stored signup verifier for a session"
   assert.equal(typeof request.body.code_verifier, "string");
   assert.ok(request.body.code_verifier.length > 20);
   assert.equal((await service.currentUser()).emailConfirmed, true);
+});
+
+test("real SDK recovery sends PKCE request, exchanges recovery code, updates password and logs out", async () => {
+  const { service, calls } = fixture(({ url }) => ({
+    body: url.includes("/token?") ? session : url.endsWith("/user") ? user : {},
+  }));
+  await service.requestPasswordReset(" USER@EXAMPLE.COM ");
+  const recovery = calls[0];
+  assert.equal(recovery.body.email, "user@example.com");
+  assert.equal(new URL(recovery.url).pathname, "/auth/v1/recover");
+  assert.equal(
+    new URL(recovery.url).searchParams.get("redirect_to"),
+    "https://app.example.test/auth/recuperar",
+  );
+  assert.equal(await service.canResetPassword(), false);
+  await service.exchangeRecoveryCode("recovery-code");
+  assert.equal(await service.canResetPassword(), true);
+  assert.equal(
+    await service.resetPassword({
+      password: "new-secret88",
+      confirmation: "new-secret88",
+    }),
+    "signedOut",
+  );
+  assert.ok(calls.some((call) => call.body?.password === "new-secret88"));
+  assert.ok(calls.some((call) => call.url.includes("/logout?scope=local")));
+  assert.equal(await service.canResetPassword(), false);
+  assert.ok(
+    calls.every((call) => new URL(call.url).pathname.startsWith("/auth/v1/")),
+  );
 });

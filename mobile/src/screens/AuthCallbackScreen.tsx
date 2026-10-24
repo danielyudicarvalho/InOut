@@ -5,8 +5,13 @@ import { router, useLocalSearchParams } from "expo-router";
 import { authMessage } from "@inout/identity";
 import { getAuth } from "../auth/composition";
 import { theme as t } from "../theme";
-let exchange: { code: string; result: Promise<void> } | undefined;
-export function AuthCallbackScreen() {
+let exchange:
+  { code: string; recovery: boolean; result: Promise<void> } | undefined;
+export function AuthCallbackScreen({
+  recovery = false,
+}: {
+  recovery?: boolean;
+}) {
   const { code, error } = useLocalSearchParams<{
     code?: string;
     error?: string;
@@ -15,14 +20,19 @@ export function AuthCallbackScreen() {
   useEffect(() => {
     let active = true;
     if (typeof code !== "string" || error) {
-      router.replace("/link-invalido");
+      router.replace(recovery ? "/redefinir-senha" : "/link-invalido");
       return;
     }
-    if (exchange?.code !== code)
+    if (exchange?.code !== code || exchange.recovery !== recovery)
       exchange = {
         code,
+        recovery,
         result: (async () => {
           const auth = getAuth();
+          if (recovery) {
+            await auth.exchangeRecoveryCode(code);
+            return;
+          }
           await auth.exchangeCode(code);
           const user = await auth.currentUser();
           if (!user?.emailConfirmed) throw new Error("confirmation");
@@ -30,23 +40,26 @@ export function AuthCallbackScreen() {
       };
     exchange.result
       .then(() => {
-        if (active) router.replace("/email-confirmado");
+        if (active)
+          router.replace(recovery ? "/redefinir-senha" : "/email-confirmado");
       })
       .catch((e) => {
         if (active)
           setNotice(
             authMessage(e) +
-              " Você pode entrar ou confirmar com o código recebido por e-mail.",
+              (recovery
+                ? " Solicite outro link e abra-o neste mesmo aplicativo."
+                : " Você pode entrar ou confirmar com o código recebido por e-mail."),
           );
       });
     return () => {
       active = false;
     };
-  }, [code, error]);
+  }, [code, error, recovery]);
   return (
     <SafeAreaView style={s.content}>
       <Text accessibilityRole="header" style={s.title}>
-        Confirmação de e-mail
+        {recovery ? "Recuperação de senha" : "Confirmação de e-mail"}
       </Text>
       <Text accessibilityLiveRegion="polite" style={s.text}>
         {notice}
@@ -54,9 +67,13 @@ export function AuthCallbackScreen() {
       <Pressable
         accessibilityRole="button"
         style={s.action}
-        onPress={() => router.replace("/confirmar-email")}
+        onPress={() =>
+          router.replace(recovery ? "/esqueci-senha" : "/confirmar-email")
+        }
       >
-        <Text style={s.text}>Confirmar com código</Text>
+        <Text style={s.text}>
+          {recovery ? "Solicitar novo link" : "Confirmar com código"}
+        </Text>
       </Pressable>
       <Pressable
         accessibilityRole="button"
