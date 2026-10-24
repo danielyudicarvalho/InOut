@@ -33,3 +33,4 @@ Quais benefícios, custos, riscos e próximos passos surgem?
 - [ADR-006: idempotência e mensageria confiável](006-idempotency-and-reliable-messaging.md) — aceita.
 - [ADR-007: vocabulários fixos e strings de contrato](007-contract-vocabulary.md) — aceita.
 - [ADR-008: sinais de mudança e reconciliação da residência](008-household-realtime-reconciliation.md) — aceita.
+- [ADR-009: clientes React para UI/UX](009-react-ui-clients.md) — aceita para a branch UI.
