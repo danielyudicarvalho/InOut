@@ -61,6 +61,10 @@ function dashboard(value) {
       id: string(row.accountId),
       name: string(row.accountName),
       currency: currency(row.currency),
+      balance: integer(row.balanceCents),
+      inflow: integer(row.inflowCents),
+      outflow: integer(row.outflowCents),
+      change: integer(row.netChangeCents),
     })),
   };
 }
@@ -177,7 +181,7 @@ export function createFinanceRepository({
       const root = `/api/v1/households/${encodeURIComponent(householdId)}/ledger`;
       const start = bounds.from,
         end = bounds.to;
-      const [dashboards, rawHistory] = await Promise.all([
+      const [dashboards, rawHistory, rawAccounts] = await Promise.all([
         Promise.all(
           periods.map(async (p) => {
             const range = parsePeriod(p);
@@ -196,8 +200,12 @@ export function createFinanceRepository({
           }),
         ),
         get(`${root}/history?from=${start}&to=${end}&limit=20`, signal),
+        get(`${root}/accounts`, signal),
       ]);
       const selected = dashboards[dashboards.length - 1];
+      const kinds = new Map(
+        array(rawAccounts).map((row) => [string(row.id), string(row.kind)]),
+      );
       const rows = array(rawHistory)
         .map((row) => {
           if (!["credit", "debit"].includes(row.direction))
@@ -226,6 +234,10 @@ export function createFinanceRepository({
         .sort((a, b) => b.date.localeCompare(a.date));
       return {
         ...selected,
+        accounts: selected.accounts.map((account) => ({
+          ...account,
+          kind: kinds.get(account.id) ?? null,
+        })),
         history: dashboards.map((d) => ({
           period: d.period,
           summaries: d.summaries,
@@ -241,14 +253,26 @@ export function createFinanceRepository({
 }
 export function createFinancialHomeStore(
   repository,
-  { now = new Date(), timeoutMs = 20000 } = {},
+  {
+    now = new Date(),
+    timeoutMs = 20000,
+    initialHouseholdId = "",
+    initialPeriod,
+  } = {},
 ) {
   const periods = monthOptions(now);
+  let selectedPeriod = periods[11];
+  if (initialPeriod) {
+    try {
+      parsePeriod(initialPeriod);
+      selectedPeriod = initialPeriod;
+    } catch {}
+  }
   let state = {
     status: "loading",
     households: [],
-    householdId: "",
-    period: periods[11],
+    householdId: initialHouseholdId,
+    period: selectedPeriod,
     periods,
     data: null,
     notice: "",
@@ -288,6 +312,11 @@ export function createFinancialHomeStore(
         ? await repository.households(signal)
         : state.households;
       if (!active || id !== version) return;
+      if (
+        state.householdId &&
+        !households.some((h) => h.id === state.householdId)
+      )
+        throw new FinanceFailure("forbidden");
       const householdId = households.some((h) => h.id === state.householdId)
         ? state.householdId
         : (households[0]?.id ?? "");
@@ -425,4 +454,42 @@ export function displayDate(value) {
 export function inputDate(value) {
   const parts = value.split("/");
   return parts.length === 3 ? `${parts[2]}-${parts[1]}-${parts[0]}` : "";
+}
+
+export function accountKindLabel(kind) {
+  return (
+    {
+      cash: "Dinheiro",
+      checking: "Conta corrente",
+      savings: "Poupança",
+      investment: "Investimento",
+      other: "Outros",
+    }[kind] ?? "Conta financeira"
+  );
+}
+export function balanceComposition(home, code) {
+  const rows = home.accounts.filter((a) => a.currency === code);
+  const total = home.summaries.find((s) => s.currency === code)?.balance;
+  if (total === undefined) throw new FinanceFailure("invalid");
+  const sum = rows.reduce((v, a) => v + BigInt(integer(a.balance)), 0n);
+  const magnitude = rows.reduce(
+    (v, a) =>
+      v + (BigInt(a.balance) < 0n ? -BigInt(a.balance) : BigInt(a.balance)),
+    0n,
+  );
+  return {
+    total,
+    matched: sum === BigInt(total),
+    accounts: rows.map((a) => {
+      const amount = BigInt(a.balance);
+      const abs = amount < 0n ? -amount : amount;
+      const percent =
+        total === 0 ? null : Number((amount * 1000n) / BigInt(total)) / 10;
+      return {
+        ...a,
+        percent,
+        width: magnitude === 0n ? 0 : Number((abs * 10000n) / magnitude) / 100,
+      };
+    }),
+  };
 }

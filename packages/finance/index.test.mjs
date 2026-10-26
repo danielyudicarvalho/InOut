@@ -27,7 +27,17 @@ const dashboard = (
   periodEnd: `${period}-31`,
   isReconciled: true,
   summaries,
-  accounts: [{ accountId: "account", accountName: "Conta", currency: "EUR" }],
+  accounts: [
+    {
+      accountId: "account",
+      accountName: "Conta",
+      currency: "EUR",
+      balanceCents: 12345,
+      inflowCents: 5000,
+      outflowCents: 1250,
+      netChangeCents: 3750,
+    },
+  ],
 });
 const tick = () => new Promise((resolve) => setImmediate(resolve));
 test("authenticated endpoints, dynamic currencies and history entries use API values", async () => {
@@ -39,6 +49,8 @@ test("authenticated endpoints, dynamic currencies and history entries use API va
       calls.push({ url, options });
       if (url.endsWith("/households"))
         return json([{ id: "home", name: "Casa real" }]);
+      if (url.endsWith("/accounts"))
+        return json([{ id: "account", kind: "savings", balanceCents: 99999 }]);
       if (url.includes("/history?"))
         return json([
           {
@@ -69,7 +81,9 @@ test("authenticated endpoints, dynamic currencies and history entries use API va
   assert.equal(data.summaries[0].result, 3750);
   assert.equal(data.transactions[0].cents, -1250);
   assert.equal(data.history.length, 6);
-  assert.equal(calls.length, 8);
+  assert.equal(calls.length, 9);
+  assert.equal(data.accounts[0].balance, 12345);
+  assert.equal(data.accounts[0].kind, "savings");
   assert.ok(
     calls.every(
       (c) =>
@@ -291,13 +305,15 @@ test("custom selection sends exact inclusive bounds to dashboard and history", a
     getToken: async () => "jwt",
     fetcher: async (url) => {
       calls.push(url);
-      return url.includes("/history?")
-        ? json([])
-        : json({
-            ...dashboard(),
-            periodStart: "2026-10-05",
-            periodEnd: "2026-10-20",
-          });
+      return url.endsWith("/accounts")
+        ? json([{ id: "account", kind: "checking" }])
+        : url.includes("/history?")
+          ? json([])
+          : json({
+              ...dashboard(),
+              periodStart: "2026-10-05",
+              periodEnd: "2026-10-20",
+            });
     },
   });
   const data = await repo.home("a", "2026-10-05/2026-10-20");
@@ -333,4 +349,87 @@ test("store accepts a custom period and refuses invalid intervals without new re
   await tick();
   assert.equal(calls[1], "2026-10-05/2026-10-20");
   stop();
+});
+
+test("balance composition isolates currencies and retains signed percentages", async () => {
+  const { balanceComposition } = await import("./index.mjs");
+  const home = {
+    summaries: [
+      { currency: "BRL", balance: 800 },
+      { currency: "USD", balance: 500 },
+    ],
+    accounts: [
+      { id: "cash", currency: "BRL", balance: 1000 },
+      { id: "debt", currency: "BRL", balance: -200 },
+      { id: "usd", currency: "USD", balance: 500 },
+    ],
+  };
+  const value = balanceComposition(home, "BRL");
+  assert.equal(value.accounts.length, 2);
+  assert.equal(value.total, 800);
+  assert.equal(value.matched, true);
+  assert.equal(value.accounts[0].percent, 125);
+  assert.equal(value.accounts[1].percent, -25);
+  assert.ok(value.accounts[1].width > 0);
+  assert.equal(balanceComposition(home, "USD").total, 500);
+});
+test("zero net balances have no misleading percentages and mismatches are exposed", async () => {
+  const { balanceComposition } = await import("./index.mjs");
+  const home = {
+    summaries: [{ currency: "BRL", balance: 0 }],
+    accounts: [
+      { currency: "BRL", balance: 100 },
+      { currency: "BRL", balance: -100 },
+    ],
+  };
+  assert.equal(balanceComposition(home, "BRL").accounts[0].percent, null);
+  home.summaries[0].balance = 1;
+  assert.equal(balanceComposition(home, "BRL").matched, false);
+});
+test("composition sums integer cents exactly even when intermediate totals exceed safe number range", async () => {
+  const { balanceComposition } = await import("./index.mjs");
+  const max = Number.MAX_SAFE_INTEGER;
+  const value = balanceComposition(
+    {
+      summaries: [{ currency: "BRL", balance: max }],
+      accounts: [
+        { currency: "BRL", balance: max },
+        { currency: "BRL", balance: max },
+        { currency: "BRL", balance: -max },
+      ],
+    },
+    "BRL",
+  );
+  assert.equal(value.matched, true);
+  assert.equal(value.total, max);
+});
+test("deep links retain authorized household and period, and never query an unauthorized identifier", async () => {
+  let calls = [];
+  const repo = {
+    households: async () => [
+      { id: "a", name: "A" },
+      { id: "b", name: "B" },
+    ],
+    home: async (id, period) => {
+      calls.push([id, period]);
+      return {};
+    },
+  };
+  const store = createFinancialHomeStore(repo, {
+    initialHouseholdId: "b",
+    initialPeriod: "2026-10-05/2026-10-20",
+  });
+  const stop = store.start();
+  await tick();
+  assert.deepEqual(calls, [["b", "2026-10-05/2026-10-20"]]);
+  stop();
+  calls = [];
+  const denied = createFinancialHomeStore(repo, {
+    initialHouseholdId: "foreign",
+  });
+  const cleanup = denied.start();
+  await tick();
+  assert.equal(denied.getSnapshot().status, "error");
+  assert.equal(calls.length, 0);
+  cleanup();
 });

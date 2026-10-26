@@ -410,3 +410,46 @@ formatting, lint, TypeScript and Next/Expo Android/iOS production builds passed.
 Clean dependency installs checked the shared package. Artwork inspected directly.
 Live API data and browser/device keyboard, modal-focus and screenshot acceptance
 remain pending; no API or .NET runtime was available in this environment.
+
+## Balance composition — 2026-10-26
+
+Reference: `image(20261026-214325).png`. Added authenticated web/native
+`/composicao-saldo`, connected to real API responses through `@inout/finance`.
+Dashboard cards navigate with household, period and currency. Returning restores
+those parameters; direct links validate membership before loading a ledger.
+Composition includes currency tabs, signed total, hide/show, account distribution,
+account list, per-account details and navigation to other currencies. Desktop
+uses a table; native uses compact account rows. Account details show selected-date
+balance plus credits, debits and net change supplied by the dashboard endpoint.
+The metadata accounts endpoint adds kind labels without replacing period balances.
+No fictitious accounts, balances or types are introduced.
+
+BigInt sum checks compare account balances to the consolidated API total. The
+legend uses net percentages (undefined at zero net). The bar uses explicitly
+labeled absolute weights with negative balances orange. Mismatches and backend
+reconciliation failures display an alert. Hide-values masks all displayed amounts
+and hides distribution/percentages. Web detail changes move focus to the heading;
+native scrolls to the top. Live API/device/browser acceptance remains pending.
+
+The existing domain/application dashboard contract and Clean Architecture chapter
+23 guide the boundary: totals and account activity come from .NET; the shared
+client package prepares display composition. Added tests cover signed balances,
+currency isolation, zero net, mismatch detection, large integer cents, snapshot
+balance versus current metadata, and membership validation of direct links.
+Validation: 56 shared/web tests, formatting, lint, TypeScript and production
+Next/Expo Android/iOS builds. Screenshots and live financial operations were not
+verified in this environment; no API/.NET runtime was available.
+
+New header art generated with the built-in image generator, inspected directly,
+then encoded as identical 1000×500 RGBA WebP copies:
+`frontend/public/images/pipo-balance-composition.webp` and
+`mobile/assets/pipo-balance-composition.webp`.
+Prompt: “Use case illustration-story. Transparent landscape header asset for
+Ninho household finance balance composition screen. Pipo small round fluffy
+golden yellow bird, green leaf tuft, orange beak, rust red scarf, leaning
+attentively over an open cream accounting notebook on a small warm wood surface,
+two small stacks of golden coins at right, little potted olive green plants and
+white daisies. Warm cozy watercolor storybook with softly sculpted details, sage
+cream honey palette. Wide 2:1 composition, complete character and notebook,
+generous transparent margin. No legible letters, numbers, UI, logo, watermark.
+Calm thoughtful friendly expression.”

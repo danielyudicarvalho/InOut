@@ -37,7 +37,8 @@ it does not recalculate the ledger or bypass membership authorization.
 1. `GET /api/v1/households` returns only the user's memberships.
 2. The chosen household drives six parallel monthly
    `GET /api/v1/households/{id}/ledger/dashboard?year=…&month=…` requests.
-3. `GET /api/v1/households/{id}/ledger/history?from=…&to=…&limit=20`
+3. `GET /api/v1/households/{id}/ledger/accounts` supplies account kinds (metadata only; balances come from the period snapshot).
+4. `GET /api/v1/households/{id}/ledger/history?from=…&to=…&limit=20`
    returns recent ledger entries for the selected month; the UI shows four.
 
 All requests obtain the current session access token and send `Authorization:
@@ -73,11 +74,11 @@ home only.
 
 ## Verification
 
-Thirteen adapter/store/formatting/period tests verify exact routes, bearer headers, non-BRL/USD
+Seventeen adapter/store/formatting/period/composition tests verify exact routes, bearer headers, non-BRL/USD
 amounts, history direction, empty membership, configuration/auth failures,
 HTTP errors, invalid monetary values, stale response isolation, membership
 revocation, timeout handling and calendar transitions. The complete web test
-command runs 52 tests. Lint, typecheck and web/native production exports also
+command runs 56 tests. Lint, typecheck and web/native production exports also
 cover client composition and shared package resolution after clean installs.
 
 No API was listening at localhost:8080 in the execution environment, and the
@@ -96,3 +97,26 @@ Presets and the Monday-first calendar share the package date helpers. Dates are
 calendar values, not UTC timestamps; leap days and reversed/invalid intervals
 are validated before any request. The native input format is DD/MM/AAAA.
 Both clients keep an independent draft while the dialog/sheet is open.
+
+## Balance composition and account details
+
+`/composicao-saldo` is reachable from each dashboard balance card on web and
+native. Navigation preserves membership-validated household, period and currency;
+returning to `/inicio` restores those selections. Direct links are authenticated,
+and a household missing from the membership response is rejected before querying
+its ledger. Currency selection is limited to backend summaries.
+
+The view uses `DashboardAccountBalance` fields from the same selected-period
+snapshot as the consolidated summary: balance, inflow, outflow and net change.
+The extra accounts endpoint supplies kind labels only; its current balances do
+not overwrite historical snapshot balances. Details are read-only within the
+composition screen and provide a return action. Credits/debits can include
+transfers and adjustments; the view does not call them household income/expense.
+
+Currencies never mix. Integer-cent totals are checked with BigInt against the
+backend consolidated total; a discrepancy/reconciliation failure shows an alert.
+Negative balances remain negative. Legend percentages use net balance and are
+undefined when the net balance is zero. The segmented bar explicitly represents
+absolute balances (negative accounts in orange), so it does not pretend a debt
+is a positive share of the net balance. Hide-values masks amounts and removes
+the distribution graphic/legend; it is a display privacy control, not encryption.

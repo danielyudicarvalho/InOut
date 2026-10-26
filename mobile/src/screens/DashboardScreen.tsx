@@ -9,7 +9,7 @@ import {
   StyleSheet,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { theme as t } from "../theme";
 import { money, periodLabel } from "@inout/finance";
@@ -17,9 +17,30 @@ import { PeriodPicker } from "../components/PeriodPicker";
 import { useFinancialHome } from "../finance/use-financial-home";
 
 export function DashboardScreen() {
-  const state = useFinancialHome();
+  const p = useLocalSearchParams();
+  const household = typeof p.household === "string" ? p.household : "",
+    period = typeof p.period === "string" ? p.period : "",
+    currency = typeof p.currency === "string" ? p.currency : "";
+  return (
+    <DashboardView
+      key={`${household}:${period}:${currency}`}
+      initialHouseholdId={household}
+      initialPeriod={period}
+      initialCurrency={currency}
+    />
+  );
+}
+function DashboardView({
+  initialCurrency,
+  ...options
+}: {
+  initialHouseholdId: string;
+  initialPeriod: string;
+  initialCurrency: string;
+}) {
+  const state = useFinancialHome(options);
   const [periodOpen, setPeriodOpen] = useState(false);
-  const [chosenCurrency, setCurrency] = useState("");
+  const [chosenCurrency, setCurrency] = useState(initialCurrency);
   const [picker, setPicker] = useState<"household" | null>(null);
   const [table, setTable] = useState(false);
   const [notice, setNotice] = useState("");
@@ -191,7 +212,22 @@ export function DashboardScreen() {
         </Text>
         <View style={s.balances}>
           {currencies.map((code) => (
-            <View key={code} style={s.balance}>
+            <Pressable
+              key={code}
+              style={s.balance}
+              accessibilityRole="button"
+              accessibilityLabel={`Ver composição em ${code}`}
+              onPress={() =>
+                router.push({
+                  pathname: "/composicao-saldo",
+                  params: {
+                    household: state.householdId,
+                    period: state.period,
+                    currency: code,
+                  },
+                })
+              }
+            >
               <Text style={s.small}>
                 {code === "BRL" ? "🇧🇷" : code === "USD" ? "🇺🇸" : "💱"} {code}
               </Text>
@@ -201,7 +237,8 @@ export function DashboardScreen() {
                   code,
                 )}
               </Text>
-            </View>
+              <Text style={s.caption}>Ver composição ›</Text>
+            </Pressable>
           ))}
         </View>
         <Text style={s.caption}>

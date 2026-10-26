@@ -16,13 +16,23 @@ export type Transaction = {
   currency: string;
   kind: string;
 };
+export type FinancialAccount = {
+  id: string;
+  name: string;
+  currency: string;
+  balance: number;
+  inflow: number;
+  outflow: number;
+  change: number;
+  kind: string | null;
+};
 export type Home = {
   periodStart: string;
   periodEnd: string;
   period: string;
   isReconciled: boolean;
   summaries: Summary[];
-  accounts: { id: string; name: string; currency: string }[];
+  accounts: FinancialAccount[];
   history: { period: string; summaries: Summary[] }[];
   transactions: Transaction[];
   currencies: string[];
@@ -55,7 +65,12 @@ export type HomeState = {
 };
 export function createFinancialHomeStore(
   repository: FinanceRepository,
-  options?: { now?: Date; timeoutMs?: number },
+  options?: {
+    now?: Date;
+    timeoutMs?: number;
+    initialHouseholdId?: string;
+    initialPeriod?: string;
+  },
 ): {
   getSnapshot: () => HomeState;
   subscribe: (listener: () => void) => () => void;
@@ -78,3 +93,13 @@ export function presetPeriod(
 export function calendarDays(month: string): (string | null)[];
 export function displayDate(value: string): string;
 export function inputDate(value: string): string;
+
+export function accountKindLabel(kind: string | null): string;
+export function balanceComposition(
+  home: Home,
+  currency: string,
+): {
+  total: number;
+  matched: boolean;
+  accounts: (FinancialAccount & { percent: number | null; width: number })[];
+};

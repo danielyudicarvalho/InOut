@@ -6,7 +6,9 @@ import {
   FinanceFailure,
 } from "@inout/finance";
 import { getAuthClient } from "../auth/composition";
-export function useFinancialHome() {
+export function useFinancialHome(
+  options: { initialHouseholdId?: string; initialPeriod?: string } = {},
+) {
   const [store] = useState(() =>
     createFinancialHomeStore(
       createFinanceRepository({
@@ -17,6 +19,7 @@ export function useFinancialHome() {
           return data.session?.access_token ?? null;
         },
       }),
+      options,
     ),
   );
   const state = useSyncExternalStore(

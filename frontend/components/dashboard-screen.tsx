@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -21,9 +22,30 @@ import { useFinancialHome } from "../lib/finance/use-financial-home";
 
 const icons = [House, Receipt, Wallet, ChartPie, Target, Gear];
 export function DashboardScreen() {
-  const state = useFinancialHome();
+  const p = useSearchParams();
+  const household = p.get("household") ?? "",
+    period = p.get("period") ?? "",
+    currency = p.get("currency") ?? "";
+  return (
+    <DashboardView
+      key={`${household}:${period}:${currency}`}
+      initialHouseholdId={household}
+      initialPeriod={period}
+      initialCurrency={currency}
+    />
+  );
+}
+function DashboardView({
+  initialCurrency,
+  ...options
+}: {
+  initialHouseholdId: string;
+  initialPeriod: string;
+  initialCurrency: string;
+}) {
+  const state = useFinancialHome(options);
   const [periodOpen, setPeriodOpen] = useState(false);
-  const [chosenCurrency, setCurrency] = useState("");
+  const [chosenCurrency, setCurrency] = useState(initialCurrency);
   const [notice, setNotice] = useState("");
   const navigation = [
     "Início",
@@ -240,6 +262,12 @@ export function DashboardScreen() {
                   </strong>
                 </div>
                 <Wallet size={40} weight="duotone" aria-hidden="true" />
+                <Link
+                  className="balance-card-link"
+                  href={`/composicao-saldo?${new URLSearchParams({ household: state.householdId, period: state.period, currency: code })}`}
+                >
+                  Ver composição ›
+                </Link>
               </article>
             ))}
           </div>

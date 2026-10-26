@@ -2564,3 +2564,202 @@ button:disabled {
     min-height: 40px;
   }
 }
+.balance-page .dashboard-sidebar nav a {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 14px;
+  min-height: 44px;
+  text-decoration: none;
+  border-radius: 8px;
+}
+.balance-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.balance-heading h1 {
+  font:
+    bold clamp(27px, 3vw, 38px) Georgia,
+    serif;
+  margin: 14px 0 8px;
+}
+.balance-heading p {
+  margin: 6px 0;
+  font-size: 13px;
+}
+.balance-heading img {
+  width: min(280px, 40%);
+  height: 160px;
+  object-fit: contain;
+}
+.balance-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 44px;
+  border: 0;
+  background: transparent;
+  text-decoration: none;
+  font-size: 13px;
+}
+.balance-visibility {
+  border: 1px solid #e9dfcd;
+  background: #fffaf2;
+  min-width: 44px;
+  min-height: 44px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+}
+.balance-overview,
+.balance-accounts,
+.balance-account-detail {
+  margin-top: 16px;
+}
+.balance-overview > p:first-child {
+  font-size: 13px;
+  margin: 5px 0;
+}
+.balance-total {
+  font:
+    bold 34px Georgia,
+    serif;
+}
+.balance-segments {
+  display: flex;
+  height: 18px;
+  overflow: hidden;
+  border-radius: 6px;
+  margin-top: 14px;
+}
+.balance-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 0;
+  list-style: none;
+  font-size: 11px;
+}
+.balance-legend li {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.balance-legend i {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.balance-table-scroll {
+  overflow-x: auto;
+}
+.balance-accounts table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.balance-accounts th,
+.balance-accounts td {
+  padding: 10px 8px;
+  text-align: left;
+  border-bottom: 1px solid #e9dfcd;
+}
+.balance-accounts th {
+  font-weight: 500;
+}
+.balance-accounts th svg {
+  vertical-align: middle;
+  margin-right: 8px;
+}
+.balance-accounts button {
+  min-height: 44px;
+  border: 0;
+  background: transparent;
+  color: #365d3e;
+  text-decoration: underline;
+  white-space: nowrap;
+}
+.balance-accounts tfoot {
+  background: #e6ead7;
+  font-weight: bold;
+}
+.balance-other-currencies {
+  display: grid;
+  gap: 10px;
+}
+.balance-other-currencies button {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  text-align: left;
+  padding: 15px;
+  min-height: 52px;
+  border: 1px solid #e9dfcd;
+  border-radius: 10px;
+  background: #fffcf4;
+  font-size: 12px;
+}
+.balance-account-detail dl > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 15px;
+  padding: 14px 0;
+  border-bottom: 1px solid #e9dfcd;
+  font-size: 14px;
+}
+.balance-account-detail dd {
+  margin: 0;
+  font-weight: bold;
+}
+@media (max-width: 760px) {
+  .balance-heading img {
+    width: 120px;
+    height: 130px;
+  }
+  .balance-heading h1 {
+    font-size: 27px;
+  }
+  .balance-page .dashboard-body {
+    padding-bottom: 24px;
+  }
+  .balance-total {
+    font-size: 30px;
+  }
+  .balance-legend {
+    display: grid;
+    gap: 8px;
+  }
+  .balance-accounts tbody td:nth-child(2),
+  .balance-accounts thead th:nth-child(2) {
+    display: none;
+  }
+  .balance-accounts th,
+  .balance-accounts td {
+    font-size: 12px;
+    padding: 6px 4px;
+  }
+  .balance-accounts tbody th {
+    max-width: 110px;
+  }
+  .balance-other-currencies button {
+    flex-wrap: wrap;
+  }
+  .balance-account-detail dl > div {
+    font-size: 12px;
+  }
+}
+.dashboard-balance {
+  flex-wrap: wrap;
+}
+.balance-card-link {
+  width: 100%;
+  font-size: 11px;
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+  color: #365d3e;
+}
