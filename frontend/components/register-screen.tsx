@@ -43,7 +43,9 @@ export function RegisterScreen() {
       });
       rememberEmail(email);
       form.reset();
-      router.replace(result === "signedIn" ? "/comecar" : "/confirmar-email");
+      router.replace(
+        result === "signedIn" ? "/preparando" : "/confirmar-email",
+      );
     } catch (error) {
       setNotice(authMessage(error));
     } finally {

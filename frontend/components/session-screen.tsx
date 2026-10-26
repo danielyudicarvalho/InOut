@@ -1,11 +1,11 @@
 "use client";
-
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Plant, Key, WifiSlash, CircleNotch } from "@phosphor-icons/react";
-
-type SessionState = "loading" | "expired" | "error";
+import { useRouter } from "next/navigation";
+import { Plant, CircleNotch } from "@phosphor-icons/react";
+import { useSessionRestoration } from "../lib/auth/use-session-restoration";
+export type SessionState = "loading" | "expired" | "error";
 const copy = {
   loading: {
     title: "Preparando seu Ninho...",
@@ -21,21 +21,15 @@ const copy = {
       "Não conseguimos verificar seu acesso. Confira sua conexão e tente novamente.",
   },
 };
-export function SessionScreen({
-  initialState = "loading",
+export function SessionView({
+  state,
+  notice = "",
+  onRetry,
 }: {
-  initialState?: SessionState;
+  state: SessionState;
+  notice?: string;
+  onRetry?: () => void;
 }) {
-  const [state, setState] = useState(initialState);
-  const [retrying, setRetrying] = useState(false);
-  useEffect(() => {
-    if (!retrying) return;
-    const timer = setTimeout(() => {
-      setState("error");
-      setRetrying(false);
-    }, 1200);
-    return () => clearTimeout(timer);
-  }, [retrying]);
   const current = copy[state];
   return (
     <main className="session-screen">
@@ -45,37 +39,34 @@ export function SessionScreen({
       </Link>
       <Image
         className="session-art"
-        src="/images/pipo-home.webp"
-        alt="Pipo em seu ninho entre plantas"
-        width={320}
-        height={235}
+        src={`/images/pipo-session-${state}.webp`}
+        alt={
+          state === "loading"
+            ? "Pipo sentado em seu ninho entre flores"
+            : state === "expired"
+              ? "Pipo ao lado de uma chave dourada"
+              : "Pipo com um símbolo de conexão indisponível"
+        }
+        width={500}
+        height={300}
         priority
       />
-      <div className="session-state-icon" aria-hidden="true">
-        {state === "loading" ? (
-          <CircleNotch className="session-spinner" size={38} />
-        ) : state === "expired" ? (
-          <Key size={38} />
-        ) : (
-          <WifiSlash size={38} />
-        )}
-      </div>
+      {state === "loading" ? (
+        <div className="session-state-icon" aria-hidden="true">
+          <CircleNotch className="session-spinner" size={34} />
+        </div>
+      ) : null}
       <div role="status" aria-live="polite" aria-atomic="true">
         <h1>{current.title}</h1>
         <p className="session-description">{current.description}</p>
+        {notice ? <p className="session-detail">{notice}</p> : null}
       </div>
-      {state === "error" && (
-        <button
-          className="primary session-action"
-          onClick={() => {
-            setState("loading");
-            setRetrying(true);
-          }}
-        >
+      {state === "error" && onRetry ? (
+        <button className="primary session-action" onClick={onRetry}>
           Tentar novamente
         </button>
-      )}
-      {state !== "loading" && (
+      ) : null}
+      {state !== "loading" ? (
         <Link
           className={
             state === "expired" ? "primary session-action" : "session-login"
@@ -84,17 +75,44 @@ export function SessionScreen({
         >
           Ir para entrar
         </Link>
-      )}
-      <p className="session-preview">
-        Prévia de interface. A restauração de sessão ainda não está integrada.
-        {retrying ? " Demonstrando uma nova tentativa." : ""}
-      </p>
-      <nav aria-label="Estados de demonstração" className="confirmation-demo">
-        <Link href="/preparando">Carregando</Link>
-        <Link href="/sessao-expirada">Sessão expirada</Link>
-        <Link href="/falha-acesso">Falha ao restaurar</Link>
-        <Link href="/entrar">Entrar</Link>
-      </nav>
+      ) : null}
     </main>
+  );
+}
+export function SessionScreen({
+  initialState = "loading",
+}: {
+  initialState?: SessionState;
+}) {
+  const router = useRouter();
+  return initialState === "loading" ? (
+    <RestoringSessionScreen />
+  ) : (
+    <SessionView
+      state={initialState}
+      onRetry={() => router.replace("/preparando")}
+    />
+  );
+}
+function RestoringSessionScreen() {
+  const { status, notice, retry } = useSessionRestoration();
+  const router = useRouter();
+  useEffect(() => {
+    if (status === "authenticated") router.replace("/comecar");
+    else if (status === "confirmationRequired")
+      router.replace("/confirmar-email");
+  }, [status, router]);
+  return (
+    <SessionView
+      state={
+        status === "expired"
+          ? "expired"
+          : status === "error"
+            ? "error"
+            : "loading"
+      }
+      notice={notice}
+      onRetry={() => void retry()}
+    />
   );
 }

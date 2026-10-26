@@ -30,7 +30,7 @@ export function LoginScreen() {
     try {
       await getAuth().signIn({ email, password: String(data.get("password")) });
       rememberEmail(email);
-      router.replace("/comecar");
+      router.replace("/preparando");
     } catch (error) {
       rememberEmail(email);
       setNotice(authMessage(error));

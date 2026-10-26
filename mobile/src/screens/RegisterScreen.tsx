@@ -40,7 +40,9 @@ export function RegisterScreen() {
       const result = await getAuth().signUp(values);
       rememberEmail(values.email);
       setValues({ ...values, password: "", confirmation: "" });
-      router.replace(result === "signedIn" ? "/comecar" : "/confirmar-email");
+      router.replace(
+        result === "signedIn" ? "/preparando" : "/confirmar-email",
+      );
     } catch (error) {
       setNotice(authMessage(error));
     } finally {

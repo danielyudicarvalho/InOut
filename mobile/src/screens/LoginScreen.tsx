@@ -32,7 +32,7 @@ export function LoginScreen() {
       await getAuth().signIn({ email, password });
       rememberEmail(email);
       setPassword("");
-      router.replace("/comecar");
+      router.replace("/preparando");
     } catch (error) {
       rememberEmail(email);
       setNotice(authMessage(error));
