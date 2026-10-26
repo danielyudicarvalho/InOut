@@ -1,18 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { authMessage } from "@inout/identity";
 import { getAuth } from "../lib/auth/composition";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import {
-  Plant,
-  House,
-  EnvelopeSimpleOpen,
-  SignOut,
-  X,
-} from "@phosphor-icons/react";
+import { Plant, SignOut } from "@phosphor-icons/react";
 
 const choices = [
   {
@@ -21,9 +15,8 @@ const choices = [
     description:
       "Organize suas finanças em um espaço seu. Você pode usar sozinho ou convidar outras pessoas depois.",
     action: "Criar residência",
-    icon: House,
-    detail:
-      "Na próxima etapa você poderá informar o nome e as configurações iniciais da sua residência. Esse fluxo ainda não está disponível nesta prévia.",
+    image: "/images/choice-create.webp",
+    href: "/criar-residencia",
   },
   {
     id: "invite",
@@ -31,9 +24,8 @@ const choices = [
     description:
       "Recebeu um convite? Entre na residência de quem vai compartilhar as finanças com você.",
     action: "Usar convite",
-    icon: EnvelopeSimpleOpen,
-    detail:
-      "Na próxima etapa você poderá informar o código do convite, conferir a residência e confirmar sua participação. Esse fluxo ainda não está disponível nesta prévia.",
+    image: "/images/choice-invite.webp",
+    href: "/entrar-convite",
   },
 ] as const;
 export function HouseholdChoiceScreen() {
@@ -42,6 +34,7 @@ export function HouseholdChoiceScreen() {
   const [exitNotice, setExitNotice] = useState("");
   async function signOut() {
     if (exitBusy) return;
+    setExitNotice("");
     setExitBusy(true);
     try {
       await getAuth().signOut();
@@ -53,15 +46,8 @@ export function HouseholdChoiceScreen() {
     }
   }
 
-  const [selected, setSelected] = useState<(typeof choices)[number] | null>(
-    null,
-  );
-  const dialog = useRef<HTMLDialogElement>(null);
-  useEffect(() => {
-    if (selected && !dialog.current?.open) dialog.current?.showModal();
-  }, [selected]);
   return (
-    <main className="household-choice">
+    <main className="household-choice household-choice-start">
       <header className="household-header">
         <Link href="/" className="brand">
           <Plant size={34} weight="duotone" aria-hidden="true" />
@@ -77,16 +63,19 @@ export function HouseholdChoiceScreen() {
           <SignOut size={22} aria-hidden="true" />
         </button>
       </header>
-      <p role="status" className="signin-notice">
-        {exitNotice}
-      </p>
+      {exitNotice ? (
+        <p role="alert" className="signin-notice">
+          {exitNotice}
+        </p>
+      ) : null}
       <section aria-labelledby="household-title" className="household-content">
         <Image
-          src="/images/pipo-home.webp"
-          alt="Pipo em seu ninho ao lado de uma casinha entre plantas"
-          width={520}
-          height={220}
-          priority
+          src="/images/choice-hero.webp"
+          alt="Pipo em seu ninho entre duas casinhas, flores e folhas"
+          width={1200}
+          height={480}
+          sizes="(max-width: 760px) 100vw, 600px"
+          preload
           className="household-hero"
         />
         <h1 id="household-title">Como você quer começar?</h1>
@@ -95,25 +84,26 @@ export function HouseholdChoiceScreen() {
           por convite.
         </p>
         <div className="household-options">
-          {choices.map(({ icon: Icon, ...choice }) => (
+          {choices.map((choice) => (
             <article className="household-card" key={choice.id}>
-              <div className="household-card-icon">
-                <Icon size={82} weight="duotone" aria-hidden="true" />
-              </div>
+              <Image
+                src={choice.image}
+                width={600}
+                height={300}
+                sizes="(max-width: 760px) 80vw, 280px"
+                alt=""
+                className="household-card-art"
+              />
               <h2>{choice.title}</h2>
               <p>{choice.description}</p>
-              <button
+              <Link
+                href={choice.href}
                 className={
                   choice.id === "create" ? "primary" : "household-secondary"
                 }
-                onClick={() =>
-                  choice.id === "create"
-                    ? router.push("/criar-residencia")
-                    : router.push("/entrar-convite")
-                }
               >
                 {choice.action}
-              </button>
+              </Link>
             </article>
           ))}
         </div>
@@ -121,29 +111,7 @@ export function HouseholdChoiceScreen() {
           <Plant size={26} weight="duotone" aria-hidden="true" />
           Residência é o espaço das suas finanças no Ninho.
         </p>
-        <p className="household-preview">
-          Prévia de interface. Criar residência e usar convite ainda não estão
-          integrados. Sair retorna à tela de entrada.
-        </p>
       </section>
-      <dialog
-        ref={dialog}
-        aria-labelledby="household-dialog-title"
-        onClose={() => setSelected(null)}
-      >
-        <button
-          className="close"
-          aria-label="Fechar"
-          onClick={() => dialog.current?.close()}
-        >
-          <X size={22} />
-        </button>
-        <h2 id="household-dialog-title">{selected?.title}</h2>
-        <p>{selected?.detail}</p>
-        <button className="primary" onClick={() => dialog.current?.close()}>
-          Entendi
-        </button>
-      </dialog>
     </main>
   );
 }

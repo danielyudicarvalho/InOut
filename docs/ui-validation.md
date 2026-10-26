@@ -148,3 +148,42 @@ Antes de integrar à main, revisar desktop e larguras de 360/390/430px, navegaç
 - Web assets: `frontend/public/images/pipo-session-{loading,expired,error}.webp`, 1000×600 RGBA. Identical copies in `mobile/assets/`; contain sizing preserves full composition. Web spinner honors reduced motion; mobile uses ActivityIndicator.
 - Live refresh/revocation, cross-tab sign-out and native-device/foreground acceptance remain pending. The status views do not replace backend authorization.
 - Thirty-nine authentication/application/SDK regression tests passed. Both clients passed formatting, ESLint and TypeScript; Next production build and Android/iOS exports passed. Cloud-browser preview returned connection-refused despite restarting the local preview; full screen visual/browser acceptance remains pending. Image compositions were inspected directly.
+
+## Household entry choice — 2026-10-26
+
+Reference: `image(20261026-191112).png`. Updated the authenticated `/comecar`
+view in Next.js and Expo with three dedicated transparent illustrations, two
+choice cards, desktop columns and a compact invitation card on narrow/native
+screens. The existing session gate and real sign-out remain in place; errors are
+announced and the busy action is disabled. Web destinations are semantic links.
+Removed the unreachable preview dialog/modal and its unused state/effect.
+
+Creating a residence and accepting an invitation on subsequent screens still
+require their existing API integration work; this change only navigates to those
+screens and does not save memberships. No database or domain rule was changed.
+Clean Architecture, chapter 23 (Presenters and Humble Objects), guided keeping
+this view concerned with presentation/navigation and retaining authentication in
+the existing identity boundary. Reviewed with the React best-practices skill:
+no added effects, dependencies, provider subscriptions, or business logic.
+
+Artwork was generated with the built-in image generator, inspected directly,
+and encoded as RGBA WebP. Final paths (identical copies for each platform):
+
+- `frontend/public/images/choice-hero.webp`, `mobile/assets/choice-hero.webp` (1200×480).
+- `frontend/public/images/choice-create.webp`, `mobile/assets/choice-create.webp` (600×300).
+- `frontend/public/images/choice-invite.webp`, `mobile/assets/choice-invite.webp` (600×300).
+
+Prompt set: shared prefix “Use case: illustration-story. Production transparent
+web and mobile UI asset for Ninho.” Subjects respectively: Pipo (round fluffy
+golden yellow bird, green leaf tuft, red scarf) in a woven nest between two cream
+cottages (green and terracotta roofs), daisies and olive leaves; a single cream
+cottage with green shingles, arched wood door and round attic window; an open
+cream envelope containing a gold invitation card with a small embossed house,
+daisies and olive leaves. Shared suffix: “Cozy hand painted watercolor storybook
+with softly sculpted details, warm cream sage olive and honey gold palette.
+Exact visual style of the attached Ninho screen. Isolated complete objects with
+generous transparent margins. No lettering no UI no frames no watermark.”
+
+Validation: lint and TypeScript passed in both apps; Next production build
+passed; Expo exports for Android and iOS passed. Direct artwork inspection passed. Full browser screenshot acceptance,
+real-device layout/accessibility, and account sign-out interaction remain pending.
