@@ -157,7 +157,7 @@ export function InitialAccountScreen({
               <Pressable
                 accessibilityRole="button"
                 style={s.linkTarget}
-                onPress={() => router.replace("/comecar")}
+                onPress={() => router.replace("/inicio")}
               >
                 <Text style={s.link}>Ir para o início</Text>
               </Pressable>
@@ -244,7 +244,7 @@ export function InitialAccountScreen({
               <Pressable
                 accessibilityRole="button"
                 style={s.linkTarget}
-                onPress={() => router.replace("/comecar")}
+                onPress={() => router.replace("/inicio")}
               >
                 <Text style={s.link}>Configurar depois</Text>
               </Pressable>

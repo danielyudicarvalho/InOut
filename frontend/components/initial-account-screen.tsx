@@ -105,7 +105,7 @@ export function InitialAccountScreen({
                 Registrar saída
               </button>
             </div>
-            <Link href="/comecar" className="signin-back">
+            <Link href="/inicio" className="signin-back">
               Ir para o início
             </Link>
             <button
@@ -238,7 +238,7 @@ export function InitialAccountScreen({
               <button type="submit" className="primary signin-submit">
                 Criar conta financeira
               </button>
-              <Link href="/comecar" className="signin-back">
+              <Link href="/inicio" className="signin-back">
                 Configurar depois
               </Link>
             </form>

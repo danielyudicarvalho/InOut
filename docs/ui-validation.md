@@ -310,3 +310,49 @@ Validation: formatting, lint and TypeScript, Next production build and Expo
 Android/iOS exports. Direct artwork inspection completed. Rendered browser
 screenshots, device modal/keyboard/screen-reader testing and live financial
 operations remain pending.
+
+## Financial home dashboard — 2026-10-26
+
+Reference: `image(20261026-202739).png`. Added authenticated `/inicio` routes
+for Next.js and Expo. Desktop has a sidebar, residence context, month selector,
+separate currency balances, summary cards, paired income/expense bars, recent
+transactions and quick actions. Narrow web/native use a compact hero, stacked
+summary and bottom navigation. Initial account skip/home links now reach this
+screen; they do not create an account. Unimplemented navigation/actions report
+an unavailable notice rather than perform financial mutations.
+
+The dashboard is explicitly a fixture preview. Month (May–October 2026) and
+currency (BRL/USD) change the period summary, history and transaction sample.
+Balances are labeled current examples and remain independent of the selected
+period. Monetary fixture values use integer cents; each currency is formatted
+separately with no conversion or cross-currency total. Transfers are labeled
+outside the period result. Transactions are a sample, explicitly not the sum
+of the period totals. No backend dashboard, membership or financial API call is
+made. `frontend/lib/dashboard/demo.ts` and `mobile/src/data/dashboard-demo.ts`
+contain identical deterministic fixtures, isolated from the views. Replace
+these at the application boundary during real dashboard integration. Clean
+Architecture chapter 23 guided keeping the views separate from data preparation.
+
+Accessibility: labeled month/currency controls and active states, readable
+amounts, text legends, web table disclosure and native text values for the chart,
+modal cancellation/system-back handling, and polite notices. Native month and
+web currency controls retain minimum touch targets. Full visual/device and
+screen-reader acceptance remain pending; no screenshot acceptance is claimed.
+Reviewed with React best practices: statically resolved native assets, derived
+summary without effects, no new dependencies or provider subscriptions.
+
+New art generated with the built-in image generator and inspected directly:
+`frontend/public/images/pipo-dashboard-hero.webp` and
+`mobile/assets/pipo-dashboard-hero.webp` (identical 1000×500 RGBA WebP).
+Prompt: “Use case: illustration-story. Production Ninho finance dashboard hero
+transparent cutout. A small cheerful round golden yellow fluffy bird Pipo,
+green leaf tuft, orange beak, warm rust red scarf, smiling eyes closed, wings
+relaxed open, standing between small olive leaf branches and a few white daisies.
+Cozy watercolor storybook with softly sculpted warm textures, olive sage cream
+honey palette. Landscape 2:1 composition with complete silhouette and generous
+transparent margin. No house, no wallet, no coins, no text, no UI, no watermark.
+Welcoming calm dashboard companion.”
+
+Validation: formatting, lint and TypeScript in both apps; Next production build
+(25 routes); Expo Android/iOS exports. Live household isolation, authorization,
+dashboard reconciliation and financial data are not exercised by this preview.
