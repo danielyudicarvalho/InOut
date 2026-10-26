@@ -24,7 +24,8 @@
     "react-native-safe-area-context": "~5.10.1",
     "react-native-screens": "~4.30.0",
     "react-native-url-polyfill": "4.0.0",
-    "react-native-web": "^0.21.4"
+    "react-native-web": "^0.21.4",
+    "@inout/finance": "file:../packages/finance"
   },
   "devDependencies": {
     "@types/react": "~19.3.0",
@@ -45,7 +46,7 @@
     "format": "prettier --write . --ignore-path ../.prettierignore",
     "format:check": "prettier --check . --ignore-path ../.prettierignore",
     "check": "npm run format:check && npm run lint && npm run typecheck",
-    "test": "node --test ../packages/identity/*.test.mjs"
+    "test": "node --test ../packages/identity/*.test.mjs ../packages/finance/*.test.mjs"
   },
   "private": true
 }

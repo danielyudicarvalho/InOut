@@ -15,31 +15,89 @@ import {
   Plus,
   Plant,
 } from "@phosphor-icons/react";
-import {
-  balances,
-  currencies,
-  history,
-  money,
-  months,
-  navigation,
-  summary,
-  transactions,
-  type Currency,
-} from "../lib/dashboard/demo";
+import { money, periodLabel } from "@inout/finance";
+import { useFinancialHome } from "../lib/finance/use-financial-home";
+
 const icons = [House, Receipt, Wallet, ChartPie, Target, Gear];
 export function DashboardScreen() {
-  const [currency, setCurrency] = useState<Currency>("BRL");
-  const [month, setMonth] = useState(5);
+  const state = useFinancialHome();
+  const [chosenCurrency, setCurrency] = useState("");
   const [notice, setNotice] = useState("");
-  const current = summary(currency, month);
-  const chart = history[currency].slice(0, month + 1);
+  const navigation = [
+    "Início",
+    "Lançamentos",
+    "Contas",
+    "Categorias",
+    "Metas",
+    "Configurações",
+  ];
+  if (
+    state.status !== "ready" ||
+    !state.data ||
+    !state.data.currencies.length
+  ) {
+    const empty =
+      state.status === "empty" ||
+      (state.status === "ready" && !state.data?.currencies.length);
+    return (
+      <main className="financial-state">
+        <h1>Seu ninho em equilíbrio</h1>
+        <p role="status">
+          {state.status === "loading"
+            ? "Carregando suas finanças…"
+            : empty
+              ? state.households.length
+                ? "Esta residência ainda não possui contas financeiras."
+                : "Você ainda não participa de uma residência."
+              : state.notice}
+        </p>
+        {state.status !== "loading" ? (
+          <button className="primary" onClick={state.retry}>
+            Atualizar residências
+          </button>
+        ) : null}
+        <Link href="/comecar">Escolher como começar</Link>
+        {state.households.length > 1 ? (
+          <label>
+            Residência
+            <select
+              value={state.householdId}
+              onChange={(e) => state.selectHousehold(e.target.value)}
+            >
+              {state.households.map((h) => (
+                <option key={h.id} value={h.id}>
+                  {h.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null}
+        <Link href="/entrar">Ir para entrar</Link>
+      </main>
+    );
+  }
+  const data = state.data;
+  const currencies = data.currencies;
+  const currency = currencies.includes(chosenCurrency)
+    ? chosenCurrency
+    : currencies[0];
+  const current = data.summaries.find((row) => row.currency === currency)!;
+  const chart = data.history.map((row) => ({
+    period: row.period,
+    ...(row.summaries.find((value) => value.currency === currency) ?? {
+      income: 0,
+      expense: 0,
+    }),
+  }));
   const maximum = Math.max(
+    1,
     ...chart.flatMap((row) => [row.income, row.expense]),
   );
+  const hasNegative = chart.some((row) => row.income < 0 || row.expense < 0);
+  const rows = data.transactions.slice(0, 4);
+  const household = state.households.find((h) => h.id === state.householdId)!;
   function unavailable(label: string) {
-    setNotice(
-      `${label}: esta área ainda não está disponível nesta demonstração.`,
-    );
+    setNotice(`${label}: esta área ainda não está disponível no aplicativo.`);
   }
   return (
     <main className="dashboard">
@@ -77,8 +135,16 @@ export function DashboardScreen() {
           <label>
             <House size={18} />
             <span className="sr-only">Residência atual</span>
-            <select aria-label="Residência atual" defaultValue="demo">
-              <option value="demo">Nosso Ninho · exemplo</option>
+            <select
+              aria-label="Residência atual"
+              value={state.householdId}
+              onChange={(e) => state.selectHousehold(e.target.value)}
+            >
+              {state.households.map((h) => (
+                <option key={h.id} value={h.id}>
+                  {h.name}
+                </option>
+              ))}
             </select>
           </label>
           <Link
@@ -86,7 +152,7 @@ export function DashboardScreen() {
             className="dashboard-profile"
             aria-label="Escolher residência"
           >
-            YN
+            <House size={20} />
           </Link>
         </header>
         <section className="dashboard-hero" aria-labelledby="dashboard-title">
@@ -106,42 +172,58 @@ export function DashboardScreen() {
             <span className="sr-only">Período do resumo</span>
             <select
               aria-label="Período do resumo"
-              value={month}
-              onChange={(event) => setMonth(Number(event.target.value))}
+              value={state.period}
+              onChange={(event) => state.selectPeriod(event.target.value)}
             >
-              {months.map((name, index) => (
-                <option value={index} key={name}>
-                  {name} de 2026
+              {state.periods.map((period) => (
+                <option value={period} key={period}>
+                  {periodLabel(period)}
                 </option>
               ))}
             </select>
           </label>
         </section>
-        <p className="dashboard-preview">
-          Demonstração com dados fictícios. Nenhuma informação financeira real é
-          consultada.
+        <p className="dashboard-caption">
+          {household.name} · {periodLabel(state.period)}
         </p>
+        {!data.isReconciled ? (
+          <p role="alert" className="dashboard-reconciliation">
+            O backend identificou uma divergência na conciliação dos registros.
+            Confira os lançamentos antes de usar estes totais.
+          </p>
+        ) : null}
         <section aria-labelledby="balances-title">
           <h2 id="balances-title">Saldos por moeda</h2>
           <div className="dashboard-balances">
             {currencies.map((code) => (
               <article key={code} className="dashboard-balance">
                 <span className="dashboard-flag" aria-hidden="true">
-                  {code === "BRL" ? "🇧🇷" : "🇺🇸"}
+                  {code === "BRL" ? "🇧🇷" : code === "USD" ? "🇺🇸" : "💱"}
                 </span>
                 <div>
                   <p>
-                    {code === "BRL" ? "Real brasileiro" : "Dólar americano"} ·{" "}
-                    {code}
+                    {code === "BRL"
+                      ? "Real brasileiro"
+                      : code === "USD"
+                        ? "Dólar americano"
+                        : code}{" "}
+                    · {code}
                   </p>
-                  <strong>{money(balances[code], code)}</strong>
+                  <strong>
+                    {money(
+                      data.summaries.find((row) => row.currency === code)!
+                        .balance,
+                      code,
+                    )}
+                  </strong>
                 </div>
                 <Wallet size={40} weight="duotone" aria-hidden="true" />
               </article>
             ))}
           </div>
           <p className="dashboard-caption">
-            Saldos atuais de exemplo, sem conversão entre moedas.
+            Saldos até {data.periodEnd.split("-").reverse().join("/")}, sem
+            conversão entre moedas.
           </p>
         </section>
         <section aria-labelledby="summary-title">
@@ -214,29 +296,38 @@ export function DashboardScreen() {
                 Despesas
               </span>
             </div>
-            <div
-              className="dashboard-chart"
-              role="img"
-              aria-label={`Receitas e despesas em ${currency}, de maio a ${months[month]} de 2026. Valores disponíveis na tabela abaixo.`}
-            >
-              {chart.map((row, index) => (
-                <div key={index} className="dashboard-chart-column">
-                  <div className="dashboard-bars">
-                    <span
-                      style={{ height: `${(row.income / maximum) * 100}%` }}
-                    />
-                    <span
-                      style={{ height: `${(row.expense / maximum) * 100}%` }}
-                    />
+            {hasNegative ? (
+              <p>
+                Há ajustes negativos no histórico. Consulte os valores abaixo.
+              </p>
+            ) : (
+              <div
+                className="dashboard-chart"
+                role="img"
+                aria-label={`Receitas e despesas em ${currency}, de ${periodLabel(chart[0].period)} a ${periodLabel(state.period)}. Valores disponíveis na tabela abaixo.`}
+              >
+                {chart.map((row, index) => (
+                  <div key={index} className="dashboard-chart-column">
+                    <div className="dashboard-bars">
+                      <span
+                        style={{ height: `${(row.income / maximum) * 100}%` }}
+                      />
+                      <span
+                        style={{ height: `${(row.expense / maximum) * 100}%` }}
+                      />
+                    </div>
+                    <span>{periodLabel(row.period)}</span>
                   </div>
-                  <span>{months[index].slice(0, 3)}</span>
-                </div>
-              ))}
-            </div>
-            <details className="dashboard-chart-data">
+                ))}
+              </div>
+            )}
+            <details
+              className="dashboard-chart-data"
+              open={hasNegative || undefined}
+            >
               <summary>Ver valores do gráfico</summary>
               <table>
-                <caption>Valores em {currency} · 2026</caption>
+                <caption>Valores em {currency}</caption>
                 <thead>
                   <tr>
                     <th>Mês</th>
@@ -247,7 +338,7 @@ export function DashboardScreen() {
                 <tbody>
                   {chart.map((row, index) => (
                     <tr key={index}>
-                      <th>{months[index]}</th>
+                      <th>{periodLabel(row.period)}</th>
                       <td>{money(row.income, currency)}</td>
                       <td>{money(row.expense, currency)}</td>
                     </tr>
@@ -269,13 +360,16 @@ export function DashboardScreen() {
                 Ver todos
               </button>
             </div>
+            {rows.length === 0 ? (
+              <p className="dashboard-caption">Nenhum lançamento no período.</p>
+            ) : null}
             <ul className="dashboard-transactions">
-              {transactions(currency, month).map((row) => (
-                <li key={row.name}>
+              {rows.map((row) => (
+                <li key={row.id}>
                   <span
                     className={`dashboard-transaction-icon ${row.cents > 0 ? "income" : "expense"}`}
                   >
-                    {row.icon === "transfer" ? (
+                    {row.kind === "transfer" ? (
                       <ArrowsLeftRight size={19} />
                     ) : row.cents > 0 ? (
                       <ArrowUp size={19} />
@@ -287,10 +381,8 @@ export function DashboardScreen() {
                     <strong>{row.name}</strong>
                     <small>{row.category}</small>
                   </div>
-                  <time
-                    dateTime={`2026-${String(month + 5).padStart(2, "0")}-${String(row.day).padStart(2, "0")}`}
-                  >
-                    {row.day} de {months[month].slice(0, 3).toLowerCase()}.
+                  <time dateTime={row.date}>
+                    {row.date.split("-").reverse().join("/")}
                   </time>
                   <span
                     className={
@@ -300,13 +392,14 @@ export function DashboardScreen() {
                     }
                   >
                     {row.cents > 0 ? "+ " : "− "}
-                    {money(Math.abs(row.cents), currency)}
+                    {money(Math.abs(row.cents), row.currency)}
                   </span>
                 </li>
               ))}
             </ul>
             <p className="dashboard-caption">
-              Amostra de lançamentos; a lista não representa o total do período.
+              Últimos registros do período, na moeda de cada conta.
+              Transferências podem ter um registro por conta.
             </p>
           </section>
         </div>

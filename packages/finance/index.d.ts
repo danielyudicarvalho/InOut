@@ -1,0 +1,66 @@
+export type Household = { id: string; name: string };
+export type Summary = {
+  currency: string;
+  balance: number;
+  income: number;
+  expense: number;
+  result: number;
+};
+export type Transaction = {
+  id: string;
+  name: string;
+  accountName: string;
+  category: string;
+  date: string;
+  cents: number;
+  currency: string;
+  kind: string;
+};
+export type Home = {
+  periodStart: string;
+  periodEnd: string;
+  period: string;
+  isReconciled: boolean;
+  summaries: Summary[];
+  accounts: { id: string; name: string; currency: string }[];
+  history: { period: string; summaries: Summary[] }[];
+  transactions: Transaction[];
+  currencies: string[];
+};
+export interface FinanceRepository {
+  households(signal?: AbortSignal): Promise<Household[]>;
+  home(id: string, period: string, signal?: AbortSignal): Promise<Home>;
+}
+export class FinanceFailure extends Error {
+  readonly code: string;
+  constructor(code: string);
+}
+export function financeMessage(error: unknown): string;
+export function monthOptions(now?: Date): string[];
+export function periodLabel(period: string): string;
+export function money(cents: number, currency: string): string;
+export function createFinanceRepository(options: {
+  baseUrl: string | undefined;
+  getToken: () => Promise<string | null>;
+  fetcher?: typeof fetch;
+}): FinanceRepository;
+export type HomeState = {
+  status: "loading" | "empty" | "ready" | "error";
+  households: Household[];
+  householdId: string;
+  period: string;
+  periods: string[];
+  data: Home | null;
+  notice: string;
+};
+export function createFinancialHomeStore(
+  repository: FinanceRepository,
+  options?: { now?: Date; timeoutMs?: number },
+): {
+  getSnapshot: () => HomeState;
+  subscribe: (listener: () => void) => () => void;
+  start: () => () => void;
+  retry: () => void;
+  selectHousehold: (id: string) => void;
+  selectPeriod: (period: string) => void;
+};

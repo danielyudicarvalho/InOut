@@ -12,29 +12,96 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { theme as t } from "../theme";
-import {
-  balances,
-  currencies,
-  history,
-  money,
-  months,
-  summary,
-  transactions,
-  type Currency,
-} from "../data/dashboard-demo";
+import { money, periodLabel } from "@inout/finance";
+import { useFinancialHome } from "../finance/use-financial-home";
+
 export function DashboardScreen() {
-  const [currency, setCurrency] = useState<Currency>("BRL");
-  const [month, setMonth] = useState(5);
-  const [picker, setPicker] = useState(false);
+  const state = useFinancialHome();
+  const [chosenCurrency, setCurrency] = useState("");
+  const [picker, setPicker] = useState<"period" | "household" | null>(null);
   const [table, setTable] = useState(false);
   const [notice, setNotice] = useState("");
-  const current = summary(currency, month);
-  const chart = history[currency].slice(0, month + 1);
-  const max = Math.max(...chart.flatMap((row) => [row.income, row.expense]));
-  function unavailable(label: string) {
-    setNotice(
-      `${label}: esta área ainda não está disponível nesta demonstração.`,
+  if (
+    state.status !== "ready" ||
+    !state.data ||
+    !state.data.currencies.length
+  ) {
+    const empty =
+      state.status === "empty" ||
+      (state.status === "ready" && !state.data?.currencies.length);
+    return (
+      <SafeAreaView style={s.safe}>
+        <ScrollView contentContainerStyle={s.content}>
+          <Text accessibilityRole="header" style={s.title}>
+            Seu ninho em equilíbrio
+          </Text>
+          <Text accessibilityLiveRegion="polite" style={s.subtitle}>
+            {state.status === "loading"
+              ? "Carregando suas finanças…"
+              : empty
+                ? state.households.length
+                  ? "Esta residência ainda não possui contas financeiras."
+                  : "Você ainda não participa de uma residência."
+                : state.notice}
+          </Text>
+          {state.status !== "loading" ? (
+            <Pressable
+              accessibilityRole="button"
+              style={s.action}
+              onPress={state.retry}
+            >
+              <Text style={s.small}>Atualizar residências</Text>
+            </Pressable>
+          ) : null}
+          {state.households.length > 1
+            ? state.households.map((h) => (
+                <Pressable
+                  key={h.id}
+                  accessibilityRole="button"
+                  style={s.action}
+                  onPress={() => state.selectHousehold(h.id)}
+                >
+                  <Text style={s.small}>{h.name}</Text>
+                </Pressable>
+              ))
+            : null}
+          <Pressable
+            accessibilityRole="button"
+            style={s.textButton}
+            onPress={() => router.replace("/comecar")}
+          >
+            <Text style={s.link}>Escolher como começar</Text>
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            style={s.textButton}
+            onPress={() => router.replace("/entrar")}
+          >
+            <Text style={s.link}>Ir para entrar</Text>
+          </Pressable>
+        </ScrollView>
+      </SafeAreaView>
     );
+  }
+  const data = state.data;
+  const currencies = data.currencies;
+  const currency = currencies.includes(chosenCurrency)
+    ? chosenCurrency
+    : currencies[0];
+  const current = data.summaries.find((row) => row.currency === currency)!;
+  const chart = data.history.map((row) => ({
+    period: row.period,
+    ...(row.summaries.find((v) => v.currency === currency) ?? {
+      income: 0,
+      expense: 0,
+    }),
+  }));
+  const max = Math.max(1, ...chart.flatMap((row) => [row.income, row.expense]));
+  const hasNegative = chart.some((row) => row.income < 0 || row.expense < 0);
+  const rows = data.transactions.slice(0, 4);
+  const household = state.households.find((h) => h.id === state.householdId)!;
+  function unavailable(label: string) {
+    setNotice(`${label}: esta área ainda não está disponível no aplicativo.`);
   }
   return (
     <SafeAreaView style={s.safe}>
@@ -43,7 +110,7 @@ export function DashboardScreen() {
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Escolher residência"
-            onPress={() => router.push("/comecar")}
+            onPress={() => setPicker("household")}
             style={s.house}
           >
             <MaterialCommunityIcons
@@ -51,9 +118,13 @@ export function DashboardScreen() {
               size={20}
               color="#365738"
             />
-            <Text style={s.small}>Nosso Ninho · exemplo</Text>
+            <Text style={s.small}>{household.name}</Text>
           </Pressable>
-          <Text style={s.avatar}>YN</Text>
+          <MaterialCommunityIcons
+            name="home-circle-outline"
+            size={30}
+            color={t.green}
+          />
         </View>
         <View style={s.hero}>
           <View style={s.heroCopy}>
@@ -73,9 +144,9 @@ export function DashboardScreen() {
         </View>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={`Período: ${months[month]} de 2026`}
-          accessibilityState={{ expanded: picker }}
-          onPress={() => setPicker(true)}
+          accessibilityLabel={`Período: ${periodLabel(state.period)}`}
+          accessibilityState={{ expanded: picker === "period" }}
+          onPress={() => setPicker("period")}
           style={s.period}
         >
           <MaterialCommunityIcons
@@ -83,17 +154,19 @@ export function DashboardScreen() {
             size={18}
             color={t.muted}
           />
-          <Text style={s.small}>{months[month]} de 2026</Text>
+          <Text style={s.small}>{periodLabel(state.period)}</Text>
           <MaterialCommunityIcons
             name="chevron-down"
             size={18}
             color={t.muted}
           />
         </Pressable>
-        <Text style={s.preview}>
-          Demonstração com dados fictícios. Nenhum dado financeiro real é
-          consultado.
-        </Text>
+        {!data.isReconciled ? (
+          <Text accessibilityLiveRegion="assertive" style={s.notice}>
+            O backend identificou uma divergência na conciliação. Confira os
+            lançamentos antes de usar estes totais.
+          </Text>
+        ) : null}
         <Text accessibilityRole="header" style={s.heading}>
           Saldos por moeda
         </Text>
@@ -101,14 +174,20 @@ export function DashboardScreen() {
           {currencies.map((code) => (
             <View key={code} style={s.balance}>
               <Text style={s.small}>
-                {code === "BRL" ? "🇧🇷" : "🇺🇸"} {code}
+                {code === "BRL" ? "🇧🇷" : code === "USD" ? "🇺🇸" : "💱"} {code}
               </Text>
-              <Text style={s.balanceValue}>{money(balances[code], code)}</Text>
+              <Text style={s.balanceValue}>
+                {money(
+                  data.summaries.find((row) => row.currency === code)!.balance,
+                  code,
+                )}
+              </Text>
             </View>
           ))}
         </View>
         <Text style={s.caption}>
-          Saldos atuais de exemplo, sem conversão entre moedas.
+          Saldos até {data.periodEnd.split("-").reverse().join("/")}, sem
+          conversão entre moedas.
         </Text>
         <View style={s.sectionHeading}>
           <Text accessibilityRole="header" style={s.heading}>
@@ -176,29 +255,40 @@ export function DashboardScreen() {
           <Text style={s.caption}>
             Verde: receitas · Terracota: despesas · {currency}
           </Text>
-          <View
-            accessible
-            accessibilityLabel={`Gráfico em ${currency}. Os valores estão disponíveis na tabela abaixo.`}
-            style={s.chart}
-          >
-            {chart.map((row, index) => (
-              <View key={index} style={s.column}>
-                <View style={s.bars}>
-                  <View
-                    style={[s.bar, { height: `${(row.income / max) * 100}%` }]}
-                  />
-                  <View
-                    style={[
-                      s.bar,
-                      s.expenseBar,
-                      { height: `${(row.expense / max) * 100}%` },
-                    ]}
-                  />
+          {hasNegative ? (
+            <Text style={s.caption}>
+              Há ajustes negativos no histórico. Consulte os valores abaixo.
+            </Text>
+          ) : (
+            <View
+              accessible
+              accessibilityLabel={`Gráfico em ${currency}. Os valores estão disponíveis na tabela abaixo.`}
+              style={s.chart}
+            >
+              {chart.map((row, index) => (
+                <View key={index} style={s.column}>
+                  <View style={s.bars}>
+                    <View
+                      style={[
+                        s.bar,
+                        { height: `${(row.income / max) * 100}%` },
+                      ]}
+                    />
+                    <View
+                      style={[
+                        s.bar,
+                        s.expenseBar,
+                        { height: `${(row.expense / max) * 100}%` },
+                      ]}
+                    />
+                  </View>
+                  <Text style={s.caption}>
+                    {row.period.slice(5) + "/" + row.period.slice(2, 4)}
+                  </Text>
                 </View>
-                <Text style={s.caption}>{months[index].slice(0, 3)}</Text>
-              </View>
-            ))}
-          </View>
+              ))}
+            </View>
+          )}
           <Pressable
             accessibilityRole="button"
             accessibilityState={{ expanded: table }}
@@ -209,11 +299,12 @@ export function DashboardScreen() {
               {table ? "Ocultar valores" : "Ver valores do gráfico"}
             </Text>
           </Pressable>
-          {table
+          {table || hasNegative
             ? chart.map((row, index) => (
                 <Text key={index} style={s.tableRow}>
-                  {months[index]}: receitas {money(row.income, currency)};
-                  despesas {money(row.expense, currency)}.
+                  {periodLabel(row.period)}: receitas{" "}
+                  {money(row.income, currency)}; despesas{" "}
+                  {money(row.expense, currency)}.
                 </Text>
               ))
             : null}
@@ -231,22 +322,26 @@ export function DashboardScreen() {
               <Text style={s.link}>Ver todos</Text>
             </Pressable>
           </View>
-          {transactions(currency, month).map((row) => (
-            <View key={row.name} style={s.transaction}>
+          {rows.length === 0 ? (
+            <Text style={s.caption}>Nenhum lançamento no período.</Text>
+          ) : null}
+          {rows.map((row) => (
+            <View key={row.id} style={s.transaction}>
               <View style={s.transactionCopy}>
                 <Text style={s.small}>{row.name}</Text>
                 <Text style={s.caption}>
-                  {row.category} · {row.day} de {months[month].slice(0, 3)}.
+                  {row.category} · {row.date.split("-").reverse().join("/")}
                 </Text>
               </View>
               <Text style={[s.amount, row.cents < 0 && s.negative]}>
                 {row.cents > 0 ? "+ " : "− "}
-                {money(Math.abs(row.cents), currency)}
+                {money(Math.abs(row.cents), row.currency)}
               </Text>
             </View>
           ))}
           <Text style={s.caption}>
-            Amostra; esta lista não representa o total do período.
+            Últimos registros do período, na moeda de cada conta. Transferências
+            podem ter um registro por conta.
           </Text>
         </View>
         <Text accessibilityRole="header" style={s.heading}>
@@ -305,43 +400,48 @@ export function DashboardScreen() {
         ))}
       </View>
       <Modal
-        visible={picker}
+        visible={picker !== null}
         transparent
         animationType="fade"
-        onRequestClose={() => setPicker(false)}
+        onRequestClose={() => setPicker(null)}
       >
         <View style={s.backdrop}>
           <View style={s.modal} accessibilityViewIsModal>
             <Text accessibilityRole="header" style={s.heading}>
-              Período de 2026
+              {picker === "period" ? "Período" : "Residência"}
             </Text>
             <ScrollView>
-              {months.map((name, index) => (
+              {(picker === "period"
+                ? state.periods.map((period) => ({
+                    id: period,
+                    name: periodLabel(period),
+                  }))
+                : state.households
+              ).map((item) => (
                 <Pressable
-                  key={name}
+                  key={item.id}
                   accessibilityRole="radio"
-                  accessibilityState={{ checked: month === index }}
+                  accessibilityState={{
+                    checked:
+                      picker === "period"
+                        ? state.period === item.id
+                        : state.householdId === item.id,
+                  }}
                   style={s.monthOption}
                   onPress={() => {
-                    setMonth(index);
-                    setPicker(false);
+                    if (picker === "period") state.selectPeriod(item.id);
+                    else state.selectHousehold(item.id);
+                    setPicker(null);
                   }}
                 >
-                  <Text style={s.small}>{name} de 2026</Text>
-                  {month === index ? (
-                    <MaterialCommunityIcons
-                      name="check"
-                      size={22}
-                      color={t.green}
-                    />
-                  ) : null}
+                  <Text style={s.small}>{item.name}</Text>
                 </Pressable>
               ))}
             </ScrollView>
             <Pressable
               accessibilityRole="button"
               style={s.textButton}
-              onPress={() => setPicker(false)}
+              onPress={() => setPicker(null)}
             >
               <Text style={s.link}>Cancelar</Text>
             </Pressable>

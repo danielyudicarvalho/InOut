@@ -356,3 +356,20 @@ Welcoming calm dashboard companion.”
 Validation: formatting, lint and TypeScript in both apps; Next production build
 (25 routes); Expo Android/iOS exports. Live household isolation, authorization,
 dashboard reconciliation and financial data are not exercised by this preview.
+
+## Financial home backend integration — 2026-10-26
+
+Supersedes the fixture-data portion of the earlier dashboard entry. Both clients
+now load memberships, dashboard summaries and ledger history from ASP.NET using
+the current Supabase session token. Removed both dashboard demo source files.
+Added shared `@inout/finance` adapter/store with cancellation, stale response
+isolation, timeout and safe error/empty states. Currency and period controls
+use server memberships/currencies and calendar periods. Balances explicitly use
+the backend period end. Graphs use server period totals; negative adjustments
+fall back to signed values. Recent ledger entries retain each entry's currency.
+The existing dashboard illustration is unchanged.
+
+See `docs/react-financial-home.md` for endpoints, configuration, security and
+verification details. Tests use controlled HTTP responses only; runtime screens
+have no mocked fallback. Live API/browser/device validation remains pending
+because the API/.NET runtime was unavailable in the execution environment.
