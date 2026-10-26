@@ -1805,3 +1805,30 @@ button:disabled {
     line-height: 1.45;
   }
 }
+
+.initial-account {
+  background: radial-gradient(ellipse at center, #fffdf6, #faf5e9);
+}
+.account-currency-prefix {
+  padding-left: 12px;
+  color: #615543;
+  white-space: nowrap;
+}
+.account-ready h1:focus-visible {
+  outline: 2px solid var(--green);
+  outline-offset: 6px;
+}
+.account-ready .signin-back {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+@media (max-width: 760px) {
+  .initial-account {
+    padding: 16px;
+  }
+  .account-mobile-art {
+    max-height: 150px;
+  }
+}

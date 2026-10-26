@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState, type ComponentRef } from "react";
 import {
   View,
   Text,
@@ -9,6 +9,8 @@ import {
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
+  Modal,
+  Keyboard,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
@@ -33,9 +35,23 @@ export function InitialAccountScreen({
   });
   const [ready, setReady] = useState(initialReady);
   const [notice, setNotice] = useState("");
+  const [currencyOpen, setCurrencyOpen] = useState(false);
+  const scroll = useRef<ComponentRef<typeof ScrollView>>(null);
+  function updateName(value: string) {
+    setName(value);
+    setNotice("");
+  }
+  function updateBalance(value: string) {
+    setBalance(value);
+    setNotice("");
+  }
+  function updateDate(value: string) {
+    setDate(value);
+    setNotice("");
+  }
   function submit() {
-    if (!name.trim()) {
-      setNotice("Informe o nome da conta.");
+    if (!name.trim() || name.trim().length > 80) {
+      setNotice("Informe um nome de 1 a 80 caracteres.");
       return;
     }
     if (!/^-?\d{1,12}(,\d{1,2})?$/.test(balance.trim())) {
@@ -58,7 +74,9 @@ export function InitialAccountScreen({
       return;
     }
     setNotice("");
+    Keyboard.dismiss();
     setReady(true);
+    scroll.current?.scrollTo({ y: 0, animated: false });
   }
   return (
     <SafeAreaView style={s.safe}>
@@ -67,6 +85,7 @@ export function InitialAccountScreen({
         behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
         <ScrollView
+          ref={scroll}
           contentContainerStyle={s.content}
           keyboardShouldPersistTaps="handled"
         >
@@ -159,38 +178,35 @@ export function InitialAccountScreen({
               <TextInput
                 accessibilityLabel="Nome da conta"
                 value={name}
-                onChangeText={setName}
-                maxLength={100}
+                onChangeText={updateName}
+                maxLength={80}
                 style={s.input}
               />
               <Text style={s.label}>Moeda</Text>
-              <View accessibilityRole="radiogroup">
-                {currencies.map((item) => (
-                  <Pressable
-                    key={item.code}
-                    accessibilityRole="radio"
-                    accessibilityState={{ checked: currency === item.code }}
-                    style={s.currency}
-                    onPress={() => setCurrency(item.code)}
-                  >
-                    <Text style={s.currencyText}>{item.label}</Text>
-                    <MaterialCommunityIcons
-                      name={
-                        currency === item.code
-                          ? "radiobox-marked"
-                          : "radiobox-blank"
-                      }
-                      size={21}
-                      color={t.green}
-                    />
-                  </Pressable>
-                ))}
-              </View>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`Moeda: ${currencies.find((item) => item.code === currency)?.label}`}
+                accessibilityState={{ expanded: currencyOpen }}
+                style={[s.input, s.currencySelect]}
+                onPress={() => {
+                  Keyboard.dismiss();
+                  setCurrencyOpen(true);
+                }}
+              >
+                <Text style={s.currencyText}>
+                  {currencies.find((item) => item.code === currency)?.label}
+                </Text>
+                <MaterialCommunityIcons
+                  name="chevron-down"
+                  size={22}
+                  color={t.ink}
+                />
+              </Pressable>
               <Text style={s.label}>Saldo inicial</Text>
               <TextInput
                 accessibilityLabel="Saldo inicial na moeda selecionada"
                 value={balance}
-                onChangeText={setBalance}
+                onChangeText={updateBalance}
                 maxLength={16}
                 style={s.input}
                 autoCorrect={false}
@@ -200,7 +216,7 @@ export function InitialAccountScreen({
               <TextInput
                 accessibilityLabel="Data do saldo inicial, dia mês e ano"
                 value={date}
-                onChangeText={setDate}
+                onChangeText={updateDate}
                 placeholder="DD/MM/AAAA"
                 maxLength={10}
                 keyboardType="numbers-and-punctuation"
@@ -243,13 +259,60 @@ export function InitialAccountScreen({
           </Text>
         </ScrollView>
       </KeyboardAvoidingView>
+      <Modal
+        visible={currencyOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setCurrencyOpen(false)}
+      >
+        <View style={s.backdrop}>
+          <View style={s.modal} accessibilityViewIsModal>
+            <Text accessibilityRole="header" style={s.modalTitle}>
+              Moeda
+            </Text>
+            <View accessibilityRole="radiogroup">
+              {currencies.map((item) => (
+                <Pressable
+                  key={item.code}
+                  accessibilityRole="radio"
+                  accessibilityState={{ checked: currency === item.code }}
+                  style={s.currency}
+                  onPress={() => {
+                    setCurrency(item.code);
+                    setCurrencyOpen(false);
+                    setNotice("");
+                  }}
+                >
+                  <Text style={s.currencyText}>{item.label}</Text>
+                  <MaterialCommunityIcons
+                    name={
+                      currency === item.code
+                        ? "radiobox-marked"
+                        : "radiobox-blank"
+                    }
+                    size={22}
+                    color={t.green}
+                  />
+                </Pressable>
+              ))}
+            </View>
+            <Pressable
+              accessibilityRole="button"
+              style={s.linkTarget}
+              onPress={() => setCurrencyOpen(false)}
+            >
+              <Text style={s.link}>Cancelar</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
 const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: t.cream },
   content: {
-    padding: 22,
+    padding: 18,
     paddingBottom: 32,
     width: "100%",
     maxWidth: 560,
@@ -259,7 +322,7 @@ const s = StyleSheet.create({
   brand: { flexDirection: "row", alignItems: "center", gap: 5 },
   brandText: { fontFamily: t.serif, fontSize: 28, color: t.ink },
   step: { fontFamily: t.sans, fontSize: 11, color: t.muted, flexShrink: 1 },
-  art: { width: "100%", height: 170, marginTop: 12 },
+  art: { width: "100%", aspectRatio: 2.5, marginTop: 12 },
   title: { fontFamily: t.serif, fontSize: 29, lineHeight: 34, color: t.ink },
   subtitle: {
     fontFamily: t.sans,
@@ -287,6 +350,32 @@ const s = StyleSheet.create({
     fontSize: 15,
     color: t.ink,
     backgroundColor: "#fffcf4",
+  },
+  currencySelect: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
+  },
+  backdrop: {
+    flex: 1,
+    backgroundColor: "#32291e99",
+    justifyContent: "center",
+    padding: 24,
+  },
+  modal: {
+    backgroundColor: t.cream,
+    padding: 24,
+    borderRadius: 18,
+    maxWidth: 480,
+    width: "100%",
+    alignSelf: "center",
+  },
+  modalTitle: {
+    fontFamily: t.serif,
+    fontSize: 24,
+    color: t.ink,
+    marginBottom: 12,
   },
   currency: {
     minHeight: 44,

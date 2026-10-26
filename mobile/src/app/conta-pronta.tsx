@@ -1,4 +1,9 @@
+import { AuthenticatedGate } from "../auth/AuthenticatedGate";
 import { InitialAccountScreen } from "../screens/InitialAccountScreen";
 export default function Page() {
-  return <InitialAccountScreen initialReady />;
+  return (
+    <AuthenticatedGate>
+      <InitialAccountScreen key="conta-pronta" initialReady />
+    </AuthenticatedGate>
+  );
 }

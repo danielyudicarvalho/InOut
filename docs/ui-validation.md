@@ -279,3 +279,34 @@ Validation: formatting, lint, TypeScript, Next production build, and Expo
 Android/iOS exports. Direct artwork inspection completed. Rendered screenshot
 acceptance, screen-reader/device interaction and live invitation verification
 remain pending.
+
+## First financial account refinement — 2026-10-26
+
+Reference: `image(20261026-200022).png`. Updated initial configuration and
+account-ready screens for Next.js and Expo. Both routes now use the existing
+session gate. Inspected and retained dedicated `pipo-first-account-desktop.webp`,
+`pipo-first-account-mobile.webp` and `pipo-first-account-success.webp` assets in
+`frontend/public/images/`, with native mobile/success versions in `mobile/assets/`.
+No new generation was necessary.
+
+Web preserves form values when returning from the ready preview, focuses the
+ready heading and initializes the date after hydration using the client local
+calendar (rather than UTC). The currency prefix reflects the selected currency.
+The name length matches the backend account domain limit of 80 characters.
+Native now uses a compact currency selector with an accessible radio modal,
+selection/cancel/system-back handling. Edits clear stale notices. Verification
+rejects invalid dates and amounts, closes the keyboard and scrolls to the ready
+view. Existing native state preserves drafts on review. Negative initial balances
+remain allowed. The balance explanation distinguishes opening balance from income.
+
+Following Clean Architecture chapter 23, these changes concern presentation;
+financial rules remain in the existing backend domain. Submission is still an
+explicit UI preview: no account, opening balance or transaction is saved. Ready
+copy does not establish persistence, and transaction actions report unavailable
+forms. The household/API integration and destination dashboard remain separate
+work. The existing skip action returns to the current choice screen.
+
+Validation: formatting, lint and TypeScript, Next production build and Expo
+Android/iOS exports. Direct artwork inspection completed. Rendered browser
+screenshots, device modal/keyboard/screen-reader testing and live financial
+operations remain pending.

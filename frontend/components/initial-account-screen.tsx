@@ -1,5 +1,5 @@
 "use client";
-import { useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -16,11 +16,36 @@ export function InitialAccountScreen({
 }) {
   const [ready, setReady] = useState(initialReady);
   const [notice, setNotice] = useState("");
+  const [draft, setDraft] = useState({
+    name: "Minha conta principal",
+    currency: "BRL",
+    balance: "0,00",
+    date: "",
+  });
+  const heading = useRef<HTMLHeadingElement>(null);
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => {
+      const today = new Date();
+      const localDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+      setDraft((value) => ({ ...value, date: value.date || localDate }));
+    });
+    return () => cancelAnimationFrame(frame);
+  }, []);
+  useEffect(() => {
+    if (ready) heading.current?.focus();
+  }, [ready]);
+  function update(field: keyof typeof draft, value: string) {
+    setDraft((current) => ({ ...current, [field]: value }));
+    setNotice("");
+  }
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
-    if (!String(data.get("name")).trim()) {
-      setNotice("Informe o nome da conta.");
+    if (
+      !String(data.get("name")).trim() ||
+      String(data.get("name")).trim().length > 80
+    ) {
+      setNotice("Informe um nome de 1 a 80 caracteres.");
       return;
     }
     if (!/^-?\d{1,12}(,\d{1,2})?$/.test(String(data.get("balance")).trim())) {
@@ -46,10 +71,10 @@ export function InitialAccountScreen({
             alt="Pipo comemorando ao lado de uma carteira verde e um sinal de confirmação"
             width={600}
             height={240}
-            priority
+            preload
           />
           <div>
-            <h1 id="ready-title" tabIndex={-1}>
+            <h1 id="ready-title" ref={heading} tabIndex={-1}>
               Conta pronta. Vamos ao primeiro lançamento?
             </h1>
             <p>
@@ -103,7 +128,7 @@ export function InitialAccountScreen({
               alt="Pipo ao lado de uma carteira verde e flores"
               width={640}
               height={256}
-              priority
+              preload
             />
             <h1>
               Vamos organizar
@@ -120,7 +145,7 @@ export function InitialAccountScreen({
               alt="Pipo com uma carteira verde e um caderno no jardim de uma casinha"
               width={600}
               height={480}
-              priority
+              preload
             />
           </section>
           <section
@@ -146,8 +171,9 @@ export function InitialAccountScreen({
                 <input
                   id="account-name"
                   name="name"
-                  defaultValue="Minha conta principal"
-                  maxLength={100}
+                  value={draft.name}
+                  onChange={(event) => update("name", event.target.value)}
+                  maxLength={80}
                   required
                 />
               </div>
@@ -156,7 +182,8 @@ export function InitialAccountScreen({
                 <select
                   id="account-currency"
                   name="currency"
-                  defaultValue="BRL"
+                  value={draft.currency}
+                  onChange={(event) => update("currency", event.target.value)}
                 >
                   <option value="BRL">Real brasileiro (BRL)</option>
                   <option value="USD">Dólar americano (USD)</option>
@@ -165,11 +192,19 @@ export function InitialAccountScreen({
               </div>
               <label htmlFor="account-balance">Saldo inicial</label>
               <div className="signin-input">
+                <span className="account-currency-prefix" aria-hidden="true">
+                  {draft.currency === "BRL"
+                    ? "R$"
+                    : draft.currency === "USD"
+                      ? "US$"
+                      : "€"}
+                </span>
                 <input
                   id="account-balance"
                   name="balance"
                   inputMode="decimal"
-                  defaultValue="0,00"
+                  value={draft.balance}
+                  onChange={(event) => update("balance", event.target.value)}
                   required
                   maxLength={16}
                   aria-describedby="balance-help"
@@ -182,7 +217,10 @@ export function InitialAccountScreen({
                   name="date"
                   type="date"
                   required
-                  defaultValue={new Date().toISOString().slice(0, 10)}
+                  value={draft.date}
+                  onChange={(event) => update("date", event.target.value)}
+                  min="1900-01-01"
+                  max="9999-12-31"
                 />
               </div>
               <aside
