@@ -187,3 +187,32 @@ generous transparent margins. No lettering no UI no frames no watermark.”
 Validation: lint and TypeScript passed in both apps; Next production build
 passed; Expo exports for Android and iOS passed. Direct artwork inspection passed. Full browser screenshot acceptance,
 real-device layout/accessibility, and account sign-out interaction remain pending.
+
+## Create residence refinement — 2026-10-26
+
+Reference: `image(20261026-192714).png`. Refined `/criar-residencia` in
+Next.js and Expo: desktop story/form columns, compact mobile hero, native
+currency/timezone picker, keyboard-friendly scrolling, explanatory field text,
+and a real return action instead of a shortcut that skipped creation.
+
+The dedicated existing artwork was inspected against the reference and retained:
+`frontend/public/images/pipo-create-residence-desktop.webp`,
+`frontend/public/images/pipo-create-residence-mobile.webp`, and
+`mobile/assets/pipo-create-residence-mobile.webp`. No new image was necessary.
+Both routes now use the existing session restoration gate. Sign-out calls the
+identity service, disables editing while pending and reports safe failures.
+The form name limit now matches `HouseholdRules.NormalizeName` (80 characters)
+and rejects whitespace-only names. The backend domain remains authoritative.
+Following Clean Architecture chapter 23, UI changes remain in presentation;
+no persistence/domain behavior was introduced in components.
+
+Scope: the submit action still explicitly reports that no residence was saved.
+The existing backend creation request accepts only `Name`; persistence for the
+currency and timezone shown in this mockup is not implemented. These settings
+must be added across the domain, application, database and API before claiming
+this is an integrated creation flow. The old preview bypass to account setup was
+removed so submission cannot silently advance without a saved residence.
+
+Checks: lint, TypeScript, formatting, Next production build and Expo Android/iOS
+export. Artwork inspected directly; browser screenshot acceptance, screen-reader
+and physical-device interaction remain pending.

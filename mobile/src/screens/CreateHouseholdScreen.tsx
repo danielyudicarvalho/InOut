@@ -14,6 +14,8 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
+import { authMessage } from "@inout/identity";
+import { getAuth } from "../auth/composition";
 import { theme as t } from "../theme";
 
 const options = {
@@ -38,11 +40,27 @@ export function CreateHouseholdScreen() {
   });
   const [picker, setPicker] = useState<"currency" | "timezone" | null>(null);
   const [notice, setNotice] = useState("");
+  const [exitBusy, setExitBusy] = useState(false);
+  async function signOut() {
+    if (exitBusy) return;
+    setExitBusy(true);
+    setNotice("");
+    setPicker(null);
+    try {
+      await getAuth().signOut();
+      router.replace("/entrar");
+    } catch (error) {
+      setNotice(authMessage(error));
+    } finally {
+      setExitBusy(false);
+    }
+  }
   function submit() {
+    if (exitBusy) return;
     setNotice(
-      name.trim()
+      name.trim() && name.trim().length <= 80
         ? "Configurações conferidas. A criação da residência ainda não está integrada; nenhum dado foi salvo."
-        : "Informe o nome da residência.",
+        : "Informe um nome de 1 a 80 caracteres.",
     );
   }
   return (
@@ -62,10 +80,12 @@ export function CreateHouseholdScreen() {
             </View>
             <Pressable
               accessibilityRole="button"
-              onPress={() => router.replace("/entrar")}
+              onPress={() => void signOut()}
+              disabled={exitBusy}
+              accessibilityState={{ disabled: exitBusy, busy: exitBusy }}
               style={s.linkTarget}
             >
-              <Text style={s.link}>Sair</Text>
+              <Text style={s.link}>{exitBusy ? "Saindo…" : "Sair"}</Text>
             </Pressable>
           </View>
           <Pressable
@@ -106,7 +126,8 @@ export function CreateHouseholdScreen() {
                 setName(value);
                 setNotice("");
               }}
-              maxLength={100}
+              maxLength={80}
+              editable={!exitBusy}
               style={s.input}
               autoCapitalize="words"
               returnKeyType="done"
@@ -125,6 +146,7 @@ export function CreateHouseholdScreen() {
                 accessibilityRole="button"
                 accessibilityLabel={`${field === "currency" ? "Moeda de referência" : "Fuso horário"}: ${options[field].find((item) => item.value === settings[field])?.label}`}
                 accessibilityState={{ expanded: picker === field }}
+                disabled={exitBusy}
                 onPress={() => setPicker(field)}
                 style={s.field}
               >
@@ -164,6 +186,8 @@ export function CreateHouseholdScreen() {
           <Pressable
             accessibilityRole="button"
             style={s.primary}
+            disabled={exitBusy}
+            accessibilityState={{ disabled: exitBusy }}
             onPress={submit}
           >
             <Text style={s.primaryText}>Criar residência</Text>
@@ -174,13 +198,12 @@ export function CreateHouseholdScreen() {
           <Pressable
             accessibilityRole="button"
             style={s.linkTarget}
-            onPress={() => router.push("/configuracao-inicial")}
+            onPress={() => router.replace("/comecar")}
           >
-            <Text style={s.link}>Prévia: configurar primeira conta</Text>
+            <Text style={s.link}>Voltar</Text>
           </Pressable>
           <Text style={s.preview}>
-            Prévia de interface. Nenhuma residência é criada. Sair retorna à
-            tela de entrada.
+            Prévia de interface. Nenhuma residência é criada.
           </Text>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -238,7 +261,7 @@ export function CreateHouseholdScreen() {
 const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: t.cream },
   content: {
-    padding: 22,
+    padding: 18,
     paddingBottom: 30,
     width: "100%",
     maxWidth: 560,
@@ -259,7 +282,7 @@ const s = StyleSheet.create({
   },
   link: { fontFamily: t.sans, fontSize: 13, color: "#35502a" },
   back: { flexDirection: "row", alignItems: "center", gap: 7, minHeight: 44 },
-  art: { width: "100%", height: 170, borderRadius: 18, marginBottom: 16 },
+  art: { width: "100%", aspectRatio: 2.5, marginBottom: 8 },
   title: { fontFamily: t.serif, fontSize: 32, lineHeight: 37, color: t.ink },
   subtitle: {
     fontFamily: t.sans,
@@ -273,7 +296,7 @@ const s = StyleSheet.create({
     fontFamily: t.serif,
     fontSize: 15,
     color: t.ink,
-    marginTop: 20,
+    marginTop: 16,
     marginBottom: 8,
   },
   field: {

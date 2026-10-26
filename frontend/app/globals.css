@@ -1676,3 +1676,42 @@ button:disabled {
     grid-column: 1 / -1;
   }
 }
+
+.create-household-fields {
+  padding: 0;
+  margin: 0;
+  border: 0;
+  min-width: 0;
+}
+.create-household {
+  background: radial-gradient(ellipse at center, #fffdf6, #faf5e9);
+}
+.create-household-panel {
+  box-shadow: 0 3px 16px #694b2508;
+}
+.create-household .signin-back {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+@media (max-width: 760px) {
+  .create-household {
+    padding: 16px;
+  }
+  .create-household-back {
+    margin: 4px auto;
+  }
+  .create-household-grid {
+    gap: 8px;
+  }
+  .create-household-panel {
+    box-shadow: none;
+  }
+  .create-household-panel label {
+    margin-top: 18px;
+  }
+  .create-household-story .create-residence-mobile-art {
+    max-height: 160px;
+  }
+}
