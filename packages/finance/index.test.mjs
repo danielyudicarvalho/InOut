@@ -255,3 +255,82 @@ test("monetary formatting retains exact cents and negative sub-unit amounts", ()
   assert.match(money(-25, "BRL"), /^-R\$.*0,25$/);
   assert.match(money(1, "USD"), /0,01$/);
 });
+
+test("custom range validates real calendar dates, ordering and one-day intervals", async () => {
+  const { rangePeriod, parsePeriod } = await import("./index.mjs");
+  assert.equal(
+    rangePeriod("2024-02-29", "2024-02-29"),
+    "2024-02-29/2024-02-29",
+  );
+  for (const [a, b] of [
+    ["2023-02-29", "2023-03-01"],
+    ["2026-04-31", "2026-05-01"],
+    ["2026-10-20", "2026-10-05"],
+    ["", "2026-10-05"],
+  ])
+    assert.throws(
+      () => rangePeriod(a, b),
+      (e) => e.code === "period",
+    );
+  assert.equal(parsePeriod("2026-10").to, "2026-10-31");
+});
+test("presets and calendar handle year transitions and Monday-aligned dates", async () => {
+  const { presetPeriod, calendarDays } = await import("./index.mjs");
+  const now = new Date(2027, 0, 10);
+  assert.equal(presetPeriod("previous", now), "2026-12");
+  assert.equal(presetPeriod("quarter", now), "2026-11-01/2027-01-31");
+  const days = calendarDays("2026-10");
+  assert.equal(days[0], null);
+  assert.equal(days[3], "2026-10-01");
+  assert.equal(days.filter(Boolean).length, 31);
+});
+test("custom selection sends exact inclusive bounds to dashboard and history", async () => {
+  const calls = [];
+  const repo = createFinanceRepository({
+    baseUrl: "https://api.example",
+    getToken: async () => "jwt",
+    fetcher: async (url) => {
+      calls.push(url);
+      return url.includes("/history?")
+        ? json([])
+        : json({
+            ...dashboard(),
+            periodStart: "2026-10-05",
+            periodEnd: "2026-10-20",
+          });
+    },
+  });
+  const data = await repo.home("a", "2026-10-05/2026-10-20");
+  assert.equal(data.history.length, 1);
+  assert.equal(data.periodEnd, "2026-10-20");
+  assert.ok(
+    calls.includes(
+      "https://api.example/api/v1/households/a/ledger/dashboard?from=2026-10-05&to=2026-10-20",
+    ),
+  );
+  assert.ok(
+    calls.includes(
+      "https://api.example/api/v1/households/a/ledger/history?from=2026-10-05&to=2026-10-20&limit=20",
+    ),
+  );
+});
+test("store accepts a custom period and refuses invalid intervals without new requests", async () => {
+  const calls = [];
+  const store = createFinancialHomeStore({
+    households: async () => [{ id: "a", name: "A" }],
+    home: async (id, period) => {
+      calls.push(period);
+      return {};
+    },
+  });
+  const stop = store.start();
+  await tick();
+  store.selectPeriod("2026-10-20/2026-10-05");
+  await tick();
+  assert.equal(calls.length, 1);
+  store.selectPeriod("2026-10-05/2026-10-20");
+  assert.equal(store.getSnapshot().data, null);
+  await tick();
+  assert.equal(calls[1], "2026-10-05/2026-10-20");
+  stop();
+});

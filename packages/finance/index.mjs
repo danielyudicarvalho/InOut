@@ -6,6 +6,8 @@ export class FinanceFailure extends Error {
 }
 export function financeMessage(error) {
   const messages = {
+    period:
+      "Informe datas válidas; a data inicial não pode ser posterior à final.",
     configuration:
       "Configure o endereço do backend para carregar suas finanças.",
     unauthorized: "Sua sessão expirou. Entre novamente.",
@@ -69,12 +71,17 @@ export function monthOptions(now = new Date()) {
   });
 }
 export function periodLabel(period) {
+  if (period.includes("/")) {
+    const { from, to } = parsePeriod(period);
+    return `${displayDate(from)} a ${displayDate(to)}`;
+  }
   const [y, m] = period.split("-").map(Number);
   return new Intl.DateTimeFormat("pt-BR", {
     month: "long",
     year: "numeric",
   }).format(new Date(y, m - 1, 1));
 }
+
 export function money(cents, code) {
   const value = BigInt(integer(cents));
   const absolute = value < 0n ? -value : value;
@@ -159,34 +166,38 @@ export function createFinanceRepository({
       }));
     },
     async home(householdId, period, signal) {
-      if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(period))
-        throw new FinanceFailure("invalid");
-      const [year, month] = period.split("-").map(Number);
-      const periods = Array.from({ length: 6 }, (_, i) => {
-        const d = new Date(year, month - 6 + i, 1);
-        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-      });
+      const bounds = parsePeriod(period);
+      const [year, month] = bounds.from.split("-").map(Number);
+      const periods = bounds.custom
+        ? [period]
+        : Array.from({ length: 6 }, (_, i) => {
+            const d = new Date(year, month - 6 + i, 1);
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+          }).filter((p) => Number(p.slice(0, 4)) >= 2000);
       const root = `/api/v1/households/${encodeURIComponent(householdId)}/ledger`;
-      const start = `${period}-01`;
-      const end = `${period}-${new Date(year, month, 0).getDate()}`;
+      const start = bounds.from,
+        end = bounds.to;
       const [dashboards, rawHistory] = await Promise.all([
         Promise.all(
           periods.map(async (p) => {
-            const [y, m] = p.split("-");
+            const range = parsePeriod(p);
+            const query = range.custom
+              ? `from=${range.from}&to=${range.to}`
+              : `year=${p.slice(0, 4)}&month=${Number(p.slice(5))}`;
             const d = dashboard(
-              await get(
-                `${root}/dashboard?year=${y}&month=${Number(m)}`,
-                signal,
-              ),
+              await get(`${root}/dashboard?${query}`, signal),
             );
-            if (d.periodStart !== `${p}-01`)
+            if (
+              d.periodStart !== range.from ||
+              (range.custom && d.periodEnd !== range.to)
+            )
               throw new FinanceFailure("invalid");
             return { ...d, period: p };
           }),
         ),
         get(`${root}/history?from=${start}&to=${end}&limit=20`, signal),
       ]);
-      const selected = dashboards[5];
+      const selected = dashboards[dashboards.length - 1];
       const rows = array(rawHistory)
         .map((row) => {
           if (!["credit", "debit"].includes(row.direction))
@@ -329,9 +340,89 @@ export function createFinancialHomeStore(
       if (active) void run();
     },
     selectPeriod(period) {
-      if (period === state.period || !periods.includes(period)) return;
+      if (period === state.period) return;
+      try {
+        parsePeriod(period);
+      } catch {
+        return;
+      }
       publish({ period, data: null, status: "loading" });
       if (active) void run();
     },
   };
+}
+
+export function rangePeriod(from, to) {
+  const valid = (value) => {
+    if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value))
+      return false;
+    const [y, m, d] = value.split("-").map(Number);
+    if (
+      y < 2000 ||
+      y > 9998 ||
+      m < 1 ||
+      m > 12 ||
+      d < 1 ||
+      d > new Date(y, m, 0).getDate()
+    )
+      return false;
+    return true;
+  };
+  if (!valid(from) || !valid(to) || from > to)
+    throw new FinanceFailure("period");
+  return `${from}/${to}`;
+}
+export function parsePeriod(period) {
+  if (typeof period !== "string") throw new FinanceFailure("period");
+  if (period.includes("/")) {
+    const parts = period.split("/");
+    if (parts.length !== 2) throw new FinanceFailure("period");
+    rangePeriod(parts[0], parts[1]);
+    return { from: parts[0], to: parts[1], custom: true };
+  }
+  if (
+    !/^(20\d{2}|[3-9]\d{3})-(0[1-9]|1[0-2])$/.test(period) ||
+    period.slice(0, 4) === "9999"
+  )
+    throw new FinanceFailure("period");
+  const [y, m] = period.split("-").map(Number);
+  return {
+    from: `${period}-01`,
+    to: `${period}-${new Date(y, m, 0).getDate()}`,
+    custom: false,
+  };
+}
+export function presetPeriod(preset, now = new Date()) {
+  const current = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  if (preset === "current") return current;
+  const previous = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  if (preset === "previous")
+    return `${previous.getFullYear()}-${String(previous.getMonth() + 1).padStart(2, "0")}`;
+  const first = new Date(now.getFullYear(), now.getMonth() - 2, 1);
+  if (preset !== "quarter") throw new FinanceFailure("period");
+  return rangePeriod(
+    `${first.getFullYear()}-${String(first.getMonth() + 1).padStart(2, "0")}-01`,
+    parsePeriod(current).to,
+  );
+}
+export function calendarDays(month) {
+  const { from, to } = parsePeriod(month);
+  const [year, m] = from.split("-").map(Number);
+  const offset = (new Date(year, m - 1, 1).getDay() + 6) % 7;
+  return Array.from(
+    { length: Math.ceil((offset + Number(to.slice(8))) / 7) * 7 },
+    (_, index) => {
+      const day = index - offset + 1;
+      return day < 1 || day > Number(to.slice(8))
+        ? null
+        : `${month}-${String(day).padStart(2, "0")}`;
+    },
+  );
+}
+export function displayDate(value) {
+  return value.split("-").reverse().join("/");
+}
+export function inputDate(value) {
+  const parts = value.split("/");
+  return parts.length === 3 ? `${parts[2]}-${parts[1]}-${parts[0]}` : "";
 }

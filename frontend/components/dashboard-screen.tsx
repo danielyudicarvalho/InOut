@@ -16,11 +16,13 @@ import {
   Plant,
 } from "@phosphor-icons/react";
 import { money, periodLabel } from "@inout/finance";
+import { PeriodPicker } from "./period-picker";
 import { useFinancialHome } from "../lib/finance/use-financial-home";
 
 const icons = [House, Receipt, Wallet, ChartPie, Target, Gear];
 export function DashboardScreen() {
   const state = useFinancialHome();
+  const [periodOpen, setPeriodOpen] = useState(false);
   const [chosenCurrency, setCurrency] = useState("");
   const [notice, setNotice] = useState("");
   const navigation = [
@@ -55,6 +57,23 @@ export function DashboardScreen() {
           <button className="primary" onClick={state.retry}>
             Atualizar residências
           </button>
+        ) : null}
+        <button
+          className="period-trigger"
+          onClick={() => setPeriodOpen(true)}
+          aria-haspopup="dialog"
+        >
+          {periodLabel(state.period)}
+        </button>
+        {periodOpen ? (
+          <PeriodPicker
+            value={state.period}
+            onClose={() => setPeriodOpen(false)}
+            onApply={(value) => {
+              setPeriodOpen(false);
+              state.selectPeriod(value);
+            }}
+          />
         ) : null}
         <Link href="/comecar">Escolher como começar</Link>
         {state.households.length > 1 ? (
@@ -168,21 +187,24 @@ export function DashboardScreen() {
             preload
             sizes="(max-width: 760px) 140px, 220px"
           />
-          <label className="dashboard-period">
-            <span className="sr-only">Período do resumo</span>
-            <select
-              aria-label="Período do resumo"
-              value={state.period}
-              onChange={(event) => state.selectPeriod(event.target.value)}
-            >
-              {state.periods.map((period) => (
-                <option value={period} key={period}>
-                  {periodLabel(period)}
-                </option>
-              ))}
-            </select>
-          </label>
+          <button
+            className="dashboard-period period-trigger"
+            onClick={() => setPeriodOpen(true)}
+            aria-haspopup="dialog"
+          >
+            {periodLabel(state.period)} ▾
+          </button>
         </section>
+        {periodOpen ? (
+          <PeriodPicker
+            value={state.period}
+            onClose={() => setPeriodOpen(false)}
+            onApply={(value) => {
+              setPeriodOpen(false);
+              state.selectPeriod(value);
+            }}
+          />
+        ) : null}
         <p className="dashboard-caption">
           {household.name} · {periodLabel(state.period)}
         </p>
@@ -304,7 +326,7 @@ export function DashboardScreen() {
               <div
                 className="dashboard-chart"
                 role="img"
-                aria-label={`Receitas e despesas em ${currency}, de ${periodLabel(chart[0].period)} a ${periodLabel(state.period)}. Valores disponíveis na tabela abaixo.`}
+                aria-label={`Receitas e despesas em ${currency}, ${state.period.includes("/") ? `intervalo de ${periodLabel(state.period)}` : `de ${periodLabel(chart[0].period)} a ${periodLabel(state.period)}`}. Valores disponíveis na tabela abaixo.`}
               >
                 {chart.map((row, index) => (
                   <div key={index} className="dashboard-chart-column">

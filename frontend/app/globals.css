@@ -2371,3 +2371,196 @@ button:disabled {
 .dashboard-chart-column > span {
   font-size: 9px;
 }
+.period-trigger {
+  border: 1px solid #e9dfcd;
+  border-radius: 20px;
+  background: #fffaf2;
+  padding: 10px 14px;
+  font-size: 12px;
+  min-height: 44px;
+  color: #183d2b;
+}
+.period-dialog {
+  width: min(440px, calc(100vw - 24px));
+  max-height: calc(100svh - 24px);
+  padding: 22px;
+  border: 1px solid #e2d8c5;
+  border-radius: 16px;
+  background: #fcf8ee;
+  color: #183d2b;
+  box-shadow: 0 15px 70px #30291e55;
+  overflow-y: auto;
+}
+.period-dialog::backdrop {
+  background: #29261e80;
+}
+.period-dialog form {
+  position: relative;
+}
+.period-close {
+  position: absolute;
+  right: -10px;
+  top: -12px;
+  min-width: 44px;
+  min-height: 44px;
+  border: 0;
+  background: transparent;
+  font-size: 26px;
+}
+.period-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-right: 10px;
+}
+.period-heading img {
+  width: 90px;
+  height: 90px;
+  object-fit: contain;
+}
+.period-heading h2 {
+  font:
+    bold 23px Georgia,
+    serif;
+  margin: 10px 0 6px;
+}
+.period-heading p {
+  font-size: 12px;
+  margin: 0;
+  color: #756e5c;
+}
+.period-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  padding: 12px 0;
+  border-bottom: 1px solid #e9dfcd;
+}
+.period-presets button {
+  flex: 1;
+  white-space: nowrap;
+  border: 1px solid #e9dfcd;
+  background: #f6f1e6;
+  border-radius: 18px;
+  padding: 6px;
+  font-size: 10px;
+  min-height: 40px;
+}
+.period-presets [aria-pressed="true"] {
+  background: #365d3e;
+  color: white;
+}
+.period-month {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  align-items: center;
+  margin: 12px 0;
+}
+.period-month button {
+  min-width: 40px;
+  min-height: 40px;
+  border: 0;
+  border-radius: 50%;
+  background: #f0ebdf;
+  font-size: 23px;
+}
+.period-month input {
+  background: transparent;
+  border: 0;
+  color: #183d2b;
+  font: inherit;
+  max-width: 180px;
+}
+.period-weekdays,
+.period-days {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+  text-align: center;
+}
+.period-weekdays {
+  font-size: 10px;
+  color: #756e5c;
+  margin: 12px 0 6px;
+}
+.period-days button,
+.period-days > span {
+  border: 0;
+  border-radius: 6px;
+  background: #f5f0e7;
+  min-height: 38px;
+  font-size: 12px;
+}
+.period-days .in-range {
+  background: #dce2cc;
+}
+.period-days .endpoint {
+  border-radius: 50%;
+  background: #365d3e;
+  color: white;
+}
+.period-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 18px;
+}
+.period-fields label {
+  font-size: 11px;
+  min-width: 0;
+}
+.period-fields input {
+  display: block;
+  width: 100%;
+  min-height: 40px;
+  min-width: 0;
+  padding: 7px;
+  margin-top: 5px;
+  border: 1px solid #d6cbb9;
+  background: #fffdf7;
+  color: #183d2b;
+  border-radius: 6px;
+}
+.period-help {
+  font-size: 11px;
+  color: #756e5c;
+}
+.period-summary {
+  padding: 14px 8px;
+  text-align: center;
+  background: #e6ead7;
+  border-radius: 8px;
+  font-size: 12px;
+}
+.period-error {
+  font-size: 12px;
+  color: #a43b20;
+}
+.period-actions {
+  display: flex;
+  gap: 10px;
+}
+.period-actions button {
+  flex: 1;
+  min-height: 44px;
+  border: 1px solid #c5bcae;
+  border-radius: 7px;
+  background: transparent;
+  font-size: 12px;
+}
+.period-actions .primary {
+  background: #365d3e;
+  color: white;
+}
+@media (max-width: 760px) {
+  .period-dialog {
+    margin: auto auto 0;
+    max-height: 92svh;
+    border-radius: 20px 20px 0 0;
+    padding: 18px;
+  }
+  .period-days button {
+    min-height: 40px;
+  }
+}

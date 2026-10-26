@@ -47,8 +47,7 @@ is accepted from an arbitrary URL; the selector uses the membership response.
 The backend remains the security boundary and validates membership on financial
 requests. Client UI gates alone are not authorization.
 
-The default period is the current local calendar month; selectors offer the
-latest twelve months, and the chart covers the selected and preceding five.
+The default period is the current local calendar month. The period dialog offers current month, previous month, the current and two preceding complete calendar months, and an inclusive custom date range. The calendar and typed dates support 2000–9998. Applying commits the selection; closing/cancelling discards it. Monthly selection shows the selected and preceding five months; a custom range uses one aggregate bar/table entry for exactly the requested interval.
 Currencies come from server summaries, including currencies beyond BRL/USD. Cents are formatted through BigInt parts to avoid floating-point rounding at large values.
 Balances are as of `periodEnd`, not today's balances. Every amount remains in
 its own currency. Summary income/expense/result are supplied by the domain
@@ -74,11 +73,11 @@ home only.
 
 ## Verification
 
-Nine new adapter/store/formatting tests verify exact routes, bearer headers, non-BRL/USD
+Thirteen adapter/store/formatting/period tests verify exact routes, bearer headers, non-BRL/USD
 amounts, history direction, empty membership, configuration/auth failures,
 HTTP errors, invalid monetary values, stale response isolation, membership
 revocation, timeout handling and calendar transitions. The complete web test
-command runs 48 tests. Lint, typecheck and web/native production exports also
+command runs 52 tests. Lint, typecheck and web/native production exports also
 cover client composition and shared package resolution after clean installs.
 
 No API was listening at localhost:8080 in the execution environment, and the
@@ -86,3 +85,14 @@ No API was listening at localhost:8080 in the execution environment, and the
 end-to-end acceptance were therefore not exercised. The adapter/store tests use
 controlled HTTP responses for verification only; those responses are not
 included in either application's runtime data source.
+
+## Period selection contract
+
+Monthly requests retain `year` and `month`. Custom requests use `from` and `to`
+on both dashboard and ledger history endpoints, with no simultaneous monthly
+arguments. The returned dashboard bounds must match the requested custom bounds.
+The adapter never approximates a custom interval by adding full-month totals.
+Presets and the Monday-first calendar share the package date helpers. Dates are
+calendar values, not UTC timestamps; leap days and reversed/invalid intervals
+are validated before any request. The native input format is DD/MM/AAAA.
+Both clients keep an independent draft while the dialog/sheet is open.

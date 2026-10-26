@@ -64,3 +64,17 @@ export function createFinancialHomeStore(
   selectHousehold: (id: string) => void;
   selectPeriod: (period: string) => void;
 };
+
+export function rangePeriod(from: string, to: string): string;
+export function parsePeriod(period: string): {
+  from: string;
+  to: string;
+  custom: boolean;
+};
+export function presetPeriod(
+  preset: "current" | "previous" | "quarter",
+  now?: Date,
+): string;
+export function calendarDays(month: string): (string | null)[];
+export function displayDate(value: string): string;
+export function inputDate(value: string): string;

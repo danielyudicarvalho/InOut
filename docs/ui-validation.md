@@ -373,3 +373,40 @@ See `docs/react-financial-home.md` for endpoints, configuration, security and
 verification details. Tests use controlled HTTP responses only; runtime screens
 have no mocked fallback. Live API/browser/device validation remains pending
 because the API/.NET runtime was unavailable in the execution environment.
+
+## Period selection dialog and sheet — 2026-10-26
+
+Reference: `image(20261026-210700).png`. Added a desktop/narrow-web dialog and
+native bottom sheet with four presets, calendar month navigation, Monday-first
+day grid, inclusive range highlighting, editable initial/final dates, range
+summary, cancel/close and apply. Web supports direct month selection; native
+supports month arrows and typed calendar dates. Presets use complete months.
+The draft is isolated from the active filter: only Apply invokes the store.
+The selector remains available in empty states. Escape and Android system-back
+close the modal; web uses the browser dialog focus boundary.
+
+Extended the existing finance adapter to call the backend's `from`/`to`
+capabilities for custom ranges. Monthly requests keep the six-month graph;
+custom ranges display the server's exact range aggregate as one graph entry,
+not a sum including dates outside the selection. Both summary and recent
+history use the same inclusive bounds. Validation covers real dates, ordering,
+leap years, a single day and year transitions. No backend schema/API changes
+or mocked production data were introduced. Domain `FinancialPeriod` and Clean
+Architecture chapter 23 informed the application/presentation separation.
+
+New illustration, generated with the built-in image generator and inspected:
+`frontend/public/images/pipo-period.webp`, `mobile/assets/pipo-period.webp`
+(identical 600×450 RGBA WebP). Prompt: “Use case illustration-story. Small
+transparent production UI illustration for Ninho period selection dialog:
+Pipo round fluffy golden yellow bird, green leaf tuft, orange beak and warm
+rust red scarf, holding a little cream monthly calendar with green squares
+and one terracotta circled day; a few olive leaves and white daisies at feet.
+Cozy watercolor storybook softly sculpted warm texture, sage cream honey palette.
+Entire character and calendar visible, landscape 1.5:1, generous transparent
+margins. No letters, no numbers, no UI, no watermark. Friendly focused expression.”
+
+Verification: 52 web/shared tests passed, including four new period tests;
+formatting, lint, TypeScript and Next/Expo Android/iOS production builds passed.
+Clean dependency installs checked the shared package. Artwork inspected directly.
+Live API data and browser/device keyboard, modal-focus and screenshot acceptance
+remain pending; no API or .NET runtime was available in this environment.

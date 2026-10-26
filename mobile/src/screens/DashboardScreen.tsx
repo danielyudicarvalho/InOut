@@ -13,12 +13,14 @@ import { router } from "expo-router";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { theme as t } from "../theme";
 import { money, periodLabel } from "@inout/finance";
+import { PeriodPicker } from "../components/PeriodPicker";
 import { useFinancialHome } from "../finance/use-financial-home";
 
 export function DashboardScreen() {
   const state = useFinancialHome();
+  const [periodOpen, setPeriodOpen] = useState(false);
   const [chosenCurrency, setCurrency] = useState("");
-  const [picker, setPicker] = useState<"period" | "household" | null>(null);
+  const [picker, setPicker] = useState<"household" | null>(null);
   const [table, setTable] = useState(false);
   const [notice, setNotice] = useState("");
   if (
@@ -44,6 +46,23 @@ export function DashboardScreen() {
                   : "Você ainda não participa de uma residência."
                 : state.notice}
           </Text>
+          <Pressable
+            accessibilityRole="button"
+            style={s.period}
+            onPress={() => setPeriodOpen(true)}
+          >
+            <Text style={s.small}>{periodLabel(state.period)}</Text>
+          </Pressable>
+          {periodOpen ? (
+            <PeriodPicker
+              value={state.period}
+              onClose={() => setPeriodOpen(false)}
+              onApply={(value) => {
+                setPeriodOpen(false);
+                state.selectPeriod(value);
+              }}
+            />
+          ) : null}
           {state.status !== "loading" ? (
             <Pressable
               accessibilityRole="button"
@@ -145,8 +164,8 @@ export function DashboardScreen() {
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={`Período: ${periodLabel(state.period)}`}
-          accessibilityState={{ expanded: picker === "period" }}
-          onPress={() => setPicker("period")}
+          accessibilityState={{ expanded: periodOpen }}
+          onPress={() => setPeriodOpen(true)}
           style={s.period}
         >
           <MaterialCommunityIcons
@@ -283,7 +302,9 @@ export function DashboardScreen() {
                     />
                   </View>
                   <Text style={s.caption}>
-                    {row.period.slice(5) + "/" + row.period.slice(2, 4)}
+                    {row.period.includes("/")
+                      ? "Intervalo"
+                      : row.period.slice(5) + "/" + row.period.slice(2, 4)}
                   </Text>
                 </View>
               ))}
@@ -399,6 +420,16 @@ export function DashboardScreen() {
           </Pressable>
         ))}
       </View>
+      {periodOpen ? (
+        <PeriodPicker
+          value={state.period}
+          onClose={() => setPeriodOpen(false)}
+          onApply={(value) => {
+            setPeriodOpen(false);
+            state.selectPeriod(value);
+          }}
+        />
+      ) : null}
       <Modal
         visible={picker !== null}
         transparent
@@ -408,29 +439,19 @@ export function DashboardScreen() {
         <View style={s.backdrop}>
           <View style={s.modal} accessibilityViewIsModal>
             <Text accessibilityRole="header" style={s.heading}>
-              {picker === "period" ? "Período" : "Residência"}
+              Residência
             </Text>
             <ScrollView>
-              {(picker === "period"
-                ? state.periods.map((period) => ({
-                    id: period,
-                    name: periodLabel(period),
-                  }))
-                : state.households
-              ).map((item) => (
+              {state.households.map((item) => (
                 <Pressable
                   key={item.id}
                   accessibilityRole="radio"
                   accessibilityState={{
-                    checked:
-                      picker === "period"
-                        ? state.period === item.id
-                        : state.householdId === item.id,
+                    checked: state.householdId === item.id,
                   }}
                   style={s.monthOption}
                   onPress={() => {
-                    if (picker === "period") state.selectPeriod(item.id);
-                    else state.selectHousehold(item.id);
+                    state.selectHousehold(item.id);
                     setPicker(null);
                   }}
                 >
