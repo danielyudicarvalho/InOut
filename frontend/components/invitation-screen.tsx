@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -17,9 +17,23 @@ export function InvitationScreen() {
   const [step, setStep] = useState<"code" | "review">("code");
   const [code, setCode] = useState("");
   const [notice, setNotice] = useState("");
+  const heading = useRef<HTMLHeadingElement>(null);
+  const input = useRef<HTMLInputElement>(null);
+  const previousStep = useRef(step);
+  useEffect(() => {
+    if (previousStep.current === step) return;
+    if (step === "review") heading.current?.focus();
+    else input.current?.focus();
+    previousStep.current = step;
+  }, [step]);
   function verify(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const demoCode = code.trim().toUpperCase();
+    if (!demoCode) {
+      setNotice("Informe o código do convite.");
+      input.current?.focus();
+      return;
+    }
     if (demoCode === "NINHO-EXPIRADO") {
       router.push("/convite-expirado");
       return;
@@ -32,7 +46,7 @@ export function InvitationScreen() {
       router.push("/convite-utilizado");
       return;
     }
-    if (code.trim().toUpperCase() !== "NINHO-7K2M") {
+    if (demoCode !== "NINHO-7K2M") {
       setNotice(
         "Nesta prévia, use o código de demonstração NINHO-7K2M. Nenhum convite real foi consultado.",
       );
@@ -80,7 +94,8 @@ export function InvitationScreen() {
             }
             width={600}
             height={480}
-            priority
+            preload
+            sizes="(max-width: 760px) 1px, 50vw"
           />
           <Image
             src={`/images/pipo-${art}-mobile.webp`}
@@ -92,13 +107,19 @@ export function InvitationScreen() {
             }
             width={640}
             height={256}
+            sizes="(max-width: 760px) 100vw, 1px"
           />
         </div>
         <section
           className="create-household-panel"
           aria-labelledby="invitation-title"
         >
-          <h1 className="invitation-title" id="invitation-title">
+          <h1
+            ref={heading}
+            tabIndex={-1}
+            className="invitation-title"
+            id="invitation-title"
+          >
             {step === "code" ? "Entrar por convite" : "Este é o seu convite"}
           </h1>
           <p className="household-subtitle">
@@ -111,6 +132,7 @@ export function InvitationScreen() {
               <label htmlFor="invitation-code">Código do convite</label>
               <div className="signin-input">
                 <input
+                  ref={input}
                   id="invitation-code"
                   value={code}
                   onChange={(event) => {
@@ -123,7 +145,12 @@ export function InvitationScreen() {
                   spellCheck={false}
                   maxLength={64}
                   required
-                  aria-describedby="invitation-code-help"
+                  aria-invalid={Boolean(notice)}
+                  aria-describedby={
+                    notice
+                      ? "invitation-code-help invitation-notice"
+                      : "invitation-code-help"
+                  }
                 />
               </div>
               <p className="register-help" id="invitation-code-help">
@@ -179,14 +206,18 @@ export function InvitationScreen() {
               </Link>
             </>
           )}
-          <p role="status" className="signin-notice">
+          <p id="invitation-notice" role="status" className="signin-notice">
             {notice}
           </p>
-          <p className="household-preview">
-            Prévia com dados fictícios. Use NINHO-7K2M para revisar o exemplo.
-            Outros estados: NINHO-EXPIRADO, NINHO-INVALIDO e NINHO-USADO. Nenhum
-            convite é verificado ou aceito no servidor.
-          </p>
+          <details className="household-preview invitation-preview">
+            <summary>Demonstração com dados fictícios</summary>
+            <p>
+              Use NINHO-7K2M para revisar o exemplo. Outros estados:
+              NINHO-EXPIRADO, NINHO-INVALIDO e NINHO-USADO. A confirmação abre
+              apenas uma prévia de resultado; nenhum convite é consultado ou
+              aceito no servidor.
+            </p>
+          </details>
         </section>
       </div>
     </main>

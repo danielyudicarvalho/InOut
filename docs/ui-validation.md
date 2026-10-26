@@ -216,3 +216,38 @@ removed so submission cannot silently advance without a saved residence.
 Checks: lint, TypeScript, formatting, Next production build and Expo Android/iOS
 export. Artwork inspected directly; browser screenshot acceptance, screen-reader
 and physical-device interaction remain pending.
+
+## Invitation code and review refinement — 2026-10-26
+
+Reference: `image(20261026-193338).png`. Refined the existing two-step
+`/entrar-convite` screen in Next.js and Expo. Both entry routes now use the
+session restoration gate. The desktop layout retains the large scene and form;
+mobile uses a compact transparent hero for each step. Existing dedicated assets
+were inspected and retained: `pipo-invite-code-desktop.webp`,
+`pipo-invite-review-desktop.webp` in `frontend/public/images/`, plus
+`pipo-invite-code-mobile.webp` and `pipo-invite-review-mobile.webp` in both
+`frontend/public/images/` and `mobile/assets/`. No new generation was needed.
+
+Web moves focus to the review heading when advancing and returns focus to the
+code input when going back; validation is associated with the input. Native
+rejects blank input, dismisses the keyboard on verification, and scrolls to the
+top when changing steps. Back preserves the entered code; cancel returns to the
+choice screen. Demo instructions are in an expandable web disclosure; native
+retains an explicit preview notice. Confirmation navigates only to the existing
+demo result and does not mutate membership. The financial privacy statement
+is design copy, not evidence of backend authorization testing.
+
+Scope: all invitation data and codes on this screen remain demonstrative.
+The existing backend has an acceptance operation but no invitation-preview
+operation to return the permitted residence/inviter context before acceptance.
+Implementing that application/domain/infrastructure boundary and connecting the
+clients is separate work. The present screen does not send codes to the server,
+store them in URLs, or fetch financial information. Clean Architecture chapter 23
+continues to guide the presentation boundary. React best-practices review:
+static assets, semantic navigation, no added data subscriptions or dependencies;
+the web focus effect depends only on a step transition.
+
+Validation: formatting, lint and TypeScript in both clients; Next production
+build and Expo Android/iOS exports. Artwork inspected directly. Rendered browser
+screenshots, screen-reader/device testing and live invitation operations remain
+pending.
