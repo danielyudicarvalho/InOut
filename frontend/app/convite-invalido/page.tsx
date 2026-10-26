@@ -1,5 +1,9 @@
+import { AuthenticatedGate } from "../../components/authenticated-gate";
 import { InvitationResultScreen } from "../../components/invitation-result-screen";
-
 export default function Page() {
-  return <InvitationResultScreen result="invalid" />;
+  return (
+    <AuthenticatedGate>
+      <InvitationResultScreen key="invalid" result="invalid" />
+    </AuthenticatedGate>
+  );
 }

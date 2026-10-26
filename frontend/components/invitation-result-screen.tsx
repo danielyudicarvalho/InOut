@@ -41,7 +41,7 @@ export function InvitationResultScreen({
   const [notice, setNotice] = useState("");
   const current = results[result];
   return (
-    <main className="invitation-result">
+    <main className="invitation-result" key={result}>
       <header className="invitation-result-header">
         <Link className="brand" href="/">
           <Plant size={32} weight="duotone" aria-hidden="true" />
@@ -66,7 +66,8 @@ export function InvitationResultScreen({
           width={700}
           height={280}
           className="invitation-result-art"
-          priority
+          preload
+          sizes="(max-width: 760px) 100vw, 600px"
         />
         <h1 id="invitation-result-title">{current.title}</h1>
         <p className="invitation-result-description">{current.description}</p>
@@ -97,22 +98,15 @@ export function InvitationResultScreen({
             {current.secondary}
           </Link>
         )}
-        <p role="status" className="signin-notice">
-          {notice}
-        </p>
+        {notice ? (
+          <p role="status" className="signin-notice">
+            {notice}
+          </p>
+        ) : null}
         <p className="household-preview">
           Prévia de interface com dados fictícios. Nenhum convite foi consultado
           ou aceito; nenhuma participação foi alterada.
         </p>
-        <nav
-          className="confirmation-demo"
-          aria-label="Resultados de demonstração"
-        >
-          <Link href="/convite-aceito">Aceito</Link>
-          <Link href="/convite-expirado">Expirado</Link>
-          <Link href="/convite-invalido">Inválido</Link>
-          <Link href="/convite-utilizado">Já utilizado</Link>
-        </nav>
       </section>
     </main>
   );

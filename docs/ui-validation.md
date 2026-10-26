@@ -251,3 +251,31 @@ Validation: formatting, lint and TypeScript in both clients; Next production
 build and Expo Android/iOS exports. Artwork inspected directly. Rendered browser
 screenshots, screen-reader/device testing and live invitation operations remain
 pending.
+
+## Invitation result screens — 2026-10-26
+
+Reference: `image(20261026-195341).png`. Refined accepted, expired, invalid
+and already-used invitation results in Next.js and Expo. Each state retains its
+own existing illustration, inspected directly against the reference:
+`frontend/public/images/pipo-invite-{accepted,expired,invalid,used}.webp` and
+identical native assets in `mobile/assets/`. No new artwork was needed.
+
+Updated the responsive artwork proportions, centered copy and action spacing,
+cream backdrop and keyboard focus visibility. Removed the demo-state navigation
+from the result UI. Hidden empty status containers avoid reserved blank space;
+notices still announce unavailable residence access. All eight result route
+entries now use the existing authentication gate. State-specific component keys
+isolate notices between results. Expired/invalid return to code entry; secondary
+actions return to the choice screen or code entry as appropriate.
+
+The accepted result remains fictitious, as stated on screen. No invitation is
+accepted and no membership is created by opening a result URL. The accepted/used
+primary actions still announce that residence access is unavailable; there is
+no implemented residence listing/dashboard in these React clients. No financial
+queries or backend changes were introduced. Clean Architecture chapter 23 guides
+keeping these views separate from membership use cases.
+
+Validation: formatting, lint, TypeScript, Next production build, and Expo
+Android/iOS exports. Direct artwork inspection completed. Rendered screenshot
+acceptance, screen-reader/device interaction and live invitation verification
+remain pending.

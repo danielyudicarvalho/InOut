@@ -1,5 +1,9 @@
+import { AuthenticatedGate } from "../auth/AuthenticatedGate";
 import { InvitationResultScreen } from "../screens/InvitationResultScreen";
-
 export default function Page() {
-  return <InvitationResultScreen result="invalid" />;
+  return (
+    <AuthenticatedGate>
+      <InvitationResultScreen key="invalid" result="invalid" />
+    </AuthenticatedGate>
+  );
 }

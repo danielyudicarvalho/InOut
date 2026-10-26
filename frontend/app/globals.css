@@ -1766,3 +1766,42 @@ button:disabled {
     font-size: 15px;
   }
 }
+
+.invitation-result {
+  background: radial-gradient(ellipse at center, #fffdf6, #faf5e9);
+}
+.invitation-result-content {
+  max-width: 660px;
+  margin: 24px auto;
+}
+.invitation-result-art {
+  display: block;
+  width: min(600px, 100%);
+  aspect-ratio: 2.5;
+  object-fit: contain;
+  margin-inline: auto;
+}
+.invitation-result-description {
+  max-width: 430px;
+  margin-bottom: 20px;
+}
+.invitation-result-action:focus-visible,
+.invitation-result-secondary:focus-visible {
+  outline: 3px solid #a27d36;
+  outline-offset: 4px;
+}
+@media (max-width: 760px) {
+  .invitation-result {
+    padding: 16px;
+  }
+  .invitation-result-content {
+    margin: 20px auto;
+  }
+  .invitation-result h1 {
+    font-size: 28px;
+  }
+  .invitation-result-description {
+    font-size: 16px;
+    line-height: 1.45;
+  }
+}
