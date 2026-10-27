@@ -2951,3 +2951,7 @@ button:disabled {
   font-size: 11px;
   color: #365d3e;
 }
+
+.expense-total strong {
+  color: #b84c2c;
+}

@@ -62,6 +62,7 @@ builder.Services.AddScoped<ForecastService>();
 builder.Services.AddScoped<IDashboardReader, EfDashboardReader>();
 builder.Services.AddScoped<GetFinancialDashboard>();
 builder.Services.AddScoped<GetIncomeBreakdown>();
+builder.Services.AddScoped<GetExpenseBreakdown>();
 builder.Services.AddScoped<CompareFinancialPeriods>();
 builder.Services.AddScoped<IFinancialExportReader, EfFinancialExportReader>();
 builder.Services.AddScoped<ExportFinancialData>();

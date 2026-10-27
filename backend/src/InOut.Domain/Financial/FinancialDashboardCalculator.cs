@@ -123,6 +123,14 @@ public static class FinancialDashboardCalculator
             : null;
     }
 
+    public static long? ExpenseContribution(DashboardPosting posting)
+    {
+        var effect = ToEffect(posting, string.Empty);
+        return effect is { Kind: FinancialTransactionKind.Expense }
+            ? effect.SignedAmountCents
+            : null;
+    }
+
     private static PostingEffect? ToEffect(DashboardPosting posting, string currency)
     {
         var effectiveKind = posting.Kind == FinancialTransactionKind.Reversal

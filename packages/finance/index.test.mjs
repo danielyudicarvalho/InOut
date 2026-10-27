@@ -492,6 +492,64 @@ test("income detail requests exact range and validates signed real entries", asy
     ),
   );
 });
+test("expense detail requests exact range and validates signed real entries", async () => {
+  let request;
+  const repo = createFinanceRepository({
+    baseUrl: "https://api.example",
+    getToken: async () => "jwt",
+    fetcher: async (url, options) => {
+      request = { url, options };
+      return json({
+        periodStart: "2026-10-05",
+        periodEnd: "2026-10-20",
+        snapshotId: "A".repeat(64),
+        currency: "EUR",
+        totalCents: 3750,
+        isReconciled: true,
+        totalCount: 2,
+        offset: 0,
+        items: [
+          {
+            entryId: "e1",
+            transactionId: "t1",
+            accountId: "a",
+            accountName: "Conta",
+            occurredOn: "2026-10-10",
+            description: "Despesa",
+            categoryName: "Trabalho",
+            incomeSourceName: null,
+            amountCents: 5000,
+            isReversal: false,
+            reversalOf: null,
+          },
+          {
+            entryId: "e2",
+            transactionId: "t2",
+            accountId: "a",
+            accountName: "Conta",
+            occurredOn: "2026-10-11",
+            description: null,
+            categoryName: null,
+            incomeSourceName: null,
+            amountCents: -1250,
+            isReversal: true,
+            reversalOf: "t1",
+          },
+        ],
+      });
+    },
+  });
+  const data = await repo.expense("home", "2026-10-05/2026-10-20", "EUR", 0);
+  assert.equal(data.total, 3750);
+  assert.equal(data.items[1].amount, -1250);
+  assert.equal(data.items[1].isReversal, true);
+  assert.equal(request.options.headers.Authorization, "Bearer jwt");
+  assert.ok(
+    request.url.endsWith(
+      "/dashboard/expense?currency=EUR&from=2026-10-05&to=2026-10-20&offset=0&limit=50",
+    ),
+  );
+});
 test("income pages reject mismatched period and malformed reversal flags", async () => {
   const raw = {
     periodStart: "2026-10-01",
@@ -618,5 +676,38 @@ test("income pagination clears financial data when access is revoked", async () 
   await tick();
   assert.equal(store.getSnapshot().status, "error");
   assert.equal(store.getSnapshot().data, null);
+  stop();
+});
+
+test("expense store handles an empty period and uses the expense endpoint", async () => {
+  const { createIncomeDetailsStore } = await import("./index.mjs");
+  let called = false;
+  const store = createIncomeDetailsStore(
+    {
+      expense: async () => {
+        called = true;
+        return {
+          total: 0,
+          totalCount: 0,
+          snapshotId: "A".repeat(64),
+          isReconciled: true,
+          items: [],
+        };
+      },
+      income: async () => {
+        throw new Error("wrong endpoint");
+      },
+    },
+    "home",
+    "2026-10",
+    "BRL",
+    { kind: "expense" },
+  );
+  const stop = store.start();
+  await tick();
+  assert.equal(called, true);
+  assert.equal(store.getSnapshot().status, "ready");
+  assert.equal(store.getSnapshot().data.totalCount, 0);
+  assert.deepEqual(store.getSnapshot().data.items, []);
   stop();
 });

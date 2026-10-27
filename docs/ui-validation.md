@@ -471,3 +471,18 @@ Shared tests exercise real API contracts, signed reversals, pagination snapshot
 changes and revoked access. The backend adds tests for membership and consistency
 with dashboard totals. Backend tests and live API integration could not be run in
 this environment because the .NET SDK is unavailable.
+
+## Expense details
+
+A dedicated illustration was generated using the built-in image generator and
+saved as `frontend/public/images/pipo-expense.webp` and
+`mobile/assets/pipo-expense.webp`. Prompt: “Transparent wide 2:1 UI header
+illustration for Ninho expenses: Pipo, small fluffy golden yellow bird with leaf
+tuft, orange beak and rust red scarf, thoughtfully organizing bills and receipts
+beside a wicker basket, plants and a red mug, as in a cozy household finance app.
+Warm watercolor storybook, sage, cream and honey palette. Complete character and
+props, generous transparent space, no text, logos, interface or watermark.”
+
+Client tests cover the expense endpoint, signed reversals and the empty period.
+The .NET tests include membership and comparison with dashboard expense totals;
+they could not be run here because the .NET SDK is unavailable.

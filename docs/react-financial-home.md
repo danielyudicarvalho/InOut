@@ -137,3 +137,14 @@ from combining pages when entries change during pagination. The clients also
 compare the total with the dashboard and check the sum after all pages load.
 The current reader materializes the period's postings on each page request, so
 large ledgers may require a database-backed snapshot and pagination in future.
+
+## Expense details
+
+`/despesas` on web and native preserves the selected household, currency and
+period and calls `GET /api/v1/households/{householdId}/ledger/dashboard/expense`.
+The membership-checked endpoint applies the dashboard's expense and reversal
+rules, returning signed contributions in integer cents. The total is net
+expense; in the transaction list expenses are displayed as outflows and expense
+reversals as inflows. Transfers and income do not become expenses. Pages carry
+a fingerprint so clients do not combine different ledger snapshots. The same
+full-period materialization caveat documented above applies to this endpoint.

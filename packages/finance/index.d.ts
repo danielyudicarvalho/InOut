@@ -62,6 +62,13 @@ export type IncomePage = {
   items: IncomeItem[];
 };
 export interface FinanceRepository {
+  expense(
+    householdId: string,
+    period: string,
+    currency: string,
+    offset: number,
+    signal?: AbortSignal,
+  ): Promise<IncomePage>;
   income(
     householdId: string,
     period: string,
@@ -146,7 +153,7 @@ export function createIncomeDetailsStore(
   householdId: string,
   period: string,
   currency: string,
-  options?: { timeoutMs?: number },
+  options?: { timeoutMs?: number; kind?: "income" | "expense" },
 ): {
   getSnapshot: () => IncomeState;
   subscribe: (listener: () => void) => () => void;

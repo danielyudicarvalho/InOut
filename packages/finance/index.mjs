@@ -164,6 +164,68 @@ export function createFinanceRepository({
       throw new FinanceFailure("invalid");
     }
   }
+  async function breakdown(kind, householdId, period, code, offset, signal) {
+    const bounds = parsePeriod(period);
+    const query = bounds.custom
+      ? `from=${bounds.from}&to=${bounds.to}`
+      : `year=${period.slice(0, 4)}&month=${Number(period.slice(5))}`;
+    const raw = await get(
+      `/api/v1/households/${encodeURIComponent(householdId)}/ledger/dashboard/${kind}?currency=${encodeURIComponent(currency(code))}&${query}&offset=${integer(offset)}&limit=50`,
+      signal,
+    );
+    if (
+      !raw ||
+      raw.currency !== code ||
+      raw.periodStart !== bounds.from ||
+      raw.periodEnd !== bounds.to ||
+      typeof raw.isReconciled !== "boolean"
+    )
+      throw new FinanceFailure("invalid");
+    if (
+      typeof raw.snapshotId !== "string" ||
+      !/^[0-9A-F]{64}$/.test(raw.snapshotId)
+    )
+      throw new FinanceFailure("invalid");
+    const totalCount = integer(raw.totalCount),
+      returnedOffset = integer(raw.offset);
+    if (totalCount < 0 || returnedOffset !== offset || offset > totalCount)
+      throw new FinanceFailure("invalid");
+    const items = array(raw.items).map((row) => {
+      if (typeof row.isReversal !== "boolean")
+        throw new FinanceFailure("invalid");
+      return {
+        id: string(row.entryId),
+        transactionId: string(row.transactionId),
+        accountId: string(row.accountId),
+        accountName: string(row.accountName),
+        date: date(row.occurredOn),
+        description: row.description == null ? null : string(row.description),
+        category: row.categoryName == null ? null : string(row.categoryName),
+        source:
+          row.incomeSourceName == null ? null : string(row.incomeSourceName),
+        amount: integer(row.amountCents),
+        isReversal: row.isReversal === true,
+        reversalOf: row.reversalOf == null ? null : string(row.reversalOf),
+      };
+    });
+    if (
+      items.length > 50 ||
+      items.length + offset > totalCount ||
+      (items.length === 0 && offset < totalCount)
+    )
+      throw new FinanceFailure("invalid");
+    return {
+      periodStart: bounds.from,
+      periodEnd: bounds.to,
+      currency: code,
+      total: integer(raw.totalCents),
+      totalCount,
+      snapshotId: raw.snapshotId,
+      offset: returnedOffset,
+      isReconciled: raw.isReconciled,
+      items,
+    };
+  }
   return {
     async households(signal) {
       return array(await get("/api/v1/households", signal)).map((row) => ({
@@ -171,67 +233,11 @@ export function createFinanceRepository({
         name: string(row.name),
       }));
     },
-    async income(householdId, period, code, offset, signal) {
-      const bounds = parsePeriod(period);
-      const query = bounds.custom
-        ? `from=${bounds.from}&to=${bounds.to}`
-        : `year=${period.slice(0, 4)}&month=${Number(period.slice(5))}`;
-      const raw = await get(
-        `/api/v1/households/${encodeURIComponent(householdId)}/ledger/dashboard/income?currency=${encodeURIComponent(currency(code))}&${query}&offset=${integer(offset)}&limit=50`,
-        signal,
-      );
-      if (
-        !raw ||
-        raw.currency !== code ||
-        raw.periodStart !== bounds.from ||
-        raw.periodEnd !== bounds.to ||
-        typeof raw.isReconciled !== "boolean"
-      )
-        throw new FinanceFailure("invalid");
-      if (
-        typeof raw.snapshotId !== "string" ||
-        !/^[0-9A-F]{64}$/.test(raw.snapshotId)
-      )
-        throw new FinanceFailure("invalid");
-      const totalCount = integer(raw.totalCount),
-        returnedOffset = integer(raw.offset);
-      if (totalCount < 0 || returnedOffset !== offset || offset > totalCount)
-        throw new FinanceFailure("invalid");
-      const items = array(raw.items).map((row) => {
-        if (typeof row.isReversal !== "boolean")
-          throw new FinanceFailure("invalid");
-        return {
-          id: string(row.entryId),
-          transactionId: string(row.transactionId),
-          accountId: string(row.accountId),
-          accountName: string(row.accountName),
-          date: date(row.occurredOn),
-          description: row.description == null ? null : string(row.description),
-          category: row.categoryName == null ? null : string(row.categoryName),
-          source:
-            row.incomeSourceName == null ? null : string(row.incomeSourceName),
-          amount: integer(row.amountCents),
-          isReversal: row.isReversal === true,
-          reversalOf: row.reversalOf == null ? null : string(row.reversalOf),
-        };
-      });
-      if (
-        items.length > 50 ||
-        items.length + offset > totalCount ||
-        (items.length === 0 && offset < totalCount)
-      )
-        throw new FinanceFailure("invalid");
-      return {
-        periodStart: bounds.from,
-        periodEnd: bounds.to,
-        currency: code,
-        total: integer(raw.totalCents),
-        totalCount,
-        snapshotId: raw.snapshotId,
-        offset: returnedOffset,
-        isReconciled: raw.isReconciled,
-        items,
-      };
+    income(householdId, period, code, offset, signal) {
+      return breakdown("income", householdId, period, code, offset, signal);
+    },
+    expense(householdId, period, code, offset, signal) {
+      return breakdown("expense", householdId, period, code, offset, signal);
     },
     async home(householdId, period, signal) {
       const bounds = parsePeriod(period);
@@ -563,7 +569,7 @@ export function createIncomeDetailsStore(
   householdId,
   period,
   code,
-  { timeoutMs = 20000 } = {},
+  { timeoutMs = 20000, kind = "income" } = {},
 ) {
   let state = { status: "loading", data: null, notice: "", loadingMore: false };
   let active = false,
@@ -609,7 +615,7 @@ export function createIncomeDetailsStore(
       }
     }, timeoutMs);
     try {
-      const page = await repository.income(
+      const page = await repository[kind](
         householdId,
         period,
         code,

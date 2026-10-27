@@ -18,6 +18,7 @@ internal static class ApiContract
         internal const string ArchiveIncomeSource = "ArchiveIncomeSource";
         internal const string GetCategories = "GetCategories";
         internal const string GetIncomeBreakdown = "GetIncomeBreakdown";
+        internal const string GetExpenseBreakdown = "GetExpenseBreakdown";
         internal const string GetFinancialDashboard = "GetFinancialDashboard";
         internal const string CompareFinancialDashboard = "CompareFinancialDashboard";
         internal const string ExportFinancialCsv = "ExportFinancialCsv";
@@ -81,6 +82,7 @@ internal static class ApiContract
         internal const string Expenses = "/expenses";
         internal const string Dashboard = "/dashboard";
         internal const string IncomeBreakdown = "/dashboard/income";
+        internal const string ExpenseBreakdown = "/dashboard/expense";
         internal const string CompareDashboard = "/dashboard/compare";
         internal const string ExportCsv = "/export.csv";
         internal const string History = "/history";

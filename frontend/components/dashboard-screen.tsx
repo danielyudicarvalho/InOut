@@ -327,12 +327,12 @@ function DashboardView({
                     {item.kind === "result" && item.value >= 0 ? "+ " : ""}
                     {money(item.value, currency)}
                   </strong>
-                  {item.label === "Receitas" ? (
+                  {item.label === "Receitas" || item.label === "Despesas" ? (
                     <Link
                       className="income-card-link"
-                      href={`/receitas?${new URLSearchParams({ household: state.householdId, period: state.period, currency })}`}
+                      href={`/${item.label === "Receitas" ? "receitas" : "despesas"}?${new URLSearchParams({ household: state.householdId, period: state.period, currency })}`}
                     >
-                      Ver receitas ›
+                      Ver {item.label.toLowerCase()} ›
                     </Link>
                   ) : null}
                 </div>
