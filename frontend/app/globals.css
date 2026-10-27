@@ -2955,3 +2955,82 @@ button:disabled {
 .expense-total strong {
   color: #b84c2c;
 }
+
+.result-cards {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr auto 1fr;
+  gap: 12px;
+  align-items: center;
+  margin: 20px 0;
+}
+.result-cards article {
+  background: #edf0de;
+  border-radius: 14px;
+  padding: 20px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.result-cards .result-expense {
+  background: #fae9e0;
+}
+.result-cards p {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+}
+.result-cards strong {
+  font:
+    bold clamp(20px, 2vw, 28px) Georgia,
+    serif;
+}
+.result-cards .result-expense strong {
+  color: #a9432d;
+}
+.result-cards a,
+.result-links a {
+  color: #315938;
+  font-weight: 700;
+}
+.result-cards > span {
+  font-size: 24px;
+}
+.result-entries {
+  padding: 24px;
+}
+.result-entries h2 {
+  font:
+    bold 22px Georgia,
+    serif;
+}
+.result-entries > p {
+  color: #756e5c;
+  font-size: 13px;
+}
+.result-filters,
+.result-links {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 16px 0;
+}
+.result-filters button {
+  border: 1px solid #e2dbc7;
+  border-radius: 8px;
+  background: #f8f4ea;
+  padding: 9px 16px;
+  cursor: pointer;
+}
+.result-filters button[aria-pressed="true"] {
+  background: #315938;
+  color: white;
+}
+@media (max-width: 760px) {
+  .result-cards {
+    grid-template-columns: 1fr;
+  }
+  .result-cards > span {
+    text-align: center;
+  }
+}

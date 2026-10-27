@@ -677,3 +677,21 @@ export function createIncomeDetailsStore(
     },
   };
 }
+
+export function recentResultEntries(income, expense, filter = "all") {
+  return [
+    ...(filter !== "expense"
+      ? income.map((item) => ({ ...item, flow: "income" }))
+      : []),
+    ...(filter !== "income"
+      ? expense.map((item) => ({ ...item, flow: "expense" }))
+      : []),
+  ]
+    .sort(
+      (a, b) =>
+        b.date.localeCompare(a.date) ||
+        b.transactionId.localeCompare(a.transactionId) ||
+        a.id.localeCompare(b.id),
+    )
+    .slice(0, 4);
+}

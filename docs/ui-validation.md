@@ -486,3 +486,15 @@ props, generous transparent space, no text, logos, interface or watermark.”
 Client tests cover the expense endpoint, signed reversals and the empty period.
 The .NET tests include membership and comparison with dashboard expense totals;
 they could not be run here because the .NET SDK is unavailable.
+
+## Result details
+
+Dedicated Pipo art was generated with the built-in image generator, inspected,
+and saved to `frontend/public/images/pipo-result.webp` and
+`mobile/assets/pipo-result.webp`. Prompt: “Transparent landscape 2:1 UI header
+illustration for Ninho household finance result screen: Pipo, a fluffy round
+golden yellow bird with green leaf tuft, orange beak and rust red scarf,
+thoughtfully comparing a little balance scale, with open notebook, coins and
+leafy plants. Cozy warm watercolor storybook, sage green, cream, honey palette.
+Complete bird and props, transparent surrounding space. No text, logos,
+interface or watermark.”

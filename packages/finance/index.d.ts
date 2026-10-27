@@ -161,3 +161,9 @@ export function createIncomeDetailsStore(
   retry: () => void;
   loadMore: () => void;
 };
+
+export function recentResultEntries(
+  income: IncomeItem[],
+  expense: IncomeItem[],
+  filter?: "all" | "income" | "expense",
+): (IncomeItem & { flow: "income" | "expense" })[];

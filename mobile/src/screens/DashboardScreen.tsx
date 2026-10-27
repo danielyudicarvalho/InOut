@@ -298,14 +298,20 @@ function DashboardView({
                 {item.label === "Resultado" && item.value >= 0 ? "+ " : ""}
                 {money(item.value, currency)}
               </Text>
-              {item.label === "Receitas" || item.label === "Despesas" ? (
+              {item.label === "Receitas" ||
+              item.label === "Despesas" ||
+              item.label === "Resultado" ? (
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel={`Ver detalhamento de ${item.label.toLowerCase()}`}
                   onPress={() =>
                     router.push({
                       pathname:
-                        item.label === "Receitas" ? "/receitas" : "/despesas",
+                        item.label === "Receitas"
+                          ? "/receitas"
+                          : item.label === "Despesas"
+                            ? "/despesas"
+                            : "/resultado",
                       params: {
                         household: state.householdId,
                         period: state.period,

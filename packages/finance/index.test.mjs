@@ -711,3 +711,42 @@ test("expense store handles an empty period and uses the expense endpoint", asyn
   assert.deepEqual(store.getSnapshot().data.items, []);
   stop();
 });
+
+test("result entries merge recent income and expense, preserve reversals, and filter", async () => {
+  const { recentResultEntries } = await import("./index.mjs");
+  const income = [
+    { id: "i1", transactionId: "1", date: "2026-10-03", amount: 100 },
+    {
+      id: "i2",
+      transactionId: "2",
+      date: "2026-10-01",
+      amount: -20,
+      isReversal: true,
+    },
+  ];
+  const expense = [
+    { id: "e1", transactionId: "3", date: "2026-10-04", amount: 50 },
+    {
+      id: "e2",
+      transactionId: "4",
+      date: "2026-10-02",
+      amount: -10,
+      isReversal: true,
+    },
+  ];
+  const all = recentResultEntries(income, expense);
+  assert.deepEqual(
+    all.map((row) => row.id),
+    ["e1", "i1", "e2", "i2"],
+  );
+  assert.equal(all[2].isReversal, true);
+  assert.deepEqual(
+    recentResultEntries(income, expense, "income").map((row) => row.id),
+    ["i1", "i2"],
+  );
+  assert.deepEqual(
+    recentResultEntries(income, expense, "expense").map((row) => row.id),
+    ["e1", "e2"],
+  );
+  assert.deepEqual(recentResultEntries([], []), []);
+});

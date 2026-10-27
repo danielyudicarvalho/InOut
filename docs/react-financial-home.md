@@ -148,3 +148,15 @@ expense; in the transaction list expenses are displayed as outflows and expense
 reversals as inflows. Transfers and income do not become expenses. Pages carry
 a fingerprint so clients do not combine different ledger snapshots. The same
 full-period materialization caveat documented above applies to this endpoint.
+
+## Result details
+
+`/resultado` preserves household, currency and period when opened from the
+result card. It uses the existing authenticated dashboard, income and expense
+queries; no new backend endpoint is required. Income minus expense is checked
+against the dashboard result, and each breakdown is checked against its dashboard
+total and reconciliation state. Recent entries combine the first pages of both
+breakdowns, sorted by date, with filters and links to the full income and expense
+lists. Transfers are excluded by the existing backend classification. The
+breakdowns are independent requests, so a changed total raises a warning; a
+single transactional snapshot across all three requests is not guaranteed.
