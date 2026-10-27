@@ -517,6 +517,7 @@ test("expense detail requests exact range and validates signed real entries", as
             occurredOn: "2026-10-10",
             description: "Despesa",
             categoryName: "Trabalho",
+            categoryId: "cat1",
             incomeSourceName: null,
             amountCents: 5000,
             isReversal: false,
@@ -530,6 +531,7 @@ test("expense detail requests exact range and validates signed real entries", as
             occurredOn: "2026-10-11",
             description: null,
             categoryName: null,
+            categoryId: null,
             incomeSourceName: null,
             amountCents: -1250,
             isReversal: true,
@@ -749,4 +751,69 @@ test("result entries merge recent income and expense, preserve reversals, and fi
     ["e1", "e2"],
   );
   assert.deepEqual(recentResultEntries([], []), []);
+});
+
+test("category summary aggregates parent and child without double counting and keeps uncategorized", async () => {
+  const { buildCategorySummary } = await import("./index.mjs");
+  const data = buildCategorySummary(
+    [
+      { id: "p", name: "Moradia", parentId: null },
+      { id: "c", name: "Aluguel", parentId: "p" },
+      { id: "x", name: "Mercado", parentId: null },
+    ],
+    [
+      { id: "p", amount: 100 },
+      { id: "c", amount: 250 },
+      { id: "x", amount: -30 },
+    ],
+    350,
+  );
+  assert.equal(data.groups.find((x) => x.id === "p").amount, 350);
+  assert.equal(data.groups.find((x) => x.id === "p").children[0].amount, 250);
+  assert.equal(data.groups.find((x) => x.id === null).amount, 30);
+  assert.equal(data.groups.find((x) => x.id === "x").amount, -30);
+  assert.throws(() =>
+    buildCategorySummary(
+      [
+        { id: "a", name: "A", parentId: "b" },
+        { id: "b", name: "B", parentId: "a" },
+      ],
+      [],
+      0,
+    ),
+  );
+});
+
+test("category summary reads the authenticated dashboard and archived category catalog", async () => {
+  const calls = [];
+  const repo = createFinanceRepository({
+    baseUrl: "https://api.example",
+    getToken: async () => "jwt",
+    fetcher: async (url, options) => {
+      calls.push({ url, token: options.headers.Authorization });
+      if (url.includes("/categories?"))
+        return json([
+          { id: "p", name: "Moradia", parentId: null },
+          { id: "c", name: "Aluguel", parentId: "p" },
+        ]);
+      return json({
+        periodStart: "2026-10-01",
+        periodEnd: "2026-10-31",
+        isReconciled: true,
+        summaries: [{ currency: "BRL", expenseCents: 500 }],
+        categoryExpenses: [
+          { categoryId: "c", currency: "BRL", amountCents: 500 },
+        ],
+      });
+    },
+  });
+  const data = await repo.categorySummary("home", "2026-10", "BRL");
+  assert.equal(data.groups[0].name, "Moradia");
+  assert.equal(data.groups[0].amount, 500);
+  assert.equal(data.groups[0].children[0].id, "c");
+  assert.equal(calls.length, 2);
+  assert.ok(calls.every((call) => call.token === "Bearer jwt"));
+  assert.ok(
+    calls.some((call) => call.url.endsWith("/categories?includeArchived=true")),
+  );
 });

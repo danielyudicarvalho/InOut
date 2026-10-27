@@ -45,6 +45,7 @@ export type IncomeItem = {
   date: string;
   description: string | null;
   category: string | null;
+  categoryId: string | null;
   source: string | null;
   amount: number;
   isReversal: boolean;
@@ -61,7 +62,31 @@ export type IncomePage = {
   isReconciled: boolean;
   items: IncomeItem[];
 };
+export type CategoryGroup = {
+  id: string | null;
+  name: string;
+  amount: number;
+  direct: number;
+  children: CategoryGroup[];
+};
+export type CategorySummary = {
+  total: number;
+  isReconciled: boolean;
+  groups: CategoryGroup[];
+};
+export function buildCategorySummary(
+  catalog: { id: string; name: string; parentId: string | null }[],
+  values: { id: string; amount: number }[],
+  total: number,
+  isReconciled?: boolean,
+): CategorySummary;
 export interface FinanceRepository {
+  categorySummary(
+    householdId: string,
+    period: string,
+    currency: string,
+    signal?: AbortSignal,
+  ): Promise<CategorySummary>;
   expense(
     householdId: string,
     period: string,

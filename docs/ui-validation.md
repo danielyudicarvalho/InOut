@@ -498,3 +498,19 @@ thoughtfully comparing a little balance scale, with open notebook, coins and
 leafy plants. Cozy warm watercolor storybook, sage green, cream, honey palette.
 Complete bird and props, transparent surrounding space. No text, logos,
 interface or watermark.”
+
+## Category summary
+
+A dedicated illustration was generated with the built-in image generator and
+saved as `frontend/public/images/pipo-category.webp` and
+`mobile/assets/pipo-category.webp`. Prompt: “Transparent wide 2:1 header asset
+for a cozy Ninho household finance category summary: Pipo, a round fluffy
+golden-yellow bird with green leaf tuft, orange beak and rust red scarf,
+carefully organizing several wicker baskets of household items with leafy
+plants. Warm watercolor storybook, sage green, cream and honey colors, charming
+soft detail. Full character and baskets with transparent surrounding space. No
+words, letters, numbers, UI, logo or watermark.”
+
+The .NET test for the expense category identifier could not be run here because
+the .NET SDK is unavailable. The financial endpoints must be deployed with the
+client because the expense response now carries the category identifier.

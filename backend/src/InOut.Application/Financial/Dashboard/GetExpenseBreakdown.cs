@@ -13,7 +13,7 @@ public sealed record GetExpenseBreakdownQuery(
 
 public sealed record ExpenseBreakdownItem(
     Guid TransactionId, Guid EntryId, Guid AccountId, string AccountName,
-    DateOnly OccurredOn, string? Description, string? CategoryName,
+    DateOnly OccurredOn, string? Description, Guid? CategoryId, string? CategoryName,
     string? IncomeSourceName, long AmountCents, bool IsReversal, Guid? ReversalOf);
 
 public sealed record ExpenseBreakdown(
@@ -44,7 +44,7 @@ public sealed class GetExpenseBreakdown(
             .Where(item => item.Amount is not null)
             .Select(item => new ExpenseBreakdownItem(
                 item.Posting.TransactionId, item.Posting.EntryId, item.Posting.AccountId,
-                accounts[item.Posting.AccountId].Name, item.Posting.OccurredOn, item.Posting.Description,
+                accounts[item.Posting.AccountId].Name, item.Posting.OccurredOn, item.Posting.Description, item.Posting.CategoryId,
                 item.Posting.CategoryId is { } categoryId && categories.TryGetValue(categoryId, out var categoryName) ? categoryName : null,
                 item.Posting.IncomeSourceId is { } sourceId && incomeSources.TryGetValue(sourceId, out var sourceName) ? sourceName : null,
                 item.Amount!.Value, item.Posting.Kind == FinancialTransactionKind.Reversal, item.Posting.ReversalOf))

@@ -325,6 +325,24 @@ function DashboardView({
                   </Text>
                 </Pressable>
               ) : null}
+              {item.label === "Despesas" ? (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Ver despesas por categoria"
+                  onPress={() =>
+                    router.push({
+                      pathname: "/resumo-categorias",
+                      params: {
+                        household: state.householdId,
+                        period: state.period,
+                        currency,
+                      },
+                    })
+                  }
+                >
+                  <Text style={s.caption}>Ver por categoria ›</Text>
+                </Pressable>
+              ) : null}
             </View>
           </View>
         ))}

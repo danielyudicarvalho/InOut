@@ -191,6 +191,8 @@ export function createFinanceRepository({
     if (totalCount < 0 || returnedOffset !== offset || offset > totalCount)
       throw new FinanceFailure("invalid");
     const items = array(raw.items).map((row) => {
+      if (kind === "expense" && !("categoryId" in row))
+        throw new FinanceFailure("invalid");
       if (typeof row.isReversal !== "boolean")
         throw new FinanceFailure("invalid");
       return {
@@ -201,6 +203,7 @@ export function createFinanceRepository({
         date: date(row.occurredOn),
         description: row.description == null ? null : string(row.description),
         category: row.categoryName == null ? null : string(row.categoryName),
+        categoryId: row.categoryId == null ? null : string(row.categoryId),
         source:
           row.incomeSourceName == null ? null : string(row.incomeSourceName),
         amount: integer(row.amountCents),
@@ -238,6 +241,41 @@ export function createFinanceRepository({
     },
     expense(householdId, period, code, offset, signal) {
       return breakdown("expense", householdId, period, code, offset, signal);
+    },
+    async categorySummary(householdId, period, code, signal) {
+      const bounds = parsePeriod(period);
+      const query = bounds.custom
+        ? `from=${bounds.from}&to=${bounds.to}`
+        : `year=${period.slice(0, 4)}&month=${Number(period.slice(5))}`;
+      const root = `/api/v1/households/${encodeURIComponent(householdId)}/ledger`;
+      const [d, catalog] = await Promise.all([
+        get(`${root}/dashboard?${query}`, signal),
+        get(`${root}/categories?includeArchived=true`, signal),
+      ]);
+      if (
+        !d ||
+        d.periodStart !== bounds.from ||
+        d.periodEnd !== bounds.to ||
+        typeof d.isReconciled !== "boolean"
+      )
+        throw new FinanceFailure("invalid");
+      const summary = array(d.summaries).find((row) => row.currency === code);
+      if (!summary) throw new FinanceFailure("invalid");
+      return buildCategorySummary(
+        array(catalog).map((row) => ({
+          id: string(row.id),
+          name: string(row.name),
+          parentId: row.parentId == null ? null : string(row.parentId),
+        })),
+        array(d.categoryExpenses)
+          .filter((row) => row.currency === code)
+          .map((row) => ({
+            id: string(row.categoryId),
+            amount: integer(row.amountCents),
+          })),
+        integer(summary.expenseCents),
+        d.isReconciled,
+      );
     },
     async home(householdId, period, signal) {
       const bounds = parsePeriod(period);
@@ -694,4 +732,72 @@ export function recentResultEntries(income, expense, filter = "all") {
         a.id.localeCompare(b.id),
     )
     .slice(0, 4);
+}
+
+export function buildCategorySummary(
+  catalog,
+  values,
+  total,
+  isReconciled = true,
+) {
+  const nodes = new Map(
+    catalog.map((c) => [c.id, { ...c, direct: 0n, sum: 0n, children: [] }]),
+  );
+  for (const value of values) {
+    const node = nodes.get(value.id);
+    if (!node) throw new FinanceFailure("invalid");
+    node.direct += BigInt(value.amount);
+  }
+  for (const node of nodes.values()) {
+    let parent = node.parentId,
+      seen = new Set([node.id]);
+    while (parent && nodes.has(parent)) {
+      if (seen.has(parent)) throw new FinanceFailure("invalid");
+      seen.add(parent);
+      parent = nodes.get(parent).parentId;
+    }
+  }
+  const roots = [];
+  for (const node of nodes.values()) {
+    const parent = nodes.get(node.parentId);
+    if (parent) parent.children.push(node);
+    else roots.push(node);
+  }
+  const convert = (value) => {
+    const number = Number(value);
+    if (!Number.isSafeInteger(number)) throw new FinanceFailure("invalid");
+    return number;
+  };
+  function visit(node) {
+    const children = node.children
+      .map(visit)
+      .filter((child) => child.amount !== 0 || child.children.length);
+    const amount =
+      node.direct + children.reduce((n, child) => n + BigInt(child.amount), 0n);
+    return {
+      id: node.id,
+      name: node.name,
+      amount: convert(amount),
+      direct: convert(node.direct),
+      children,
+    };
+  }
+  const groups = roots
+    .map(visit)
+    .filter((node) => node.amount !== 0 || node.children.length);
+  const classified = groups.reduce(
+    (sum, node) => sum + BigInt(node.amount),
+    0n,
+  );
+  const unclassified = BigInt(total) - classified;
+  if (unclassified !== 0n)
+    groups.push({
+      id: null,
+      name: "Sem categoria",
+      amount: convert(unclassified),
+      direct: convert(unclassified),
+      children: [],
+    });
+  groups.sort((a, b) => b.amount - a.amount || a.name.localeCompare(b.name));
+  return { total, isReconciled, groups };
 }

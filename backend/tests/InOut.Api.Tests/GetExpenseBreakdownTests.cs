@@ -23,9 +23,10 @@ public sealed class GetExpenseBreakdownTests
     {
         var account = Guid.NewGuid();
         var other = Guid.NewGuid();
+        var category = Guid.NewGuid();
         var income = new DashboardPosting(account, null, FinancialTransactionKind.Expense, null, 600000,
             TransactionId: Guid.NewGuid(), EntryId: Guid.NewGuid(), OccurredOn: new DateOnly(2026, 10, 5));
-        var reversal = new DashboardPosting(account, null, FinancialTransactionKind.Reversal, FinancialTransactionKind.Expense, 100000,
+        var reversal = new DashboardPosting(account, category, FinancialTransactionKind.Reversal, FinancialTransactionKind.Expense, 100000,
             TransactionId: Guid.NewGuid(), EntryId: Guid.NewGuid(), OccurredOn: new DateOnly(2026, 10, 10));
         var source = new DashboardSourceData(
             [new DashboardAccountSource(account, "Principal", "BRL", 500000), new DashboardAccountSource(other, "USD", "USD", 500)],
@@ -42,6 +43,7 @@ public sealed class GetExpenseBreakdownTests
         Assert.Equal(2, result.TotalCount);
         Assert.Single(result.Items);
         Assert.True(result.Items[0].IsReversal);
+        Assert.Equal(category, result.Items[0].CategoryId);
         Assert.Equal(-100000L, result.Items[0].AmountCents);
     }
 

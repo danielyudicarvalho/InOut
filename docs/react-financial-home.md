@@ -160,3 +160,14 @@ breakdowns, sorted by date, with filters and links to the full income and expens
 lists. Transfers are excluded by the existing backend classification. The
 breakdowns are independent requests, so a changed total raises a warning; a
 single transactional snapshot across all three requests is not guaranteed.
+
+## Category summary
+
+`/resumo-categorias` fetches the selected dashboard and the household category
+catalog, including archived categories, under the current user's session. The
+client aggregates each category's direct expense and descendants without double
+counting. Unclassified expenses remain visible, and net negative categories do
+not produce misleading pie-chart shares. The category drilldown reads paginated
+expense entries and matches category IDs rather than names. Until all pages are
+loaded it explicitly reports that the results are partial. The new expense DTO
+includes `categoryId`; deploy the backend and clients together.
