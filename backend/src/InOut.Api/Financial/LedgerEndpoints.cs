@@ -331,6 +331,24 @@ public static class LedgerEndpoints
                 cancellationToken)))
             .WithName(ApiContract.EndpointNames.GetFinancialDashboard);
 
+        ledger.MapGet(ApiContract.Routes.IncomeBreakdown, async (
+            Guid householdId,
+            string currency,
+            int? year,
+            int? month,
+            DateOnly? from,
+            DateOnly? to,
+            int? offset,
+            int? limit,
+            ClaimsPrincipal principal,
+            GetIncomeBreakdown useCase,
+            CancellationToken cancellationToken) =>
+            Results.Ok(await useCase.ExecuteAsync(
+                new GetIncomeBreakdownQuery(UserId(principal), householdId, currency,
+                    year, month, from, to, offset ?? 0, limit ?? 50),
+                cancellationToken)))
+            .WithName(ApiContract.EndpointNames.GetIncomeBreakdown);
+
         ledger.MapGet(ApiContract.Routes.CompareDashboard, async (
             Guid householdId,
             int? year,

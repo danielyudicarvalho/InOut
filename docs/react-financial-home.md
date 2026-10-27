@@ -120,3 +120,20 @@ undefined when the net balance is zero. The segmented bar explicitly represents
 absolute balances (negative accounts in orange), so it does not pretend a debt
 is a positive share of the net balance. Hide-values masks amounts and removes
 the distribution graphic/legend; it is a display privacy control, not encryption.
+
+## Income details
+
+The dashboard links to `/receitas` on web and native, preserving the authorized
+household, selected currency and monthly or custom period. The clients fetch
+`GET /api/v1/households/{householdId}/ledger/dashboard/income` with the same
+period parameters as the dashboard and show actual posted income entries. A
+signed income reversal reduces the total; transfers, expense reversals and other
+currencies are excluded using the dashboard's own calculation rules. Account,
+category and income-source details come from the ledger data.
+
+The endpoint returns integer cents, a net total, reconciliation status and
+pages of up to 200 entries. A fingerprint of the ordered result prevents clients
+from combining pages when entries change during pagination. The clients also
+compare the total with the dashboard and check the sum after all pages load.
+The current reader materializes the period's postings on each page request, so
+large ledgers may require a database-backed snapshot and pagination in future.

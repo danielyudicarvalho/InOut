@@ -109,7 +109,12 @@ public sealed class EfDashboardReader(InOutDbContext dbContext) : IDashboardRead
                         ? kind
                         : null,
                     entry.AmountCents,
-                    transaction.IncomeSourceId)))
+                    transaction.IncomeSourceId,
+                    transaction.Id,
+                    entry.Id,
+                    transaction.OccurredOn,
+                    transaction.Description,
+                    transaction.ReversalOf)))
             .ToArray();
     }
 

@@ -2763,3 +2763,191 @@ button:disabled {
   align-items: center;
   color: #365d3e;
 }
+.income-nav-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  min-height: 44px;
+  text-decoration: none;
+  border-radius: 8px;
+}
+.income-nav-current {
+  background: #dfe5cd;
+  border-left: 4px solid #487440;
+}
+.income-hero {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+.income-hero h1 {
+  font:
+    bold clamp(28px, 3vw, 39px) Georgia,
+    serif;
+  margin: 6px 0 10px;
+}
+.income-hero p {
+  font-size: 14px;
+  color: #756e5c;
+  margin: 0;
+}
+.income-hero img {
+  width: min(300px, 40%);
+  height: 180px;
+  object-fit: contain;
+}
+.income-controls {
+  display: flex;
+  gap: 10px;
+  margin: 8px 0 18px;
+}
+.income-controls select {
+  min-width: 100px;
+}
+.income-total {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 24px;
+}
+.income-total svg {
+  color: #4d8055;
+  background: #e5efdb;
+  border-radius: 50%;
+  padding: 12px;
+  box-sizing: content-box;
+  flex-shrink: 0;
+}
+.income-total p {
+  margin: 5px 0;
+  font-size: 13px;
+  color: #756e5c;
+}
+.income-total strong {
+  font:
+    bold clamp(28px, 4vw, 42px) Georgia,
+    serif;
+}
+.income-table-wrap {
+  overflow-x: auto;
+  border: 1px solid #e9dfcd;
+  border-radius: 12px;
+}
+.income-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 600px;
+  background: #fffcf5;
+  font-size: 13px;
+}
+.income-table th,
+.income-table td {
+  text-align: left;
+  border-bottom: 1px solid #e9dfcd;
+  padding: 12px;
+}
+.income-table thead {
+  background: #e8edd9;
+}
+.income-table tbody th {
+  font-weight: 500;
+}
+.income-table button {
+  border: 0;
+  background: transparent;
+  color: #365d3e;
+  min-height: 44px;
+  white-space: nowrap;
+  text-decoration: underline;
+}
+.income-more {
+  min-height: 44px;
+  margin: 14px 0;
+  border: 1px solid #365d3e;
+  border-radius: 8px;
+  background: transparent;
+  padding: 8px 18px;
+  color: #365d3e;
+}
+.income-detail {
+  margin: 14px 0;
+}
+.income-detail dl > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid #e9dfcd;
+  padding: 10px 0;
+  font-size: 13px;
+}
+.income-detail dd {
+  margin: 0;
+  text-align: right;
+}
+@media (max-width: 760px) {
+  .income-page .dashboard-body {
+    padding-bottom: 24px;
+  }
+  .income-hero img {
+    width: 120px;
+    height: 120px;
+  }
+  .income-hero h1 {
+    font-size: 27px;
+  }
+  .income-hero p {
+    font-size: 12px;
+  }
+  .income-controls {
+    flex-wrap: wrap;
+  }
+  .income-total {
+    padding: 16px;
+  }
+  .income-total svg {
+    width: 25px;
+    height: 25px;
+  }
+  .income-table {
+    min-width: 0;
+  }
+  .income-table thead {
+    display: none;
+  }
+  .income-table tbody tr {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 5px;
+    padding: 12px;
+    border-bottom: 1px solid #e9dfcd;
+  }
+  .income-table tbody th,
+  .income-table tbody td {
+    border: 0;
+    padding: 2px;
+  }
+  .income-table td:nth-child(2),
+  .income-table td:nth-child(3),
+  .income-table td:nth-child(4) {
+    font-size: 11px;
+    color: #756e5c;
+  }
+  .income-table td:nth-child(5) {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .income-table td:nth-child(6) {
+    grid-column: 2;
+    grid-row: 2 / span 3;
+    align-self: center;
+  }
+}
+.income-card-link {
+  display: flex;
+  align-items: center;
+  min-height: 36px;
+  font-size: 11px;
+  color: #365d3e;
+}

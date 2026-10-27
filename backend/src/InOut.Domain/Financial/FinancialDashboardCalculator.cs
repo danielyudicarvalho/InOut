@@ -11,7 +11,12 @@ public sealed record DashboardPosting(
     FinancialTransactionKind Kind,
     FinancialTransactionKind? ReversedKind,
     long AmountCents,
-    Guid? IncomeSourceId = null);
+    Guid? IncomeSourceId = null,
+    Guid TransactionId = default,
+    Guid EntryId = default,
+    DateOnly OccurredOn = default,
+    string? Description = null,
+    Guid? ReversalOf = null);
 
 public sealed record DashboardAccountActivity(
     Guid AccountId,
@@ -107,6 +112,15 @@ public static class FinancialDashboardCalculator
             .ToArray();
 
         return new FinancialDashboardTotals(currencies, categories, accountActivities, incomeSources);
+    }
+
+    // Keep the detail view on the exact same classification rule as dashboard totals.
+    public static long? IncomeContribution(DashboardPosting posting)
+    {
+        var effect = ToEffect(posting, string.Empty);
+        return effect is { Kind: FinancialTransactionKind.Income }
+            ? effect.SignedAmountCents
+            : null;
     }
 
     private static PostingEffect? ToEffect(DashboardPosting posting, string currency)

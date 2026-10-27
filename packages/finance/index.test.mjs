@@ -433,3 +433,190 @@ test("deep links retain authorized household and period, and never query an unau
   assert.equal(calls.length, 0);
   cleanup();
 });
+
+test("income detail requests exact range and validates signed real entries", async () => {
+  let request;
+  const repo = createFinanceRepository({
+    baseUrl: "https://api.example",
+    getToken: async () => "jwt",
+    fetcher: async (url, options) => {
+      request = { url, options };
+      return json({
+        periodStart: "2026-10-05",
+        periodEnd: "2026-10-20",
+        snapshotId: "A".repeat(64),
+        currency: "EUR",
+        totalCents: 3750,
+        isReconciled: true,
+        totalCount: 2,
+        offset: 0,
+        items: [
+          {
+            entryId: "e1",
+            transactionId: "t1",
+            accountId: "a",
+            accountName: "Conta",
+            occurredOn: "2026-10-10",
+            description: "Receita",
+            categoryName: "Trabalho",
+            incomeSourceName: null,
+            amountCents: 5000,
+            isReversal: false,
+            reversalOf: null,
+          },
+          {
+            entryId: "e2",
+            transactionId: "t2",
+            accountId: "a",
+            accountName: "Conta",
+            occurredOn: "2026-10-11",
+            description: null,
+            categoryName: null,
+            incomeSourceName: null,
+            amountCents: -1250,
+            isReversal: true,
+            reversalOf: "t1",
+          },
+        ],
+      });
+    },
+  });
+  const data = await repo.income("home", "2026-10-05/2026-10-20", "EUR", 0);
+  assert.equal(data.total, 3750);
+  assert.equal(data.items[1].amount, -1250);
+  assert.equal(data.items[1].isReversal, true);
+  assert.equal(request.options.headers.Authorization, "Bearer jwt");
+  assert.ok(
+    request.url.endsWith(
+      "/dashboard/income?currency=EUR&from=2026-10-05&to=2026-10-20&offset=0&limit=50",
+    ),
+  );
+});
+test("income pages reject mismatched period and malformed reversal flags", async () => {
+  const raw = {
+    periodStart: "2026-10-01",
+    periodEnd: "2026-10-31",
+    snapshotId: "A".repeat(64),
+    currency: "BRL",
+    totalCents: 1,
+    isReconciled: true,
+    totalCount: 1,
+    offset: 0,
+    items: [
+      {
+        entryId: "e",
+        transactionId: "t",
+        accountId: "a",
+        accountName: "Conta",
+        occurredOn: "2026-10-11",
+        amountCents: 1,
+        isReversal: "false",
+      },
+    ],
+  };
+  const repo = createFinanceRepository({
+    baseUrl: "https://api.example",
+    getToken: async () => "jwt",
+    fetcher: async () => json(raw),
+  });
+  await assert.rejects(
+    repo.income("home", "2026-10", "BRL", 0),
+    (e) => e.code === "invalid",
+  );
+  raw.items[0].isReversal = false;
+  raw.periodEnd = "2026-10-30";
+  await assert.rejects(
+    repo.income("home", "2026-10", "BRL", 0),
+    (e) => e.code === "invalid",
+  );
+});
+test("income detail pagination appends pages, detects changes and does not mix snapshots", async () => {
+  const { createIncomeDetailsStore } = await import("./index.mjs");
+  let change = false,
+    calls = [];
+  const page = (offset) => ({
+    periodStart: "2026-10-01",
+    periodEnd: "2026-10-31",
+    snapshotId: "A".repeat(64),
+    currency: "BRL",
+    total: 3,
+    totalCount: 2,
+    offset,
+    isReconciled: true,
+    items: [{ id: `e${offset}`, amount: offset ? 2 : 1 }],
+  });
+  const repo = {
+    income: async (id, period, currency, offset) => {
+      calls.push(offset);
+      const result = page(offset);
+      if (change) result.snapshotId = "B".repeat(64);
+      return result;
+    },
+  };
+  const store = createIncomeDetailsStore(repo, "a", "2026-10", "BRL"),
+    stop = store.start();
+  await tick();
+  assert.equal(store.getSnapshot().data.items.length, 1);
+  change = true;
+  store.loadMore();
+  await tick();
+  assert.equal(store.getSnapshot().data.items.length, 1);
+  assert.match(store.getSnapshot().notice, /mudaram/);
+  change = false;
+  store.loadMore();
+  await tick();
+  assert.equal(store.getSnapshot().data.items.length, 2);
+  assert.deepEqual(calls, [0, 1, 1]);
+  stop();
+});
+test("income detail unmount aborts and ignores late responses", async () => {
+  const { createIncomeDetailsStore } = await import("./index.mjs");
+  let resolve, signal;
+  const store = createIncomeDetailsStore(
+    {
+      income: (id, p, c, o, s) => {
+        signal = s;
+        return new Promise((r) => (resolve = r));
+      },
+    },
+    "a",
+    "2026-10",
+    "BRL",
+  );
+  const stop = store.start();
+  stop();
+  assert.equal(signal.aborted, true);
+  resolve({ totalCount: 0, items: [] });
+  await tick();
+  assert.equal(store.getSnapshot().data, null);
+});
+
+test("income pagination clears financial data when access is revoked", async () => {
+  const { createIncomeDetailsStore } = await import("./index.mjs");
+  let calls = 0;
+  const store = createIncomeDetailsStore(
+    {
+      income: async () => {
+        if (++calls > 1) throw new FinanceFailure("forbidden");
+        return {
+          total: 2,
+          totalCount: 2,
+          isReconciled: true,
+          snapshotId: "A".repeat(64),
+          items: [{ id: "e", amount: 1 }],
+        };
+      },
+    },
+    "a",
+    "2026-10",
+    "BRL",
+  );
+  const stop = store.start();
+  await tick();
+  assert.equal(store.getSnapshot().status, "ready");
+  store.loadMore();
+  await tick();
+  assert.equal(store.getSnapshot().status, "error");
+  assert.equal(store.getSnapshot().data, null);
+  stop();
+});

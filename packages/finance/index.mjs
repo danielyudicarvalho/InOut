@@ -6,6 +6,8 @@ export class FinanceFailure extends Error {
 }
 export function financeMessage(error) {
   const messages = {
+    changed:
+      "Os lançamentos mudaram durante a consulta. Atualize para carregá-los novamente.",
     period:
       "Informe datas válidas; a data inicial não pode ser posterior à final.",
     configuration:
@@ -168,6 +170,68 @@ export function createFinanceRepository({
         id: string(row.id),
         name: string(row.name),
       }));
+    },
+    async income(householdId, period, code, offset, signal) {
+      const bounds = parsePeriod(period);
+      const query = bounds.custom
+        ? `from=${bounds.from}&to=${bounds.to}`
+        : `year=${period.slice(0, 4)}&month=${Number(period.slice(5))}`;
+      const raw = await get(
+        `/api/v1/households/${encodeURIComponent(householdId)}/ledger/dashboard/income?currency=${encodeURIComponent(currency(code))}&${query}&offset=${integer(offset)}&limit=50`,
+        signal,
+      );
+      if (
+        !raw ||
+        raw.currency !== code ||
+        raw.periodStart !== bounds.from ||
+        raw.periodEnd !== bounds.to ||
+        typeof raw.isReconciled !== "boolean"
+      )
+        throw new FinanceFailure("invalid");
+      if (
+        typeof raw.snapshotId !== "string" ||
+        !/^[0-9A-F]{64}$/.test(raw.snapshotId)
+      )
+        throw new FinanceFailure("invalid");
+      const totalCount = integer(raw.totalCount),
+        returnedOffset = integer(raw.offset);
+      if (totalCount < 0 || returnedOffset !== offset || offset > totalCount)
+        throw new FinanceFailure("invalid");
+      const items = array(raw.items).map((row) => {
+        if (typeof row.isReversal !== "boolean")
+          throw new FinanceFailure("invalid");
+        return {
+          id: string(row.entryId),
+          transactionId: string(row.transactionId),
+          accountId: string(row.accountId),
+          accountName: string(row.accountName),
+          date: date(row.occurredOn),
+          description: row.description == null ? null : string(row.description),
+          category: row.categoryName == null ? null : string(row.categoryName),
+          source:
+            row.incomeSourceName == null ? null : string(row.incomeSourceName),
+          amount: integer(row.amountCents),
+          isReversal: row.isReversal === true,
+          reversalOf: row.reversalOf == null ? null : string(row.reversalOf),
+        };
+      });
+      if (
+        items.length > 50 ||
+        items.length + offset > totalCount ||
+        (items.length === 0 && offset < totalCount)
+      )
+        throw new FinanceFailure("invalid");
+      return {
+        periodStart: bounds.from,
+        periodEnd: bounds.to,
+        currency: code,
+        total: integer(raw.totalCents),
+        totalCount,
+        snapshotId: raw.snapshotId,
+        offset: returnedOffset,
+        isReconciled: raw.isReconciled,
+        items,
+      };
     },
     async home(householdId, period, signal) {
       const bounds = parsePeriod(period);
@@ -491,5 +555,119 @@ export function balanceComposition(home, code) {
         width: magnitude === 0n ? 0 : Number((abs * 10000n) / magnitude) / 100,
       };
     }),
+  };
+}
+
+export function createIncomeDetailsStore(
+  repository,
+  householdId,
+  period,
+  code,
+  { timeoutMs = 20000 } = {},
+) {
+  let state = { status: "loading", data: null, notice: "", loadingMore: false };
+  let active = false,
+    version = 0,
+    controller,
+    timer;
+  const listeners = new Set();
+  function publish(value) {
+    state = { ...state, ...value };
+    listeners.forEach((fn) => fn());
+  }
+  function cancel() {
+    version++;
+    controller?.abort();
+    clearTimeout(timer);
+  }
+  async function load(append = false) {
+    if (
+      append &&
+      (state.loadingMore ||
+        !state.data ||
+        state.data.items.length >= state.data.totalCount)
+    )
+      return;
+    const previous = append ? state.data : null;
+    cancel();
+    const id = version;
+    controller = new AbortController();
+    const signal = controller.signal;
+    publish(
+      append
+        ? { loadingMore: true, notice: "" }
+        : { status: "loading", data: null, notice: "", loadingMore: false },
+    );
+    timer = setTimeout(() => {
+      if (active && id === version) {
+        cancel();
+        publish({
+          status: append ? "ready" : "error",
+          loadingMore: false,
+          notice: financeMessage(new FinanceFailure("timeout")),
+        });
+      }
+    }, timeoutMs);
+    try {
+      const page = await repository.income(
+        householdId,
+        period,
+        code,
+        previous?.items.length ?? 0,
+        signal,
+      );
+      if (!active || id !== version) return;
+      if (
+        previous &&
+        (page.snapshotId !== previous.snapshotId ||
+          page.total !== previous.total ||
+          page.totalCount !== previous.totalCount ||
+          page.isReconciled !== previous.isReconciled)
+      )
+        throw new FinanceFailure("changed");
+      const items = previous ? [...previous.items, ...page.items] : page.items;
+      if (new Set(items.map((row) => row.id)).size !== items.length)
+        throw new FinanceFailure("changed");
+      publish({
+        status: "ready",
+        data: { ...page, offset: 0, items },
+        notice: "",
+        loadingMore: false,
+      });
+    } catch (error) {
+      if (active && id === version) {
+        const accessLost =
+          error?.code === "forbidden" || error?.code === "unauthorized";
+        publish({
+          status: accessLost ? "error" : append ? "ready" : "error",
+          data: accessLost ? null : state.data,
+          notice: financeMessage(error),
+          loadingMore: false,
+        });
+      }
+    } finally {
+      if (id === version) clearTimeout(timer);
+    }
+  }
+  return {
+    getSnapshot: () => state,
+    subscribe(fn) {
+      listeners.add(fn);
+      return () => listeners.delete(fn);
+    },
+    start() {
+      active = true;
+      void load();
+      return () => {
+        active = false;
+        cancel();
+      };
+    },
+    retry() {
+      if (active) void load();
+    },
+    loadMore() {
+      if (active) void load(true);
+    },
   };
 }

@@ -453,3 +453,21 @@ white daisies. Warm cozy watercolor storybook with softly sculpted details, sage
 cream honey palette. Wide 2:1 composition, complete character and notebook,
 generous transparent margin. No legible letters, numbers, UI, logo, watermark.
 Calm thoughtful friendly expression.”
+
+## Income details
+
+The income screen uses a new dedicated Pipo illustration, generated and visually
+inspected, with identical transparent WebP assets at
+`frontend/public/images/pipo-income.webp` and `mobile/assets/pipo-income.webp`.
+Prompt: “Transparent Ninho income-detail UI header illustration: Pipo, a round
+fluffy golden-yellow bird with green leaf tuft and rust red scarf, happily holding
+a cream envelope, with two more closed envelopes and small stacks of gold coins
+among olive branches and white flowers. Cozy warm watercolor storybook with
+softly sculpted detail, sage green cream honey palette. Wide landscape 2:1
+composition; complete bird and objects, transparent surrounding space. No
+letters, numbers, UI, logo or watermark.”
+
+Shared tests exercise real API contracts, signed reversals, pagination snapshot
+changes and revoked access. The backend adds tests for membership and consistency
+with dashboard totals. Backend tests and live API integration could not be run in
+this environment because the .NET SDK is unavailable.

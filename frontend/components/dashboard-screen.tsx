@@ -327,6 +327,14 @@ function DashboardView({
                     {item.kind === "result" && item.value >= 0 ? "+ " : ""}
                     {money(item.value, currency)}
                   </strong>
+                  {item.label === "Receitas" ? (
+                    <Link
+                      className="income-card-link"
+                      href={`/receitas?${new URLSearchParams({ household: state.householdId, period: state.period, currency })}`}
+                    >
+                      Ver receitas ›
+                    </Link>
+                  ) : null}
                 </div>
               </article>
             ))}

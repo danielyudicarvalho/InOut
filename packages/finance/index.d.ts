@@ -37,7 +37,38 @@ export type Home = {
   transactions: Transaction[];
   currencies: string[];
 };
+export type IncomeItem = {
+  id: string;
+  transactionId: string;
+  accountId: string;
+  accountName: string;
+  date: string;
+  description: string | null;
+  category: string | null;
+  source: string | null;
+  amount: number;
+  isReversal: boolean;
+  reversalOf: string | null;
+};
+export type IncomePage = {
+  periodStart: string;
+  periodEnd: string;
+  currency: string;
+  total: number;
+  totalCount: number;
+  snapshotId: string;
+  offset: number;
+  isReconciled: boolean;
+  items: IncomeItem[];
+};
 export interface FinanceRepository {
+  income(
+    householdId: string,
+    period: string,
+    currency: string,
+    offset: number,
+    signal?: AbortSignal,
+  ): Promise<IncomePage>;
   households(signal?: AbortSignal): Promise<Household[]>;
   home(id: string, period: string, signal?: AbortSignal): Promise<Home>;
 }
@@ -102,4 +133,24 @@ export function balanceComposition(
   total: number;
   matched: boolean;
   accounts: (FinancialAccount & { percent: number | null; width: number })[];
+};
+
+export type IncomeState = {
+  status: "loading" | "ready" | "error";
+  data: IncomePage | null;
+  notice: string;
+  loadingMore: boolean;
+};
+export function createIncomeDetailsStore(
+  repository: FinanceRepository,
+  householdId: string,
+  period: string,
+  currency: string,
+  options?: { timeoutMs?: number },
+): {
+  getSnapshot: () => IncomeState;
+  subscribe: (listener: () => void) => () => void;
+  start: () => () => void;
+  retry: () => void;
+  loadMore: () => void;
 };
