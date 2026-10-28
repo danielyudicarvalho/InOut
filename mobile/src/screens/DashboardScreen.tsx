@@ -12,9 +12,10 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { theme as t } from "../theme";
-import { money, periodLabel } from "@inout/finance";
+import { money, periodLabel, dashboardSetupState } from "@inout/finance";
 import { NewRecordPicker } from "../components/NewRecordPicker";
 import { PeriodPicker } from "../components/PeriodPicker";
+import { DashboardSetupScreen } from "./DashboardSetupScreen";
 import { useFinancialHome } from "../finance/use-financial-home";
 
 export function DashboardScreen() {
@@ -46,6 +47,21 @@ function DashboardView({
   const [picker, setPicker] = useState<"household" | null>(null);
   const [table, setTable] = useState(false);
   const [notice, setNotice] = useState("");
+  const setup = state.data ? dashboardSetupState(state.data) : "active";
+  if (state.status === "ready" && state.data && setup !== "active")
+    return (
+      <DashboardSetupScreen
+        mode={setup}
+        data={state.data}
+        households={state.households}
+        householdId={state.householdId}
+        period={state.period}
+        currency={chosenCurrency}
+        onCurrency={setCurrency}
+        onHousehold={state.selectHousehold}
+        onRefresh={state.retry}
+      />
+    );
   if (
     state.status !== "ready" ||
     !state.data ||

@@ -554,3 +554,36 @@ and expired pending operations. Requests in tests use in-process fake HTTP
 responses; no real financial records were created. Live .NET writes were not
 exercised in this environment. Native export remains pending the earlier
 approval block; no cloud Expo build was invoked.
+
+## Dashboard setup states
+
+Two dedicated built-in image-generator assets were inspected and saved for web
+and native:
+`frontend/public/images/pipo-empty-accounts.webp`,
+`mobile/assets/pipo-empty-accounts.webp`,
+`frontend/public/images/pipo-first-movement.webp` and
+`mobile/assets/pipo-first-movement.webp`.
+
+Prompt 1: “Transparent landscape 2:1 hero for Ninho household finance empty
+accounts state: Pipo, round fluffy golden-yellow bird with green leaf tuft,
+orange beak, rust-red scarf, carefully building a small empty nest of twigs
+beside a large blank spiral notebook and a potted sapling. Warm cozy watercolor
+storybook, sage, cream, honey palette. Full bird, nest and notebook, generous
+transparent space. No text, numbers, lettering, logos or UI.”
+
+Prompt 2: “Transparent landscape 2:1 hero for Ninho household finance ready for
+first transaction state: Pipo, round fluffy golden-yellow bird with green leaf
+tuft, orange beak, rust-red scarf, proudly holding a blank notebook and a pencil
+beside a small cream cottage with terracotta roof, leafy garden and flowers.
+Cozy warm watercolor storybook, sage green, cream and honey palette. Full
+character and cottage with generous transparent margin. No text, numbers,
+lettering, logos or UI.”
+
+Client tests verify explicit lifetime activity versus an empty period, opening
+balances, unknown metadata, reconciliation failures, initial versus current
+balances, signed initial cents and stable account IDs/keys after uncertain writes.
+The existing transaction tests also cover the shared submission lifecycle after
+its refactor. Tests use fake HTTP responses, and no real accounts or transactions
+were created. The .NET SDK is unavailable, so the new reader projection and API
+tests still require backend build/integration validation. Native exports remain
+pending the previously reported approval block.

@@ -66,7 +66,8 @@ public sealed record DashboardAccountBalance(
     long BalanceCents,
     long InflowCents = 0,
     long OutflowCents = 0,
-    long NetChangeCents = 0);
+    long NetChangeCents = 0,
+    long? InitialBalanceCents = null);
 
 public sealed record DashboardIncomeSourceIncome(
     Guid? IncomeSourceId,
@@ -96,7 +97,8 @@ public sealed record FinancialDashboard(
     IReadOnlyList<DashboardCategoryExpense> CategoryExpenses,
     IReadOnlyList<DashboardIncomeSourceIncome> IncomeSources,
     IReadOnlyList<DashboardBudgetProgress> Budgets,
-    IReadOnlyList<DashboardGoalProgress> Goals);
+    IReadOnlyList<DashboardGoalProgress> Goals,
+    bool? HasFinancialActivity = null);
 
 public sealed record BudgetResult(
     Guid Id,

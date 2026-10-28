@@ -16,9 +16,10 @@ import {
   Plus,
   Plant,
 } from "@phosphor-icons/react";
-import { money, periodLabel } from "@inout/finance";
+import { money, periodLabel, dashboardSetupState } from "@inout/finance";
 import { NewRecordPicker } from "./new-record-picker";
 import { PeriodPicker } from "./period-picker";
+import { DashboardSetupScreen } from "./dashboard-setup-screen";
 import { useFinancialHome } from "../lib/finance/use-financial-home";
 
 const icons = [House, Receipt, Wallet, ChartPie, Target, Gear];
@@ -58,6 +59,21 @@ function DashboardView({
     "Metas",
     "Configurações",
   ];
+  const setup = state.data ? dashboardSetupState(state.data) : "active";
+  if (state.status === "ready" && state.data && setup !== "active")
+    return (
+      <DashboardSetupScreen
+        mode={setup}
+        data={state.data}
+        households={state.households}
+        householdId={state.householdId}
+        period={state.period}
+        currency={chosenCurrency}
+        onCurrency={setCurrency}
+        onHousehold={state.selectHousehold}
+        onRefresh={state.retry}
+      />
+    );
   if (
     state.status !== "ready" ||
     !state.data ||

@@ -35,6 +35,7 @@ public sealed class GetFinancialDashboardTests
             new GetFinancialDashboardQuery(actorUserId, householdId, 2026, 9),
             CancellationToken.None);
 
+        Assert.True(dashboard.HasFinancialActivity is true);
         Assert.Equal(actorUserId, reader.ActorUserId);
         Assert.Equal(householdId, reader.HouseholdId);
         Assert.Equal(new DateOnly(2026, 9, 1), dashboard.PeriodStart);
@@ -59,6 +60,23 @@ public sealed class GetFinancialDashboardTests
         Assert.Equal(to, dashboard.PeriodEnd);
     }
 
+    [Fact]
+    public async Task PreservesInitialBalanceAndExplicitNoActivityWhenPeriodHasNoPostings()
+    {
+        var account = Guid.NewGuid();
+        var reader = new RecordingDashboardReader
+        {
+            Data = new DashboardSourceData(
+                [new DashboardAccountSource(account, "Carteira", "BRL", 0, -500)],
+                [], [], [], [], [], 0, 0, false)
+        };
+        var dashboard = await new GetFinancialDashboard(new MembershipReader(true), reader).ExecuteAsync(
+            new GetFinancialDashboardQuery(Guid.NewGuid(), Guid.NewGuid(), 2026, 9), CancellationToken.None);
+        Assert.True(dashboard.HasFinancialActivity is false);
+        Assert.Equal<long?>(-500L, dashboard.Accounts.Single().InitialBalanceCents);
+        Assert.Equal(0L, dashboard.Accounts.Single().BalanceCents);
+    }
+
     private sealed class MembershipReader(bool isMember) : IHouseholdMembershipReader
     {
         public Task<bool> IsMemberAsync(
@@ -70,6 +88,8 @@ public sealed class GetFinancialDashboardTests
 
     private sealed class RecordingDashboardReader : IDashboardReader
     {
+        public DashboardSourceData Data { get; init; } = new([], [], [], [], [], [], 0, 0, true);
+
         public bool WasCalled { get; private set; }
 
         public Guid ActorUserId { get; private set; }
@@ -85,7 +105,7 @@ public sealed class GetFinancialDashboardTests
             WasCalled = true;
             ActorUserId = actorUserId;
             HouseholdId = householdId;
-            return Task.FromResult(new DashboardSourceData([], [], [], [], [], [], 0, 0));
+            return Task.FromResult(Data);
         }
     }
 }

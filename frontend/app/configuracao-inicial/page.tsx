@@ -1,9 +1,12 @@
+import { Suspense } from "react";
 import { AuthenticatedGate } from "../../components/authenticated-gate";
-import { InitialAccountScreen } from "../../components/initial-account-screen";
+import { CreateAccountScreen } from "../../components/create-account-screen";
 export default function Page() {
   return (
     <AuthenticatedGate>
-      <InitialAccountScreen key="configuracao-inicial" />
+      <Suspense fallback={<p role="status">Carregando conta financeira…</p>}>
+        <CreateAccountScreen />
+      </Suspense>
     </AuthenticatedGate>
   );
 }

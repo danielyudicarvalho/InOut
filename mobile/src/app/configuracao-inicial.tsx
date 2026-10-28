@@ -1,9 +1,9 @@
 import { AuthenticatedGate } from "../auth/AuthenticatedGate";
-import { InitialAccountScreen } from "../screens/InitialAccountScreen";
+import { CreateAccountScreen } from "../screens/CreateAccountScreen";
 export default function Page() {
   return (
     <AuthenticatedGate>
-      <InitialAccountScreen key="configuracao-inicial" />
+      <CreateAccountScreen />
     </AuthenticatedGate>
   );
 }

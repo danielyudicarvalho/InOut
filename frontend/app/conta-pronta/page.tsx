@@ -1,9 +1,12 @@
+import { Suspense } from "react";
 import { AuthenticatedGate } from "../../components/authenticated-gate";
-import { InitialAccountScreen } from "../../components/initial-account-screen";
+import { DashboardScreen } from "../../components/dashboard-screen";
 export default function Page() {
   return (
     <AuthenticatedGate>
-      <InitialAccountScreen key="conta-pronta" initialReady />
+      <Suspense fallback={<p role="status">Carregando finanças…</p>}>
+        <DashboardScreen />
+      </Suspense>
     </AuthenticatedGate>
   );
 }

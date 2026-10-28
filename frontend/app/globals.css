@@ -3481,3 +3481,156 @@ button:disabled {
     padding: 18px;
   }
 }
+
+.setup-dashboard .dashboard-body {
+  min-height: 100dvh;
+  background: linear-gradient(145deg, #fffdf5, #f6f0db);
+}
+.setup-dashboard .dashboard-sidebar > small {
+  color: #6e785c;
+  font-size: 11px;
+}
+.setup-dashboard .dashboard-sidebar nav {
+  margin-top: 24px;
+}
+.setup-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 24px;
+  padding-top: 30px;
+}
+.setup-copy h1 {
+  font:
+    bold clamp(30px, 3.5vw, 44px) Georgia,
+    serif;
+  color: #075532;
+  margin: 18px 0;
+  line-height: 1.12;
+}
+.setup-copy > p {
+  color: #57624f;
+  font-size: 15px;
+  line-height: 1.6;
+}
+.setup-copy > small {
+  display: block;
+  font-size: 12px;
+  color: #6c735e;
+  margin: 10px 0;
+}
+.setup-create {
+  display: block;
+  text-align: center;
+  margin-top: 20px;
+}
+.setup-art {
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+}
+.setup-hint {
+  background: #eee9d3;
+  color: #6b7254;
+  padding: 12px;
+  border-radius: 9px;
+  font-size: 12px !important;
+}
+.setup-account {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid #e5ddc7;
+  background: #fffdf5;
+  border-radius: 12px;
+  padding: 14px;
+  margin-bottom: 8px;
+}
+.setup-account p {
+  margin: 4px 0 0;
+  font-size: 13px;
+}
+.setup-account strong {
+  color: #075532;
+}
+.setup-actions {
+  display: flex;
+  gap: 12px;
+  margin: 16px 0;
+}
+.setup-actions > a {
+  flex: 1;
+  text-align: center;
+  text-decoration: none;
+  padding: 13px;
+  border-radius: 10px;
+  font-size: 14px;
+}
+.setup-expense-action {
+  background: #bf593c;
+  color: white;
+}
+.setup-recent {
+  margin: 20px 0;
+}
+.setup-recent h2 {
+  font-size: 16px;
+}
+.setup-empty-list {
+  border: 1px dashed #ded7c0;
+  border-radius: 12px;
+  padding: 26px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 9px;
+  color: #6c7764;
+  text-align: center;
+}
+.setup-empty-list strong {
+  font-size: 14px;
+  color: #324e37;
+}
+.setup-empty-list p {
+  font-size: 12px;
+  margin: 0;
+}
+.setup-currency {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  margin: 12px 0;
+}
+.setup-dashboard .dashboard-bottom-nav a {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 4px;
+  color: #315b3d;
+  text-decoration: none;
+  font-size: 11px;
+  padding: 7px;
+}
+@media (max-width: 760px) {
+  .setup-hero {
+    grid-template-columns: 1fr;
+    gap: 0;
+    padding-top: 5px;
+  }
+  .setup-art {
+    grid-row: 1;
+    max-height: 230px;
+  }
+  .setup-copy h1,
+  .setup-copy > p {
+    text-align: center;
+  }
+  .setup-copy h1 {
+    font-size: 30px;
+  }
+  .setup-actions {
+    gap: 8px;
+  }
+}

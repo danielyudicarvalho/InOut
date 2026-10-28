@@ -50,7 +50,15 @@ test("authenticated endpoints, dynamic currencies and history entries use API va
       if (url.endsWith("/households"))
         return json([{ id: "home", name: "Casa real" }]);
       if (url.endsWith("/accounts"))
-        return json([{ id: "account", kind: "savings", balanceCents: 99999 }]);
+        return json([
+          {
+            id: "account",
+            name: "Conta",
+            currency: "EUR",
+            kind: "savings",
+            balanceCents: 99999,
+          },
+        ]);
       if (url.includes("/history?"))
         return json([
           {
@@ -306,7 +314,15 @@ test("custom selection sends exact inclusive bounds to dashboard and history", a
     fetcher: async (url) => {
       calls.push(url);
       return url.endsWith("/accounts")
-        ? json([{ id: "account", kind: "checking" }])
+        ? json([
+            {
+              id: "account",
+              name: "Conta",
+              currency: "EUR",
+              kind: "checking",
+              balanceCents: 0,
+            },
+          ])
         : url.includes("/history?")
           ? json([])
           : json({

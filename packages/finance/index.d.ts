@@ -17,6 +17,7 @@ export type Transaction = {
   kind: string;
 };
 export type FinancialAccount = {
+  initialBalance: number | null;
   id: string;
   name: string;
   currency: string;
@@ -26,7 +27,16 @@ export type FinancialAccount = {
   change: number;
   kind: string | null;
 };
+export type SetupAccount = {
+  id: string;
+  name: string;
+  currency: string;
+  balance: number;
+  initialBalance: number | null;
+};
 export type Home = {
+  hasFinancialActivity: boolean | null;
+  setupAccounts: SetupAccount[];
   periodStart: string;
   periodEnd: string;
   period: string;
@@ -89,6 +99,16 @@ export function buildCategorySummary(
   isReconciled?: boolean,
 ): CategorySummary;
 export interface FinanceRepository {
+  accountOptions(
+    householdId: string,
+    signal?: AbortSignal,
+  ): Promise<RecordOptions>;
+  createAccount(
+    householdId: string,
+    body: { [key: string]: unknown },
+    key: string,
+    signal?: AbortSignal,
+  ): Promise<AccountResult>;
   recordOptions(
     householdId: string,
     signal?: AbortSignal,
@@ -263,5 +283,58 @@ export function createRecordStore(
   start: () => () => void;
   retry: () => void;
   edit: (field: keyof RecordFields, value: string) => void;
+  submit: () => Promise<void>;
+};
+
+export function dashboardSetupState(
+  home: Home,
+): "active" | "no-accounts" | "no-movements";
+
+export type AccountFields = {
+  name: string;
+  kind: string;
+  currency: string;
+  balance: string;
+  date: string;
+};
+export type AccountResult = {
+  accountId: string;
+  currency: string;
+  name: string;
+  replayed: boolean;
+};
+export type AccountState = {
+  status: RecordState["status"];
+  kind: "account";
+  fields: AccountFields;
+  options: RecordOptions | null;
+  notice: string;
+  result: AccountResult | null;
+};
+export function initialAccountAmount(value: string): number;
+export function prepareAccount(
+  fields: AccountFields,
+  id: string,
+): { [key: string]: unknown };
+export function createAccountStore(
+  repository: FinanceRepository,
+  householdId: string,
+  currency: string,
+  options: {
+    storage: {
+      load: () => Promise<string | null>;
+      save: (value: string) => Promise<void>;
+      remove: (key: string) => Promise<void>;
+    };
+    randomId: () => string;
+    now?: () => Date;
+    timeoutMs?: number;
+  },
+): {
+  getSnapshot: () => AccountState;
+  subscribe: (listener: () => void) => () => void;
+  start: () => () => void;
+  retry: () => void;
+  edit: (field: keyof AccountFields, value: string) => void;
   submit: () => Promise<void>;
 };

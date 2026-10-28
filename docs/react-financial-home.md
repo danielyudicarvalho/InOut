@@ -217,3 +217,26 @@ confirmation. The client refuses to send when persistence fails. The native
 client uses SDK-compatible expo-crypto for operation UUIDs. After success the
 return action opens the month of the posted date and the account currency, so
 the new record can be seen in its actual period.
+
+## Dashboard setup states and real account creation
+
+The dashboard distinguishes households with no active accounts from households
+with accounts but no posted financial activity. The .NET response now includes
+`hasFinancialActivity`, computed for the whole household independently of the
+selected period and excluding opening-balance transactions. Missing metadata is
+kept unknown by older clients/servers and never inferred from an empty month's
+history. A transfer or reversal is financial activity. Reconciliation failures
+also prevent the first-movement state from replacing an existing dashboard.
+
+Each dashboard account includes its actual `initialBalanceCents`, read from its
+opening-balance ledger entries. Setup cards keep accounts and currencies separate
+and never substitute a historical period balance for the initial balance. If an
+older response omits that field, the card explicitly labels its current balance.
+
+The create-account CTA preserves household context and now uses the real account
+creation endpoint. The account form supports zero and signed initial balances,
+account kind, currency and opening date. Account creation and transaction entry
+share one durable submission lifecycle while retaining separate pending-operation
+namespaces. Generated account IDs and operation keys are restored unchanged on
+retry. The old `/conta-pronta` route now reads the actual dashboard instead of
+rendering an unverified success state. No new database tables are required.

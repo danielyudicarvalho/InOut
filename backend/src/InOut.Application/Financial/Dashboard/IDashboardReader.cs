@@ -19,13 +19,15 @@ public sealed record DashboardSourceData(
     IReadOnlyList<DashboardGoalSource> Goals,
     IReadOnlyList<DashboardIncomeSourceSource> IncomeSources,
     long PostedTransactionCount,
-    long EntryTransactionCount);
+    long EntryTransactionCount,
+    bool? HasFinancialActivity = null);
 
 public sealed record DashboardAccountSource(
     Guid Id,
     string Name,
     string Currency,
-    long BalanceCents);
+    long BalanceCents,
+    long? InitialBalanceCents = null);
 
 public sealed record DashboardCategorySource(Guid Id, string Name, Guid? ParentId);
 

@@ -55,7 +55,13 @@ function date(value) {
 function dashboard(value) {
   if (!value || typeof value.isReconciled !== "boolean")
     throw new FinanceFailure("invalid");
+  if (
+    value.hasFinancialActivity != null &&
+    typeof value.hasFinancialActivity !== "boolean"
+  )
+    throw new FinanceFailure("invalid");
   return {
+    hasFinancialActivity: value.hasFinancialActivity ?? null,
     periodStart: date(value.periodStart),
     periodEnd: date(value.periodEnd),
     isReconciled: value.isReconciled,
@@ -71,6 +77,10 @@ function dashboard(value) {
       name: string(row.accountName),
       currency: currency(row.currency),
       balance: integer(row.balanceCents),
+      initialBalance:
+        row.initialBalanceCents == null
+          ? null
+          : integer(row.initialBalanceCents),
       inflow: integer(row.inflowCents),
       outflow: integer(row.outflowCents),
       change: integer(row.netChangeCents),
@@ -288,6 +298,34 @@ export function createFinanceRepository({
     expense(householdId, period, code, offset, signal) {
       return breakdown("expense", householdId, period, code, offset, signal);
     },
+    async accountOptions(householdId, signal) {
+      const homes = array(await get("/api/v1/households", signal));
+      if (!homes.some((row) => row.id === householdId))
+        throw new FinanceFailure("forbidden");
+      return { accounts: [], categories: [], sources: [] };
+    },
+    async createAccount(householdId, body, key, signal) {
+      if (!validOperationKey(key)) throw new FinanceFailure("validation");
+      const result = await get(
+        `/api/v1/households/${encodeURIComponent(householdId)}/ledger/accounts`,
+        signal,
+        { body, key },
+      );
+      if (
+        !result ||
+        typeof result.replayed !== "boolean" ||
+        !result.account ||
+        typeof result.account.id !== "string" ||
+        result.account.id.toLowerCase() !== body.id.toLowerCase()
+      )
+        throw new FinanceFailure("invalid");
+      return {
+        accountId: string(result.account.id),
+        currency: currency(result.account.currency),
+        name: string(result.account.name),
+        replayed: result.replayed,
+      };
+    },
     async recordOptions(householdId, signal) {
       const homes = array(await get("/api/v1/households", signal));
       if (!homes.some((row) => row.id === householdId))
@@ -441,6 +479,17 @@ export function createFinanceRepository({
         .sort((a, b) => b.date.localeCompare(a.date));
       return {
         ...selected,
+        setupAccounts: array(rawAccounts)
+          .filter((row) => row.archivedAt == null)
+          .map((row) => ({
+            id: string(row.id),
+            name: string(row.name),
+            currency: currency(row.currency),
+            balance: integer(row.balanceCents),
+            initialBalance:
+              selected.accounts.find((account) => account.id === row.id)
+                ?.initialBalance ?? null,
+          })),
         accounts: selected.accounts.map((account) => ({
           ...account,
           kind: kinds.get(account.id) ?? null,
@@ -974,26 +1023,18 @@ export function prepareRecord(kind, fields, options) {
     ...(kind === "income" ? { incomeSourceId: fields.sourceId || null } : {}),
   };
 }
-export function createRecordStore(
+function createWriteStore(
   repository,
   householdId,
   initialKind,
   preferredCurrency,
-  { storage, randomId, now = () => new Date(), timeoutMs = 20000 },
+  { storage, randomId, now = () => new Date(), timeoutMs = 20000, spec },
 ) {
   const today = now();
   let state = {
     status: "loading",
     kind: initialKind,
-    fields: {
-      accountId: "",
-      destinationId: "",
-      categoryId: "",
-      sourceId: "",
-      amount: "",
-      date: `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`,
-      description: "",
-    },
+    fields: spec.initialFields(today, preferredCurrency),
     options: null,
     notice: "",
     result: null,
@@ -1037,52 +1078,37 @@ export function createRecordStore(
         if (
           pending.version !== 1 ||
           pending.householdId !== householdId ||
-          !["income", "expense", "transfer"].includes(pending.kind) ||
+          !spec.kinds.includes(pending.kind) ||
           !validOperationKey(pending.key) ||
           !Number.isFinite(age) ||
           age < 0 ||
           age > 30 * 86400000 ||
-          !pending.body ||
-          !Number.isSafeInteger(pending.body.amountCents) ||
-          pending.body.amountCents <= 0
+          !pending.body
         )
           throw new FinanceFailure("pending");
-        currency(pending.body.currency);
-        rangePeriod(pending.body.occurredOn, pending.body.occurredOn);
+        spec.restore(pending.body);
       }
-      const options = await repository.recordOptions(
+      const options = await spec.options(
+        repository,
         householdId,
         controller.signal,
       );
       if (!active || id !== version) return;
       if (pending) {
-        const body = pending.body,
-          cents = BigInt(body.amountCents);
         publish({
           status: "uncertain",
           kind: pending.kind,
           options,
-          fields: {
-            accountId: body.accountId ?? body.sourceAccountId ?? "",
-            destinationId: body.destinationAccountId ?? "",
-            categoryId: body.categoryId ?? "",
-            sourceId: body.incomeSourceId ?? "",
-            amount: `${cents / 100n},${String(cents % 100n).padStart(2, "0")}`,
-            date: body.occurredOn,
-            description: body.description ?? "",
-          },
+          fields: spec.restore(pending.body),
           notice: financeMessage(new FinanceFailure("pending")),
         });
       } else {
-        if (!["income", "expense", "transfer"].includes(initialKind))
+        if (!spec.kinds.includes(initialKind))
           throw new FinanceFailure("validation");
-        const account =
-          options.accounts.find((row) => row.currency === preferredCurrency) ??
-          options.accounts[0];
         publish({
           status: "ready",
           options,
-          fields: { ...state.fields, accountId: account?.id ?? "" },
+          fields: spec.initialize(state.fields, options, preferredCurrency),
         });
       }
     } catch (error) {
@@ -1106,7 +1132,8 @@ export function createRecordStore(
     let body, key;
     try {
       body =
-        pending?.body ?? prepareRecord(state.kind, state.fields, state.options);
+        pending?.body ??
+        spec.prepare(state.kind, state.fields, state.options, randomId);
       key = pending?.key ?? randomId();
       if (!validOperationKey(key)) throw new FinanceFailure("configuration");
     } catch (error) {
@@ -1146,7 +1173,8 @@ export function createRecordStore(
           });
         }
       }, timeoutMs);
-      const result = await repository.postRecord(
+      const result = await spec.post(
+        repository,
         householdId,
         pending.kind,
         pending.body,
@@ -1218,4 +1246,153 @@ export function createRecordStore(
     },
     submit,
   };
+}
+
+export function dashboardSetupState(home) {
+  if (!home || !Array.isArray(home.setupAccounts)) return "active";
+  if (home.setupAccounts.length === 0 && home.accounts.length === 0)
+    return "no-accounts";
+  if (
+    home.setupAccounts.length > 0 &&
+    home.hasFinancialActivity === false &&
+    home.isReconciled &&
+    !home.transactions.some(
+      (row) => row.kind.toLowerCase() !== "openingbalance",
+    )
+  )
+    return "no-movements";
+  return "active";
+}
+
+function localRecordDate(today) {
+  return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+}
+function restoreRecord(body) {
+  const amount = integer(body.amountCents);
+  if (amount <= 0) throw new FinanceFailure("pending");
+  currency(body.currency);
+  rangePeriod(body.occurredOn, body.occurredOn);
+  const cents = BigInt(amount);
+  return {
+    accountId: body.accountId ?? body.sourceAccountId ?? "",
+    destinationId: body.destinationAccountId ?? "",
+    categoryId: body.categoryId ?? "",
+    sourceId: body.incomeSourceId ?? "",
+    amount: `${cents / 100n},${String(cents % 100n).padStart(2, "0")}`,
+    date: body.occurredOn,
+    description: body.description ?? "",
+  };
+}
+const recordWriteSpec = {
+  kinds: ["income", "expense", "transfer"],
+  initialFields: (today) => ({
+    accountId: "",
+    destinationId: "",
+    categoryId: "",
+    sourceId: "",
+    amount: "",
+    date: localRecordDate(today),
+    description: "",
+  }),
+  initialize: (fields, options, code) => ({
+    ...fields,
+    accountId:
+      (
+        options.accounts.find((row) => row.currency === code) ??
+        options.accounts[0]
+      )?.id ?? "",
+  }),
+  restore: restoreRecord,
+  options: (repository, household, signal) =>
+    repository.recordOptions(household, signal),
+  prepare: (kind, fields, options) => prepareRecord(kind, fields, options),
+  post: (repository, household, kind, body, key, signal) =>
+    repository.postRecord(household, kind, body, key, signal),
+};
+export function createRecordStore(repository, household, kind, code, options) {
+  return createWriteStore(repository, household, kind, code, {
+    ...options,
+    spec: recordWriteSpec,
+  });
+}
+export function initialAccountAmount(value) {
+  if (
+    typeof value !== "string" ||
+    !/^-?\d{1,16}([,.]\d{1,2})?$/.test(value.trim())
+  )
+    throw new FinanceFailure("validation");
+  const clean = value.trim(),
+    negative = clean.startsWith("-"),
+    [whole, fraction = ""] = (negative ? clean.slice(1) : clean)
+      .replace(",", ".")
+      .split(".");
+  const cents =
+      (BigInt(whole) * 100n + BigInt(fraction.padEnd(2, "0"))) *
+      (negative ? -1n : 1n),
+    amount = Number(cents);
+  if (!Number.isSafeInteger(amount)) throw new FinanceFailure("validation");
+  return amount;
+}
+export function prepareAccount(fields, id) {
+  const name = string(fields.name).trim(),
+    kind = string(fields.kind);
+  if (
+    !name ||
+    name.length > 80 ||
+    !["cash", "checking", "savings", "investment", "other"].includes(kind) ||
+    !validOperationKey(id)
+  )
+    throw new FinanceFailure("validation");
+  let accountCurrency;
+  try {
+    accountCurrency = currency(string(fields.currency).trim().toUpperCase());
+    rangePeriod(fields.date, fields.date);
+  } catch {
+    throw new FinanceFailure("validation");
+  }
+  return {
+    id: id.toLowerCase(),
+    name,
+    kind,
+    currency: accountCurrency,
+    initialBalanceCents: initialAccountAmount(fields.balance),
+    openingDate: fields.date,
+  };
+}
+function restoreAccount(body) {
+  const cents = BigInt(integer(body.initialBalanceCents)),
+    absolute = cents < 0n ? -cents : cents;
+  const fields = {
+    name: body.name,
+    kind: body.kind,
+    currency: body.currency,
+    balance: `${cents < 0n ? "-" : ""}${absolute / 100n},${String(absolute % 100n).padStart(2, "0")}`,
+    date: body.openingDate,
+  };
+  prepareAccount(fields, body.id);
+  return fields;
+}
+const accountWriteSpec = {
+  kinds: ["account"],
+  initialFields: (today, code) => ({
+    name: "",
+    kind: "checking",
+    currency: code || "BRL",
+    balance: "0,00",
+    date: localRecordDate(today),
+  }),
+  initialize: (fields) => fields,
+  restore: restoreAccount,
+  options: (repository, household, signal) =>
+    repository.accountOptions(household, signal),
+  prepare: (kind, fields, options, randomId) =>
+    prepareAccount(fields, randomId()),
+  post: (repository, household, kind, body, key, signal) =>
+    repository.createAccount(household, body, key, signal),
+};
+export function createAccountStore(repository, household, code, options) {
+  return createWriteStore(repository, household, "account", code, {
+    ...options,
+    spec: accountWriteSpec,
+  });
 }
