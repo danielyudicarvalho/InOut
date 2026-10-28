@@ -1,13 +1,13 @@
 "use client";
 import { ClassificationDialog } from "./classification-dialog";
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { Wallet, Users } from "@phosphor-icons/react";
-import { canReverse, money, historyKind, displayDate } from "@inout/finance";
+import { canReverse, money, historyKind } from "@inout/finance";
 import { BrandLogo } from "./brand-logo";
-import { DateSelector } from "./auxiliary-selector";
+import { ReversalDialog } from "./reversal-dialog";
 import { useReversal } from "../lib/finance/use-reversal";
 export function TransactionDetailScreen() {
   const p = useSearchParams(),
@@ -335,6 +335,7 @@ function DetailView({
         ((!opening && canReverse(detail)) || pending || saving) &&
         (confirm || (pending && !dismissed) || saving) && (
           <ReversalDialog
+            detail={detail}
             date={state.fields.date}
             description={state.fields.description}
             pending={pending}
@@ -349,101 +350,5 @@ function DetailView({
           />
         )}
     </main>
-  );
-}
-function ReversalDialog({
-  date,
-  description,
-  pending,
-  saving,
-  notice,
-  onEdit,
-  onClose,
-  onConfirm,
-}: {
-  date: string;
-  description: string;
-  pending: boolean;
-  saving: boolean;
-  notice: string;
-  onEdit: (field: "date" | "description", value: string) => void;
-  onClose: () => void;
-  onConfirm: () => void;
-}) {
-  const ref = useRef<HTMLDialogElement>(null);
-  useEffect(() => {
-    const el = ref.current;
-    el?.showModal();
-    return () => el?.close();
-  }, []);
-  return (
-    <dialog
-      ref={ref}
-      className="aux-dialog"
-      aria-labelledby="reversal-title"
-      onCancel={(e) => {
-        if (saving) e.preventDefault();
-        else onClose();
-      }}
-    >
-      <div className="aux-content">
-        <header>
-          <strong id="reversal-title">
-            {pending ? "Estorno com confirmação pendente" : "Confirmar estorno"}
-          </strong>
-          {!saving && (
-            <button
-              type="button"
-              aria-label="Fechar confirmação"
-              onClick={onClose}
-            >
-              ×
-            </button>
-          )}
-        </header>
-        <p>
-          O original será mantido. Uma nova movimentação compensará o valor em
-          todas as contas envolvidas.
-        </p>
-        {notice && <p role="alert">{notice}</p>}
-        <label>
-          Data do estorno
-          <DateSelector
-            value={date}
-            disabled={pending || saving}
-            onChange={(value) => onEdit("date", value)}
-          />
-        </label>
-        <label>
-          Descrição (opcional)
-          <textarea
-            maxLength={500}
-            disabled={pending || saving}
-            value={description}
-            onChange={(e) => onEdit("description", e.target.value)}
-          />
-        </label>
-        <small>Data selecionada: {displayDate(date)}</small>
-        <footer>
-          {!saving && (
-            <button type="button" onClick={onClose}>
-              {pending ? "Fechar sem descartar a tentativa" : "Cancelar"}
-            </button>
-          )}
-          <button
-            type="button"
-            className="primary"
-            disabled={saving}
-            onClick={onConfirm}
-          >
-            {saving
-              ? "Estornando…"
-              : pending
-                ? "Verificar mesma tentativa"
-                : "Confirmar estorno"}
-          </button>
-        </footer>
-      </div>
-    </dialog>
   );
 }

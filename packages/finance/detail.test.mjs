@@ -4,6 +4,7 @@ import {
   createFinanceRepository,
   createReversalStore,
   canReverse,
+  reversalEffects,
   FinanceFailure,
 } from "./index.mjs";
 const id = "d6b5efbd-1cda-4818-84c7-a682e1078592",
@@ -291,13 +292,14 @@ test("confirming a transfer reversal submits one transaction operation, never se
   const stop = store.start();
   await tick();
   store.edit("date", "2026-10-28");
+  store.edit("description", " Transferência duplicada ");
   assert.equal(calls.length, 0);
   await Promise.all([store.submit(), store.submit()]);
   assert.equal(calls.length, 1);
   assert.deepEqual(calls[0], [
     "h",
     id,
-    { occurredOn: "2026-10-28", description: null },
+    { occurredOn: "2026-10-28", description: "Transferência duplicada" },
     key,
   ]);
   assert.equal(store.getSnapshot().status, "success");
@@ -352,4 +354,96 @@ test("opening balance detail rejects multiple account postings", async () => {
     ]).transaction("h", id),
     { code: "invalid" },
   );
+});
+
+test("reversal preview compensates the signed original in every account without a net-zero transfer amount", () => {
+  assert.deepEqual(
+    reversalEffects({
+      postings: [{ accountName: "Principal", currency: "BRL", amount: -32000 }],
+    }),
+    [{ accountName: "Principal", currency: "BRL", amount: 32000 }],
+  );
+  assert.deepEqual(
+    reversalEffects({
+      postings: [{ accountName: "Principal", currency: "BRL", amount: 150000 }],
+    }),
+    [{ accountName: "Principal", currency: "BRL", amount: -150000 }],
+  );
+  assert.deepEqual(
+    reversalEffects({
+      postings: [
+        { accountName: "Principal", currency: "BRL", amount: -50000 },
+        { accountName: "Reserva", currency: "BRL", amount: 50000 },
+      ],
+    }).map((p) => p.amount),
+    [50000, -50000],
+  );
+});
+test("new reversal requires a nonblank reason and never persists or writes while it is missing", async () => {
+  const saved = storage();
+  let writes = 0;
+  const store = createReversalStore(
+    {
+      transaction: async () => ({ kind: "expense", status: "posted" }),
+      reverse: async () => {
+        writes++;
+      },
+    },
+    "h",
+    id,
+    { storage: saved, randomId: () => key },
+  );
+  const stop = store.start();
+  await tick();
+  for (const reason of ["", "   "]) {
+    store.edit("description", reason);
+    await store.submit();
+    assert.equal(writes, 0);
+    assert.equal(saved.peek(), null);
+    assert.match(store.getSnapshot().notice, /motivo do estorno/);
+  }
+  stop();
+});
+test("a legacy pending reversal without a reason still replays its saved payload rather than creating another operation", async () => {
+  const saved = storage(),
+    calls = [];
+  await saved.save(
+    JSON.stringify({
+      version: 1,
+      householdId: "h",
+      kind: "reversal",
+      body: { transactionId: id, occurredOn: "2026-10-28", description: null },
+      key,
+      createdAt: new Date().getTime(),
+    }),
+  );
+  const store = createReversalStore(
+    {
+      transaction: async () => ({ kind: "expense", status: "reversed" }),
+      reverse: async (...args) => {
+        calls.push(args.slice(0, 4));
+        return { transactionId: reverseId, replayed: true };
+      },
+    },
+    "h",
+    id,
+    {
+      storage: saved,
+      randomId: () => {
+        throw Error("must reuse saved key");
+      },
+    },
+  );
+  const stop = store.start();
+  await tick();
+  assert.equal(store.getSnapshot().status, "uncertain");
+  await store.submit();
+  assert.deepEqual(calls[0], [
+    "h",
+    id,
+    { occurredOn: "2026-10-28", description: null },
+    key,
+  ]);
+  assert.equal(store.getSnapshot().status, "success");
+  stop();
 });

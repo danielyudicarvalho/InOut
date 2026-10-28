@@ -4978,3 +4978,96 @@ button:disabled {
   flex: 1;
   min-height: 44px;
 }
+
+.reversal-dialog {
+  width: min(480px, calc(100vw - 28px));
+}
+.reversal-dialog .aux-content {
+  gap: 12px;
+}
+.reversal-dialog header {
+  align-items: flex-start;
+  gap: 10px;
+}
+.reversal-dialog header > div {
+  flex: 1;
+  text-align: center;
+}
+.reversal-dialog h2 {
+  margin: 3px 0 5px;
+  font-size: 23px;
+  color: #173f31;
+}
+.reversal-dialog p,
+.reversal-dialog small {
+  font-size: 12px;
+  line-height: 1.6;
+  margin: 3px 0;
+}
+.reversal-art {
+  width: 100%;
+  height: 130px;
+  object-fit: contain;
+}
+.reversal-original {
+  padding: 13px;
+  border: 1px solid #e6deca;
+  border-radius: 9px;
+}
+.reversal-original h3,
+.reversal-effect h3 {
+  margin: 0 0 7px;
+  font-size: 13px;
+  color: #234c36;
+}
+.reversal-original > div {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 14px;
+}
+.reversal-effect {
+  padding: 13px;
+  border-radius: 9px;
+  background: #e9edd9;
+}
+.reversal-bank-note {
+  padding: 11px;
+  border-radius: 8px;
+  background: #fbefcf;
+}
+.reversal-dialog label {
+  display: grid;
+  gap: 7px;
+  font-size: 13px;
+  color: #234c36;
+}
+.reversal-dialog label b {
+  color: #ac432f;
+}
+.reversal-date {
+  font-size: 12px;
+  color: #68745d;
+}
+.reversal-date summary {
+  cursor: pointer;
+  padding: 10px 0;
+}
+.reversal-dialog footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.reversal-dialog footer button {
+  flex: 1;
+  min-height: 44px;
+}
+.reversal-dialog .reversal-confirm {
+  background: #ac432f;
+  color: white;
+  border-color: #ac432f;
+}
+.reversal-dialog .reversal-confirm:disabled {
+  opacity: 0.65;
+}

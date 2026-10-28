@@ -213,6 +213,9 @@ export type TransactionDetail = {
   rows: { label: string; value: string }[];
   reversalOf: string | null;
 };
+export function reversalEffects(
+  detail: TransactionDetail,
+): { accountName: string; currency: string; amount: number }[];
 export function canReverse(detail: TransactionDetail | null): boolean;
 export function createReversalStore(
   repository: FinanceRepository,

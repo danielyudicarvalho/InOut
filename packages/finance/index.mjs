@@ -6,6 +6,8 @@ export class FinanceFailure extends Error {
 }
 export function financeMessage(error) {
   const messages = {
+    reversal_reason:
+      "Informe o motivo do estorno para manter o histórico da correção.",
     not_found: "Lançamento não encontrado nesta residência.",
     validation: "Confira os dados do lançamento e tente novamente.",
     conflict:
@@ -1973,6 +1975,7 @@ export function createReversalStore(
         if (!canReverse(detail)) throw new FinanceFailure("validation");
         rangePeriod(fields.date, fields.date);
         const description = fields.description.trim();
+        if (!description) throw new FinanceFailure("reversal_reason");
         if (description.length > 500) throw new FinanceFailure("validation");
         return {
           transactionId,
@@ -2103,4 +2106,12 @@ export function classificationChoices(options) {
       disabled: true,
     });
   return { categories, sources };
+}
+
+export function reversalEffects(detail) {
+  return detail.postings.map((p) => ({
+    accountName: p.accountName,
+    currency: p.currency,
+    amount: -p.amount,
+  }));
 }

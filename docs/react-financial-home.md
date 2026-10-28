@@ -306,3 +306,7 @@ The canonical transaction view renders opening balances as initial positions, pr
 ### Classification corrections
 
 The two detail adapters expose metadata correction via a dialog/sheet backed by the shared classification store. Identity-validated local persistence is scoped separately from financial creation/reversal operations. The repository issues a metadata-only PATCH with the durable key; classification rules and catalog validation stay in shared/domain layers. The backend uses the existing idempotency coordinator in the same database transaction as metadata and audit updates, and reuses its history query with an exact transaction filter to construct the stored response before commit. Nullable source clears the optional association. No account, amount, currency or occurrence-date update is part of this operation. This preserves the dependency direction described in the project's Clean Architecture reference.
+
+### Reversal confirmation
+
+Confirmation is rendered by separate web/native adapters over the existing reversal store. Shared `reversalEffects` negates each original posting for explanation; it never submits financial data. New submissions require a reason in the existing description field. Pending bodies bypass new-operation validation so older uncertain attempts replay unchanged. The existing idempotent .NET reversal remains the authoritative atomic operation for all involved accounts.

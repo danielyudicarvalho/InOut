@@ -3,11 +3,9 @@ import { useState } from "react";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import {
   Image,
-  Modal,
   Pressable,
   ScrollView,
   Text,
-  TextInput,
   View,
   StyleSheet,
 } from "react-native";
@@ -15,7 +13,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
 import { canReverse, money, historyKind } from "@inout/finance";
 import { useReversal } from "../finance/use-reversal";
-import { DateSelector } from "../components/AuxiliarySelector";
+import { ReversalSheet } from "../components/ReversalSheet";
 import { theme as t } from "../theme";
 export function TransactionDetailScreen() {
   const p = useLocalSearchParams();
@@ -354,73 +352,21 @@ function DetailView({
           }}
         />
       )}
-      <Modal
-        transparent
-        visible={
-          !done &&
-          ((!opening && canReverse(detail)) || pending || saving) &&
-          (confirm || (pending && !dismissed) || saving)
-        }
-        animationType="slide"
-        onRequestClose={close}
-      >
-        <View style={s.overlay}>
-          <View style={s.sheet} accessibilityViewIsModal>
-            <ScrollView
-              keyboardShouldPersistTaps="handled"
-              contentContainerStyle={{ gap: 12 }}
-            >
-              <Text style={s.heading}>
-                {pending
-                  ? "Estorno com confirmação pendente"
-                  : "Confirmar estorno"}
-              </Text>
-              <Text style={s.value}>
-                O registro original será mantido. Uma nova movimentação
-                compensará o valor em todas as contas envolvidas.
-              </Text>
-              {state.notice && (
-                <Text accessibilityRole="alert">{state.notice}</Text>
-              )}
-              <Text style={s.label}>Data do estorno</Text>
-              <DateSelector
-                value={state.fields.date}
-                disabled={pending || saving}
-                onChange={(value) => state.edit("date", value)}
-              />
-              <Text style={s.label}>Descrição (opcional)</Text>
-              <TextInput
-                accessibilityLabel="Descrição do estorno"
-                editable={!pending && !saving}
-                multiline
-                maxLength={500}
-                style={s.input}
-                value={state.fields.description}
-                onChangeText={(value) => state.edit("description", value)}
-              />
-              <Pressable
-                accessibilityRole="button"
-                disabled={saving}
-                style={[s.button, s.primary]}
-                onPress={() => void state.submit()}
-              >
-                <Text style={{ color: "white" }}>
-                  {saving
-                    ? "Estornando…"
-                    : pending
-                      ? "Verificar mesma tentativa"
-                      : "Confirmar estorno"}
-                </Text>
-              </Pressable>
-              <Pressable disabled={saving} style={s.button} onPress={close}>
-                <Text>
-                  {pending ? "Fechar sem descartar a tentativa" : "Cancelar"}
-                </Text>
-              </Pressable>
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
+      {!done &&
+        ((!opening && canReverse(detail)) || pending || saving) &&
+        (confirm || (pending && !dismissed) || saving) && (
+          <ReversalSheet
+            detail={detail}
+            date={state.fields.date}
+            description={state.fields.description}
+            pending={pending}
+            saving={saving}
+            notice={state.notice}
+            onEdit={state.edit}
+            onClose={close}
+            onConfirm={() => void state.submit()}
+          />
+        )}
     </SafeAreaView>
   );
 }
@@ -488,27 +434,4 @@ const s = StyleSheet.create({
   primary: { backgroundColor: "#315f3b" },
   reverse: { borderColor: "#bd513c" },
   notice: { color: "#94502d", fontSize: 13, lineHeight: 20 },
-  overlay: {
-    flex: 1,
-    backgroundColor: "#14231e66",
-    justifyContent: "flex-end",
-  },
-  sheet: {
-    maxHeight: "90%",
-    padding: 22,
-    paddingBottom: 32,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    backgroundColor: t.cream,
-  },
-  input: {
-    minHeight: 80,
-    borderWidth: 1,
-    borderColor: t.line,
-    borderRadius: 8,
-    padding: 12,
-    backgroundColor: "#fffdf5",
-    color: t.ink,
-    textAlignVertical: "top",
-  },
 });
