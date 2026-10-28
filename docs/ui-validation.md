@@ -665,3 +665,15 @@ Implementados seletores com busca e item selecionado para conta, categoria, subc
 Criação inline de conta com saldo inicial zero, categoria, subcategoria e fonte pelos endpoints reais existentes. A tentativa é persistida antes do envio, com namespace próprio por ator/residência/tipo/contexto; confirmação explícita antes de usar o item. Fonte recupera uma resposta incerta por UUID e correspondência do item. Atualização do catálogo preserva os campos da movimentação e a conta selecionada.
 
 Validação: 97 testes web e 90 mobile passaram; formatação, lint e tipagem de ambas plataformas e build Next.js passaram. Os seis testes novos cobrem busca com acentos, calendário bissexto e virada de ano, tentativa durável com ID/chave estáveis, pai incompatível, saldo inicial zero, resposta perdida de fonte sem POST duplicado e preservação do lançamento ao atualizar opções. Sem criação real de registros na validação. Integração .NET/Postgres, QA visual no navegador/dispositivo e exports nativos não executados.
+
+## Revise seu lançamento — 2026-10-28
+
+Tela de revisão implementada nos formulários web e mobile, com valor real, resumo de conta/moeda/classificação/data/descrição, edição dos dados preservados, aviso antes de confirmar e ação de confirmação. Aplicável a saída, entrada e transferência; a saída usa o destaque terracota da referência. Antes de confirmar, o status é Ainda não registrado; em operação incerta é Confirmação pendente, com verificação pela mesma chave. Envio em andamento bloqueia confirmação duplicada. Sucesso só aparece após resposta confirmada do backend.
+
+Testes compartilhados novos: resumo de despesa com categoria/subcategoria e descrição normalizada; receita e transferência com seus campos próprios; rejeição de valores/categorias/contas inválidos; revisão e edição sem persistência nem POST; confirmação explícita com os valores revisados. A suíte web passou com 101 testes e o build Next.js passou. Sem lançamento financeiro real, integração .NET/Postgres ou QA visual em navegador/dispositivo. Exports nativos não executados.
+
+Arte própria criada com imagegen integrado e inspecionada, preparada com transparência em `frontend/public/images/pipo-review.webp` e `mobile/assets/pipo-review.webp`.
+
+Prompt final: “Transparent wide watercolor storybook hero for Ninho household finance REVIEW BEFORE CONFIRMATION screen. Pipo, fluffy golden-yellow bird with green leaf tuft, orange beak and rust-red scarf, carefully reviewing a blank notebook checklist with a pencil, beside a cream mug and small sage leafy plant. Warm cream honey terracotta sage palette, cozy attentive expression, whole character and objects, generous transparent margins. No words letters numbers logos or UI. A single simple green check mark on the notebook is allowed.”
+
+Validação mobile concluída: 94 testes, formatação, lint e tipagem passaram. As mesmas verificações de código também passaram no web.

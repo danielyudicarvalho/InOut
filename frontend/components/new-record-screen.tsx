@@ -1,11 +1,18 @@
 "use client";
 import { AuxiliarySelector, DateSelector } from "./auxiliary-selector";
 import { BrandLogo } from "./brand-logo";
-import { type FormEvent } from "react";
+import { useState, useEffect, type FormEvent } from "react";
+import { RecordReviewPanel } from "./record-review";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { type RecordKind } from "@inout/finance";
+import {
+  recordReview,
+  financeMessage,
+  type RecordKind,
+  type RecordFields,
+  type RecordReview,
+} from "@inout/finance";
 import { useFinancialHome } from "../lib/finance/use-financial-home";
 import { useRecord } from "../lib/finance/use-record";
 const titles = {
@@ -93,6 +100,19 @@ function RecordForm({
   householdName: string;
 }) {
   const state = useRecord(household, kind, currency);
+  const [reviewing, setReviewing] = useState(false),
+    [reviewError, setReviewError] = useState("");
+  const [focusField, setFocusField] = useState<keyof RecordFields | null>(null);
+  useEffect(() => {
+    if (!reviewing && focusField) {
+      document
+        .querySelector<HTMLElement>(
+          `[data-record-field="${focusField}"] button, [data-record-field="${focusField}"] input, [data-record-field="${focusField}"] textarea`,
+        )
+        ?.focus();
+    }
+  }, [reviewing, focusField]);
+
   const back = `/lancamentos?${new URLSearchParams({ household, period, currency })}`;
   if (state.status === "loading" || state.status === "error" || !state.options)
     return (
@@ -145,10 +165,31 @@ function RecordForm({
       state.retry();
     },
   });
+  const showReview =
+    (reviewing && state.status !== "success") ||
+    state.status === "uncertain" ||
+    state.status === "saving";
+  let summary: RecordReview | null = null;
+  if (showReview) {
+    try {
+      summary = recordReview(state.kind, fields, options);
+    } catch {
+      /* A pending operation can reference an archived option. Its original payload remains available for retry. */
+    }
+  }
+  function review() {
+    try {
+      recordReview(state.kind, fields, options);
+      setReviewError("");
+      setReviewing(true);
+    } catch (error) {
+      setReviewError(financeMessage(error));
+    }
+  }
   const successHref = `/inicio?${new URLSearchParams({ household, period: fields.date.slice(0, 7), currency: account?.currency ?? currency })}`;
   function submit(event: FormEvent) {
     event.preventDefault();
-    void state.submit();
+    review();
   }
   return (
     <main
@@ -186,36 +227,60 @@ function RecordForm({
       <div className="record-main">
         <section className="dashboard-panel record-form-panel">
           <header>
-            <Link className="balance-back" href={back}>
-              ‹ Lançamentos
+            <Link
+              className="balance-back"
+              href={back}
+              onClick={(e) => {
+                if (showReview && state.status === "ready") {
+                  e.preventDefault();
+                  setReviewing(false);
+                  setFocusField("amount");
+                }
+              }}
+            >
+              {showReview && state.status === "ready"
+                ? `‹ ${titles[state.kind]}`
+                : "‹ Lançamentos"}
             </Link>
             <Image
               src={
-                state.kind === "income"
-                  ? "/images/pipo-income-form.webp"
-                  : state.kind === "expense"
-                    ? "/images/pipo-expense-form.webp"
-                    : "/images/pipo-transfer-form.webp"
+                showReview
+                  ? "/images/pipo-review.webp"
+                  : state.kind === "income"
+                    ? "/images/pipo-income-form.webp"
+                    : state.kind === "expense"
+                      ? "/images/pipo-expense-form.webp"
+                      : "/images/pipo-transfer-form.webp"
               }
               width={600}
               height={300}
               sizes="260px"
               alt={
-                state.kind === "income"
-                  ? "Pipo guardando uma moeda em uma bolsinha"
-                  : state.kind === "expense"
-                    ? "Pipo conferindo as compras e o recibo"
-                    : "Pipo levando uma moeda pela ponte entre duas contas"
+                showReview
+                  ? "Pipo revisando uma lista no caderno"
+                  : state.kind === "income"
+                    ? "Pipo guardando uma moeda em uma bolsinha"
+                    : state.kind === "expense"
+                      ? "Pipo conferindo as compras e o recibo"
+                      : "Pipo levando uma moeda pela ponte entre duas contas"
               }
             />
             <p>{householdName}</p>
-            <h1>{titles[state.kind]}</h1>
+            <h1>
+              {state.status === "success"
+                ? "Lançamento registrado"
+                : showReview
+                  ? "Revise seu lançamento"
+                  : titles[state.kind]}
+            </h1>
             <p>
-              {state.kind === "transfer"
-                ? "Mova dinheiro entre as contas do seu lar."
-                : state.kind === "income"
-                  ? "Registre um dinheiro que entrou no seu lar."
-                  : "Registre um gasto do seu lar."}
+              {showReview
+                ? "Confira os dados antes de confirmar."
+                : state.kind === "transfer"
+                  ? "Mova dinheiro entre as contas do seu lar."
+                  : state.kind === "income"
+                    ? "Registre um dinheiro que entrou no seu lar."
+                    : "Registre um gasto do seu lar."}
             </p>
           </header>
           {state.status === "success" ? (
@@ -225,8 +290,25 @@ function RecordForm({
                 Ver o período do lançamento
               </Link>
             </div>
+          ) : showReview ? (
+            <RecordReviewPanel
+              kind={state.kind}
+              summary={summary}
+              status={state.status}
+              notice={state.notice}
+              onEdit={(field) => {
+                setReviewing(false);
+                setFocusField(field ?? "amount");
+              }}
+              onConfirm={() => void state.submit()}
+            />
           ) : (
             <form onSubmit={submit}>
+              {reviewError && (
+                <p role="alert" className="record-notice">
+                  {reviewError}
+                </p>
+              )}
               {state.notice ? (
                 <p role="alert" className="record-notice">
                   {state.notice}
@@ -242,7 +324,7 @@ function RecordForm({
                 </p>
               ) : null}
               <fieldset disabled={locked}>
-                <label className="record-account">
+                <label className="record-account" data-record-field="accountId">
                   {state.kind === "transfer"
                     ? "Conta de origem *"
                     : state.kind === "income"
@@ -265,7 +347,10 @@ function RecordForm({
                   />
                 </label>
                 {state.kind === "transfer" && (
-                  <label className="record-destination">
+                  <label
+                    className="record-destination"
+                    data-record-field="destinationId"
+                  >
                     Conta de destino *
                     <AuxiliarySelector
                       title="Selecionar conta de destino"
@@ -315,7 +400,7 @@ function RecordForm({
                     <small>A moeda é definida pela conta escolhida. 🔒</small>
                   </label>
                 }
-                <label className="record-amount">
+                <label className="record-amount" data-record-field="amount">
                   Valor * {account ? `(${account.currency})` : ""}
                   <input
                     required
@@ -330,7 +415,10 @@ function RecordForm({
                   </small>
                 </label>
                 {state.kind !== "transfer" && (
-                  <label className="record-category">
+                  <label
+                    className="record-category"
+                    data-record-field="categoryId"
+                  >
                     Categoria *
                     <AuxiliarySelector
                       title="Selecionar categoria"
@@ -366,7 +454,7 @@ function RecordForm({
                   </label>
                 )}
                 {state.kind === "income" ? (
-                  <label className="record-source">
+                  <label className="record-source" data-record-field="sourceId">
                     Fonte de renda (opcional)
                     <AuxiliarySelector
                       title="Selecionar fonte de renda"
@@ -381,7 +469,7 @@ function RecordForm({
                     />
                   </label>
                 ) : null}
-                <label className="record-date">
+                <label className="record-date" data-record-field="date">
                   Data *
                   <DateSelector
                     value={fields.date}
@@ -389,7 +477,10 @@ function RecordForm({
                     onChange={(value) => state.edit("date", value)}
                   />
                 </label>
-                <label className="record-description">
+                <label
+                  className="record-description"
+                  data-record-field="description"
+                >
                   Descrição (opcional)
                   <textarea
                     maxLength={500}
@@ -436,10 +527,10 @@ function RecordForm({
                     : state.status === "uncertain"
                       ? "Verificar tentativa pendente"
                       : state.kind === "income"
-                        ? "Registrar entrada"
+                        ? "Revisar entrada"
                         : state.kind === "expense"
-                          ? "Registrar saída"
-                          : "Registrar transferência"}
+                          ? "Revisar saída"
+                          : "Revisar transferência"}
                 </button>
               </div>
             </form>

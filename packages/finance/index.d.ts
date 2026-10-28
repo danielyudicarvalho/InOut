@@ -352,6 +352,16 @@ export type RecordFields = {
   date: string;
   description: string;
 };
+export type RecordReview = {
+  amount: number;
+  currency: string;
+  rows: { field: keyof RecordFields | null; label: string; value: string }[];
+};
+export function recordReview(
+  kind: RecordKind,
+  fields: RecordFields,
+  options: RecordOptions,
+): RecordReview;
 export type RecordOptions = {
   accounts: { id: string; name: string; currency: string }[];
   categories: {

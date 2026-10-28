@@ -1,3 +1,5 @@
+import { useState, useRef, type ComponentRef } from "react";
+import { RecordReviewPanel } from "../components/RecordReview";
 import {
   AuxiliarySelector,
   DateSelector,
@@ -13,7 +15,12 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
-import { type RecordKind } from "@inout/finance";
+import {
+  recordReview,
+  financeMessage,
+  type RecordKind,
+  type RecordReview,
+} from "@inout/finance";
 import { useFinancialHome } from "../finance/use-financial-home";
 import { useRecord } from "../finance/use-record";
 import { theme as t } from "../theme";
@@ -124,11 +131,21 @@ function RecordForm({
   householdName: string;
 }) {
   const state = useRecord(household, kind, currency);
-  const back = () =>
+  const [reviewing, setReviewing] = useState(false),
+    [reviewError, setReviewError] = useState("");
+  const scroll = useRef<ComponentRef<typeof ScrollView>>(null),
+    positions = useRef<Record<string, number>>({});
+
+  const back = () => {
+    if (reviewing && state.status === "ready") {
+      setReviewing(false);
+      return;
+    }
     router.replace({
       pathname: "/lancamentos",
       params: { household, period, currency },
     });
+  };
   if (state.status === "loading" || state.status === "error" || !state.options)
     return (
       <SafeAreaView style={s.safe}>
@@ -190,9 +207,32 @@ function RecordForm({
       state.retry();
     },
   });
+  const showReview =
+    (reviewing && state.status !== "success") ||
+    state.status === "uncertain" ||
+    state.status === "saving";
+  let summary: RecordReview | null = null;
+  if (showReview) {
+    try {
+      summary = recordReview(state.kind, fields, options);
+    } catch {
+      /* A pending operation can reference an archived option. Its original payload remains available for retry. */
+    }
+  }
+  function review() {
+    try {
+      recordReview(state.kind, fields, options);
+      setReviewError("");
+      setReviewing(true);
+      scroll.current?.scrollTo({ y: 0, animated: true });
+    } catch (error) {
+      setReviewError(financeMessage(error));
+    }
+  }
   return (
     <SafeAreaView style={s.safe}>
       <ScrollView
+        ref={scroll}
         contentContainerStyle={s.content}
         keyboardShouldPersistTaps="handled"
       >
@@ -201,7 +241,11 @@ function RecordForm({
           style={s.textButton}
           onPress={back}
         >
-          <Text style={s.link}>‹ Lançamentos</Text>
+          <Text style={s.link}>
+            {showReview && state.status === "ready"
+              ? `‹ ${titles[state.kind]}`
+              : "‹ Lançamentos"}
+          </Text>
         </Pressable>
         <Text style={s.caption}>{householdName}</Text>
         <View
@@ -215,23 +259,31 @@ function RecordForm({
         >
           <View style={{ flex: 1 }}>
             <Text accessibilityRole="header" style={s.title}>
-              {titles[state.kind]}
+              {state.status === "success"
+                ? "Lançamento registrado"
+                : showReview
+                  ? "Revise seu lançamento"
+                  : titles[state.kind]}
             </Text>
             <Text style={s.help}>
-              {state.kind === "transfer"
-                ? "Mova dinheiro entre as contas do seu lar."
-                : state.kind === "income"
-                  ? "Registre um dinheiro que entrou no seu lar."
-                  : "Registre um gasto do seu lar."}
+              {showReview
+                ? "Confira os dados antes de confirmar."
+                : state.kind === "transfer"
+                  ? "Mova dinheiro entre as contas do seu lar."
+                  : state.kind === "income"
+                    ? "Registre um dinheiro que entrou no seu lar."
+                    : "Registre um gasto do seu lar."}
             </Text>
           </View>{" "}
           <Image
             source={
-              state.kind === "income"
-                ? require("../../assets/pipo-income-form.webp")
-                : state.kind === "expense"
-                  ? require("../../assets/pipo-expense-form.webp")
-                  : require("../../assets/pipo-transfer-form.webp")
+              showReview
+                ? require("../../assets/pipo-review.webp")
+                : state.kind === "income"
+                  ? require("../../assets/pipo-income-form.webp")
+                  : state.kind === "expense"
+                    ? require("../../assets/pipo-expense-form.webp")
+                    : require("../../assets/pipo-transfer-form.webp")
             }
             style={[
               s.heroArt,
@@ -239,11 +291,13 @@ function RecordForm({
             ]}
             resizeMode="contain"
             accessibilityLabel={
-              state.kind === "income"
-                ? "Pipo guardando uma moeda em uma bolsinha"
-                : state.kind === "expense"
-                  ? "Pipo conferindo as compras e o recibo"
-                  : "Pipo levando uma moeda pela ponte entre duas contas"
+              showReview
+                ? "Pipo revisando uma lista no caderno"
+                : state.kind === "income"
+                  ? "Pipo guardando uma moeda em uma bolsinha"
+                  : state.kind === "expense"
+                    ? "Pipo conferindo as compras e o recibo"
+                    : "Pipo levando uma moeda pela ponte entre duas contas"
             }
           />
         </View>
@@ -269,8 +323,32 @@ function RecordForm({
               <Text style={s.buttonText}>Ver o período do lançamento</Text>
             </Pressable>
           </View>
+        ) : showReview ? (
+          <RecordReviewPanel
+            kind={state.kind}
+            summary={summary}
+            status={state.status}
+            notice={state.notice}
+            onEdit={(field) => {
+              setReviewing(false);
+              setTimeout(
+                () =>
+                  scroll.current?.scrollTo({
+                    y: positions.current[field ?? "amount"] ?? 0,
+                    animated: true,
+                  }),
+                0,
+              );
+            }}
+            onConfirm={() => void state.submit()}
+          />
         ) : (
           <>
+            {reviewError && (
+              <Text accessibilityRole="alert" style={s.notice}>
+                {reviewError}
+              </Text>
+            )}
             {state.notice ? (
               <Text accessibilityLiveRegion="assertive" style={s.notice}>
                 {state.notice}
@@ -285,7 +363,12 @@ function RecordForm({
                     : "Cadastre uma categoria correspondente a este tipo de movimentação antes de registrar."}
               </Text>
             ) : null}
-            <Text style={s.label}>
+            <Text
+              onLayout={(e) => {
+                positions.current.accountId = e.nativeEvent.layout.y;
+              }}
+              style={s.label}
+            >
               {state.kind === "income"
                 ? "Conta de destino *"
                 : "Conta de origem *"}
@@ -362,7 +445,12 @@ function RecordForm({
                 </Text>
               </View>
             }
-            <Text style={s.label}>
+            <Text
+              onLayout={(e) => {
+                positions.current.amount = e.nativeEvent.layout.y;
+              }}
+              style={s.label}
+            >
               Valor * {account ? `(${account.currency})` : ""}
             </Text>
             <TextInput
@@ -385,7 +473,14 @@ function RecordForm({
             </Text>
             {state.kind !== "transfer" && (
               <>
-                <Text style={s.label}>Categoria *</Text>
+                <Text
+                  onLayout={(e) => {
+                    positions.current["categoryId"] = e.nativeEvent.layout.y;
+                  }}
+                  style={s.label}
+                >
+                  Categoria *
+                </Text>
                 <AuxiliarySelector
                   title="Selecionar categoria"
                   value={
@@ -400,7 +495,14 @@ function RecordForm({
             )}
             {state.kind === "income" && (
               <>
-                <Text style={s.label}>Fonte de renda (opcional)</Text>
+                <Text
+                  onLayout={(e) => {
+                    positions.current["sourceId"] = e.nativeEvent.layout.y;
+                  }}
+                  style={s.label}
+                >
+                  Fonte de renda (opcional)
+                </Text>
                 <AuxiliarySelector
                   title="Selecionar fonte de renda"
                   value={fields.sourceId}
@@ -428,13 +530,27 @@ function RecordForm({
                 />
               </View>
             )}
-            <Text style={s.label}>Data *</Text>
+            <Text
+              onLayout={(e) => {
+                positions.current["date"] = e.nativeEvent.layout.y;
+              }}
+              style={s.label}
+            >
+              Data *
+            </Text>
             <DateSelector
               value={fields.date}
               disabled={locked}
               onChange={(value) => state.edit("date", value)}
             />
-            <Text style={s.label}>Descrição (opcional)</Text>
+            <Text
+              onLayout={(e) => {
+                positions.current["description"] = e.nativeEvent.layout.y;
+              }}
+              style={s.label}
+            >
+              Descrição (opcional)
+            </Text>
             <TextInput
               accessibilityLabel="Descrição"
               editable={!locked}
@@ -486,7 +602,7 @@ function RecordForm({
                 s.button,
                 state.kind === "expense" && { backgroundColor: "#bc4938" },
               ]}
-              onPress={() => void state.submit()}
+              onPress={review}
             >
               <Text style={s.buttonText}>
                 {state.status === "saving"
@@ -494,10 +610,10 @@ function RecordForm({
                   : state.status === "uncertain"
                     ? "Verificar tentativa pendente"
                     : state.kind === "income"
-                      ? "Registrar entrada"
+                      ? "Revisar entrada"
                       : state.kind === "expense"
-                        ? "Registrar saída"
-                        : "Registrar transferência"}
+                        ? "Revisar saída"
+                        : "Revisar transferência"}
               </Text>
             </Pressable>
           </>

@@ -1682,3 +1682,64 @@ export function createAuxiliaryStore(
     },
   });
 }
+
+export function recordReview(kind, fields, options) {
+  const body = prepareRecord(kind, fields, options);
+  const account = options.accounts.find((a) => a.id === fields.accountId);
+  const category = options.categories.find((c) => c.id === fields.categoryId);
+  const parent = options.categories.find((c) => c.id === category?.parentId);
+  const rows = [
+    {
+      field: "accountId",
+      label: kind === "income" ? "Conta de destino" : "Conta de origem",
+      value: account.name,
+    },
+    ...(kind === "transfer"
+      ? [
+          {
+            field: "destinationId",
+            label: "Conta de destino",
+            value: options.accounts.find((a) => a.id === fields.destinationId)
+              .name,
+          },
+        ]
+      : []),
+    { field: null, label: "Moeda", value: account.currency },
+    ...(kind !== "transfer"
+      ? [
+          {
+            field: "categoryId",
+            label: "Categoria",
+            value: parent?.name ?? category.name,
+          },
+          ...(parent
+            ? [
+                {
+                  field: "categoryId",
+                  label: "Subcategoria",
+                  value: category.name,
+                },
+              ]
+            : []),
+        ]
+      : []),
+    ...(kind === "income"
+      ? [
+          {
+            field: "sourceId",
+            label: "Fonte de renda",
+            value:
+              options.sources.find((s) => s.id === fields.sourceId)?.name ??
+              "Sem fonte",
+          },
+        ]
+      : []),
+    { field: "date", label: "Data", value: displayDate(fields.date) },
+    {
+      field: "description",
+      label: "Descrição",
+      value: body.description ?? "Sem descrição",
+    },
+  ];
+  return { amount: body.amountCents, currency: account.currency, rows };
+}
