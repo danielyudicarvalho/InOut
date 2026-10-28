@@ -303,7 +303,12 @@ export type RecordFields = {
 };
 export type RecordOptions = {
   accounts: { id: string; name: string; currency: string }[];
-  categories: { id: string; name: string; flow: "income" | "expense" }[];
+  categories: {
+    id: string;
+    name: string;
+    flow: "income" | "expense";
+    parentId?: string;
+  }[];
   sources: { id: string; name: string }[];
 };
 export type RecordResult = { transactionId: string; replayed: boolean };

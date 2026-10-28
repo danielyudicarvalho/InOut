@@ -631,3 +631,17 @@ Arte criada com imagegen integrado, inspecionada e preparada em WebP com transpa
 Prompt final: “Transparent wide watercolor storybook hero for Ninho household finance NEW INCOME form. Pipo a fluffy golden yellow bird with green leaf tuft, orange beak and rust red scarf, smiling with closed eyes while gently dropping one golden coin into a small dark sage green purse with a leaf emblem. Blank notebook beside purse and small potted sage plant. Warm cream honey terracotta palette, cozy gentle light, whole character and objects, generous transparent margin. No letters, words, numbers, logos or UI.”
 
 Build de produção Next.js da atualização Nova entrada também passou.
+
+## Nova saída — 2026-10-28
+
+Referência de Nova saída aplicada no web e mobile, usando a estrutura compartilhada de movimentações: conta de origem, moeda vinculada à conta e somente leitura, valor com destaque terracota, categoria, subcategoria opcional, data, descrição com contador, Cancelar e Registrar saída. Layout desktop com barra lateral e duas colunas, e layout mobile em sequência. Ilustração exclusiva de compras; sem preencher os valores demonstrativos do mockup.
+
+O catálogo ativo de criação agora preserva `parentId` quando presente. A seleção da categoria mostra raízes; selecionar uma subcategoria envia seu ID no mesmo `categoryId` do contrato de despesa existente. Trocar categoria descarta a seleção anterior de subcategoria. Usar apenas a categoria continua permitido pelo backend. Fonte de renda não aparece para despesa. O POST autenticado de `/expenses`, validações de centavos e fluxo, proteção idempotente e recuperação de tentativa incerta foram mantidos.
+
+Validação: formatação, lint e tipagem de web/mobile passaram; suíte web com 90 testes e mobile com 83 passou antes da adição do novo teste de hierarquia. Os 11 testes de gravação, incluindo o novo teste que verifica hierarquia e ID da subcategoria no contrato de despesa, também passaram. Sem escrita financeira real, integração .NET, QA em dispositivo ou build nativo.
+
+Arte gerada com imagegen integrado, inspecionada e preparada com transparência em `frontend/public/images/pipo-expense-form.webp` e `mobile/assets/pipo-expense-form.webp`.
+
+Prompt final: “Transparent wide watercolor storybook hero for Ninho household finance NEW EXPENSE form. Pipo, fluffy golden yellow bird, green leaf tuft, orange beak and rust red scarf, carefully checking a blank shopping receipt beside a wicker basket of carrots, green vegetables and bread, small blank notebook on table. Cozy warm cream sage terracotta palette, whole character and objects with generous transparent margins. No letters numbers text logos or UI.”
+
+Build de produção Next.js da atualização Nova saída passou.

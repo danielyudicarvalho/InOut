@@ -127,7 +127,9 @@ function RecordForm({
   householdName: string;
 }) {
   const state = useRecord(household, kind, currency),
-    [picker, setPicker] = useState<keyof RecordFields | null>(null);
+    [picker, setPicker] = useState<keyof RecordFields | "subcategory" | null>(
+      null,
+    );
   const back = () =>
     router.replace({
       pathname: "/lancamentos",
@@ -174,6 +176,10 @@ function RecordForm({
   const unavailable =
     !options.accounts.length ||
     (state.kind === "transfer" ? !destinations.length : !categories.length);
+  const selectedCategory = categories.find((c) => c.id === fields.categoryId),
+    parentId = selectedCategory?.parentId ?? fields.categoryId;
+  const roots = categories.filter((c) => !c.parentId),
+    children = categories.filter((c) => c.parentId === parentId);
   const choices =
     picker === "accountId"
       ? options.accounts.map((row) => ({
@@ -186,15 +192,26 @@ function RecordForm({
             name: `${row.name} · ${row.currency}`,
           }))
         : picker === "categoryId"
-          ? categories
-          : [{ id: "", name: "Sem fonte de renda" }, ...options.sources];
+          ? state.kind === "expense"
+            ? roots
+            : categories
+          : picker === "subcategory"
+            ? [
+                { id: parentId, name: "Usar a categoria selecionada" },
+                ...children,
+              ]
+            : [{ id: "", name: "Sem fonte de renda" }, ...options.sources];
   const label = (field: keyof RecordFields) =>
     field === "accountId"
       ? options.accounts.find((row) => row.id === fields.accountId)?.name
       : field === "destinationId"
         ? destinations.find((row) => row.id === fields.destinationId)?.name
         : field === "categoryId"
-          ? categories.find((row) => row.id === fields.categoryId)?.name
+          ? categories.find(
+              (row) =>
+                row.id ===
+                (state.kind === "expense" ? parentId : fields.categoryId),
+            )?.name
           : (options.sources.find((row) => row.id === fields.sourceId)?.name ??
             "Sem fonte de renda");
   return (
@@ -221,21 +238,25 @@ function RecordForm({
                 ? "Mova dinheiro entre suas contas. Transferências não contam como receita ou despesa."
                 : state.kind === "income"
                   ? "Registre um dinheiro que entrou no seu lar."
-                  : "Informe os dados do lançamento."}
+                  : "Registre um gasto do seu lar."}
             </Text>
           </View>{" "}
           <Image
             source={
               state.kind === "income"
                 ? require("../../assets/pipo-income-form.webp")
-                : require("../../assets/pipo-new-record.webp")
+                : state.kind === "expense"
+                  ? require("../../assets/pipo-expense-form.webp")
+                  : require("../../assets/pipo-new-record.webp")
             }
             style={s.heroArt}
             resizeMode="contain"
             accessibilityLabel={
               state.kind === "income"
                 ? "Pipo guardando uma moeda em uma bolsinha"
-                : "Pipo escrevendo em um caderno"
+                : state.kind === "expense"
+                  ? "Pipo conferindo as compras e o recibo"
+                  : "Pipo escrevendo em um caderno"
             }
           />
         </View>
@@ -291,7 +312,7 @@ function RecordForm({
             >
               <Text style={s.help}>{label("accountId") || "Selecione"} ▾</Text>
             </Pressable>
-            {state.kind === "income" && (
+            {state.kind !== "transfer" && (
               <View>
                 <Text style={s.label}>Moeda da conta</Text>
                 <View style={[s.input, { backgroundColor: "#efeee8" }]}>
@@ -309,7 +330,13 @@ function RecordForm({
               accessibilityLabel="Valor"
               editable={!locked}
               keyboardType="decimal-pad"
-              style={s.input}
+              style={[
+                s.input,
+                state.kind === "expense" && {
+                  borderLeftWidth: 4,
+                  borderLeftColor: "#bc4938",
+                },
+              ]}
               value={fields.amount}
               onChangeText={(value) => state.edit("amount", value)}
               placeholder="1250,50"
@@ -343,6 +370,27 @@ function RecordForm({
                 </Pressable>
               </View>
             ))}
+            {state.kind === "expense" && (
+              <View>
+                <Text style={s.label}>Subcategoria (opcional)</Text>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Selecionar subcategoria"
+                  disabled={locked || !children.length}
+                  style={s.input}
+                  onPress={() => setPicker("subcategory")}
+                >
+                  <Text style={s.help}>
+                    {selectedCategory?.parentId
+                      ? selectedCategory.name
+                      : children.length
+                        ? "Usar a categoria selecionada"
+                        : "Sem subcategorias"}{" "}
+                    ▾
+                  </Text>
+                </Pressable>
+              </View>
+            )}
             <Text style={s.label}>Data *</Text>
             <RecordDateInput
               initialValue={fields.date}
@@ -387,7 +435,10 @@ function RecordForm({
                 state.status === "saving" ||
                 (state.status === "ready" && unavailable)
               }
-              style={s.button}
+              style={[
+                s.button,
+                state.kind === "expense" && { backgroundColor: "#bc4938" },
+              ]}
               onPress={() => void state.submit()}
             >
               <Text style={s.buttonText}>
@@ -398,7 +449,7 @@ function RecordForm({
                     : state.kind === "income"
                       ? "Registrar entrada"
                       : state.kind === "expense"
-                        ? "Salvar saída"
+                        ? "Registrar saída"
                         : "Salvar transferência"}
               </Text>
             </Pressable>
@@ -418,12 +469,22 @@ function RecordForm({
                 <Pressable
                   accessibilityRole="radio"
                   accessibilityState={{
-                    checked: picker !== null && fields[picker] === row.id,
+                    checked:
+                      picker !== null &&
+                      (picker === "subcategory"
+                        ? fields.categoryId
+                        : picker === "categoryId" && state.kind === "expense"
+                          ? parentId
+                          : fields[picker]) === row.id,
                   }}
                   key={row.id}
                   style={s.option}
                   onPress={() => {
-                    if (picker) state.edit(picker, row.id);
+                    if (picker)
+                      state.edit(
+                        picker === "subcategory" ? "categoryId" : picker,
+                        row.id,
+                      );
                     setPicker(null);
                   }}
                 >

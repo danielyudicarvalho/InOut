@@ -355,3 +355,46 @@ test("definitive validation errors allow correction, while an expired pending re
   assert.equal(writes, 0);
   cleanup();
 });
+
+test("expense options preserve subcategory hierarchy and submit the selected leaf to the existing expense contract", async () => {
+  const categories = [
+    { id: "food", name: "Alimentação", flow: "expense", parentId: null },
+    { id: "market", name: "Mercado", flow: "expense", parentId: "food" },
+  ];
+  const repo = createFinanceRepository({
+    baseUrl: "https://api.example",
+    getToken: async () => "jwt",
+    fetcher: async (url) =>
+      new Response(
+        JSON.stringify(
+          url.endsWith("/households")
+            ? [{ id: "home", name: "Casa" }]
+            : url.endsWith("/accounts")
+              ? options.accounts
+              : url.endsWith("/categories")
+                ? categories
+                : [],
+        ),
+      ),
+  });
+  const catalog = await repo.recordOptions("home");
+  assert.equal(
+    catalog.categories.find((c) => c.id === "market").parentId,
+    "food",
+  );
+  const body = prepareRecord(
+    "expense",
+    { ...fields, categoryId: "market", sourceId: "", description: "Compras" },
+    catalog,
+  );
+  assert.equal(body.categoryId, "market");
+  assert.equal(body.currency, "BRL");
+  assert.equal(body.amountCents, 125050);
+  assert.equal(body.incomeSourceId, undefined);
+  const root = prepareRecord(
+    "expense",
+    { ...fields, categoryId: "food", sourceId: "" },
+    catalog,
+  );
+  assert.equal(root.categoryId, "food");
+});

@@ -124,6 +124,10 @@ function RecordForm({
     (state.kind === "transfer"
       ? destinations.length === 0
       : categories.length === 0);
+  const selectedCategory = categories.find((c) => c.id === fields.categoryId),
+    parentId = selectedCategory?.parentId ?? fields.categoryId;
+  const roots = categories.filter((c) => !c.parentId),
+    children = categories.filter((c) => c.parentId === parentId);
   const successHref = `/inicio?${new URLSearchParams({ household, period: fields.date.slice(0, 7), currency: account?.currency ?? currency })}`;
   function submit(event: FormEvent) {
     event.preventDefault();
@@ -131,9 +135,9 @@ function RecordForm({
   }
   return (
     <main
-      className={`record-page ${kind === "income" ? "record-income-layout" : ""}`}
+      className={`record-page ${state.kind !== "transfer" ? `record-income-layout ${state.kind === "expense" ? "record-expense-layout" : ""}` : ""}`}
     >
-      {kind === "income" && (
+      {state.kind !== "transfer" && (
         <aside className="dashboard-sidebar">
           <Link
             className="dashboard-brand"
@@ -172,7 +176,9 @@ function RecordForm({
               src={
                 state.kind === "income"
                   ? "/images/pipo-income-form.webp"
-                  : "/images/pipo-new-record.webp"
+                  : state.kind === "expense"
+                    ? "/images/pipo-expense-form.webp"
+                    : "/images/pipo-new-record.webp"
               }
               width={600}
               height={300}
@@ -180,7 +186,9 @@ function RecordForm({
               alt={
                 state.kind === "income"
                   ? "Pipo guardando uma moeda em uma bolsinha"
-                  : "Pipo escrevendo em um caderno"
+                  : state.kind === "expense"
+                    ? "Pipo conferindo as compras e o recibo"
+                    : "Pipo escrevendo em um caderno"
               }
             />
             <p>{householdName}</p>
@@ -190,7 +198,7 @@ function RecordForm({
                 ? "Mova dinheiro entre suas contas. Transferências não contam como receita ou despesa."
                 : state.kind === "income"
                   ? "Registre um dinheiro que entrou no seu lar."
-                  : "Informe os dados do lançamento."}
+                  : "Registre um gasto do seu lar."}
             </p>
           </header>
           {state.status === "success" ? (
@@ -222,7 +230,7 @@ function RecordForm({
                     ? "Conta de origem *"
                     : state.kind === "income"
                       ? "Conta de destino *"
-                      : "Conta *"}
+                      : "Conta de origem *"}
                   <select
                     required
                     value={fields.accountId}
@@ -236,7 +244,7 @@ function RecordForm({
                     ))}
                   </select>
                 </label>
-                {state.kind === "income" && (
+                {state.kind !== "transfer" && (
                   <label className="record-currency">
                     Moeda da conta
                     <input
@@ -284,13 +292,42 @@ function RecordForm({
                     Categoria *
                     <select
                       required
-                      value={fields.categoryId}
+                      value={
+                        state.kind === "expense" ? parentId : fields.categoryId
+                      }
                       onChange={(e) => state.edit("categoryId", e.target.value)}
                     >
                       <option value="">Selecione</option>
-                      {categories.map((row) => (
-                        <option key={row.id} value={row.id}>
-                          {row.name}
+                      {(state.kind === "expense" ? roots : categories).map(
+                        (row) => (
+                          <option key={row.id} value={row.id}>
+                            {row.name}
+                          </option>
+                        ),
+                      )}
+                    </select>
+                  </label>
+                )}
+                {state.kind === "expense" && (
+                  <label className="record-subcategory">
+                    Subcategoria (opcional)
+                    <select
+                      disabled={!parentId || !children.length || locked}
+                      value={
+                        selectedCategory?.parentId ? fields.categoryId : ""
+                      }
+                      onChange={(e) =>
+                        state.edit("categoryId", e.target.value || parentId)
+                      }
+                    >
+                      <option value="">
+                        {children.length
+                          ? "Usar a categoria selecionada"
+                          : "Sem subcategorias"}
+                      </option>
+                      {children.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name}
                         </option>
                       ))}
                     </select>
@@ -364,7 +401,7 @@ function RecordForm({
                       : state.kind === "income"
                         ? "Registrar entrada"
                         : state.kind === "expense"
-                          ? "Salvar saída"
+                          ? "Registrar saída"
                           : "Salvar transferência"}
                 </button>
               </div>

@@ -4057,3 +4057,34 @@ button:disabled {
     text-align: center;
   }
 }
+
+.record-expense-layout .record-amount {
+  grid-column: 1;
+}
+.record-expense-layout .record-amount input {
+  border-left: 4px solid #bd4938;
+}
+.record-expense-layout .record-submit {
+  background: #bc4938;
+  color: white;
+}
+.record-expense-layout .record-submit:hover {
+  background: #a53c2e;
+}
+.record-expense-layout .record-category {
+  grid-column: 1;
+}
+.record-expense-layout .record-subcategory {
+  grid-column: 2;
+}
+.record-expense-layout .record-date {
+  grid-column: 1;
+}
+.record-expense-layout .record-description {
+  grid-column: 1/-1;
+}
+@media (max-width: 760px) {
+  .record-expense-layout .record-subcategory {
+    grid-column: 1;
+  }
+}

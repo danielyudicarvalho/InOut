@@ -437,7 +437,14 @@ export function createFinanceRepository({
             const flow = string(row.flow).toLowerCase();
             if (!["income", "expense"].includes(flow))
               throw new FinanceFailure("invalid");
-            return { id: string(row.id), name: string(row.name), flow };
+            return {
+              id: string(row.id),
+              name: string(row.name),
+              flow,
+              ...(row.parentId == null
+                ? {}
+                : { parentId: string(row.parentId) }),
+            };
           }),
         sources: array(sources)
           .filter((row) => row.archivedAt == null)
