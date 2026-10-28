@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -17,6 +17,7 @@ import {
   Plant,
 } from "@phosphor-icons/react";
 import { money, periodLabel } from "@inout/finance";
+import { NewRecordPicker } from "./new-record-picker";
 import { PeriodPicker } from "./period-picker";
 import { useFinancialHome } from "../lib/finance/use-financial-home";
 
@@ -45,6 +46,8 @@ function DashboardView({
 }) {
   const state = useFinancialHome(options);
   const [periodOpen, setPeriodOpen] = useState(false);
+  const [recordOpen, setRecordOpen] = useState(false);
+  const router = useRouter();
   const [chosenCurrency, setCurrency] = useState(initialCurrency);
   const [notice, setNotice] = useState("");
   const navigation = [
@@ -188,6 +191,13 @@ function DashboardView({
               ))}
             </select>
           </label>
+          <button
+            className="dashboard-new-record"
+            onClick={() => setRecordOpen(true)}
+            aria-haspopup="dialog"
+          >
+            <Plus size={20} aria-hidden="true" /> Novo registro
+          </button>
           <Link
             href="/comecar"
             className="dashboard-profile"
@@ -487,7 +497,11 @@ function DashboardView({
                 <button
                   key={label}
                   className={index === 1 ? "expense" : "income"}
-                  onClick={() => unavailable(label)}
+                  onClick={() =>
+                    router.push(
+                      `/novo-registro?${new URLSearchParams({ household: state.householdId, period: state.period, currency, kind: index === 0 ? "income" : index === 1 ? "expense" : "transfer" })}`,
+                    )
+                  }
                 >
                   {index === 2 ? (
                     <ArrowsLeftRight size={22} />
@@ -504,23 +518,44 @@ function DashboardView({
           {notice}
         </p>
         <nav className="dashboard-bottom-nav" aria-label="Navegação mobile">
-          {["Início", "Lançamentos", "Contas", "Mais"].map((label, index) => {
-            const Icon = icons[index];
-            return (
-              <button
-                key={label}
-                aria-current={index === 0 ? "page" : undefined}
-                onClick={() =>
-                  index === 0 ? setNotice("") : unavailable(label)
-                }
-              >
-                <Icon size={23} />
-                {label}
-              </button>
-            );
-          })}
+          {["Início", "Lançamentos", "Novo", "Contas", "Mais"].map(
+            (label, index) => {
+              const Icon =
+                index === 2
+                  ? Plus
+                  : index === 3
+                    ? Wallet
+                    : index === 4
+                      ? Gear
+                      : icons[index];
+              return (
+                <button
+                  key={label}
+                  aria-current={index === 0 ? "page" : undefined}
+                  onClick={() =>
+                    index === 0
+                      ? setNotice("")
+                      : index === 2
+                        ? setRecordOpen(true)
+                        : unavailable(label)
+                  }
+                >
+                  <Icon size={23} />
+                  {label}
+                </button>
+              );
+            },
+          )}
         </nav>
       </div>
+      {recordOpen ? (
+        <NewRecordPicker
+          household={state.householdId}
+          period={state.period}
+          currency={currency}
+          onClose={() => setRecordOpen(false)}
+        />
+      ) : null}
     </main>
   );
 }

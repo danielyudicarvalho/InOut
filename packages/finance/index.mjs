@@ -6,6 +6,13 @@ export class FinanceFailure extends Error {
 }
 export function financeMessage(error) {
   const messages = {
+    validation: "Confira os dados do lançamento e tente novamente.",
+    conflict:
+      "Esta tentativa ainda não pôde ser concluída. Aguarde e tente novamente.",
+    storage:
+      "Não foi possível proteger esta tentativa no dispositivo. Nenhum novo envio foi iniciado.",
+    pending:
+      "Há uma tentativa pendente. Confirme seu resultado antes de iniciar outro lançamento.",
     changed:
       "Os lançamentos mudaram durante a consulta. Atualize para carregá-los novamente.",
     period:
@@ -117,7 +124,7 @@ export function createFinanceRepository({
   getToken,
   fetcher = fetch,
 }) {
-  async function get(path, signal) {
+  async function get(path, signal, write) {
     let base;
     try {
       base = new URL(baseUrl);
@@ -141,7 +148,14 @@ export function createFinanceRepository({
         headers: {
           Authorization: `Bearer ${token}`,
           Accept: "application/json",
+          ...(write
+            ? {
+                "Content-Type": "application/json",
+                "Idempotency-Key": write.key,
+              }
+            : {}),
         },
+        ...(write ? { method: "POST", body: JSON.stringify(write.body) } : {}),
         cache: "no-store",
         signal,
         redirect: "error",
@@ -156,7 +170,11 @@ export function createFinanceRepository({
           ? "unauthorized"
           : response.status === 403
             ? "forbidden"
-            : "server",
+            : response.status === 400 || response.status === 422
+              ? "validation"
+              : response.status === 409
+                ? "conflict"
+                : "server",
       );
     try {
       return await response.json();
@@ -269,6 +287,59 @@ export function createFinanceRepository({
     },
     expense(householdId, period, code, offset, signal) {
       return breakdown("expense", householdId, period, code, offset, signal);
+    },
+    async recordOptions(householdId, signal) {
+      const homes = array(await get("/api/v1/households", signal));
+      if (!homes.some((row) => row.id === householdId))
+        throw new FinanceFailure("forbidden");
+      const root = `/api/v1/households/${encodeURIComponent(householdId)}/ledger`;
+      const [accounts, categories, sources] = await Promise.all([
+        get(`${root}/accounts`, signal),
+        get(`${root}/categories`, signal),
+        get(`${root}/income-sources`, signal),
+      ]);
+      return {
+        accounts: array(accounts)
+          .filter((row) => row.archivedAt == null)
+          .map((row) => ({
+            id: string(row.id),
+            name: string(row.name),
+            currency: currency(row.currency),
+          })),
+        categories: array(categories)
+          .filter((row) => row.archivedAt == null)
+          .map((row) => {
+            const flow = string(row.flow).toLowerCase();
+            if (!["income", "expense"].includes(flow))
+              throw new FinanceFailure("invalid");
+            return { id: string(row.id), name: string(row.name), flow };
+          }),
+        sources: array(sources)
+          .filter((row) => row.archivedAt == null)
+          .map((row) => ({ id: string(row.id), name: string(row.name) })),
+      };
+    },
+    async postRecord(householdId, kind, body, key, signal) {
+      const endpoint = {
+        income: "income",
+        expense: "expenses",
+        transfer: "transfers",
+      }[kind];
+      if (!endpoint || !validOperationKey(key))
+        throw new FinanceFailure("validation");
+      const result = await get(
+        `/api/v1/households/${encodeURIComponent(householdId)}/ledger/${endpoint}`,
+        signal,
+        { body, key },
+      );
+      if (
+        !result ||
+        typeof result.replayed !== "boolean" ||
+        typeof result.transactionId !== "string" ||
+        !result.transactionId
+      )
+        throw new FinanceFailure("invalid");
+      return { transactionId: result.transactionId, replayed: result.replayed };
     },
     async categorySummary(householdId, period, code, signal) {
       const bounds = parsePeriod(period);
@@ -828,4 +899,323 @@ export function buildCategorySummary(
     });
   groups.sort((a, b) => b.amount - a.amount || a.name.localeCompare(b.name));
   return { total, isReconciled, groups };
+}
+
+function validOperationKey(value) {
+  return (
+    typeof value === "string" &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+      value,
+    ) &&
+    value !== "00000000-0000-0000-0000-000000000000"
+  );
+}
+export function recordAmount(value) {
+  if (
+    typeof value !== "string" ||
+    !/^\d{1,16}([,.]\d{1,2})?$/.test(value.trim())
+  )
+    throw new FinanceFailure("validation");
+  const [whole, fraction = ""] = value.trim().replace(",", ".").split(".");
+  const cents = BigInt(whole) * 100n + BigInt(fraction.padEnd(2, "0"));
+  const amount = Number(cents);
+  if (amount <= 0 || !Number.isSafeInteger(amount))
+    throw new FinanceFailure("validation");
+  return amount;
+}
+export function prepareRecord(kind, fields, options) {
+  if (!["income", "expense", "transfer"].includes(kind))
+    throw new FinanceFailure("validation");
+  const account = options.accounts.find((row) => row.id === fields.accountId);
+  if (!account) throw new FinanceFailure("validation");
+  try {
+    rangePeriod(fields.date, fields.date);
+  } catch {
+    throw new FinanceFailure("validation");
+  }
+  const description = string(fields.description).trim();
+  if (description.length > 500) throw new FinanceFailure("validation");
+  const common = {
+    amountCents: recordAmount(fields.amount),
+    currency: account.currency,
+    occurredOn: fields.date,
+    description: description || null,
+  };
+  if (kind === "transfer") {
+    const destination = options.accounts.find(
+      (row) => row.id === fields.destinationId,
+    );
+    if (
+      !destination ||
+      destination.id === account.id ||
+      destination.currency !== account.currency
+    )
+      throw new FinanceFailure("validation");
+    return {
+      sourceAccountId: account.id,
+      destinationAccountId: destination.id,
+      ...common,
+    };
+  }
+  const category = options.categories.find(
+    (row) => row.id === fields.categoryId && row.flow === kind,
+  );
+  if (
+    !category ||
+    (kind === "income" &&
+      fields.sourceId &&
+      !options.sources.some((row) => row.id === fields.sourceId))
+  )
+    throw new FinanceFailure("validation");
+  return {
+    accountId: account.id,
+    categoryId: category.id,
+    ...common,
+    ...(kind === "income" ? { incomeSourceId: fields.sourceId || null } : {}),
+  };
+}
+export function createRecordStore(
+  repository,
+  householdId,
+  initialKind,
+  preferredCurrency,
+  { storage, randomId, now = () => new Date(), timeoutMs = 20000 },
+) {
+  const today = now();
+  let state = {
+    status: "loading",
+    kind: initialKind,
+    fields: {
+      accountId: "",
+      destinationId: "",
+      categoryId: "",
+      sourceId: "",
+      amount: "",
+      date: `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`,
+      description: "",
+    },
+    options: null,
+    notice: "",
+    result: null,
+  };
+  let active = false,
+    version = 0,
+    controller,
+    timer,
+    pending = null;
+  const listeners = new Set();
+  const publish = (patch) => {
+    state = { ...state, ...patch };
+    listeners.forEach((fn) => fn());
+  };
+  function cancel() {
+    version++;
+    controller?.abort();
+    clearTimeout(timer);
+  }
+  async function load() {
+    cancel();
+    const id = version;
+    controller = new AbortController();
+    publish({ status: "loading", options: null, notice: "" });
+    timer = setTimeout(() => {
+      if (active && id === version) {
+        cancel();
+        publish({
+          status: "error",
+          notice: financeMessage(new FinanceFailure("timeout")),
+        });
+      }
+    }, timeoutMs);
+    try {
+      const raw = await storage.load();
+      if (!active || id !== version) return;
+      pending = null;
+      if (raw) {
+        pending = JSON.parse(raw);
+        const age = now().getTime() - pending.createdAt;
+        if (
+          pending.version !== 1 ||
+          pending.householdId !== householdId ||
+          !["income", "expense", "transfer"].includes(pending.kind) ||
+          !validOperationKey(pending.key) ||
+          !Number.isFinite(age) ||
+          age < 0 ||
+          age > 30 * 86400000 ||
+          !pending.body ||
+          !Number.isSafeInteger(pending.body.amountCents) ||
+          pending.body.amountCents <= 0
+        )
+          throw new FinanceFailure("pending");
+        currency(pending.body.currency);
+        rangePeriod(pending.body.occurredOn, pending.body.occurredOn);
+      }
+      const options = await repository.recordOptions(
+        householdId,
+        controller.signal,
+      );
+      if (!active || id !== version) return;
+      if (pending) {
+        const body = pending.body,
+          cents = BigInt(body.amountCents);
+        publish({
+          status: "uncertain",
+          kind: pending.kind,
+          options,
+          fields: {
+            accountId: body.accountId ?? body.sourceAccountId ?? "",
+            destinationId: body.destinationAccountId ?? "",
+            categoryId: body.categoryId ?? "",
+            sourceId: body.incomeSourceId ?? "",
+            amount: `${cents / 100n},${String(cents % 100n).padStart(2, "0")}`,
+            date: body.occurredOn,
+            description: body.description ?? "",
+          },
+          notice: financeMessage(new FinanceFailure("pending")),
+        });
+      } else {
+        if (!["income", "expense", "transfer"].includes(initialKind))
+          throw new FinanceFailure("validation");
+        const account =
+          options.accounts.find((row) => row.currency === preferredCurrency) ??
+          options.accounts[0];
+        publish({
+          status: "ready",
+          options,
+          fields: { ...state.fields, accountId: account?.id ?? "" },
+        });
+      }
+    } catch (error) {
+      if (active && id === version)
+        publish({
+          status: "error",
+          options: null,
+          notice: financeMessage(error),
+        });
+    } finally {
+      if (id === version) clearTimeout(timer);
+    }
+  }
+  async function submit() {
+    if (
+      !active ||
+      !["ready", "uncertain"].includes(state.status) ||
+      !state.options
+    )
+      return;
+    let body, key;
+    try {
+      body =
+        pending?.body ?? prepareRecord(state.kind, state.fields, state.options);
+      key = pending?.key ?? randomId();
+      if (!validOperationKey(key)) throw new FinanceFailure("configuration");
+    } catch (error) {
+      publish({ notice: financeMessage(error) });
+      return;
+    }
+    cancel();
+    const id = version;
+    controller = new AbortController();
+    publish({ status: "saving", notice: "" });
+    try {
+      if (!pending) {
+        const candidate = {
+          version: 1,
+          householdId,
+          kind: state.kind,
+          body,
+          key,
+          createdAt: now().getTime(),
+        };
+        try {
+          await storage.save(JSON.stringify(candidate));
+        } catch {
+          throw new FinanceFailure("storage");
+        }
+        if (!active || id !== version) return;
+        pending = candidate;
+      }
+      if (!active || id !== version) return;
+      timer = setTimeout(() => {
+        if (active && id === version) {
+          cancel();
+          publish({
+            status: "uncertain",
+            notice:
+              "Não foi possível confirmar o registro. Tente novamente para verificar a mesma tentativa.",
+          });
+        }
+      }, timeoutMs);
+      const result = await repository.postRecord(
+        householdId,
+        pending.kind,
+        pending.body,
+        pending.key,
+        controller.signal,
+      );
+      if (!active || id !== version) return;
+      clearTimeout(timer);
+      const completedKey = pending.key;
+      pending = null;
+      publish({
+        status: "success",
+        result,
+        notice: "Registro salvo com sucesso.",
+      });
+      void storage.remove(completedKey).catch(() => {
+        /* A retained key replays the same successful operation. */
+      });
+    } catch (error) {
+      if (!active || id !== version) return;
+      if (error?.code === "validation" && pending) {
+        try {
+          await storage.remove(pending.key);
+          pending = null;
+        } catch {
+          /* Keep the key when cleanup cannot be confirmed. */
+        }
+      }
+      if (error?.code === "unauthorized" || error?.code === "forbidden")
+        publish({
+          status: "error",
+          options: null,
+          notice: financeMessage(error),
+        });
+      else
+        publish({
+          status: pending ? "uncertain" : "ready",
+          notice: pending
+            ? "Não foi possível confirmar o registro. Tente novamente para verificar a mesma tentativa."
+            : financeMessage(error),
+        });
+    } finally {
+      if (id === version) clearTimeout(timer);
+    }
+  }
+  return {
+    getSnapshot: () => state,
+    subscribe(fn) {
+      listeners.add(fn);
+      return () => listeners.delete(fn);
+    },
+    start() {
+      active = true;
+      void load();
+      return () => {
+        active = false;
+        cancel();
+      };
+    },
+    retry() {
+      if (active) void load();
+    },
+    edit(field, value) {
+      if (state.status !== "ready" || !Object.hasOwn(state.fields, field))
+        return;
+      const fields = { ...state.fields, [field]: value };
+      if (field === "accountId") fields.destinationId = "";
+      publish({ fields, notice: "" });
+    },
+    submit,
+  };
 }

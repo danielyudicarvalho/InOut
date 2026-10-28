@@ -190,3 +190,30 @@ zero total makes proportions misleading. Details expose account, category,
 date and signed amount. Deploy the API change with the clients; an older API is
 reported explicitly instead of inventing source totals. The reader still loads
 the period in memory, as documented for the other breakdowns.
+
+## New record chooser and forms
+
+The dashboard's new-record action opens a native web dialog or mobile bottom
+sheet. Income, expense and transfer choices navigate to `/novo-registro` with
+household, period, currency and kind. Closing/backing out performs no write.
+Quick actions open the chosen form directly. The authenticated form verifies
+membership before fetching active accounts, categories and income sources and
+uses the existing .NET income, expenses and transfers POST endpoints.
+
+Input validation retains integer cents, requires a category of the matching flow
+and limits transfers to distinct accounts in one currency. Backend invariants
+and authorization remain authoritative. A POST occurs only after the user saves.
+The operation key and immutable payload are persisted before sending, scoped to
+validated user ID and household, without storing access tokens. A timeout or
+unknown response retains that key and locks edits until the same request can be
+confirmed. Reopening the form restores the pending operation even if the user
+chose a different kind. A confirmed result clears only its matching stored key;
+a definitive validation error permits correction. Retries older than 30 days
+are blocked rather than risking replay outside server retention (currently 90
+days). Concurrent independent devices/tabs are not a single shared draft.
+
+Pending inputs are stored in browser localStorage or mobile AsyncStorage until
+confirmation. The client refuses to send when persistence fails. The native
+client uses SDK-compatible expo-crypto for operation UUIDs. After success the
+return action opens the month of the posted date and the account currency, so
+the new record can be seen in its actual period.

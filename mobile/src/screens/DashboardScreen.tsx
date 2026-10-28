@@ -13,6 +13,7 @@ import { router, useLocalSearchParams } from "expo-router";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { theme as t } from "../theme";
 import { money, periodLabel } from "@inout/finance";
+import { NewRecordPicker } from "../components/NewRecordPicker";
 import { PeriodPicker } from "../components/PeriodPicker";
 import { useFinancialHome } from "../finance/use-financial-home";
 
@@ -40,6 +41,7 @@ function DashboardView({
 }) {
   const state = useFinancialHome(options);
   const [periodOpen, setPeriodOpen] = useState(false);
+  const [recordOpen, setRecordOpen] = useState(false);
   const [chosenCurrency, setCurrency] = useState(initialCurrency);
   const [picker, setPicker] = useState<"household" | null>(null);
   const [table, setTable] = useState(false);
@@ -160,11 +162,18 @@ function DashboardView({
             />
             <Text style={s.small}>{household.name}</Text>
           </Pressable>
-          <MaterialCommunityIcons
-            name="home-circle-outline"
-            size={30}
-            color={t.green}
-          />
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Novo registro"
+            onPress={() => setRecordOpen(true)}
+            style={s.textButton}
+          >
+            <MaterialCommunityIcons
+              name="plus-circle"
+              size={34}
+              color={t.green}
+            />
+          </Pressable>
         </View>
         <View style={s.hero}>
           <View style={s.heroCopy}>
@@ -474,7 +483,22 @@ function DashboardView({
               key={label}
               accessibilityRole="button"
               style={[s.action, index === 1 && s.expense]}
-              onPress={() => unavailable(label)}
+              onPress={() =>
+                router.push({
+                  pathname: "/novo-registro",
+                  params: {
+                    household: state.householdId,
+                    period: state.period,
+                    currency,
+                    kind:
+                      index === 0
+                        ? "income"
+                        : index === 1
+                          ? "expense"
+                          : "transfer",
+                  },
+                })
+              }
             >
               <MaterialCommunityIcons
                 name={index === 2 ? "swap-horizontal" : "plus-circle-outline"}
@@ -493,6 +517,7 @@ function DashboardView({
         {[
           { name: "Início", icon: "home" },
           { name: "Lançamentos", icon: "receipt-text-outline" },
+          { name: "Novo", icon: "plus-circle" },
           { name: "Contas", icon: "wallet-outline" },
           { name: "Mais", icon: "dots-horizontal" },
         ].map((item, index) => (
@@ -502,13 +527,18 @@ function DashboardView({
             key={item.name}
             style={s.navButton}
             onPress={() =>
-              index === 0 ? setNotice("") : unavailable(item.name)
+              index === 0
+                ? setNotice("")
+                : item.name === "Novo"
+                  ? setRecordOpen(true)
+                  : unavailable(item.name)
             }
           >
             <MaterialCommunityIcons
               name={
                 item.icon as
                   | "home"
+                  | "plus-circle"
                   | "wallet-outline"
                   | "receipt-text-outline"
                   | "dots-horizontal"
@@ -520,6 +550,14 @@ function DashboardView({
           </Pressable>
         ))}
       </View>
+      {recordOpen ? (
+        <NewRecordPicker
+          household={state.householdId}
+          period={state.period}
+          currency={currency}
+          onClose={() => setRecordOpen(false)}
+        />
+      ) : null}
       {periodOpen ? (
         <PeriodPicker
           value={state.period}

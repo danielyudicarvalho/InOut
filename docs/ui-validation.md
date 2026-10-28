@@ -533,3 +533,24 @@ amounts/counts. The backend tests cover grouping before pagination, unassigned
 income and a fully reversed source. The .NET tests and live API integration were
 not run because the environment has no .NET SDK. Native build export remains
 pending the earlier approval block; no external Expo build was requested.
+
+## New record chooser and forms
+
+New-record artwork generated with the built-in image generator and inspected:
+`frontend/public/images/pipo-new-record.webp` and
+`mobile/assets/pipo-new-record.webp`. Prompt: “Transparent wide 2:1 header
+illustration for Ninho new financial record dialog. Pipo, a cute round fluffy
+golden-yellow bird with green leaf tuft, orange beak and rust-red scarf, happily
+holding a large yellow pencil beside an open cream notebook, tiny green
+Ninho-style house mug and leafy plant. Cozy warm watercolor storybook, sage
+green, cream and honey colors. Full character and objects, transparent
+surrounding space. No text, letters, numbers, logos, UI or watermark.”
+
+Client verification includes exact-cent parsing, account/currency/flow checks,
+authorization before option queries, POST paths and idempotency headers, no write
+on loading, durable-before-send behavior, uncertain-response replay, restored
+pending drafts, suppressed double-submit, ignored late responses, denied writes
+and expired pending operations. Requests in tests use in-process fake HTTP
+responses; no real financial records were created. Live .NET writes were not
+exercised in this environment. Native export remains pending the earlier
+approval block; no cloud Expo build was invoked.

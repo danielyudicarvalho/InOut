@@ -3262,3 +3262,222 @@ button:disabled {
     padding: 8px 12px;
   }
 }
+
+.dashboard-new-record {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  border-radius: 12px;
+  background: #245c3a;
+  color: white;
+  padding: 12px 17px;
+  cursor: pointer;
+  margin-left: auto;
+}
+.new-record-dialog {
+  border: 1px solid #e5dcc5;
+  border-radius: 20px;
+  background: #fffbef;
+  color: #163d29;
+  padding: 18px;
+  width: min(94vw, 520px);
+  max-height: 90dvh;
+  box-shadow: 0 20px 70px #16251955;
+}
+.new-record-dialog::backdrop {
+  background: #15211680;
+}
+.new-record-close {
+  position: absolute;
+  right: 12px;
+  top: 12px;
+  min-width: 44px;
+  min-height: 44px;
+  background: transparent;
+  border: 0;
+  color: #5f6252;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+}
+.new-record-art {
+  display: block;
+  width: 280px;
+  height: 140px;
+  object-fit: contain;
+  margin: 0 auto;
+}
+.new-record-dialog h2 {
+  text-align: center;
+  font:
+    bold clamp(24px, 4vw, 30px) Georgia,
+    serif;
+  margin: 8px 0 4px;
+}
+.new-record-dialog > p {
+  text-align: center;
+  margin: 8px 0 16px;
+  color: #4c594b;
+}
+.new-record-choices {
+  display: grid;
+  gap: 12px;
+}
+.new-record-choice {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-height: 86px;
+  border-radius: 14px;
+  padding: 15px;
+  background: #eef3dc;
+  border: 1px solid #e3e9cd;
+  color: #173e2b;
+  text-decoration: none;
+}
+.new-record-choice > div {
+  flex: 1;
+}
+.new-record-choice strong {
+  font:
+    bold 21px Georgia,
+    serif;
+}
+.new-record-choice p {
+  margin: 5px 0 0;
+  font-size: 14px;
+  color: #435243;
+}
+.new-record-choice > span:last-child {
+  font-size: 29px;
+}
+.new-record-icon {
+  background: #386f45;
+  color: white;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+.new-record-choice.expense {
+  background: #fde6da;
+  border-color: #ffddcf;
+}
+.new-record-choice.expense .new-record-icon {
+  background: #bd3c28;
+}
+.new-record-choice.transfer {
+  background: #fff0d4;
+  border-color: #f5dfb8;
+}
+.new-record-choice.transfer .new-record-icon {
+  background: #b98325;
+}
+.new-record-dialog .new-record-footnote {
+  text-align: left;
+  font-size: 12px;
+  margin: 12px 4px 0;
+}
+.record-page {
+  background: #f7f4e8;
+  min-height: 100dvh;
+  padding: 24px 16px;
+  color: #173e2b;
+}
+.record-form-panel {
+  max-width: 620px;
+  margin: 0 auto;
+  padding: 24px;
+}
+.record-form-panel header > img {
+  display: block;
+  width: 260px;
+  height: 130px;
+  object-fit: contain;
+  margin: 0 auto;
+}
+.record-form-panel h1 {
+  font:
+    bold 30px Georgia,
+    serif;
+}
+.record-form-panel fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 16px;
+}
+.record-form-panel label {
+  display: grid;
+  gap: 7px;
+  font-weight: 600;
+  font-size: 14px;
+}
+.record-form-panel input,
+.record-form-panel select,
+.record-form-panel textarea {
+  min-height: 46px;
+  border: 1px solid #ddd5c0;
+  border-radius: 10px;
+  padding: 12px;
+  font: inherit;
+  color: #203e2b;
+  background: #fffdf8;
+  width: 100%;
+  box-sizing: border-box;
+}
+.record-form-panel textarea {
+  min-height: 90px;
+  resize: vertical;
+}
+.record-form-panel small {
+  color: #716f60;
+  font-size: 12px;
+  font-weight: normal;
+}
+.record-submit {
+  width: 100%;
+  margin-top: 22px;
+  cursor: pointer;
+}
+.record-submit:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+.record-notice {
+  background: #fff0db;
+  padding: 12px;
+  border-radius: 10px;
+  line-height: 1.5;
+}
+.record-success {
+  display: inline-block;
+  margin: 12px 0;
+}
+@media (max-width: 600px) {
+  .dashboard-new-record {
+    font-size: 12px;
+    padding: 10px;
+  }
+  .new-record-art {
+    width: 230px;
+    height: 115px;
+  }
+  .new-record-choice {
+    gap: 12px;
+    padding: 12px;
+  }
+  .new-record-choice strong {
+    font-size: 19px;
+  }
+  .new-record-choice p {
+    font-size: 12px;
+  }
+  .record-form-panel {
+    padding: 18px;
+  }
+}

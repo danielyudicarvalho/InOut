@@ -89,6 +89,17 @@ export function buildCategorySummary(
   isReconciled?: boolean,
 ): CategorySummary;
 export interface FinanceRepository {
+  recordOptions(
+    householdId: string,
+    signal?: AbortSignal,
+  ): Promise<RecordOptions>;
+  postRecord(
+    householdId: string,
+    kind: RecordKind,
+    body: { [key: string]: unknown },
+    key: string,
+    signal?: AbortSignal,
+  ): Promise<RecordResult>;
   categorySummary(
     householdId: string,
     period: string,
@@ -200,3 +211,57 @@ export function recentResultEntries(
   expense: IncomeItem[],
   filter?: "all" | "income" | "expense",
 ): (IncomeItem & { flow: "income" | "expense" })[];
+
+export type RecordKind = "income" | "expense" | "transfer";
+export type RecordFields = {
+  accountId: string;
+  destinationId: string;
+  categoryId: string;
+  sourceId: string;
+  amount: string;
+  date: string;
+  description: string;
+};
+export type RecordOptions = {
+  accounts: { id: string; name: string; currency: string }[];
+  categories: { id: string; name: string; flow: "income" | "expense" }[];
+  sources: { id: string; name: string }[];
+};
+export type RecordResult = { transactionId: string; replayed: boolean };
+export type RecordState = {
+  status: "loading" | "ready" | "saving" | "uncertain" | "success" | "error";
+  kind: RecordKind;
+  fields: RecordFields;
+  options: RecordOptions | null;
+  notice: string;
+  result: RecordResult | null;
+};
+export function recordAmount(value: string): number;
+export function prepareRecord(
+  kind: RecordKind,
+  fields: RecordFields,
+  options: RecordOptions,
+): { [key: string]: unknown };
+export function createRecordStore(
+  repository: FinanceRepository,
+  householdId: string,
+  kind: RecordKind,
+  currency: string,
+  options: {
+    storage: {
+      load: () => Promise<string | null>;
+      save: (value: string) => Promise<void>;
+      remove: (key: string) => Promise<void>;
+    };
+    randomId: () => string;
+    now?: () => Date;
+    timeoutMs?: number;
+  },
+): {
+  getSnapshot: () => RecordState;
+  subscribe: (listener: () => void) => () => void;
+  start: () => () => void;
+  retry: () => void;
+  edit: (field: keyof RecordFields, value: string) => void;
+  submit: () => Promise<void>;
+};
