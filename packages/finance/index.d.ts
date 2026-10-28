@@ -192,6 +192,7 @@ export function createAuxiliaryStore(
   submit(): Promise<void>;
 };
 export type TransactionDetail = {
+  original?: TransactionDetail;
   categoryId: string | null;
   sourceId: string | null;
   rawDescription: string;
@@ -576,3 +577,15 @@ export function createAccountStore(
   edit: (field: keyof AccountFields, value: string) => void;
   submit: () => Promise<void>;
 };
+
+export function reversalReconciliation(
+  detail: TransactionDetail,
+  original: TransactionDetail,
+): {
+  accountId: string;
+  accountName: string;
+  currency: string;
+  original: number;
+  compensation: number;
+  net: number;
+}[];

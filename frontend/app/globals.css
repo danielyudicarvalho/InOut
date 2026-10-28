@@ -5071,3 +5071,318 @@ button:disabled {
 .reversal-dialog .reversal-confirm:disabled {
   opacity: 0.65;
 }
+
+/* Reversal details retain the original entry and reconcile each account. */
+.reversal-detail-page .transaction-content {
+  max-width: 1040px;
+}
+.reversal-detail-page .transaction-card {
+  margin: 12px 0;
+  padding: 18px;
+}
+.reversal-detail-page .transaction-hero {
+  position: static;
+  inset: auto;
+  min-height: 125px;
+}
+.reversal-detail-page .transaction-hero img {
+  height: 125px;
+}
+.reversal-detail-page .transaction-hero h1 {
+  font-size: 32px;
+}
+.reversal-summary {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+.reversal-cart {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: #b65d40;
+  color: #fff8e9;
+}
+.reversal-summary-copy {
+  flex: 1;
+  min-width: 0;
+}
+.reversal-badges {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.reversal-badges span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  background: #f6e1cd;
+  color: #9a452e;
+  font-size: 12px;
+}
+.reversal-badges span + span {
+  background: #e7ebd9;
+  color: #315f3b;
+}
+.reversal-badges svg,
+.reversal-info svg,
+.reversal-section-heading svg,
+.reversal-actions svg {
+  width: 17px;
+  height: 17px;
+  flex-shrink: 0;
+}
+.reversal-account {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 10px 0 0;
+  font-size: 12px;
+}
+.reversal-compensation {
+  text-align: right;
+}
+.reversal-compensation small {
+  font-size: 12px;
+  color: #615c4d;
+}
+.reversal-compensation strong {
+  display: block;
+  font:
+    bold 28px Georgia,
+    serif;
+  margin-top: 4px;
+}
+.reversal-info {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  border: 1px solid #e2e2cd;
+  background: #eeeedf;
+  color: #315339;
+  padding: 12px 14px;
+  border-radius: 9px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.reversal-summary-card .reversal-info {
+  margin: 16px 0 0;
+}
+.reversal-section-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.reversal-section-heading a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+}
+.reversal-detail-original-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: #f5f0e5;
+  border: 1px solid #ece5d6;
+  border-radius: 10px;
+  padding: 14px;
+  margin-top: 8px;
+}
+.reversal-detail-original-row > svg:first-child {
+  color: #a94c32;
+  flex-shrink: 0;
+}
+.reversal-detail-original-row > div {
+  flex: 1;
+  min-width: 0;
+}
+.reversal-detail-original-row small {
+  display: block;
+  margin-top: 5px;
+  color: #615c4d;
+  font-size: 12px;
+}
+.reversal-detail-original-row strong {
+  overflow-wrap: anywhere;
+}
+.reversal-equation {
+  display: grid;
+  grid-template-columns: 1fr 16px 1fr 16px 1fr;
+  gap: 10px;
+  align-items: center;
+  margin-top: 12px;
+}
+.reversal-equation-cell {
+  background: #f5f0e5;
+  border-radius: 9px;
+  padding: 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.reversal-equation-cell > svg {
+  background: #a75539;
+  border-radius: 50%;
+  color: white;
+  padding: 4px;
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+}
+.reversal-equation-cell:nth-of-type(2) > svg {
+  background: #527445;
+}
+.reversal-equation-cell:nth-of-type(3) > svg {
+  background: #59886a;
+}
+.reversal-equation-cell small {
+  display: block;
+  font-size: 12px;
+  margin-bottom: 5px;
+}
+.reversal-equation-cell strong {
+  font:
+    bold 17px Georgia,
+    serif;
+}
+.reversal-detail-effect h3 {
+  font-size: 13px;
+  margin: 15px 0 0;
+}
+.reversal-metadata {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.reversal-metadata .transaction-card {
+  margin: 0;
+}
+.reversal-metadata dl {
+  margin: 14px 0 0;
+}
+.reversal-metadata dl > div {
+  display: grid;
+  grid-template-columns: 25px 1fr;
+  margin-top: 14px;
+  gap: 4px 10px;
+}
+.reversal-metadata dl svg {
+  grid-row: span 2;
+  width: 21px;
+  height: 21px;
+}
+.reversal-metadata dt {
+  font-size: 12px;
+  color: #615c4d;
+}
+.reversal-metadata dd {
+  margin: 0;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+  line-height: 1.5;
+}
+.reversal-metadata dd small {
+  display: block;
+  font-size: 11px;
+  color: #615c4d;
+}
+.reversal-actions > a {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+}
+@media (max-width: 700px) {
+  .reversal-detail-page .transaction-hero h1 {
+    font-size: 25px;
+  }
+  .reversal-detail-page .transaction-hero img {
+    max-width: 32%;
+    height: 100px;
+  }
+  .reversal-detail-page .transaction-card {
+    padding: 14px;
+  }
+  .reversal-summary {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .reversal-cart {
+    width: 44px;
+    height: 44px;
+  }
+  .reversal-compensation {
+    width: 100%;
+    text-align: center;
+  }
+  .reversal-detail-original-row {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .reversal-detail-original-row > div {
+    flex-basis: 65%;
+  }
+  .reversal-detail-original-row > .transaction-status {
+    margin-left: auto;
+  }
+  .reversal-section-heading h2 {
+    font-size: 17px;
+  }
+  .reversal-section-heading a {
+    font-size: 11px;
+  }
+  .reversal-equation {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+  .reversal-operator {
+    display: none;
+  }
+  .reversal-equation-cell {
+    padding: 8px 10px;
+  }
+  .reversal-equation-cell > div {
+    display: flex;
+    flex: 1;
+    justify-content: space-between;
+    gap: 10px;
+    align-items: center;
+  }
+  .reversal-equation-cell small {
+    margin: 0;
+  }
+  .reversal-metadata {
+    grid-template-columns: 1fr;
+  }
+  .reversal-actions {
+    flex-direction: column;
+  }
+}
+.reversal-detail-page a {
+  color: inherit;
+  text-decoration: none;
+}
+.reversal-detail-page a:focus-visible {
+  outline: 2px solid #315f3b;
+  outline-offset: 4px;
+}
+.reversal-detail-page a:hover {
+  text-decoration: underline;
+}
+.reversal-actions a.primary {
+  color: #fffdf5;
+}
+.reversal-detail-page .reversal-detail-effect {
+  background: transparent;
+  padding: 0;
+  border: 0;
+}

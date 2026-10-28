@@ -1969,8 +1969,16 @@ export function createReversalStore(
       }),
       initialize: (fields) => fields,
       restore,
-      options: (repo, id, signal) =>
-        repo.transaction(id, transactionId, signal),
+      options: async (repo, id, signal) => {
+        const detail = await repo.transaction(id, transactionId, signal);
+        if (detail.kind !== "reversal") return detail;
+        if (!detail.reversalOf || detail.reversalOf === detail.id)
+          throw new FinanceFailure("invalid");
+        const original = await repo.transaction(id, detail.reversalOf, signal);
+        // A reversal must compensate each original account, not only its total.
+        reversalReconciliation(detail, original);
+        return { ...detail, original };
+      },
       prepare: (kind, fields, detail) => {
         if (!canReverse(detail)) throw new FinanceFailure("validation");
         rangePeriod(fields.date, fields.date);
@@ -2114,4 +2122,33 @@ export function reversalEffects(detail) {
     currency: p.currency,
     amount: -p.amount,
   }));
+}
+
+export function reversalReconciliation(detail, original) {
+  if (
+    detail.kind !== "reversal" ||
+    detail.reversalOf !== original.id ||
+    original.kind === "reversal" ||
+    detail.postings.length !== original.postings.length
+  )
+    throw new FinanceFailure("invalid");
+  return original.postings.map((posting) => {
+    const compensation = detail.postings.find(
+      (p) => p.accountId === posting.accountId,
+    );
+    if (
+      !compensation ||
+      compensation.currency !== posting.currency ||
+      compensation.amount !== -posting.amount
+    )
+      throw new FinanceFailure("invalid");
+    return {
+      accountId: posting.accountId,
+      accountName: compensation.accountName,
+      currency: posting.currency,
+      original: posting.amount,
+      compensation: compensation.amount,
+      net: posting.amount + compensation.amount,
+    };
+  });
 }

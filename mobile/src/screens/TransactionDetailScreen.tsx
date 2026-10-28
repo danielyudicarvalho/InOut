@@ -13,6 +13,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
 import { canReverse, money, historyKind } from "@inout/finance";
 import { useReversal } from "../finance/use-reversal";
+import { ReversalDetail } from "../components/ReversalDetail";
 import { ReversalSheet } from "../components/ReversalSheet";
 import { theme as t } from "../theme";
 export function TransactionDetailScreen() {
@@ -102,242 +103,259 @@ function DetailView({
         <Pressable accessibilityRole="button" onPress={back} style={s.back}>
           <Text style={s.green}>‹ Lançamentos</Text>
         </Pressable>
-        <View style={s.hero}>
-          <View style={{ flex: 1 }}>
-            <Text accessibilityRole="header" style={s.title}>
-              {transfer
-                ? "Detalhe da transferência"
-                : opening
-                  ? "Detalhe do saldo inicial"
-                  : "Detalhe do lançamento"}
-            </Text>
-            {!transfer && (
+        {detail.kind === "reversal" && detail.original ? (
+          <ReversalDetail
+            detail={detail}
+            original={detail.original}
+            onOriginal={() => target(detail.original!.id)}
+            onBack={back}
+          />
+        ) : (
+          <>
+            <View style={s.hero}>
+              <View style={{ flex: 1 }}>
+                <Text accessibilityRole="header" style={s.title}>
+                  {transfer
+                    ? "Detalhe da transferência"
+                    : opening
+                      ? "Detalhe do saldo inicial"
+                      : "Detalhe do lançamento"}
+                </Text>
+                {!transfer && (
+                  <Text style={s.help}>
+                    {opening
+                      ? "O ponto de partida da sua conta."
+                      : "Confira abaixo todas as informações deste lançamento."}
+                  </Text>
+                )}
+              </View>
+              {!transfer && !opening && (
+                <Image
+                  source={require("../../assets/pipo-detail.webp")}
+                  style={s.art}
+                />
+              )}
+            </View>
+            <View style={s.card}>
+              <Text style={s.heading}>
+                {opening ? "Saldo inicial da conta" : detail.description}
+              </Text>
               <Text style={s.help}>
                 {opening
-                  ? "O ponto de partida da sua conta."
-                  : "Confira abaixo todas as informações deste lançamento."}
+                  ? "Posição inicial"
+                  : historyKind({ kind: detail.kind })}
+              </Text>
+              <Text
+                style={[
+                  s.amount,
+                  {
+                    color: detail.amount < 0 ? "#b5432c" : "#2b6b42",
+                    textDecorationLine: reversed ? "line-through" : "none",
+                  },
+                ]}
+              >
+                {money(detail.amount, detail.currency)}
+              </Text>
+              <Text
+                style={[
+                  s.status,
+                  reversed && { backgroundColor: "#ffe0d2", color: "#a3422a" },
+                ]}
+              >
+                {reversed ? "Estornado" : "Registrado"}
+              </Text>
+              {transfer && (
+                <>
+                  <Image
+                    source={require("../../assets/pipo-transfer-detail.webp")}
+                    style={s.transferArt}
+                  />
+                  <View
+                    accessibilityLabel="Contas da transferência"
+                    style={s.accounts}
+                  >
+                    {detail.postings.map((posting, i) => (
+                      <View key={posting.accountId}>
+                        {i === 1 && <Text style={s.arrow}>↓</Text>}
+                        <View style={[s.account, i === 1 && s.destination]}>
+                          <MaterialCommunityIcons
+                            name={
+                              i === 0
+                                ? "wallet-outline"
+                                : "account-group-outline"
+                            }
+                            size={28}
+                            color="#315f3b"
+                            accessible={false}
+                          />
+                          <View style={{ flex: 1 }}>
+                            <Text style={s.label}>
+                              {i === 0 ? "Origem" : "Destino"}
+                            </Text>
+                            <Text style={s.value}>{posting.accountName}</Text>
+                            <Text style={s.help}>{posting.currency}</Text>
+                          </View>
+                        </View>
+                      </View>
+                    ))}
+                  </View>
+                </>
+              )}
+              {opening && (
+                <Image
+                  source={require("../../assets/pipo-opening-detail.webp")}
+                  style={s.openingArt}
+                />
+              )}
+              {(transfer ? detail.rows.slice(2) : detail.rows).map((row, i) => (
+                <View key={i} style={s.row}>
+                  <Text style={s.label}>
+                    {transfer && row.label === "Data do lançamento"
+                      ? "Data da transferência"
+                      : opening && row.label === "Data do lançamento"
+                        ? "Data de referência"
+                        : opening && i === 0
+                          ? "Conta"
+                          : row.label}
+                  </Text>
+                  <Text style={s.value}>{row.value}</Text>
+                </View>
+              ))}
+              {detail.postings.length > 1 && (
+                <Text style={s.help}>
+                  Esta transferência move dinheiro entre suas contas e não
+                  altera o resultado do período.
+                </Text>
+              )}
+              {detail.reversalOf && (
+                <Pressable
+                  style={s.button}
+                  onPress={() => target(detail.reversalOf!)}
+                >
+                  <Text>Ver lançamento original deste estorno</Text>
+                </Pressable>
+              )}
+            </View>
+            {opening && (
+              <View style={s.openingNotice}>
+                <Text style={s.heading}>Saldo inicial não é receita</Text>
+                <Text style={s.value}>
+                  Representa o dinheiro que já existia na conta na data de
+                  referência. Compõe o saldo, mas não entra nas receitas nem no
+                  resultado do período.
+                </Text>
+                <Text style={s.help}>Não é um lançamento recorrente.</Text>
+              </View>
+            )}
+            <View style={s.card}>
+              <Text style={s.heading}>Registro</Text>
+              <Text style={s.help}>
+                Informações de auditoria deste lançamento.
+              </Text>
+              <Text style={s.label}>Registrado por (usuário)</Text>
+              <Text selectable style={s.value}>
+                {detail.createdBy}
+              </Text>
+              <Text style={s.label}>Registrado em</Text>
+              <Text style={s.value}>
+                {new Date(detail.postedAt).toLocaleString("pt-BR")}
+              </Text>
+              <Text style={s.help}>Horário do dispositivo</Text>
+              <Text style={s.label}>Identificador</Text>
+              <Text selectable style={s.value}>
+                {detail.id}
+              </Text>
+            </View>
+            {state.notice && (
+              <Text accessibilityLiveRegion="polite" style={s.notice}>
+                {done
+                  ? "Estorno registrado com sucesso. O registro original foi mantido."
+                  : state.notice}
               </Text>
             )}
-          </View>
-          {!transfer && !opening && (
-            <Image
-              source={require("../../assets/pipo-detail.webp")}
-              style={s.art}
-            />
-          )}
-        </View>
-        <View style={s.card}>
-          <Text style={s.heading}>
-            {opening ? "Saldo inicial da conta" : detail.description}
-          </Text>
-          <Text style={s.help}>
-            {opening ? "Posição inicial" : historyKind({ kind: detail.kind })}
-          </Text>
-          <Text
-            style={[
-              s.amount,
-              {
-                color: detail.amount < 0 ? "#b5432c" : "#2b6b42",
-                textDecorationLine: reversed ? "line-through" : "none",
-              },
-            ]}
-          >
-            {money(detail.amount, detail.currency)}
-          </Text>
-          <Text
-            style={[
-              s.status,
-              reversed && { backgroundColor: "#ffe0d2", color: "#a3422a" },
-            ]}
-          >
-            {reversed ? "Estornado" : "Registrado"}
-          </Text>
-          {transfer && (
-            <>
-              <Image
-                source={require("../../assets/pipo-transfer-detail.webp")}
-                style={s.transferArt}
-              />
-              <View
-                accessibilityLabel="Contas da transferência"
-                style={s.accounts}
+            {done && state.result && (
+              <Pressable
+                style={s.button}
+                onPress={() => target(state.result!.transactionId)}
               >
-                {detail.postings.map((posting, i) => (
-                  <View key={posting.accountId}>
-                    {i === 1 && <Text style={s.arrow}>↓</Text>}
-                    <View style={[s.account, i === 1 && s.destination]}>
-                      <MaterialCommunityIcons
-                        name={
-                          i === 0 ? "wallet-outline" : "account-group-outline"
-                        }
-                        size={28}
-                        color="#315f3b"
-                        accessible={false}
-                      />
-                      <View style={{ flex: 1 }}>
-                        <Text style={s.label}>
-                          {i === 0 ? "Origem" : "Destino"}
-                        </Text>
-                        <Text style={s.value}>{posting.accountName}</Text>
-                        <Text style={s.help}>{posting.currency}</Text>
-                      </View>
-                    </View>
-                  </View>
-                ))}
-              </View>
-            </>
-          )}
-          {opening && (
-            <Image
-              source={require("../../assets/pipo-opening-detail.webp")}
-              style={s.openingArt}
-            />
-          )}
-          {(transfer ? detail.rows.slice(2) : detail.rows).map((row, i) => (
-            <View key={i} style={s.row}>
-              <Text style={s.label}>
-                {transfer && row.label === "Data do lançamento"
-                  ? "Data da transferência"
-                  : opening && row.label === "Data do lançamento"
-                    ? "Data de referência"
-                    : opening && i === 0
-                      ? "Conta"
-                      : row.label}
-              </Text>
-              <Text style={s.value}>{row.value}</Text>
-            </View>
-          ))}
-          {detail.postings.length > 1 && (
-            <Text style={s.help}>
-              Esta transferência move dinheiro entre suas contas e não altera o
-              resultado do período.
-            </Text>
-          )}
-          {detail.reversalOf && (
+                <Text>Ver movimentação de estorno</Text>
+              </Pressable>
+            )}
+            {opening && (
+              <Pressable
+                accessibilityRole="button"
+                style={[s.button, s.primary]}
+                onPress={() =>
+                  router.push({
+                    pathname: "/composicao-saldo",
+                    params: {
+                      household,
+                      account: detail.postings[0].accountId,
+                      currency: detail.currency,
+                      ...(period ? { period } : {}),
+                    },
+                  })
+                }
+              >
+                <Text style={{ color: "white" }}>↗ Ver conta</Text>
+              </Pressable>
+            )}
             <Pressable
-              style={s.button}
-              onPress={() => target(detail.reversalOf!)}
+              accessibilityRole="button"
+              style={[s.button, !opening && s.primary]}
+              onPress={back}
             >
-              <Text>Ver lançamento original deste estorno</Text>
+              <Text style={{ color: opening ? "#315f3b" : "white" }}>
+                ← Voltar ao histórico
+              </Text>
             </Pressable>
-          )}
-        </View>
-        {opening && (
-          <View style={s.openingNotice}>
-            <Text style={s.heading}>Saldo inicial não é receita</Text>
-            <Text style={s.value}>
-              Representa o dinheiro que já existia na conta na data de
-              referência. Compõe o saldo, mas não entra nas receitas nem no
-              resultado do período.
-            </Text>
-            <Text style={s.help}>Não é um lançamento recorrente.</Text>
-          </View>
-        )}
-        <View style={s.card}>
-          <Text style={s.heading}>Registro</Text>
-          <Text style={s.help}>Informações de auditoria deste lançamento.</Text>
-          <Text style={s.label}>Registrado por (usuário)</Text>
-          <Text selectable style={s.value}>
-            {detail.createdBy}
-          </Text>
-          <Text style={s.label}>Registrado em</Text>
-          <Text style={s.value}>
-            {new Date(detail.postedAt).toLocaleString("pt-BR")}
-          </Text>
-          <Text style={s.help}>Horário do dispositivo</Text>
-          <Text style={s.label}>Identificador</Text>
-          <Text selectable style={s.value}>
-            {detail.id}
-          </Text>
-        </View>
-        {state.notice && (
-          <Text accessibilityLiveRegion="polite" style={s.notice}>
-            {done
-              ? "Estorno registrado com sucesso. O registro original foi mantido."
-              : state.notice}
-          </Text>
-        )}
-        {done && state.result && (
-          <Pressable
-            style={s.button}
-            onPress={() => target(state.result!.transactionId)}
-          >
-            <Text>Ver movimentação de estorno</Text>
-          </Pressable>
-        )}
-        {opening && (
-          <Pressable
-            accessibilityRole="button"
-            style={[s.button, s.primary]}
-            onPress={() =>
-              router.push({
-                pathname: "/composicao-saldo",
-                params: {
-                  household,
-                  account: detail.postings[0].accountId,
-                  currency: detail.currency,
-                  ...(period ? { period } : {}),
-                },
-              })
-            }
-          >
-            <Text style={{ color: "white" }}>↗ Ver conta</Text>
-          </Pressable>
-        )}
-        <Pressable
-          accessibilityRole="button"
-          style={[s.button, !opening && s.primary]}
-          onPress={back}
-        >
-          <Text style={{ color: opening ? "#315f3b" : "white" }}>
-            ← Voltar ao histórico
-          </Text>
-        </Pressable>
-        {!done && ((!opening && canReverse(detail)) || pending) && (
-          <Pressable
-            accessibilityRole="button"
-            style={[s.button, s.reverse]}
-            onPress={() => {
-              setDismissed(false);
-              setConfirm(true);
-            }}
-          >
-            <Text style={{ color: "#b33d29" }}>
-              {pending
-                ? "Verificar estorno pendente"
-                : transfer
-                  ? "↶ Estornar transferência"
-                  : "↶ Estornar lançamento"}
-            </Text>
-          </Pressable>
-        )}
-        {corrected && (
-          <Text accessibilityLiveRegion="polite" style={s.help}>
-            Classificação atualizada com sucesso.
-          </Text>
-        )}
-        {["income", "expense"].includes(detail.kind) && (
-          <Pressable
-            accessibilityRole="button"
-            style={s.button}
-            onPress={() => setClassify(true)}
-          >
-            <Text>
-              {detail.status === "posted"
-                ? "Corrigir classificação"
-                : "Consultar classificação"}
-            </Text>
-          </Pressable>
-        )}
-        <Pressable style={s.button} onPress={state.retry}>
-          <Text>Atualizar</Text>
-        </Pressable>
-        {!opening && (
-          <Text style={s.help}>
-            {transfer
-              ? "O estorno desfaz os dois lados da transferência em uma única operação, mantendo o original."
-              : "O estorno mantém o original e cria uma movimentação de compensação."}
-          </Text>
+            {!done && ((!opening && canReverse(detail)) || pending) && (
+              <Pressable
+                accessibilityRole="button"
+                style={[s.button, s.reverse]}
+                onPress={() => {
+                  setDismissed(false);
+                  setConfirm(true);
+                }}
+              >
+                <Text style={{ color: "#b33d29" }}>
+                  {pending
+                    ? "Verificar estorno pendente"
+                    : transfer
+                      ? "↶ Estornar transferência"
+                      : "↶ Estornar lançamento"}
+                </Text>
+              </Pressable>
+            )}
+            {corrected && (
+              <Text accessibilityLiveRegion="polite" style={s.help}>
+                Classificação atualizada com sucesso.
+              </Text>
+            )}
+            {["income", "expense"].includes(detail.kind) && (
+              <Pressable
+                accessibilityRole="button"
+                style={s.button}
+                onPress={() => setClassify(true)}
+              >
+                <Text>
+                  {detail.status === "posted"
+                    ? "Corrigir classificação"
+                    : "Consultar classificação"}
+                </Text>
+              </Pressable>
+            )}
+            <Pressable style={s.button} onPress={state.retry}>
+              <Text>Atualizar</Text>
+            </Pressable>
+            {!opening && (
+              <Text style={s.help}>
+                {transfer
+                  ? "O estorno desfaz os dois lados da transferência em uma única operação, mantendo o original."
+                  : "O estorno mantém o original e cria uma movimentação de compensação."}
+              </Text>
+            )}
+          </>
         )}
       </ScrollView>
       {classify && (

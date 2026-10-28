@@ -206,13 +206,26 @@ test("detail load and edits never reverse; explicit confirmation persists before
 });
 test("a new reversal is blocked for a reversal or an already reversed transaction", async () => {
   for (const detail of [
-    { kind: "reversal", status: "posted" },
+    {
+      id,
+      kind: "reversal",
+      status: "posted",
+      reversalOf: reverseId,
+      postings: [{ accountId: "a", currency: "BRL", amount: 32000 }],
+    },
     { kind: "expense", status: "reversed" },
   ]) {
     let writes = 0;
     const store = createReversalStore(
       {
-        transaction: async () => detail,
+        transaction: async (home, transaction) =>
+          transaction === reverseId
+            ? {
+                id: reverseId,
+                kind: "expense",
+                postings: [{ accountId: "a", currency: "BRL", amount: -32000 }],
+              }
+            : detail,
         reverse: async () => {
           writes++;
         },
@@ -445,5 +458,118 @@ test("a legacy pending reversal without a reason still replays its saved payload
     key,
   ]);
   assert.equal(store.getSnapshot().status, "success");
+  stop();
+});
+
+test("reversal detail loads its linked original and preserves the correction reason", async () => {
+  const original = await repo([{ ...row, status: "reversed" }]).transaction(
+    "h",
+    id,
+  );
+  const reversal = await repo([
+    {
+      ...row,
+      transactionId: reverseId,
+      kind: "reversal",
+      reversalOf: id,
+      direction: "credit",
+      description: "Lançamento registrado em duplicidade.",
+    },
+  ]).transaction("h", reverseId);
+  const calls = [];
+  const store = createReversalStore(
+    {
+      transaction: async (home, transaction) => {
+        calls.push([home, transaction]);
+        return transaction === reverseId ? reversal : original;
+      },
+    },
+    "h",
+    reverseId,
+    { storage: storage(), randomId: () => key },
+  );
+  const stop = store.start();
+  await tick();
+  assert.equal(store.getSnapshot().status, "ready");
+  assert.equal(store.getSnapshot().options.original.id, id);
+  assert.equal(
+    store.getSnapshot().options.rawDescription,
+    "Lançamento registrado em duplicidade.",
+  );
+  assert.deepEqual(calls, [
+    ["h", reverseId],
+    ["h", id],
+  ]);
+  stop();
+});
+
+test("reconciliation matches transfer legs by account, not response order or aggregate total", async () => {
+  const { reversalReconciliation } = await import("./index.mjs");
+  const original = {
+    id,
+    kind: "transfer",
+    postings: [
+      {
+        accountId: "a",
+        accountName: "Principal",
+        currency: "BRL",
+        amount: -32000,
+      },
+      {
+        accountId: "b",
+        accountName: "Reserva",
+        currency: "BRL",
+        amount: 32000,
+      },
+    ],
+  };
+  const reversal = {
+    kind: "reversal",
+    reversalOf: id,
+    postings: [
+      { ...original.postings[1], amount: -32000 },
+      { ...original.postings[0], amount: 32000 },
+    ],
+  };
+  assert.deepEqual(
+    reversalReconciliation(reversal, original).map((p) => [
+      p.accountId,
+      p.original,
+      p.compensation,
+      p.net,
+    ]),
+    [
+      ["a", -32000, 32000, 0],
+      ["b", 32000, -32000, 0],
+    ],
+  );
+  for (const postings of [
+    reversal.postings.slice(0, 1),
+    reversal.postings.map((p) => ({ ...p, amount: -p.amount })),
+    reversal.postings.map((p) => ({ ...p, currency: "USD" })),
+    reversal.postings.map((p) => ({ ...p, accountId: "wrong" })),
+  ])
+    assert.throws(
+      () => reversalReconciliation({ ...reversal, postings }, original),
+      { code: "invalid" },
+    );
+});
+
+test("reversal detail reports a read error when its original is unavailable", async () => {
+  const store = createReversalStore(
+    {
+      transaction: async (home, transaction) => {
+        if (transaction === id) throw new FinanceFailure("network");
+        return { id: reverseId, kind: "reversal", reversalOf: id };
+      },
+    },
+    "h",
+    reverseId,
+    { storage: storage(), randomId: () => key },
+  );
+  const stop = store.start();
+  await tick();
+  assert.equal(store.getSnapshot().status, "error");
+  assert.equal(store.getSnapshot().options, null);
   stop();
 });
