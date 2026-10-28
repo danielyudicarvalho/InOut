@@ -1,4 +1,5 @@
 "use client";
+import { BrandLogo } from "./brand-logo";
 import { type FormEvent } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
@@ -91,7 +92,7 @@ function RecordForm({
   householdName: string;
 }) {
   const state = useRecord(household, kind, currency);
-  const back = `/inicio?${new URLSearchParams({ household, period, currency })}`;
+  const back = `/lancamentos?${new URLSearchParams({ household, period, currency })}`;
   if (state.status === "loading" || state.status === "error" || !state.options)
     return (
       <main className="financial-state">
@@ -129,172 +130,248 @@ function RecordForm({
     void state.submit();
   }
   return (
-    <main className="record-page">
-      <section className="dashboard-panel record-form-panel">
-        <header>
-          <Link className="balance-back" href={back}>
-            ‹ Voltar ao início
+    <main
+      className={`record-page ${kind === "income" ? "record-income-layout" : ""}`}
+    >
+      {kind === "income" && (
+        <aside className="dashboard-sidebar">
+          <Link
+            className="dashboard-brand"
+            href={`/inicio?${new URLSearchParams({ household, period, currency })}`}
+          >
+            <BrandLogo />
           </Link>
-          <Image
-            src="/images/pipo-new-record.webp"
-            width={600}
-            height={300}
-            sizes="260px"
-            alt="Pipo escrevendo em um caderno"
-          />
-          <p>{householdName}</p>
-          <h1>{titles[state.kind]}</h1>
-          <p>
-            {state.kind === "transfer"
-              ? "Mova dinheiro entre suas contas. Transferências não contam como receita ou despesa."
-              : "Informe os dados do lançamento."}
-          </p>
-        </header>
-        {state.status === "success" ? (
-          <div>
-            <p role="status">Registro salvo com sucesso.</p>
-            <Link className="primary record-success" href={successHref}>
-              Ver o período do lançamento
+          <p className="record-household">⌂ {householdName}</p>
+          <nav aria-label="Navegação principal">
+            <Link
+              href={`/inicio?${new URLSearchParams({ household, period, currency })}`}
+            >
+              Início
             </Link>
-          </div>
-        ) : (
-          <form onSubmit={submit}>
-            {state.notice ? (
-              <p role="alert" className="record-notice">
-                {state.notice}
-              </p>
-            ) : null}
-            {unavailable && !locked ? (
-              <p role="alert">
-                {!options.accounts.length
-                  ? "Crie uma conta financeira antes de registrar."
-                  : state.kind === "transfer"
-                    ? "Uma transferência precisa de duas contas diferentes na mesma moeda."
-                    : "Cadastre uma categoria correspondente a este tipo de movimentação antes de registrar."}
-              </p>
-            ) : null}
-            <fieldset disabled={locked}>
-              <label>
-                {state.kind === "transfer" ? "Conta de origem" : "Conta"}
-                <select
-                  required
-                  value={fields.accountId}
-                  onChange={(e) => state.edit("accountId", e.target.value)}
-                >
-                  <option value="">Selecione</option>
-                  {options.accounts.map((row) => (
-                    <option key={row.id} value={row.id}>
-                      {row.name} · {row.currency}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              {state.kind === "transfer" ? (
-                <label>
-                  Conta de destino
+            <Link href={back} aria-current="page">
+              Lançamentos
+            </Link>
+            <Link
+              href={`/composicao-saldo?${new URLSearchParams({ household, period, currency })}`}
+            >
+              Contas
+            </Link>
+          </nav>
+          <p className="dashboard-motto">
+            Grandes conquistas também nascem de pequenos registros. ♡
+          </p>
+        </aside>
+      )}
+      <div className="record-main">
+        <section className="dashboard-panel record-form-panel">
+          <header>
+            <Link className="balance-back" href={back}>
+              ‹ Lançamentos
+            </Link>
+            <Image
+              src={
+                state.kind === "income"
+                  ? "/images/pipo-income-form.webp"
+                  : "/images/pipo-new-record.webp"
+              }
+              width={600}
+              height={300}
+              sizes="260px"
+              alt={
+                state.kind === "income"
+                  ? "Pipo guardando uma moeda em uma bolsinha"
+                  : "Pipo escrevendo em um caderno"
+              }
+            />
+            <p>{householdName}</p>
+            <h1>{titles[state.kind]}</h1>
+            <p>
+              {state.kind === "transfer"
+                ? "Mova dinheiro entre suas contas. Transferências não contam como receita ou despesa."
+                : state.kind === "income"
+                  ? "Registre um dinheiro que entrou no seu lar."
+                  : "Informe os dados do lançamento."}
+            </p>
+          </header>
+          {state.status === "success" ? (
+            <div>
+              <p role="status">Registro salvo com sucesso.</p>
+              <Link className="primary record-success" href={successHref}>
+                Ver o período do lançamento
+              </Link>
+            </div>
+          ) : (
+            <form onSubmit={submit}>
+              {state.notice ? (
+                <p role="alert" className="record-notice">
+                  {state.notice}
+                </p>
+              ) : null}
+              {unavailable && !locked ? (
+                <p role="alert">
+                  {!options.accounts.length
+                    ? "Crie uma conta financeira antes de registrar."
+                    : state.kind === "transfer"
+                      ? "Uma transferência precisa de duas contas diferentes na mesma moeda."
+                      : "Cadastre uma categoria correspondente a este tipo de movimentação antes de registrar."}
+                </p>
+              ) : null}
+              <fieldset disabled={locked}>
+                <label className="record-account">
+                  {state.kind === "transfer"
+                    ? "Conta de origem *"
+                    : state.kind === "income"
+                      ? "Conta de destino *"
+                      : "Conta *"}
                   <select
                     required
-                    value={fields.destinationId}
-                    onChange={(e) =>
-                      state.edit("destinationId", e.target.value)
-                    }
+                    value={fields.accountId}
+                    onChange={(e) => state.edit("accountId", e.target.value)}
                   >
                     <option value="">Selecione</option>
-                    {destinations.map((row) => (
+                    {options.accounts.map((row) => (
                       <option key={row.id} value={row.id}>
                         {row.name} · {row.currency}
                       </option>
                     ))}
                   </select>
                 </label>
-              ) : (
-                <label>
-                  Categoria
-                  <select
+                {state.kind === "income" && (
+                  <label className="record-currency">
+                    Moeda da conta
+                    <input
+                      readOnly
+                      value={account?.currency ?? "Selecione uma conta"}
+                      aria-label="Moeda da conta, definida pela conta escolhida"
+                    />
+                    <small>A moeda é definida pela conta escolhida. 🔒</small>
+                  </label>
+                )}
+                <label className="record-amount">
+                  Valor * {account ? `(${account.currency})` : ""}
+                  <input
                     required
-                    value={fields.categoryId}
-                    onChange={(e) => state.edit("categoryId", e.target.value)}
-                  >
-                    <option value="">Selecione</option>
-                    {categories.map((row) => (
-                      <option key={row.id} value={row.id}>
-                        {row.name}
-                      </option>
-                    ))}
-                  </select>
+                    inputMode="decimal"
+                    placeholder="1250,50"
+                    value={fields.amount}
+                    onChange={(e) => state.edit("amount", e.target.value)}
+                  />
+                  <small>
+                    Use vírgula ou ponto para os centavos, sem separador de
+                    milhar.
+                  </small>
                 </label>
-              )}
-              {state.kind === "income" ? (
-                <label>
-                  Fonte de renda (opcional)
-                  <select
-                    value={fields.sourceId}
-                    onChange={(e) => state.edit("sourceId", e.target.value)}
-                  >
-                    <option value="">Sem fonte de renda</option>
-                    {options.sources.map((row) => (
-                      <option key={row.id} value={row.id}>
-                        {row.name}
-                      </option>
-                    ))}
-                  </select>
+                {state.kind === "transfer" ? (
+                  <label>
+                    Conta de destino
+                    <select
+                      required
+                      value={fields.destinationId}
+                      onChange={(e) =>
+                        state.edit("destinationId", e.target.value)
+                      }
+                    >
+                      <option value="">Selecione</option>
+                      {destinations.map((row) => (
+                        <option key={row.id} value={row.id}>
+                          {row.name} · {row.currency}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                ) : (
+                  <label className="record-category">
+                    Categoria *
+                    <select
+                      required
+                      value={fields.categoryId}
+                      onChange={(e) => state.edit("categoryId", e.target.value)}
+                    >
+                      <option value="">Selecione</option>
+                      {categories.map((row) => (
+                        <option key={row.id} value={row.id}>
+                          {row.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+                {state.kind === "income" ? (
+                  <label className="record-source">
+                    Fonte de renda (opcional)
+                    <select
+                      value={fields.sourceId}
+                      onChange={(e) => state.edit("sourceId", e.target.value)}
+                    >
+                      <option value="">Sem fonte de renda</option>
+                      {options.sources.map((row) => (
+                        <option key={row.id} value={row.id}>
+                          {row.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                ) : null}
+                <label className="record-date">
+                  Data *
+                  <input
+                    required
+                    type="date"
+                    min="2000-01-01"
+                    max="9998-12-31"
+                    value={fields.date}
+                    onChange={(e) => state.edit("date", e.target.value)}
+                  />
                 </label>
-              ) : null}
-              <label>
-                Valor {account ? `(${account.currency})` : ""}
-                <input
-                  required
-                  inputMode="decimal"
-                  placeholder="1250,50"
-                  value={fields.amount}
-                  onChange={(e) => state.edit("amount", e.target.value)}
-                />
-                <small>
-                  Use vírgula ou ponto para os centavos, sem separador de
-                  milhar.
-                </small>
-              </label>
-              <label>
-                Data
-                <input
-                  required
-                  type="date"
-                  min="2000-01-01"
-                  max="9998-12-31"
-                  value={fields.date}
-                  onChange={(e) => state.edit("date", e.target.value)}
-                />
-              </label>
-              <label>
-                Descrição (opcional)
-                <textarea
-                  maxLength={500}
-                  value={fields.description}
-                  onChange={(e) => state.edit("description", e.target.value)}
-                />
-              </label>
-            </fieldset>
-            <button
-              className="primary record-submit"
-              type="submit"
-              disabled={
-                state.status === "saving" ||
-                (state.status === "ready" && unavailable)
-              }
-            >
-              {state.status === "saving"
-                ? "Salvando…"
-                : state.status === "uncertain"
-                  ? "Verificar tentativa pendente"
-                  : state.kind === "income"
-                    ? "Salvar entrada"
-                    : state.kind === "expense"
-                      ? "Salvar saída"
-                      : "Salvar transferência"}
-            </button>
-          </form>
-        )}
-      </section>
+                <label className="record-description">
+                  Descrição (opcional)
+                  <textarea
+                    maxLength={500}
+                    value={fields.description}
+                    onChange={(e) => state.edit("description", e.target.value)}
+                  />
+                  <small className="record-count">
+                    {fields.description.length}/500
+                  </small>
+                </label>
+              </fieldset>
+              <div className="record-actions">
+                <small>* Campos obrigatórios</small>
+                <Link
+                  className="record-cancel"
+                  href={back}
+                  aria-disabled={state.status === "saving"}
+                  onClick={(e) => {
+                    if (state.status === "saving") e.preventDefault();
+                  }}
+                >
+                  {state.status === "uncertain"
+                    ? "Voltar aos lançamentos"
+                    : "Cancelar"}
+                </Link>
+                <button
+                  className="primary record-submit"
+                  type="submit"
+                  disabled={
+                    state.status === "saving" ||
+                    (state.status === "ready" && unavailable)
+                  }
+                >
+                  {state.status === "saving"
+                    ? "Salvando…"
+                    : state.status === "uncertain"
+                      ? "Verificar tentativa pendente"
+                      : state.kind === "income"
+                        ? "Registrar entrada"
+                        : state.kind === "expense"
+                          ? "Salvar saída"
+                          : "Salvar transferência"}
+                </button>
+              </div>
+            </form>
+          )}
+        </section>
+      </div>
     </main>
   );
 }

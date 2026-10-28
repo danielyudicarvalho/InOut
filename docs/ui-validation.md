@@ -617,3 +617,17 @@ Testes financeiros adicionados cobrem restauração da hierarquia, imutabilidade
 Ilustração criada com imagegen integrado e inspecionada, salva em `frontend/public/images/pipo-filters.webp` e `mobile/assets/pipo-filters.webp`.
 
 Prompt final: “Transparent horizontal watercolor storybook hero for Ninho household finance search and filters panel. Pipo, a small fluffy golden-yellow bird with green leaf tuft, orange beak and rust-red scarf, holding a magnifying glass beside three neat blank index-card dividers and small sage leafy potted plants. Warm cream honey terracotta sage palette, airy gentle composition, full character, transparent margins. No words, letters, numbers, labels, logos or UI.”
+
+## Nova entrada — 2026-10-28
+
+Formulário existente ajustado à nova referência, com navegação para Lançamentos, logo compartilhado e barra lateral no desktop, cabeçalho ilustrado próprio, conta de destino obrigatória, moeda somente leitura derivada da conta, valor, categoria obrigatória, fonte opcional, data e descrição com contador de 500 caracteres. Web em duas colunas responsivas; mobile com cabeçalho compacto e data DD/MM/AAAA convertida ao formato ISO para o mesmo contrato do backend. Valores do exemplo não são preenchidos como dados reais.
+
+O POST de entrada e as proteções existentes de identidade, autorização, centavos inteiros, categoria de entrada, persistência da tentativa, chave idempotente e retry incerto foram mantidos. Cancelar apenas navega, sem POST; durante envio está bloqueado. Uma tentativa incerta continua persistida e a ação é apresentada como Voltar aos lançamentos. O sucesso só aparece após confirmação do backend.
+
+Validação: 90 testes web (incluindo os testes compartilhados financeiros e identidade), lint e tipagem nas duas plataformas passaram. Sem escrita financeira real, teste de integração .NET ou execução em dispositivo; builds nativos não executados.
+
+Arte criada com imagegen integrado, inspecionada e preparada em WebP com transparência para `frontend/public/images/pipo-income-form.webp` e `mobile/assets/pipo-income-form.webp`.
+
+Prompt final: “Transparent wide watercolor storybook hero for Ninho household finance NEW INCOME form. Pipo a fluffy golden yellow bird with green leaf tuft, orange beak and rust red scarf, smiling with closed eyes while gently dropping one golden coin into a small dark sage green purse with a leaf emblem. Blank notebook beside purse and small potted sage plant. Warm cream honey terracotta palette, cozy gentle light, whole character and objects, generous transparent margin. No letters, words, numbers, logos or UI.”
+
+Build de produção Next.js da atualização Nova entrada também passou.

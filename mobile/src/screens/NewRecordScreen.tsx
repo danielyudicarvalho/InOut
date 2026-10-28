@@ -11,7 +11,12 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
-import { type RecordFields, type RecordKind } from "@inout/finance";
+import {
+  displayDate,
+  inputDate,
+  type RecordFields,
+  type RecordKind,
+} from "@inout/finance";
 import { useFinancialHome } from "../finance/use-financial-home";
 import { useRecord } from "../finance/use-record";
 import { theme as t } from "../theme";
@@ -125,7 +130,7 @@ function RecordForm({
     [picker, setPicker] = useState<keyof RecordFields | null>(null);
   const back = () =>
     router.replace({
-      pathname: "/inicio",
+      pathname: "/lancamentos",
       params: { household, period, currency },
     });
   if (state.status === "loading" || state.status === "error" || !state.options)
@@ -203,23 +208,37 @@ function RecordForm({
           style={s.textButton}
           onPress={back}
         >
-          <Text style={s.link}>‹ Voltar ao início</Text>
+          <Text style={s.link}>‹ Lançamentos</Text>
         </Pressable>
-        <Image
-          source={require("../../assets/pipo-new-record.webp")}
-          style={s.art}
-          resizeMode="contain"
-          accessibilityLabel="Pipo escrevendo em um caderno"
-        />
-        <Text style={s.help}>{householdName}</Text>
-        <Text accessibilityRole="header" style={s.title}>
-          {titles[state.kind]}
-        </Text>
-        <Text style={s.help}>
-          {state.kind === "transfer"
-            ? "Mova dinheiro entre suas contas. Transferências não contam como receita ou despesa."
-            : "Informe os dados do lançamento."}
-        </Text>
+        <Text style={s.caption}>{householdName}</Text>
+        <View style={s.hero}>
+          <View style={{ flex: 1 }}>
+            <Text accessibilityRole="header" style={s.title}>
+              {titles[state.kind]}
+            </Text>
+            <Text style={s.help}>
+              {state.kind === "transfer"
+                ? "Mova dinheiro entre suas contas. Transferências não contam como receita ou despesa."
+                : state.kind === "income"
+                  ? "Registre um dinheiro que entrou no seu lar."
+                  : "Informe os dados do lançamento."}
+            </Text>
+          </View>{" "}
+          <Image
+            source={
+              state.kind === "income"
+                ? require("../../assets/pipo-income-form.webp")
+                : require("../../assets/pipo-new-record.webp")
+            }
+            style={s.heroArt}
+            resizeMode="contain"
+            accessibilityLabel={
+              state.kind === "income"
+                ? "Pipo guardando uma moeda em uma bolsinha"
+                : "Pipo escrevendo em um caderno"
+            }
+          />
+        </View>
         {state.status === "success" ? (
           <View>
             <Text accessibilityLiveRegion="polite" style={s.help}>
@@ -258,16 +277,51 @@ function RecordForm({
                     : "Cadastre uma categoria correspondente a este tipo de movimentação antes de registrar."}
               </Text>
             ) : null}
+            <Text style={s.label}>
+              {state.kind === "income"
+                ? "Conta de destino *"
+                : "Conta de origem *"}
+            </Text>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Selecionar conta"
+              disabled={locked}
+              style={s.input}
+              onPress={() => setPicker("accountId")}
+            >
+              <Text style={s.help}>{label("accountId") || "Selecione"} ▾</Text>
+            </Pressable>
+            {state.kind === "income" && (
+              <View>
+                <Text style={s.label}>Moeda da conta</Text>
+                <View style={[s.input, { backgroundColor: "#efeee8" }]}>
+                  <Text>{account?.currency ?? "Selecione uma conta"} 🔒</Text>
+                </View>
+                <Text style={s.caption}>
+                  A moeda é definida pela conta escolhida.
+                </Text>
+              </View>
+            )}
+            <Text style={s.label}>
+              Valor * {account ? `(${account.currency})` : ""}
+            </Text>
+            <TextInput
+              accessibilityLabel="Valor"
+              editable={!locked}
+              keyboardType="decimal-pad"
+              style={s.input}
+              value={fields.amount}
+              onChangeText={(value) => state.edit("amount", value)}
+              placeholder="1250,50"
+            />
+            <Text style={s.caption}>
+              Use vírgula ou ponto para os centavos, sem separador de milhar.
+            </Text>
             {(
               [
-                {
-                  field: "accountId",
-                  title:
-                    state.kind === "transfer" ? "Conta de origem" : "Conta",
-                },
                 ...(state.kind === "transfer"
                   ? [{ field: "destinationId", title: "Conta de destino" }]
-                  : [{ field: "categoryId", title: "Categoria" }]),
+                  : [{ field: "categoryId", title: "Categoria *" }]),
                 ...(state.kind === "income"
                   ? [{ field: "sourceId", title: "Fonte de renda (opcional)" }]
                   : []),
@@ -289,31 +343,11 @@ function RecordForm({
                 </Pressable>
               </View>
             ))}
-            <Text style={s.label}>
-              Valor {account ? `(${account.currency})` : ""}
-            </Text>
-            <TextInput
-              accessibilityLabel="Valor"
-              editable={!locked}
-              keyboardType="decimal-pad"
-              style={s.input}
-              value={fields.amount}
-              onChangeText={(value) => state.edit("amount", value)}
-              placeholder="1250,50"
-            />
-            <Text style={s.caption}>
-              Use vírgula ou ponto para os centavos, sem separador de milhar.
-            </Text>
-            <Text style={s.label}>Data (AAAA-MM-DD)</Text>
-            <TextInput
-              accessibilityLabel="Data no formato ano mês dia"
-              editable={!locked}
-              style={s.input}
-              value={fields.date}
-              onChangeText={(value) => state.edit("date", value)}
-              placeholder="2026-10-28"
-              autoCapitalize="none"
-              maxLength={10}
+            <Text style={s.label}>Data *</Text>
+            <RecordDateInput
+              initialValue={fields.date}
+              locked={locked}
+              onChange={(value) => state.edit("date", value)}
             />
             <Text style={s.label}>Descrição (opcional)</Text>
             <TextInput
@@ -325,6 +359,22 @@ function RecordForm({
               value={fields.description}
               onChangeText={(value) => state.edit("description", value)}
             />
+            <Text style={[s.caption, { textAlign: "right" }]}>
+              {fields.description.length}/500
+            </Text>
+            <Text style={s.caption}>* Campos obrigatórios</Text>
+            <Pressable
+              accessibilityRole="button"
+              disabled={state.status === "saving"}
+              style={s.cancel}
+              onPress={back}
+            >
+              <Text style={s.link}>
+                {state.status === "uncertain"
+                  ? "Voltar aos lançamentos"
+                  : "Cancelar"}
+              </Text>
+            </Pressable>
             <Pressable
               accessibilityRole="button"
               accessibilityState={{
@@ -346,7 +396,7 @@ function RecordForm({
                   : state.status === "uncertain"
                     ? "Verificar tentativa pendente"
                     : state.kind === "income"
-                      ? "Salvar entrada"
+                      ? "Registrar entrada"
                       : state.kind === "expense"
                         ? "Salvar saída"
                         : "Salvar transferência"}
@@ -394,6 +444,31 @@ function RecordForm({
     </SafeAreaView>
   );
 }
+function RecordDateInput({
+  initialValue,
+  locked,
+  onChange,
+}: {
+  initialValue: string;
+  locked: boolean;
+  onChange: (value: string) => void;
+}) {
+  const [text, setText] = useState(() => displayDate(initialValue));
+  return (
+    <TextInput
+      accessibilityLabel="Data, dia mês ano"
+      editable={!locked}
+      style={s.input}
+      value={text}
+      onChangeText={(value) => {
+        setText(value);
+        onChange(inputDate(value));
+      }}
+      placeholder="DD/MM/AAAA"
+      maxLength={10}
+    />
+  );
+}
 const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: t.cream },
   content: {
@@ -410,7 +485,8 @@ const s = StyleSheet.create({
     color: "#173e2b",
     marginBottom: 8,
   },
-  art: { width: 250, height: 120, alignSelf: "center" },
+  hero: { flexDirection: "row", alignItems: "center", gap: 8 },
+  heroArt: { width: 130, height: 130 },
   help: { fontFamily: t.sans, fontSize: 14, color: "#4c5749", lineHeight: 21 },
   label: {
     fontFamily: t.sans,
@@ -449,6 +525,15 @@ const s = StyleSheet.create({
     marginTop: 18,
   },
   buttonText: { fontFamily: t.sans, fontSize: 15, color: "white" },
+  cancel: {
+    minHeight: 48,
+    borderWidth: 1,
+    borderColor: "#56806a",
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 14,
+  },
   textButton: { minHeight: 44, justifyContent: "center" },
   link: { fontFamily: t.sans, fontSize: 14, color: "#315f3b" },
   overlay: {

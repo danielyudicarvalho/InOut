@@ -3916,3 +3916,144 @@ button:disabled {
 .history-filter-form select:disabled {
   opacity: 0.55;
 }
+
+.record-income-layout {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  padding: 0;
+  background: #fbf7e9;
+}
+.record-income-layout .dashboard-sidebar {
+  position: relative;
+  width: auto;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  background: #f4f0df;
+  padding: 28px 22px;
+}
+.record-income-layout nav {
+  display: grid;
+  gap: 24px;
+}
+.record-household {
+  padding: 12px;
+  border: 1px solid #e0d9c5;
+  border-radius: 10px;
+}
+.record-income-layout .dashboard-motto {
+  margin-top: auto;
+}
+.record-income-layout .record-main {
+  padding: 30px;
+  max-width: 1050px;
+  width: 100%;
+  margin: auto;
+}
+.record-income-layout .record-form-panel {
+  max-width: none;
+  background: transparent;
+  box-shadow: none;
+  border: 0;
+  padding: 0;
+}
+.record-income-layout .record-form-panel header {
+  position: relative;
+  min-height: 175px;
+  padding-right: 240px;
+}
+.record-income-layout .record-form-panel header > img {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 255px;
+  height: 165px;
+}
+.record-income-layout .record-form-panel h1 {
+  font-size: 40px;
+  margin: 28px 0 8px;
+}
+.record-income-layout form {
+  background: #fffdf5;
+  border: 1px solid #e8e0ca;
+  box-shadow: 0 5px 18px #665e2110;
+  border-radius: 16px;
+  padding: 24px;
+}
+.record-income-layout fieldset {
+  grid-template-columns: 1fr 1fr;
+}
+.record-income-layout .record-amount,
+.record-income-layout .record-date,
+.record-income-layout .record-description {
+  grid-column: 1/-1;
+}
+.record-currency input[readonly] {
+  background: #efeee8;
+  color: #61685e;
+}
+.record-count {
+  text-align: right;
+}
+.record-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-top: 20px;
+  flex-wrap: wrap;
+}
+.record-actions > small {
+  margin-right: auto;
+}
+.record-actions .record-submit {
+  width: auto;
+  margin: 0;
+  min-height: 44px;
+  padding: 12px 18px;
+}
+.record-cancel {
+  border: 1px solid #56806a;
+  border-radius: 10px;
+  padding: 12px 18px;
+  color: #245b3c;
+}
+.record-cancel[aria-disabled="true"] {
+  opacity: 0.5;
+}
+@media (max-width: 760px) {
+  .record-income-layout {
+    display: block;
+  }
+  .record-income-layout .dashboard-sidebar {
+    display: none;
+  }
+  .record-income-layout .record-main {
+    padding: 18px;
+  }
+  .record-income-layout .record-form-panel header {
+    padding-right: 120px;
+    min-height: 145px;
+  }
+  .record-income-layout .record-form-panel header > img {
+    width: 140px;
+    height: 115px;
+  }
+  .record-income-layout .record-form-panel h1 {
+    font-size: 28px;
+  }
+  .record-income-layout form {
+    padding: 16px;
+  }
+  .record-income-layout fieldset {
+    grid-template-columns: 1fr;
+  }
+  .record-actions > small {
+    flex-basis: 100%;
+  }
+  .record-actions .record-submit,
+  .record-cancel {
+    flex: 1;
+    text-align: center;
+  }
+}
