@@ -228,3 +228,87 @@ test("a new reversal is blocked for a reversal or an already reversed transactio
     stop();
   }
 });
+
+test("transfer accounts keep debit as origin when the backend returns credit first", async () => {
+  const debit = {
+    ...row,
+    kind: "transfer",
+    categoryId: null,
+    categoryName: null,
+  };
+  const credit = {
+    ...debit,
+    accountId: "b",
+    accountName: "Reserva",
+    direction: "credit",
+  };
+  const detail = await repo([credit, debit]).transaction("h", id);
+  assert.equal(detail.kind, "transfer");
+  assert.equal(detail.amount, 32000);
+  assert.deepEqual(
+    detail.postings.map((p) => [p.accountName, p.amount]),
+    [
+      ["Principal", -32000],
+      ["Reserva", 32000],
+    ],
+  );
+  assert.deepEqual(
+    detail.rows.slice(0, 2).map((r) => r.label),
+    ["Conta de origem", "Conta de destino"],
+  );
+  assert.equal(
+    detail.rows.some((r) => r.label === "Categoria"),
+    false,
+  );
+});
+test("confirming a transfer reversal submits one transaction operation, never separate account writes", async () => {
+  const detail = await repo([
+    { ...row, kind: "transfer", categoryName: null },
+    {
+      ...row,
+      kind: "transfer",
+      categoryName: null,
+      direction: "credit",
+      accountId: "b",
+      accountName: "Reserva",
+    },
+  ]).transaction("h", id);
+  const calls = [],
+    saved = storage();
+  const store = createReversalStore(
+    {
+      transaction: async () => detail,
+      reverse: async (...args) => {
+        assert.ok(saved.peek());
+        calls.push(args.slice(0, 4));
+        return { transactionId: reverseId, replayed: false };
+      },
+    },
+    "h",
+    id,
+    { storage: saved, randomId: () => key },
+  );
+  const stop = store.start();
+  await tick();
+  store.edit("date", "2026-10-28");
+  assert.equal(calls.length, 0);
+  await Promise.all([store.submit(), store.submit()]);
+  assert.equal(calls.length, 1);
+  assert.deepEqual(calls[0], [
+    "h",
+    id,
+    { occurredOn: "2026-10-28", description: null },
+    key,
+  ]);
+  assert.equal(store.getSnapshot().status, "success");
+  stop();
+});
+
+test("transfer detail rejects a missing leg or two legs on the same account", async () => {
+  const debit = { ...row, kind: "transfer", categoryName: null };
+  await assert.rejects(repo([debit]).transaction("h", id), { code: "invalid" });
+  await assert.rejects(
+    repo([debit, { ...debit, direction: "credit" }]).transaction("h", id),
+    { code: "invalid" },
+  );
+});

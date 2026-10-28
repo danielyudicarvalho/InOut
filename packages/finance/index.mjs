@@ -422,11 +422,13 @@ export function createFinanceRepository({
       const outgoing = postings.find((p) => p.amount < 0),
         incoming = postings.find((p) => p.amount > 0);
       if (
-        postings.length > 1 &&
-        (postings.length !== 2 ||
-          !outgoing ||
-          !incoming ||
-          outgoing.amount + incoming.amount !== 0)
+        (kind === "transfer" && postings.length !== 2) ||
+        (postings.length > 1 &&
+          (postings.length !== 2 ||
+            !outgoing ||
+            !incoming ||
+            outgoing.accountId === incoming.accountId ||
+            outgoing.amount + incoming.amount !== 0))
       )
         throw new FinanceFailure("invalid");
       const rows = postings.map((p) => ({

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import {
   Image,
   Modal,
@@ -85,7 +86,8 @@ function DetailView({
     done = state.status === "success",
     pending = state.status === "uncertain",
     saving = state.status === "saving",
-    reversed = done || detail.status === "reversed";
+    reversed = done || detail.status === "reversed",
+    transfer = detail.kind === "transfer";
   const close = () => {
     if (!saving) {
       setConfirm(false);
@@ -101,16 +103,20 @@ function DetailView({
         <View style={s.hero}>
           <View style={{ flex: 1 }}>
             <Text accessibilityRole="header" style={s.title}>
-              Detalhe do lançamento
+              {transfer ? "Detalhe da transferência" : "Detalhe do lançamento"}
             </Text>
-            <Text style={s.help}>
-              Confira abaixo todas as informações deste lançamento.
-            </Text>
+            {!transfer && (
+              <Text style={s.help}>
+                Confira abaixo todas as informações deste lançamento.
+              </Text>
+            )}
           </View>
-          <Image
-            source={require("../../assets/pipo-detail.webp")}
-            style={s.art}
-          />
+          {!transfer && (
+            <Image
+              source={require("../../assets/pipo-detail.webp")}
+              style={s.art}
+            />
+          )}
         </View>
         <View style={s.card}>
           <Text style={s.heading}>{detail.description}</Text>
@@ -134,15 +140,55 @@ function DetailView({
           >
             {reversed ? "Estornado" : "Registrado"}
           </Text>
-          {detail.rows.map((row, i) => (
+          {transfer && (
+            <>
+              <Image
+                source={require("../../assets/pipo-transfer-detail.webp")}
+                style={s.transferArt}
+              />
+              <View
+                accessibilityLabel="Contas da transferência"
+                style={s.accounts}
+              >
+                {detail.postings.map((posting, i) => (
+                  <View key={posting.accountId}>
+                    {i === 1 && <Text style={s.arrow}>↓</Text>}
+                    <View style={[s.account, i === 1 && s.destination]}>
+                      <MaterialCommunityIcons
+                        name={
+                          i === 0 ? "wallet-outline" : "account-group-outline"
+                        }
+                        size={28}
+                        color="#315f3b"
+                        accessible={false}
+                      />
+                      <View style={{ flex: 1 }}>
+                        <Text style={s.label}>
+                          {i === 0 ? "Origem" : "Destino"}
+                        </Text>
+                        <Text style={s.value}>{posting.accountName}</Text>
+                        <Text style={s.help}>{posting.currency}</Text>
+                      </View>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            </>
+          )}
+          {(transfer ? detail.rows.slice(2) : detail.rows).map((row, i) => (
             <View key={i} style={s.row}>
-              <Text style={s.label}>{row.label}</Text>
+              <Text style={s.label}>
+                {transfer && row.label === "Data do lançamento"
+                  ? "Data da transferência"
+                  : row.label}
+              </Text>
               <Text style={s.value}>{row.value}</Text>
             </View>
           ))}
           {detail.postings.length > 1 && (
             <Text style={s.help}>
-              Movimentação entre contas: o valor não é receita ou despesa.
+              Esta transferência move dinheiro entre suas contas e não altera o
+              resultado do período.
             </Text>
           )}
           {detail.reversalOf && (
@@ -203,7 +249,11 @@ function DetailView({
             }}
           >
             <Text style={{ color: "#b33d29" }}>
-              {pending ? "Verificar estorno pendente" : "↶ Estornar lançamento"}
+              {pending
+                ? "Verificar estorno pendente"
+                : transfer
+                  ? "↶ Estornar transferência"
+                  : "↶ Estornar lançamento"}
             </Text>
           </Pressable>
         )}
@@ -211,7 +261,9 @@ function DetailView({
           <Text>Atualizar</Text>
         </Pressable>
         <Text style={s.help}>
-          O estorno mantém o original e cria uma movimentação de compensação.
+          {transfer
+            ? "O estorno desfaz os dois lados da transferência em uma única operação, mantendo o original."
+            : "O estorno mantém o original e cria uma movimentação de compensação."}
         </Text>
       </ScrollView>
       <Modal
@@ -291,6 +343,18 @@ const s = StyleSheet.create({
   green: { color: "#315f3b" },
   hero: { flexDirection: "row", alignItems: "center", gap: 10 },
   title: { fontFamily: t.serif, fontSize: 25, color: "#214b36" },
+  transferArt: { width: "100%", height: 155, resizeMode: "contain" },
+  accounts: { gap: 4 },
+  account: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    padding: 14,
+    borderRadius: 10,
+    backgroundColor: "#e9edd9",
+  },
+  destination: { backgroundColor: "#f9edcd" },
+  arrow: { textAlign: "center", color: "#315f3b", fontSize: 25 },
   art: { width: 110, height: 120, resizeMode: "contain" },
   help: { fontFamily: t.sans, color: t.muted, fontSize: 11, lineHeight: 17 },
   card: {

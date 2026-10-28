@@ -4732,3 +4732,113 @@ button:disabled {
     text-align: center;
   }
 }
+
+/* Transfer details keep both sides of the same ledger operation together. */
+.transfer-detail-page .transaction-card:first-of-type {
+  position: relative;
+  overflow: hidden;
+}
+.transfer-detail-page .transaction-summary {
+  min-height: 155px;
+  padding-right: 44%;
+}
+.transfer-detail-page .transaction-summary strong {
+  color: #173f31;
+  font-size: 38px;
+}
+.transfer-detail-page .transaction-summary {
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+.transfer-detail-art {
+  position: absolute;
+  right: 12px;
+  top: 10px;
+  width: 43%;
+  height: 175px;
+  object-fit: contain;
+  pointer-events: none;
+}
+.transfer-detail-page .transaction-status {
+  white-space: nowrap;
+}
+.transfer-accounts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 56px;
+  padding: 8px;
+  border: 1px solid #ede5d1;
+  border-radius: 12px;
+}
+.transfer-origin,
+.transfer-destination {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 15px;
+  border-radius: 10px;
+  position: relative;
+  min-width: 0;
+}
+.transfer-origin {
+  background: #e9edd9;
+}
+.transfer-destination {
+  background: #f9edcd;
+}
+.transfer-accounts strong,
+.transfer-accounts small {
+  display: block;
+  overflow-wrap: anywhere;
+}
+.transfer-accounts strong {
+  font-family: Georgia, serif;
+  margin: 4px 0;
+}
+.transfer-accounts small {
+  font-size: 12px;
+}
+.transfer-account-icon {
+  font-size: 28px;
+  color: #315f3b;
+}
+.transfer-account-arrow {
+  position: absolute;
+  right: -40px;
+  font-size: 30px;
+}
+.transfer-detail-page .transaction-fields {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.transfer-detail-page .transaction-help {
+  background: #f0f0df;
+  padding: 10px;
+  border-radius: 8px;
+  line-height: 1.6;
+}
+@media (max-width: 700px) {
+  .transfer-detail-page .transaction-summary {
+    min-height: auto;
+    padding-right: 0;
+  }
+  .transfer-detail-page .transaction-summary strong {
+    font-size: 32px;
+  }
+  .transfer-detail-art {
+    position: static;
+    width: 100%;
+    height: 160px;
+  }
+  .transfer-accounts,
+  .transfer-detail-page .transaction-fields {
+    grid-template-columns: 1fr;
+  }
+  .transfer-accounts {
+    gap: 30px;
+  }
+  .transfer-account-arrow {
+    right: 50%;
+    bottom: -30px;
+    transform: rotate(90deg);
+  }
+}

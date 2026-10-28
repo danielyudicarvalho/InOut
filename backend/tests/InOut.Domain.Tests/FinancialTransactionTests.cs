@@ -109,6 +109,34 @@ public sealed class FinancialTransactionTests
     }
 
     [Fact]
+    public void TransferReversalCompensatesBothAccountsInOneTransaction()
+    {
+        var source = Guid.NewGuid();
+        var destination = Guid.NewGuid();
+        var original = FinancialTransaction.Transfer(
+            HouseholdId, source, destination, new Money(500_00), OccurredOn, ActorId, "Reserve");
+        var reversal = FinancialTransaction.Reversal(original, ActorId, OccurredOn.AddDays(1));
+
+        Assert.Equal(original.Id, reversal.ReversalOf);
+        Assert.Equal(FinancialTransactionKind.Reversal, reversal.Kind);
+        Assert.Collection(reversal.Entries,
+            credit =>
+            {
+                Assert.Equal(source, credit.AccountId);
+                Assert.Equal(EntryDirection.Credit, credit.Direction);
+                Assert.Equal(original.Entries[0].Amount, credit.Amount);
+            },
+            debit =>
+            {
+                Assert.Equal(destination, debit.AccountId);
+                Assert.Equal(EntryDirection.Debit, debit.Direction);
+                Assert.Equal(original.Entries[1].Amount, debit.Amount);
+            });
+        Assert.Equal(EntryDirection.Debit, original.Entries[0].Direction);
+        Assert.Equal(EntryDirection.Credit, original.Entries[1].Direction);
+    }
+
+    [Fact]
     public void TransferRejectsSameAccount()
     {
         var accountId = Guid.NewGuid();

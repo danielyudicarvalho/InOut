@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
+import { Wallet, Users } from "@phosphor-icons/react";
 import { canReverse, money, historyKind, displayDate } from "@inout/finance";
 import { BrandLogo } from "./brand-logo";
 import { DateSelector } from "./auxiliary-selector";
@@ -55,11 +56,14 @@ function DetailView({
     done = state.status === "success",
     pending = state.status === "uncertain",
     saving = state.status === "saving",
-    reversed = done || detail.status === "reversed";
+    reversed = done || detail.status === "reversed",
+    transfer = detail.kind === "transfer";
   const target = (transaction: string) =>
     `/lancamento?${new URLSearchParams({ household, transaction, ...(period ? { period } : {}), currency: state.options?.currency ?? currency })}`;
   return (
-    <main className="dashboard transaction-page">
+    <main
+      className={`dashboard transaction-page ${transfer ? "transfer-detail-page" : ""}`}
+    >
       <aside className="dashboard-sidebar">
         <Link
           href={`/inicio?${new URLSearchParams({ household })}`}
@@ -85,21 +89,30 @@ function DetailView({
         <header className="transaction-hero">
           <div>
             <Link href={back}>‹ Lançamentos</Link>
-            <h1>Detalhe do lançamento</h1>
-            <p>Confira abaixo todas as informações deste lançamento.</p>
+            <h1>
+              {transfer ? "Detalhe da transferência" : "Detalhe do lançamento"}
+            </h1>
+            {!transfer && (
+              <p>Confira abaixo todas as informações deste lançamento.</p>
+            )}
           </div>
-          <Image
-            src="/images/pipo-detail.webp"
-            alt=""
-            width={300}
-            height={160}
-          />
+          {!transfer && (
+            <Image
+              src="/images/pipo-detail.webp"
+              alt=""
+              width={300}
+              height={160}
+            />
+          )}
         </header>
         <section className="transaction-card">
           <div className="transaction-summary">
             <div>
               <h2>{detail.description}</h2>
-              <small>{historyKind({ kind: detail.kind })}</small>
+              <small>
+                {transfer && <span aria-hidden="true">⇄ </span>}
+                {historyKind({ kind: detail.kind })}
+              </small>
               <strong
                 className={
                   detail.amount < 0 ? "transaction-out" : "transaction-in"
@@ -117,17 +130,63 @@ function DetailView({
               {reversed ? "Estornado" : "Registrado"}
             </span>
           </div>
+          {transfer && (
+            <>
+              <Image
+                className="transfer-detail-art"
+                src="/images/pipo-transfer-detail.webp"
+                alt=""
+                width={350}
+                height={190}
+              />
+              <div
+                className="transfer-accounts"
+                aria-label="Contas da transferência"
+              >
+                {detail.postings.map((posting, i) => (
+                  <div
+                    key={posting.accountId}
+                    className={
+                      i === 0 ? "transfer-origin" : "transfer-destination"
+                    }
+                  >
+                    <span aria-hidden="true" className="transfer-account-icon">
+                      {i === 0 ? <Wallet size={28} /> : <Users size={28} />}
+                    </span>
+                    <div>
+                      <small>{i === 0 ? "Origem" : "Destino"}</small>
+                      <strong>{posting.accountName}</strong>
+                      <small>{posting.currency}</small>
+                    </div>
+                    {i === 0 && (
+                      <span
+                        className="transfer-account-arrow"
+                        aria-hidden="true"
+                      >
+                        →
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
           <dl className="transaction-fields">
-            {detail.rows.map((row, i) => (
+            {(transfer ? detail.rows.slice(2) : detail.rows).map((row, i) => (
               <div key={i}>
-                <dt>{row.label}</dt>
+                <dt>
+                  {transfer && row.label === "Data do lançamento"
+                    ? "Data da transferência"
+                    : row.label}
+                </dt>
                 <dd>{row.value}</dd>
               </div>
             ))}
           </dl>
           {detail.postings.length > 1 && (
             <p className="transaction-help">
-              Movimentação entre contas: o valor não é receita ou despesa.
+              Esta transferência move dinheiro entre suas contas e não altera o
+              resultado do período.
             </p>
           )}
           {detail.reversalOf && (
@@ -183,14 +242,20 @@ function DetailView({
                 setDismissed(false);
               }}
             >
-              ↶ {pending ? "Verificar estorno pendente" : "Estornar lançamento"}
+              ↶{" "}
+              {pending
+                ? "Verificar estorno pendente"
+                : transfer
+                  ? "Estornar transferência"
+                  : "Estornar lançamento"}
             </button>
           )}
           <button onClick={state.retry}>Atualizar</button>
         </footer>
         <p className="transaction-help">
-          O estorno mantém o registro original e cria uma movimentação de
-          compensação.
+          {transfer
+            ? "O estorno desfaz os dois lados da transferência em uma única operação, mantendo o registro original."
+            : "O estorno mantém o registro original e cria uma movimentação de compensação."}
         </p>
       </div>
       {!done &&
