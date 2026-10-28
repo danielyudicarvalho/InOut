@@ -1,10 +1,10 @@
 "use client";
+import { BrandLogo } from "./brand-logo";
 
 import { useConfirmation } from "../lib/auth/use-confirmation";
 import Image from "next/image";
 import Link from "next/link";
 import {
-  Plant,
   Clock,
   CheckCircle,
   Warning,
@@ -55,8 +55,7 @@ export function EmailConfirmationScreen({
         />
         <div className="signin-art-copy">
           <Link href="/" className="brand">
-            <Plant size={30} weight="duotone" />
-            ninho
+            <BrandLogo />
           </Link>
           <h1>
             Falta só
@@ -74,8 +73,7 @@ export function EmailConfirmationScreen({
       </section>
       <section className="signin-panel">
         <Link href="/" className="brand">
-          <Plant size={30} weight="duotone" />
-          ninho
+          <BrandLogo />
         </Link>
         <div className="signin-form">
           <h1 className="confirmation-title">{current.title}</h1>

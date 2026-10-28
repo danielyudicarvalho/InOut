@@ -1,16 +1,11 @@
 "use client";
+import { BrandLogo } from "./brand-logo";
 
 import { useState, type FormEvent } from "react";
 import { usePasswordReset } from "../lib/auth/use-password-recovery";
 import Image from "next/image";
 import Link from "next/link";
-import {
-  Plant,
-  LockSimple,
-  Eye,
-  EyeSlash,
-  ArrowLeft,
-} from "@phosphor-icons/react";
+import { LockSimple, Eye, EyeSlash, ArrowLeft } from "@phosphor-icons/react";
 
 export function ResetPasswordScreen() {
   const [visible, setVisible] = useState({
@@ -50,8 +45,7 @@ export function ResetPasswordScreen() {
         />
         <div className="signin-art-copy">
           <Link href="/" className="brand">
-            <Plant size={30} weight="duotone" />
-            ninho
+            <BrandLogo />
           </Link>
           <h1>
             Um novo começo,
@@ -62,8 +56,7 @@ export function ResetPasswordScreen() {
       </section>
       <section className="signin-panel">
         <Link href="/" className="brand">
-          <Plant size={30} weight="duotone" />
-          ninho
+          <BrandLogo />
         </Link>
         <div className="signin-form">
           <Image

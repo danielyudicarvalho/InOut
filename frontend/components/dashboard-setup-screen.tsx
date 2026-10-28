@@ -1,8 +1,9 @@
 "use client";
+import { BrandLogo } from "./brand-logo";
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { House, Wallet, Plant, Plus, Receipt } from "@phosphor-icons/react";
+import { House, Wallet, Plus, Receipt } from "@phosphor-icons/react";
 import { money, type Home, type Household } from "@inout/finance";
 import { NewRecordPicker } from "./new-record-picker";
 export function DashboardSetupScreen({
@@ -39,8 +40,7 @@ export function DashboardSetupScreen({
     >
       <aside className="dashboard-sidebar">
         <Link href={homeHref} className="dashboard-brand">
-          <Plant size={32} aria-hidden="true" />
-          Ninho
+          <BrandLogo />
         </Link>
         <small>Finanças para o seu lar</small>
         <nav aria-label="Navegação principal">

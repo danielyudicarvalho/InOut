@@ -3762,3 +3762,36 @@ button:disabled {
     min-width: 800px;
   }
 }
+
+.ninho-logo {
+  display: inline-flex;
+  align-items: center;
+  position: relative;
+  width: 170px;
+  height: 60px;
+  flex-shrink: 0;
+  vertical-align: middle;
+  overflow: hidden;
+}
+.ninho-logo-image {
+  display: block;
+  width: 170px;
+  height: auto;
+  object-fit: contain;
+  max-width: none;
+  flex-shrink: 0;
+}
+.ninho-logo-compact {
+  width: 54px;
+}
+.ninho-logo-compact .ninho-logo-image {
+  position: absolute;
+  left: -6px;
+  width: 170px;
+  height: auto;
+}
+.brand:has(.ninho-logo),
+.dashboard-brand:has(.ninho-logo) {
+  gap: 0;
+  line-height: 1;
+}

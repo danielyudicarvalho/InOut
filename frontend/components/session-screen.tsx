@@ -1,9 +1,10 @@
 "use client";
+import { BrandLogo } from "./brand-logo";
 import { useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { Plant, CircleNotch } from "@phosphor-icons/react";
+import { CircleNotch } from "@phosphor-icons/react";
 import { useSessionRestoration } from "../lib/auth/use-session-restoration";
 export type SessionState = "loading" | "expired" | "error";
 const copy = {
@@ -34,8 +35,7 @@ export function SessionView({
   return (
     <main className="session-screen">
       <Link href="/" className="brand">
-        <Plant size={34} weight="duotone" aria-hidden="true" />
-        ninho
+        <BrandLogo />
       </Link>
       <Image
         className="session-art"

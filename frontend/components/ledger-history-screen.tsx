@@ -1,4 +1,5 @@
 "use client";
+import { BrandLogo } from "./brand-logo";
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
@@ -34,7 +35,7 @@ export function LedgerHistoryScreen() {
     <main className="dashboard ledger-page">
       <aside className="dashboard-sidebar">
         <Link className="dashboard-brand" href={`/inicio?${params}`}>
-          🌿 Ninho
+          <BrandLogo />
         </Link>
         <nav>
           <Link href={`/inicio?${params}`}>Início</Link>

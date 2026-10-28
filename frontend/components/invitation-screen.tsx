@@ -1,16 +1,11 @@
 "use client";
+import { BrandLogo } from "./brand-logo";
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import {
-  Plant,
-  ArrowLeft,
-  ShieldCheck,
-  House,
-  User,
-} from "@phosphor-icons/react";
+import { ArrowLeft, ShieldCheck, House, User } from "@phosphor-icons/react";
 
 export function InvitationScreen() {
   const router = useRouter();
@@ -64,8 +59,7 @@ export function InvitationScreen() {
     <main className="household-choice invitation">
       <header className="household-header">
         <Link href="/" className="brand">
-          <Plant size={34} weight="duotone" aria-hidden="true" />
-          ninho
+          <BrandLogo />
         </Link>
       </header>
       {step === "code" ? (

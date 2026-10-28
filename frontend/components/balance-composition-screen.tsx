@@ -1,16 +1,10 @@
 "use client";
+import { BrandLogo } from "./brand-logo";
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import {
-  House,
-  Wallet,
-  Eye,
-  EyeSlash,
-  ArrowLeft,
-  Plant,
-} from "@phosphor-icons/react";
+import { House, Wallet, Eye, EyeSlash, ArrowLeft } from "@phosphor-icons/react";
 import {
   accountKindLabel,
   balanceComposition,
@@ -84,8 +78,7 @@ function BalanceView({
     <main className="dashboard balance-page">
       <aside className="dashboard-sidebar">
         <Link className="dashboard-brand" href={homeHref}>
-          <Plant size={30} />
-          Ninho
+          <BrandLogo />
         </Link>
         <nav aria-label="Navegação principal">
           <Link href={homeHref}>

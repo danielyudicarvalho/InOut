@@ -1,3 +1,4 @@
+import { BrandLogo } from "../components/BrandLogo";
 import { useState } from "react";
 import { router } from "expo-router";
 import {
@@ -75,9 +76,7 @@ export function WelcomeScreen({ fontsReady }: { fontsReady: boolean }) {
       >
         <View style={s.header}>
           <View style={s.brand}>
-            <MaterialCommunityIcons name="sprout" color={t.green} size={32} />
-            <Text style={[s.brandText, serif]}>ninho</Text>
-            <Text style={[s.by, sans]}>por InOut</Text>
+            <BrandLogo />
           </View>
           <Pressable
             accessibilityRole="button"

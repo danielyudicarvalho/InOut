@@ -1,15 +1,10 @@
 "use client";
+import { BrandLogo } from "./brand-logo";
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
-import {
-  House,
-  Plant,
-  Wallet,
-  ChartBar,
-  ArrowLeft,
-} from "@phosphor-icons/react";
+import { House, Wallet, ChartBar, ArrowLeft } from "@phosphor-icons/react";
 import {
   money,
   periodLabel,
@@ -71,8 +66,7 @@ function ResultView({
     <main className="dashboard income-page">
       <aside className="dashboard-sidebar">
         <Link href={homeHref} className="dashboard-brand">
-          <Plant size={30} />
-          Ninho
+          <BrandLogo />
         </Link>
         <nav aria-label="Navegação principal">
           <Link className="income-nav-link" href={homeHref}>

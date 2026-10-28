@@ -1,4 +1,5 @@
 "use client";
+import { BrandLogo } from "./brand-logo";
 import { useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { authMessage } from "@inout/identity";
@@ -6,7 +7,6 @@ import { getAuth, rememberEmail } from "../lib/auth/composition";
 import Image from "next/image";
 import Link from "next/link";
 import {
-  Plant,
   EnvelopeSimple,
   LockSimple,
   Eye,
@@ -51,8 +51,7 @@ export function LoginScreen() {
         />
         <div className="signin-art-copy">
           <Link href="/" className="brand">
-            <Plant size={30} weight="duotone" />
-            ninho
+            <BrandLogo />
           </Link>
           <h1>
             Bom ter
@@ -64,8 +63,7 @@ export function LoginScreen() {
       </section>
       <section className="signin-panel">
         <Link href="/" className="brand">
-          <Plant size={30} weight="duotone" />
-          ninho
+          <BrandLogo />
         </Link>
         <div className="signin-form">
           <h2>

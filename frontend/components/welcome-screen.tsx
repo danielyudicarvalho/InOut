@@ -1,4 +1,5 @@
 "use client";
+import { BrandLogo } from "./brand-logo";
 import { useRef, useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
@@ -71,8 +72,7 @@ export function WelcomeScreen() {
       </div>
       <header>
         <Link href="/" className="brand" aria-label="Ninho, início">
-          <Plant weight="duotone" size={35} aria-hidden="true" />
-          ninho<span className="brand-caption">por InOut</span>
+          <BrandLogo />
         </Link>
         <button className="skip" onClick={() => next("login")}>
           Pular

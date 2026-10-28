@@ -1,9 +1,9 @@
 "use client";
+import { BrandLogo } from "./brand-logo";
 
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Plant } from "@phosphor-icons/react";
 
 type InvitationResult = "accepted" | "expired" | "invalid" | "used";
 const results = {
@@ -44,8 +44,7 @@ export function InvitationResultScreen({
     <main className="invitation-result" key={result}>
       <header className="invitation-result-header">
         <Link className="brand" href="/">
-          <Plant size={32} weight="duotone" aria-hidden="true" />
-          ninho
+          <BrandLogo />
         </Link>
       </header>
       <section

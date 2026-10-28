@@ -1,4 +1,5 @@
 "use client";
+import { BrandLogo } from "./brand-logo";
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
@@ -14,7 +15,6 @@ import {
   ArrowDown,
   ArrowsLeftRight,
   Plus,
-  Plant,
 } from "@phosphor-icons/react";
 import { money, periodLabel, dashboardSetupState } from "@inout/finance";
 import { NewRecordPicker } from "./new-record-picker";
@@ -169,8 +169,7 @@ function DashboardView({
     <main className="dashboard">
       <aside className="dashboard-sidebar">
         <Link href="/inicio" className="dashboard-brand">
-          <Plant size={32} weight="duotone" />
-          Ninho
+          <BrandLogo />
         </Link>
         <nav aria-label="Navegação principal">
           {navigation.map((label, index) => {

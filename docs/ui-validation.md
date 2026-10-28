@@ -597,3 +597,13 @@ pending the previously reported approval block.
 - Teste EF existente ampliado para verificar segunda perna da transferência com offset e página esgotada. Não executado: SDK .NET/Postgres indisponíveis. Integração real, QA visual no dispositivo e exports nativos não executados.
 - Arte criada com ferramenta imagegen integrada, inspecionada e salva em `frontend/public/images/pipo-history.webp` e `mobile/assets/pipo-history.webp`.
 - Prompt final: “Use case: illustration-story. Transparent landscape hero illustration for Ninho financial transaction history. Pipo, round fluffy golden-yellow bird, green leaf tuft, orange beak and rust-red scarf, examining an open accounting book with a magnifying glass, beside small stacks of books and potted leafy plants. Cozy watercolor storybook, cream sage honey palette. Whole scene isolated, generous transparent margins. No text, numbers, logos or UI.”
+
+## Logo Ninho — 2026-10-28
+
+Marca própria criada com imagegen integrado: casinha sobre ninho, folha discreta, telhado terracota e nome em verde profundo. Fonte PNG RGBA preservada em `frontend/public/images/ninho-logo.png` e `mobile/assets/ninho-logo.png`, idênticas entre plataformas.
+
+`BrandLogo` centraliza a marca nas duas plataformas. Versão completa nos cabeçalhos de acesso, onboarding e barras laterais financeiras; versão compacta no seletor de residência do dashboard mobile. O símbolo compacto é uma janela de apresentação sobre a mesma imagem, sem redesenhar ou regenerar a marca. Texto alternativo/nome acessível: Ninho. Links e contexto de navegação existentes preservados. Ícones decorativos de plantas fora da marca foram mantidos.
+
+Prompt: “Create the final primary logo for Ninho, a cozy household finance app. Transparent background, wide horizontal logo lockup. At left a simple warm terracotta pitched roof outlining a small cream house resting directly on a stylized nest of three broad curved brown strokes, tiny sage leaf accent. No bird, no coin, no heart, no detailed twigs. At right exact word 'Ninho' in beautiful highly legible dark forest green serif lettering. Flat clean brand illustration with subtle organic curves, crisp edges, minimal shapes, professional scalable appearance, no shadows, no gradients, no watercolor texture. House-nest symbol should read clearly at small app sizes. Generous clear transparent margin around logo. Only text is 'Ninho'. No tagline, no mockup.”
+
+Validação do logo: lint e tipagem web/mobile passaram; build de produção Next.js passou. Arte gerada inspecionada visualmente. Sem testes novos para a substituição visual; QA em dispositivo e builds nativos não executados.

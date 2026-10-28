@@ -1,4 +1,5 @@
 "use client";
+import { BrandLogo } from "./brand-logo";
 
 import { useState } from "react";
 import { authMessage } from "@inout/identity";
@@ -50,8 +51,7 @@ export function HouseholdChoiceScreen() {
     <main className="household-choice household-choice-start">
       <header className="household-header">
         <Link href="/" className="brand">
-          <Plant size={34} weight="duotone" aria-hidden="true" />
-          ninho
+          <BrandLogo />
         </Link>
         <button
           type="button"

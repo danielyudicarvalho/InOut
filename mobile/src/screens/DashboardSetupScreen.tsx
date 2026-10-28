@@ -1,3 +1,4 @@
+import { BrandLogo } from "../components/BrandLogo";
 import { useState } from "react";
 import {
   Image,
@@ -50,7 +51,7 @@ export function DashboardSetupScreen({
   return (
     <SafeAreaView style={s.safe}>
       <ScrollView contentContainerStyle={s.content}>
-        <Text style={s.brand}>Ninho 🍃</Text>
+        <BrandLogo />
         <View style={s.top}>
           <Pressable
             accessibilityRole="button"

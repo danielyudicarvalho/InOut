@@ -1,3 +1,4 @@
+import { BrandLogo } from "../components/BrandLogo";
 import { useRef, useState } from "react";
 import {
   View,
@@ -92,8 +93,7 @@ export function RegisterScreen() {
             onPress={() => router.replace("/")}
             style={s.brand}
           >
-            <MaterialCommunityIcons name="sprout" size={28} color={t.green} />
-            <Text style={s.brandText}>ninho</Text>
+            <BrandLogo />
           </Pressable>
           <Image
             source={require("../../assets/pipo-home.webp")}
