@@ -1,4 +1,5 @@
 "use client";
+import { AuxiliarySelector, DateSelector } from "./auxiliary-selector";
 import { BrandLogo } from "./brand-logo";
 import { type FormEvent } from "react";
 import { useSearchParams } from "next/navigation";
@@ -128,6 +129,22 @@ function RecordForm({
     parentId = selectedCategory?.parentId ?? fields.categoryId;
   const roots = categories.filter((c) => !c.parentId),
     children = categories.filter((c) => c.parentId === parentId);
+  const creation = (
+    target: "account" | "category" | "source",
+    field: "accountId" | "destinationId" | "categoryId" | "sourceId",
+    parent = "",
+  ) => ({
+    household,
+    kind: target,
+    flow: state.kind,
+    parentId: parent,
+    currency: account?.currency || currency || "BRL",
+    fixedCurrency: field === "destinationId",
+    onCreated: (id: string) => {
+      state.edit(field, id);
+      state.retry();
+    },
+  });
   const successHref = `/inicio?${new URLSearchParams({ household, period: fields.date.slice(0, 7), currency: account?.currency ?? currency })}`;
   function submit(event: FormEvent) {
     event.preventDefault();
@@ -231,37 +248,39 @@ function RecordForm({
                     : state.kind === "income"
                       ? "Conta de destino *"
                       : "Conta de origem *"}
-                  <select
-                    required
+                  <AuxiliarySelector
+                    title={
+                      state.kind === "income"
+                        ? "Selecionar conta de destino"
+                        : "Selecionar conta de origem"
+                    }
                     value={fields.accountId}
-                    onChange={(e) => state.edit("accountId", e.target.value)}
-                  >
-                    <option value="">Selecione</option>
-                    {options.accounts.map((row) => (
-                      <option key={row.id} value={row.id}>
-                        {row.name} · {row.currency}
-                      </option>
-                    ))}
-                  </select>
+                    items={options.accounts.map((a) => ({
+                      ...a,
+                      detail: a.currency,
+                    }))}
+                    disabled={locked}
+                    onChange={(id) => state.edit("accountId", id)}
+                    create={creation("account", "accountId")}
+                  />
                 </label>
                 {state.kind === "transfer" && (
                   <label className="record-destination">
                     Conta de destino *
-                    <select
-                      required
-                      disabled={!account || locked}
+                    <AuxiliarySelector
+                      title="Selecionar conta de destino"
                       value={fields.destinationId}
-                      onChange={(e) =>
-                        state.edit("destinationId", e.target.value)
-                      }
-                    >
-                      <option value="">Selecione</option>
-                      {destinations.map((row) => (
-                        <option key={row.id} value={row.id}>
-                          {row.name} · {row.currency}
-                        </option>
-                      ))}
-                    </select>
+                      items={options.accounts.map((a) => ({
+                        ...a,
+                        detail: `${a.currency}${a.id === account?.id ? " · Mesma conta de origem" : a.currency !== account?.currency ? " · Moeda incompatível" : ""}`,
+                        disabled:
+                          a.id === account?.id ||
+                          a.currency !== account?.currency,
+                      }))}
+                      disabled={!account || locked}
+                      onChange={(id) => state.edit("destinationId", id)}
+                      create={creation("account", "destinationId")}
+                    />
                   </label>
                 )}
                 {state.kind === "transfer" && account && (
@@ -313,74 +332,61 @@ function RecordForm({
                 {state.kind !== "transfer" && (
                   <label className="record-category">
                     Categoria *
-                    <select
-                      required
+                    <AuxiliarySelector
+                      title="Selecionar categoria"
                       value={
                         state.kind === "expense" ? parentId : fields.categoryId
                       }
-                      onChange={(e) => state.edit("categoryId", e.target.value)}
-                    >
-                      <option value="">Selecione</option>
-                      {(state.kind === "expense" ? roots : categories).map(
-                        (row) => (
-                          <option key={row.id} value={row.id}>
-                            {row.name}
-                          </option>
-                        ),
-                      )}
-                    </select>
+                      items={state.kind === "expense" ? roots : categories}
+                      disabled={locked}
+                      onChange={(id) => state.edit("categoryId", id)}
+                      create={creation("category", "categoryId")}
+                    />
                   </label>
                 )}
                 {state.kind === "expense" && (
                   <label className="record-subcategory">
                     Subcategoria (opcional)
-                    <select
-                      disabled={!parentId || !children.length || locked}
+                    <AuxiliarySelector
+                      title="Selecionar subcategoria"
                       value={
                         selectedCategory?.parentId ? fields.categoryId : ""
                       }
-                      onChange={(e) =>
-                        state.edit("categoryId", e.target.value || parentId)
+                      items={[
+                        { id: "", name: "Usar a categoria selecionada" },
+                        ...children,
+                      ]}
+                      context={`Categoria: ${categories.find((c) => c.id === parentId)?.name ?? ""}`}
+                      disabled={!parentId || locked}
+                      onChange={(id) =>
+                        state.edit("categoryId", id || parentId)
                       }
-                    >
-                      <option value="">
-                        {children.length
-                          ? "Usar a categoria selecionada"
-                          : "Sem subcategorias"}
-                      </option>
-                      {children.map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.name}
-                        </option>
-                      ))}
-                    </select>
+                      create={creation("category", "categoryId", parentId)}
+                    />
                   </label>
                 )}
                 {state.kind === "income" ? (
                   <label className="record-source">
                     Fonte de renda (opcional)
-                    <select
+                    <AuxiliarySelector
+                      title="Selecionar fonte de renda"
                       value={fields.sourceId}
-                      onChange={(e) => state.edit("sourceId", e.target.value)}
-                    >
-                      <option value="">Sem fonte de renda</option>
-                      {options.sources.map((row) => (
-                        <option key={row.id} value={row.id}>
-                          {row.name}
-                        </option>
-                      ))}
-                    </select>
+                      items={[
+                        { id: "", name: "Sem fonte" },
+                        ...options.sources,
+                      ]}
+                      disabled={locked}
+                      onChange={(id) => state.edit("sourceId", id)}
+                      create={creation("source", "sourceId")}
+                    />
                   </label>
                 ) : null}
                 <label className="record-date">
                   Data *
-                  <input
-                    required
-                    type="date"
-                    min="2000-01-01"
-                    max="9998-12-31"
+                  <DateSelector
                     value={fields.date}
-                    onChange={(e) => state.edit("date", e.target.value)}
+                    disabled={locked}
+                    onChange={(value) => state.edit("date", value)}
                   />
                 </label>
                 <label className="record-description">

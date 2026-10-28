@@ -657,3 +657,11 @@ Validação: 91 testes web, 84 mobile, formatação, lint, tipagem de ambas plat
 Arte própria criada com imagegen integrado e inspecionada, preparada em `frontend/public/images/pipo-transfer-form.webp` e `mobile/assets/pipo-transfer-form.webp`.
 
 Prompt final: “Transparent wide watercolor storybook hero for Ninho household finance internal TRANSFER form. Pipo fluffy golden yellow bird with green leaf tuft orange beak rust red scarf, smiling while carrying one golden coin across a small wooden rope bridge between two dark sage green purses decorated with simple leaf emblems. Gentle leafy plants at both ends. Cozy cream honey terracotta sage palette, full bridge character and both purses, generous transparent margins. No text letters numbers logos or UI.”
+
+## Seletores auxiliares — 2026-10-28
+
+Implementados seletores com busca e item selecionado para conta, categoria, subcategoria e fonte nos formulários web/mobile. Subcategoria mostra o contexto da categoria, fonte inclui Sem fonte, e destinos incompatíveis de transferência ficam desabilitados. Calendário de data com Hoje/Confirmar e fechamento sem aplicar. Componentes próprios nas duas plataformas, usando os helpers de domínio compartilhados, sem dependências novas ou novas imagens.
+
+Criação inline de conta com saldo inicial zero, categoria, subcategoria e fonte pelos endpoints reais existentes. A tentativa é persistida antes do envio, com namespace próprio por ator/residência/tipo/contexto; confirmação explícita antes de usar o item. Fonte recupera uma resposta incerta por UUID e correspondência do item. Atualização do catálogo preserva os campos da movimentação e a conta selecionada.
+
+Validação: 97 testes web e 90 mobile passaram; formatação, lint e tipagem de ambas plataformas e build Next.js passaram. Os seis testes novos cobrem busca com acentos, calendário bissexto e virada de ano, tentativa durável com ID/chave estáveis, pai incompatível, saldo inicial zero, resposta perdida de fonte sem POST duplicado e preservação do lançamento ao atualizar opções. Sem criação real de registros na validação. Integração .NET/Postgres, QA visual no navegador/dispositivo e exports nativos não executados.

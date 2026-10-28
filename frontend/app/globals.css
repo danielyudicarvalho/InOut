@@ -4150,3 +4150,145 @@ button:disabled {
     grid-column: 1;
   }
 }
+
+.aux-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-height: 46px;
+  text-align: left;
+  border: 1px solid #ddd5c0;
+  border-radius: 10px;
+  padding: 12px;
+  color: #203e2b;
+  background: #fffdf8;
+  font: inherit;
+}
+.aux-dialog {
+  padding: 0;
+  border: 1px solid #e4ddcc;
+  border-radius: 14px;
+  width: min(370px, calc(100vw - 32px));
+  max-height: 85dvh;
+  background: #fcf8eb;
+  color: #234a35;
+}
+.aux-dialog::backdrop {
+  background: #19291c55;
+}
+.aux-content {
+  padding: 18px;
+  display: grid;
+  gap: 12px;
+}
+.aux-content header,
+.aux-content footer,
+.aux-month {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.aux-content header button {
+  border: 0;
+  background: none;
+  font-size: 23px;
+  min-width: 40px;
+  min-height: 40px;
+}
+.aux-content input,
+.aux-content select {
+  width: 100%;
+  padding: 11px;
+  border: 1px solid #ddd5c0;
+  border-radius: 8px;
+  background: #fffdf8;
+  color: #203e2b;
+  font: inherit;
+}
+.aux-options {
+  max-height: 290px;
+  overflow: auto;
+}
+.aux-options button {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  width: 100%;
+  padding: 11px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  text-align: left;
+  color: #234a35;
+  font: inherit;
+}
+.aux-options button[aria-pressed="true"] {
+  background: #dce6d5;
+}
+.aux-options button:disabled {
+  opacity: 0.45;
+}
+.aux-options small {
+  display: block;
+  color: #727568;
+  font-size: 12px;
+}
+.aux-create {
+  border: 0;
+  border-top: 1px solid #dfd8c6;
+  background: none;
+  padding: 13px;
+  text-align: left;
+  color: #315e3c;
+  font: inherit;
+}
+.aux-context {
+  background: #eee9da;
+  border-radius: 8px;
+  padding: 10px;
+  margin: 0;
+  font-size: 13px;
+}
+.aux-create-form {
+  display: grid;
+  gap: 12px;
+}
+.aux-create-form label {
+  display: grid;
+  gap: 6px;
+}
+.aux-create-form button,
+.aux-content footer button,
+.aux-month button {
+  border: 1px solid #d8d2bf;
+  border-radius: 8px;
+  padding: 10px;
+  background: #fffdf8;
+  color: #315e3c;
+}
+.aux-content .primary {
+  background: #315f3b;
+  color: white;
+}
+.aux-calendar {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 3px;
+  text-align: center;
+}
+.aux-calendar button {
+  border: 0;
+  background: none;
+  min-height: 38px;
+  border-radius: 50%;
+  color: #234a35;
+}
+.aux-calendar button[aria-pressed="true"] {
+  background: #315f3b;
+  color: white;
+}

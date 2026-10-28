@@ -413,6 +413,39 @@ export function createFinanceRepository({
         replayed: result.replayed,
       };
     },
+    async createAuxiliary(household, kind, body, key, signal) {
+      if (kind === "account") {
+        const result = await this.createAccount(household, body, key, signal);
+        return { id: result.accountId };
+      }
+      const endpoint =
+        kind === "category"
+          ? "categories"
+          : kind === "source"
+            ? "income-sources"
+            : null;
+      if (!endpoint) throw new FinanceFailure("validation");
+      const root = `/api/v1/households/${encodeURIComponent(household)}/ledger/${endpoint}`;
+      // Recover an uncertain response using the same entity identifier, including sources without a server idempotency header.
+      const existing = array(
+        await get(`${root}?includeArchived=true`, signal),
+      ).find((item) => item.id.toLowerCase() === body.id.toLowerCase());
+      if (existing) {
+        if (
+          existing.name !== body.name ||
+          existing.archivedAt != null ||
+          (kind === "category" &&
+            (existing.flow.toLowerCase() !== body.flow ||
+              (existing.parentId ?? null) !== body.parentId))
+        )
+          throw new FinanceFailure("conflict");
+        return { id: string(existing.id) };
+      }
+      const result = await get(root, signal, { body, key });
+      if (!result || string(result.id).toLowerCase() !== body.id.toLowerCase())
+        throw new FinanceFailure("invalid");
+      return { id: string(result.id) };
+    },
     async recordOptions(householdId, signal) {
       const homes = array(await get("/api/v1/households", signal));
       if (!homes.some((row) => row.id === householdId))
@@ -1392,6 +1425,7 @@ const recordWriteSpec = {
     ...fields,
     accountId:
       (
+        options.accounts.find((row) => row.id === fields.accountId) ??
         options.accounts.find((row) => row.currency === code) ??
         options.accounts[0]
       )?.id ?? "",
@@ -1525,4 +1559,126 @@ export function applyHistoryDraft(draft) {
     incomeSourceId: draft.kind === "income" ? (draft.incomeSourceId ?? "") : "",
   };
   return { period, filters };
+}
+
+export function selectorSearch(items, query) {
+  const normalize = (value) =>
+    value
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLocaleLowerCase("pt-BR");
+  const term = normalize(query.trim());
+  return items.filter((item) =>
+    normalize(`${item.name} ${item.detail ?? ""}`).includes(term),
+  );
+}
+export function calendarMonth(month, delta) {
+  parsePeriod(month);
+  const [y, m] = month.split("-").map(Number);
+  const date = new Date(y, m - 1 + delta, 1);
+  const result = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+  parsePeriod(result);
+  return result;
+}
+export function createAuxiliaryStore(
+  repository,
+  household,
+  kind,
+  flow,
+  parentId,
+  currency,
+  options,
+) {
+  const initialFields = (today) => ({
+    name: "",
+    currency: currency || "BRL",
+    accountKind: "checking",
+    flow: flow || "expense",
+    parentId: parentId || "",
+    date: localRecordDate(today),
+  });
+  const restore = (body) => {
+    if (
+      !body ||
+      !validOperationKey(body.id) ||
+      typeof body.name !== "string" ||
+      !body.name.trim() ||
+      body.name.length > 80
+    )
+      throw new FinanceFailure("pending");
+    if (kind === "account") {
+      if (body.initialBalanceCents !== 0) throw new FinanceFailure("pending");
+      prepareAccount(
+        {
+          name: body.name,
+          currency: body.currency,
+          kind: body.kind,
+          balance: "0",
+          date: body.openingDate,
+        },
+        body.id,
+      );
+    }
+    if (
+      kind === "category" &&
+      (!["income", "expense"].includes(body.flow) ||
+        body.flow !== flow ||
+        (body.parentId ?? "") !== (parentId || ""))
+    )
+      throw new FinanceFailure("pending");
+    return {
+      name: body.name,
+      currency: body.currency || currency || "BRL",
+      accountKind: body.kind || "checking",
+      flow: body.flow || flow || "expense",
+      parentId: body.parentId || "",
+      date: body.openingDate || localRecordDate(new Date()),
+    };
+  };
+  return createWriteStore(repository, household, kind, currency, {
+    ...options,
+    spec: {
+      kinds: [kind],
+      initialFields,
+      initialize: (fields) => fields,
+      restore,
+      options: (repo, id, signal) => repo.recordOptions(id, signal),
+      prepare: (target, fields, catalog, randomId) => {
+        const id = randomId();
+        if (!validOperationKey(id)) throw new FinanceFailure("validation");
+        if (target === "account")
+          return prepareAccount(
+            {
+              name: fields.name,
+              currency: fields.currency,
+              kind: fields.accountKind,
+              balance: "0",
+              date: fields.date,
+            },
+            id,
+          );
+        const name = fields.name.trim();
+        if (!name || name.length > 80) throw new FinanceFailure("validation");
+        if (target === "source") return { id, name };
+        if (!["income", "expense"].includes(fields.flow))
+          throw new FinanceFailure("validation");
+        if (
+          fields.parentId &&
+          !catalog.categories.some(
+            (c) =>
+              c.id === fields.parentId && !c.parentId && c.flow === fields.flow,
+          )
+        )
+          throw new FinanceFailure("validation");
+        return {
+          id,
+          name,
+          flow: fields.flow,
+          parentId: fields.parentId || null,
+        };
+      },
+      post: (repo, id, target, body, key, signal) =>
+        repo.createAuxiliary(id, target, body, key, signal),
+    },
+  });
 }

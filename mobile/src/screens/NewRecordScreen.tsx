@@ -1,7 +1,9 @@
-import { useState } from "react";
+import {
+  AuxiliarySelector,
+  DateSelector,
+} from "../components/AuxiliarySelector";
 import {
   Image,
-  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -11,12 +13,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
-import {
-  displayDate,
-  inputDate,
-  type RecordFields,
-  type RecordKind,
-} from "@inout/finance";
+import { type RecordKind } from "@inout/finance";
 import { useFinancialHome } from "../finance/use-financial-home";
 import { useRecord } from "../finance/use-record";
 import { theme as t } from "../theme";
@@ -126,10 +123,7 @@ function RecordForm({
   kind: RecordKind;
   householdName: string;
 }) {
-  const state = useRecord(household, kind, currency),
-    [picker, setPicker] = useState<keyof RecordFields | "subcategory" | null>(
-      null,
-    );
+  const state = useRecord(household, kind, currency);
   const back = () =>
     router.replace({
       pathname: "/lancamentos",
@@ -180,40 +174,22 @@ function RecordForm({
     parentId = selectedCategory?.parentId ?? fields.categoryId;
   const roots = categories.filter((c) => !c.parentId),
     children = categories.filter((c) => c.parentId === parentId);
-  const choices =
-    picker === "accountId"
-      ? options.accounts.map((row) => ({
-          id: row.id,
-          name: `${row.name} · ${row.currency}`,
-        }))
-      : picker === "destinationId"
-        ? destinations.map((row) => ({
-            id: row.id,
-            name: `${row.name} · ${row.currency}`,
-          }))
-        : picker === "categoryId"
-          ? state.kind === "expense"
-            ? roots
-            : categories
-          : picker === "subcategory"
-            ? [
-                { id: parentId, name: "Usar a categoria selecionada" },
-                ...children,
-              ]
-            : [{ id: "", name: "Sem fonte de renda" }, ...options.sources];
-  const label = (field: keyof RecordFields) =>
-    field === "accountId"
-      ? options.accounts.find((row) => row.id === fields.accountId)?.name
-      : field === "destinationId"
-        ? destinations.find((row) => row.id === fields.destinationId)?.name
-        : field === "categoryId"
-          ? categories.find(
-              (row) =>
-                row.id ===
-                (state.kind === "expense" ? parentId : fields.categoryId),
-            )?.name
-          : (options.sources.find((row) => row.id === fields.sourceId)?.name ??
-            "Sem fonte de renda");
+  const creation = (
+    target: "account" | "category" | "source",
+    field: "accountId" | "destinationId" | "categoryId" | "sourceId",
+    parent = "",
+  ) => ({
+    household,
+    kind: target,
+    flow: state.kind,
+    parentId: parent,
+    currency: account?.currency || currency || "BRL",
+    fixedCurrency: field === "destinationId",
+    onCreated: (id: string) => {
+      state.edit(field, id);
+      state.retry();
+    },
+  });
   return (
     <SafeAreaView style={s.safe}>
       <ScrollView
@@ -314,15 +290,21 @@ function RecordForm({
                 ? "Conta de destino *"
                 : "Conta de origem *"}
             </Text>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Selecionar conta"
+            <AuxiliarySelector
+              title={
+                state.kind === "income"
+                  ? "Selecionar conta de destino"
+                  : "Selecionar conta de origem"
+              }
+              value={fields.accountId}
+              items={options.accounts.map((a) => ({
+                ...a,
+                detail: a.currency,
+              }))}
               disabled={locked}
-              style={s.input}
-              onPress={() => setPicker("accountId")}
-            >
-              <Text style={s.help}>{label("accountId") || "Selecione"} ▾</Text>
-            </Pressable>
+              onChange={(id) => state.edit("accountId", id)}
+              create={creation("account", "accountId")}
+            />
             {state.kind === "transfer" && (
               <View>
                 <Text
@@ -335,21 +317,19 @@ function RecordForm({
                   ↓
                 </Text>
                 <Text style={s.label}>Conta de destino *</Text>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="Selecionar conta de destino"
-                  disabled={locked || !account || !destinations.length}
-                  style={s.input}
-                  onPress={() => setPicker("destinationId")}
-                >
-                  <Text style={s.help}>
-                    {label("destinationId") ||
-                      (!account
-                        ? "Escolha a conta de origem"
-                        : "Selecione")}{" "}
-                    ▾
-                  </Text>
-                </Pressable>
+                <AuxiliarySelector
+                  title="Selecionar conta de destino"
+                  value={fields.destinationId}
+                  items={options.accounts.map((a) => ({
+                    ...a,
+                    detail: `${a.currency}${a.id === account?.id ? " · Mesma conta de origem" : a.currency !== account?.currency ? " · Moeda incompatível" : ""}`,
+                    disabled:
+                      a.id === account?.id || a.currency !== account?.currency,
+                  }))}
+                  disabled={locked || !account}
+                  onChange={(id) => state.edit("destinationId", id)}
+                  create={creation("account", "destinationId")}
+                />
                 {account && (
                   <View style={s.unavailable}>
                     <Text style={s.label}>Contas indisponíveis</Text>
@@ -403,57 +383,55 @@ function RecordForm({
             <Text style={s.caption}>
               Use vírgula ou ponto para os centavos, sem separador de milhar.
             </Text>
-            {(
-              [
-                ...(state.kind === "transfer"
-                  ? []
-                  : [{ field: "categoryId", title: "Categoria *" }]),
-                ...(state.kind === "income"
-                  ? [{ field: "sourceId", title: "Fonte de renda (opcional)" }]
-                  : []),
-              ] as { field: keyof RecordFields; title: string }[]
-            ).map((item) => (
-              <View key={item.field}>
-                <Text style={s.label}>{item.title}</Text>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={item.title}
+            {state.kind !== "transfer" && (
+              <>
+                <Text style={s.label}>Categoria *</Text>
+                <AuxiliarySelector
+                  title="Selecionar categoria"
+                  value={
+                    state.kind === "expense" ? parentId : fields.categoryId
+                  }
+                  items={state.kind === "expense" ? roots : categories}
                   disabled={locked}
-                  accessibilityState={{ disabled: locked }}
-                  style={s.input}
-                  onPress={() => setPicker(item.field)}
-                >
-                  <Text style={s.help}>
-                    {label(item.field) || "Selecione"} ▾
-                  </Text>
-                </Pressable>
-              </View>
-            ))}
+                  onChange={(id) => state.edit("categoryId", id)}
+                  create={creation("category", "categoryId")}
+                />
+              </>
+            )}
+            {state.kind === "income" && (
+              <>
+                <Text style={s.label}>Fonte de renda (opcional)</Text>
+                <AuxiliarySelector
+                  title="Selecionar fonte de renda"
+                  value={fields.sourceId}
+                  items={[{ id: "", name: "Sem fonte" }, ...options.sources]}
+                  disabled={locked}
+                  onChange={(id) => state.edit("sourceId", id)}
+                  create={creation("source", "sourceId")}
+                />
+              </>
+            )}
             {state.kind === "expense" && (
               <View>
                 <Text style={s.label}>Subcategoria (opcional)</Text>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="Selecionar subcategoria"
-                  disabled={locked || !children.length}
-                  style={s.input}
-                  onPress={() => setPicker("subcategory")}
-                >
-                  <Text style={s.help}>
-                    {selectedCategory?.parentId
-                      ? selectedCategory.name
-                      : children.length
-                        ? "Usar a categoria selecionada"
-                        : "Sem subcategorias"}{" "}
-                    ▾
-                  </Text>
-                </Pressable>
+                <AuxiliarySelector
+                  title="Selecionar subcategoria"
+                  value={selectedCategory?.parentId ? fields.categoryId : ""}
+                  items={[
+                    { id: "", name: "Usar a categoria selecionada" },
+                    ...children,
+                  ]}
+                  context={`Categoria: ${categories.find((c) => c.id === parentId)?.name ?? ""}`}
+                  disabled={locked || !parentId}
+                  onChange={(id) => state.edit("categoryId", id || parentId)}
+                  create={creation("category", "categoryId", parentId)}
+                />
               </View>
             )}
             <Text style={s.label}>Data *</Text>
-            <RecordDateInput
-              initialValue={fields.date}
-              locked={locked}
+            <DateSelector
+              value={fields.date}
+              disabled={locked}
               onChange={(value) => state.edit("date", value)}
             />
             <Text style={s.label}>Descrição (opcional)</Text>
@@ -525,78 +503,7 @@ function RecordForm({
           </>
         )}
       </ScrollView>
-      <Modal
-        transparent
-        visible={picker !== null}
-        animationType="fade"
-        onRequestClose={() => setPicker(null)}
-      >
-        <View style={s.overlay}>
-          <View style={s.modal} accessibilityViewIsModal>
-            <ScrollView>
-              {choices.map((row) => (
-                <Pressable
-                  accessibilityRole="radio"
-                  accessibilityState={{
-                    checked:
-                      picker !== null &&
-                      (picker === "subcategory"
-                        ? fields.categoryId
-                        : picker === "categoryId" && state.kind === "expense"
-                          ? parentId
-                          : fields[picker]) === row.id,
-                  }}
-                  key={row.id}
-                  style={s.option}
-                  onPress={() => {
-                    if (picker)
-                      state.edit(
-                        picker === "subcategory" ? "categoryId" : picker,
-                        row.id,
-                      );
-                    setPicker(null);
-                  }}
-                >
-                  <Text style={s.help}>{row.name}</Text>
-                </Pressable>
-              ))}
-            </ScrollView>
-            <Pressable
-              accessibilityRole="button"
-              style={s.textButton}
-              onPress={() => setPicker(null)}
-            >
-              <Text style={s.link}>Fechar seleção</Text>
-            </Pressable>
-          </View>
-        </View>
-      </Modal>
     </SafeAreaView>
-  );
-}
-function RecordDateInput({
-  initialValue,
-  locked,
-  onChange,
-}: {
-  initialValue: string;
-  locked: boolean;
-  onChange: (value: string) => void;
-}) {
-  const [text, setText] = useState(() => displayDate(initialValue));
-  return (
-    <TextInput
-      accessibilityLabel="Data, dia mês ano"
-      editable={!locked}
-      style={s.input}
-      value={text}
-      onChangeText={(value) => {
-        setText(value);
-        onChange(inputDate(value));
-      }}
-      placeholder="DD/MM/AAAA"
-      maxLength={10}
-    />
   );
 }
 const s = StyleSheet.create({

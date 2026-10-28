@@ -146,7 +146,58 @@ export type HistoryFilters = {
   accountId?: string;
 };
 export function historyKind(item: HistoryItem): string;
+export type AuxiliaryKind = "account" | "category" | "source";
+export type AuxiliaryFields = {
+  name: string;
+  currency: string;
+  accountKind: string;
+  flow: string;
+  parentId: string;
+  date: string;
+};
+export function selectorSearch<T extends { name: string; detail?: string }>(
+  items: T[],
+  query: string,
+): T[];
+export function calendarMonth(month: string, delta: number): string;
+export function createAuxiliaryStore(
+  repository: FinanceRepository,
+  household: string,
+  kind: AuxiliaryKind,
+  flow: string,
+  parentId: string,
+  currency: string,
+  options: {
+    storage: {
+      load(): Promise<string | null>;
+      save(value: string): Promise<void>;
+      remove(key: string): Promise<void>;
+    };
+    randomId: () => string;
+    now?: () => Date;
+    timeoutMs?: number;
+  },
+): {
+  getSnapshot(): {
+    status: "loading" | "ready" | "saving" | "uncertain" | "success" | "error";
+    fields: AuxiliaryFields;
+    notice: string;
+    result: { id: string } | null;
+  };
+  subscribe(listener: () => void): () => void;
+  start(): () => void;
+  retry(): void;
+  edit(field: keyof AuxiliaryFields, value: string): void;
+  submit(): Promise<void>;
+};
 export interface FinanceRepository {
+  createAuxiliary(
+    household: string,
+    kind: AuxiliaryKind,
+    body: Record<string, unknown>,
+    key: string,
+    signal?: AbortSignal,
+  ): Promise<{ id: string }>;
   historyOptions(
     householdId: string,
     signal?: AbortSignal,
