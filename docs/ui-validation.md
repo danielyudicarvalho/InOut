@@ -691,3 +691,17 @@ Arte criada com imagegen integrado, inspecionada e preparada em `frontend/public
 Prompt final: “Transparent wide watercolor storybook hero for Ninho household finance RECORD SAVED success screen. Pipo, fluffy golden-yellow bird with green leaf tuft, orange beak and rust-red scarf, smiling proudly while stamping an open blank notebook with one simple green checkmark. Gentle leafy branches frame both sides. Warm cream honey terracotta sage palette, cozy joyful mood, whole character and notebook, generous transparent margins. No text letters numbers logos or UI.”
 
 Validação mobile final: 96 testes, lint e tipagem passaram.
+
+## Detalhe do lançamento e estorno — 2026-10-28
+
+Implementada rota de detalhe autenticada no web/mobile, ligada aos itens do histórico e ao botão Ver lançamento da tela de sucesso. Consulta por UUID sem depender do período, com valor assinado, conta(s), moeda, categoria/subcategoria, fonte quando presente, data, descrição, situação e auditoria reais. Estornos têm vínculo para o original; após um estorno confirmado é possível abrir a compensação retornada.
+
+Confirmação explícita de estorno com data e descrição, pelo POST .NET existente. Nada é estornado ao abrir o detalhe, editar ou fechar o painel. Tentativa durável por ator/residência/transação, chave estável em retry e retomada, campos bloqueados enquanto o resultado é incerto, sucesso somente confirmado pelo backend. Ação bloqueada para registro já estornado e para estorno de estorno. O original nunca é excluído.
+
+A API expõe o UUID do autor, não um nome auditável; a interface informa o usuário pelo ID. O horário exibido é PostedAt, rotulado Registrado em com indicação do fuso do dispositivo. Sem nomes, IDs curtos ou horários demonstrativos do mockup.
+
+Validação: 109 testes web, 102 mobile, formatação, lint e tipagem das duas plataformas, além do build Next.js, passaram. Os seis testes novos verificam UUID/autorização e ausência de filtro de período; auditoria e classificação; transferências com ambas as contas; contrato e cabeçalho do POST; persistência da tentativa antes do POST, após a confirmação explícita, com replay da mesma chave, mesmo após o original aparecer estornado; bloqueio de estorno novo em operações inelegíveis. Nenhum estorno real foi realizado. SDK .NET/integração Postgres, QA visual no navegador/dispositivo e builds nativos não executados.
+
+Arte própria criada com imagegen integrado e inspecionada, preparada com transparência em `frontend/public/images/pipo-detail.webp` e `mobile/assets/pipo-detail.webp`.
+
+Prompt final: “Transparent wide watercolor storybook hero for Ninho household finance transaction DETAIL screen. Pipo fluffy golden-yellow bird with green leaf tuft orange beak rust-red scarf wearing small round reading glasses, thoughtfully examining a blank receipt beside an open notebook, a cream mug with tiny leaf motif and sage potted plant. Cozy warm cream honey sage terracotta palette. Full character and objects with generous transparent margins. No letters words numbers logos or UI.”

@@ -195,7 +195,7 @@ function RecordForm({
     currency: account?.currency ?? currency,
   });
   const historyHref = `/lancamentos?${savedParams}`;
-  const detailHref = `${historyHref}&transaction=${encodeURIComponent(state.result?.transactionId ?? "")}`;
+  const detailHref = `/lancamento?${savedParams}&transaction=${encodeURIComponent(state.result?.transactionId ?? "")}`;
   function submit(event: FormEvent) {
     event.preventDefault();
     review();

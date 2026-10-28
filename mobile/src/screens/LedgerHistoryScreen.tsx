@@ -8,7 +8,6 @@ import {
   ScrollView,
   Image,
   StyleSheet,
-  Modal,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
@@ -18,7 +17,6 @@ import {
   periodLabel,
   historyKind,
   type HistoryFilters,
-  type HistoryItem,
 } from "@inout/finance";
 import { useFinancialHome } from "../finance/use-financial-home";
 import { useLedgerHistory } from "../finance/use-ledger-history";
@@ -183,16 +181,7 @@ function HistoryRows({
   offset: number;
   onPage: (value: number) => void;
 }) {
-  const state = useLedgerHistory(household, period, filters, offset),
-    [selected, setSelected] = useState<HistoryItem | null>(null),
-    [autoClosed, setAutoClosed] = useState(false);
-  const detail =
-    selected ??
-    (!autoClosed && filters.transactionId ? (state.items[0] ?? null) : null);
-  const closeDetail = () => {
-    setSelected(null);
-    setAutoClosed(true);
-  };
+  const state = useLedgerHistory(household, period, filters, offset);
   if (state.loading)
     return (
       <Text accessibilityLiveRegion="polite">Carregando lançamentos…</Text>
@@ -214,7 +203,12 @@ function HistoryRows({
           accessibilityLabel={`Detalhes de ${item.description}`}
           key={`${item.transactionId}:${item.accountId}:${i}`}
           style={s.card}
-          onPress={() => setSelected(item)}
+          onPress={() =>
+            router.push({
+              pathname: "/lancamento",
+              params: { household, period, transaction: item.transactionId },
+            })
+          }
         >
           <View style={s.tools}>
             <Text style={s.heading}>{item.description}</Text>
@@ -279,49 +273,6 @@ function HistoryRows({
           <Text>Atualizar</Text>
         </Pressable>
       </View>
-      <Modal
-        visible={detail !== null}
-        transparent
-        animationType="slide"
-        onRequestClose={closeDetail}
-      >
-        <View style={s.overlay}>
-          <View style={s.card}>
-            <Text style={s.title}>Detalhes do lançamento</Text>
-            <Text selectable>ID: {detail?.transactionId}</Text>
-            <Text>{detail?.description}</Text>
-            {detail && (
-              <>
-                <Text>
-                  {historyKind(detail)} · {displayDate(detail.date)}
-                </Text>
-                <Text>{money(detail.amount, detail.currency)}</Text>
-                <Text>
-                  {detail.category}
-                  {detail.source ? ` · ${detail.source}` : ""}
-                </Text>
-                <Text>
-                  Situação:{" "}
-                  {detail.status === "posted"
-                    ? "Registrado"
-                    : detail.status === "reversed"
-                      ? "Estornado"
-                      : detail.status}
-                </Text>
-              </>
-            )}
-            <Text>
-              {detail?.accountName} · {detail?.currency}
-            </Text>
-            {detail?.reversalOf && (
-              <Text selectable>Estorno de: {detail.reversalOf}</Text>
-            )}
-            <Pressable style={s.button} onPress={closeDetail}>
-              <Text>Fechar</Text>
-            </Pressable>
-          </View>
-        </View>
-      </Modal>
     </View>
   );
 }

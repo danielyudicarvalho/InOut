@@ -323,7 +323,7 @@ function RecordForm({
             }
             onDetails={() =>
               router.push({
-                pathname: "/lancamentos",
+                pathname: "/lancamento",
                 params: {
                   household,
                   period: fields.date.slice(0, 7),

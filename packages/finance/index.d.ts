@@ -146,7 +146,7 @@ export type HistoryFilters = {
   kind?: string;
   accountId?: string;
 };
-export function historyKind(item: HistoryItem): string;
+export function historyKind(item: Pick<HistoryItem, "kind">): string;
 export type AuxiliaryKind = "account" | "category" | "source";
 export type AuxiliaryFields = {
   name: string;
@@ -191,7 +191,67 @@ export function createAuxiliaryStore(
   edit(field: keyof AuxiliaryFields, value: string): void;
   submit(): Promise<void>;
 };
+export type TransactionDetail = {
+  id: string;
+  kind: string;
+  status: string;
+  description: string;
+  date: string;
+  postedAt: string;
+  createdBy: string;
+  currency: string;
+  amount: number;
+  postings: {
+    accountId: string;
+    accountName: string;
+    currency: string;
+    amount: number;
+  }[];
+  rows: { label: string; value: string }[];
+  reversalOf: string | null;
+};
+export function canReverse(detail: TransactionDetail | null): boolean;
+export function createReversalStore(
+  repository: FinanceRepository,
+  household: string,
+  transactionId: string,
+  options: {
+    storage: {
+      load(): Promise<string | null>;
+      save(value: string): Promise<void>;
+      remove(key: string): Promise<void>;
+    };
+    randomId: () => string;
+    now?: () => Date;
+    timeoutMs?: number;
+  },
+): {
+  getSnapshot(): {
+    status: "loading" | "ready" | "saving" | "uncertain" | "success" | "error";
+    fields: { date: string; description: string };
+    options: TransactionDetail | null;
+    notice: string;
+    result: RecordResult | null;
+  };
+  subscribe(listener: () => void): () => void;
+  start(): () => void;
+  retry(): void;
+  edit(field: "date" | "description", value: string): void;
+  submit(): Promise<void>;
+};
 export interface FinanceRepository {
+  transaction(
+    household: string,
+    transactionId: string,
+    signal?: AbortSignal,
+  ): Promise<TransactionDetail>;
+  reverse(
+    household: string,
+    transactionId: string,
+    body: { occurredOn: string; description: string | null },
+    key: string,
+    signal?: AbortSignal,
+  ): Promise<RecordResult>;
   createAuxiliary(
     household: string,
     kind: AuxiliaryKind,

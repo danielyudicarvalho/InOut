@@ -225,7 +225,11 @@ function HistoryRows({
             {state.items.map((item, i) => (
               <tr key={`${item.transactionId}:${item.accountId}:${i}`}>
                 <td>
-                  <strong>{item.description}</strong>
+                  <Link
+                    href={`/lancamento?${new URLSearchParams({ household, period, transaction: item.transactionId })}`}
+                  >
+                    <strong>{item.description}</strong>
+                  </Link>
                   <small>{historyKind(item)}</small>
                 </td>
                 <td>{displayDate(item.date)}</td>
