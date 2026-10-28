@@ -57,12 +57,13 @@ function DetailView({
     pending = state.status === "uncertain",
     saving = state.status === "saving",
     reversed = done || detail.status === "reversed",
-    transfer = detail.kind === "transfer";
+    transfer = detail.kind === "transfer",
+    opening = detail.kind === "openingbalance";
   const target = (transaction: string) =>
     `/lancamento?${new URLSearchParams({ household, transaction, ...(period ? { period } : {}), currency: state.options?.currency ?? currency })}`;
   return (
     <main
-      className={`dashboard transaction-page ${transfer ? "transfer-detail-page" : ""}`}
+      className={`dashboard transaction-page ${transfer ? "transfer-detail-page" : opening ? "opening-detail-page" : ""}`}
     >
       <aside className="dashboard-sidebar">
         <Link
@@ -90,13 +91,21 @@ function DetailView({
           <div>
             <Link href={back}>‹ Lançamentos</Link>
             <h1>
-              {transfer ? "Detalhe da transferência" : "Detalhe do lançamento"}
+              {transfer
+                ? "Detalhe da transferência"
+                : opening
+                  ? "Detalhe do saldo inicial"
+                  : "Detalhe do lançamento"}
             </h1>
             {!transfer && (
-              <p>Confira abaixo todas as informações deste lançamento.</p>
+              <p>
+                {opening
+                  ? "O ponto de partida da sua conta."
+                  : "Confira abaixo todas as informações deste lançamento."}
+              </p>
             )}
           </div>
-          {!transfer && (
+          {!transfer && !opening && (
             <Image
               src="/images/pipo-detail.webp"
               alt=""
@@ -108,10 +117,12 @@ function DetailView({
         <section className="transaction-card">
           <div className="transaction-summary">
             <div>
-              <h2>{detail.description}</h2>
+              <h2>{opening ? "Saldo inicial da conta" : detail.description}</h2>
               <small>
                 {transfer && <span aria-hidden="true">⇄ </span>}
-                {historyKind({ kind: detail.kind })}
+                {opening
+                  ? "Posição inicial"
+                  : historyKind({ kind: detail.kind })}
               </small>
               <strong
                 className={
@@ -171,13 +182,26 @@ function DetailView({
               </div>
             </>
           )}
+          {opening && (
+            <Image
+              className="opening-detail-art"
+              src="/images/pipo-opening-detail.webp"
+              alt=""
+              width={350}
+              height={270}
+            />
+          )}
           <dl className="transaction-fields">
             {(transfer ? detail.rows.slice(2) : detail.rows).map((row, i) => (
               <div key={i}>
                 <dt>
                   {transfer && row.label === "Data do lançamento"
                     ? "Data da transferência"
-                    : row.label}
+                    : opening && row.label === "Data do lançamento"
+                      ? "Data de referência"
+                      : opening && i === 0
+                        ? "Conta"
+                        : row.label}
                 </dt>
                 <dd>{row.value}</dd>
               </div>
@@ -195,6 +219,20 @@ function DetailView({
             </Link>
           )}
         </section>
+        {opening && (
+          <aside
+            className="opening-detail-notice"
+            aria-label="Sobre o saldo inicial"
+          >
+            <strong>Saldo inicial não é receita</strong>
+            <p>
+              Representa o dinheiro que já existia na conta na data de
+              referência. Compõe o saldo, mas não entra nas receitas nem no
+              resultado do período.
+            </p>
+            <small>Não é um lançamento recorrente.</small>
+          </aside>
+        )}
         <section className="transaction-card">
           <h2>Registro</h2>
           <p className="transaction-help">
@@ -231,10 +269,18 @@ function DetailView({
           </Link>
         )}
         <footer className="transaction-actions">
-          <Link className="primary" href={back}>
+          {opening && (
+            <Link
+              className="primary"
+              href={`/composicao-saldo?${new URLSearchParams({ household, account: detail.postings[0].accountId, currency: detail.currency, ...(period ? { period } : {}) })}`}
+            >
+              ↗ Ver conta
+            </Link>
+          )}
+          <Link className={opening ? undefined : "primary"} href={back}>
             ← Voltar ao histórico
           </Link>
-          {!done && (canReverse(detail) || pending) && (
+          {!done && ((!opening && canReverse(detail)) || pending) && (
             <button
               className="transaction-reverse"
               onClick={() => {
@@ -252,14 +298,16 @@ function DetailView({
           )}
           <button onClick={state.retry}>Atualizar</button>
         </footer>
-        <p className="transaction-help">
-          {transfer
-            ? "O estorno desfaz os dois lados da transferência em uma única operação, mantendo o registro original."
-            : "O estorno mantém o registro original e cria uma movimentação de compensação."}
-        </p>
+        {!opening && (
+          <p className="transaction-help">
+            {transfer
+              ? "O estorno desfaz os dois lados da transferência em uma única operação, mantendo o registro original."
+              : "O estorno mantém o registro original e cria uma movimentação de compensação."}
+          </p>
+        )}
       </div>
       {!done &&
-        (canReverse(detail) || pending || saving) &&
+        ((!opening && canReverse(detail)) || pending || saving) &&
         (confirm || (pending && !dismissed) || saving) && (
           <ReversalDialog
             date={state.fields.date}

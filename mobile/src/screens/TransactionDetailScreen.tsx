@@ -87,7 +87,8 @@ function DetailView({
     pending = state.status === "uncertain",
     saving = state.status === "saving",
     reversed = done || detail.status === "reversed",
-    transfer = detail.kind === "transfer";
+    transfer = detail.kind === "transfer",
+    opening = detail.kind === "openingbalance";
   const close = () => {
     if (!saving) {
       setConfirm(false);
@@ -103,15 +104,21 @@ function DetailView({
         <View style={s.hero}>
           <View style={{ flex: 1 }}>
             <Text accessibilityRole="header" style={s.title}>
-              {transfer ? "Detalhe da transferência" : "Detalhe do lançamento"}
+              {transfer
+                ? "Detalhe da transferência"
+                : opening
+                  ? "Detalhe do saldo inicial"
+                  : "Detalhe do lançamento"}
             </Text>
             {!transfer && (
               <Text style={s.help}>
-                Confira abaixo todas as informações deste lançamento.
+                {opening
+                  ? "O ponto de partida da sua conta."
+                  : "Confira abaixo todas as informações deste lançamento."}
               </Text>
             )}
           </View>
-          {!transfer && (
+          {!transfer && !opening && (
             <Image
               source={require("../../assets/pipo-detail.webp")}
               style={s.art}
@@ -119,8 +126,12 @@ function DetailView({
           )}
         </View>
         <View style={s.card}>
-          <Text style={s.heading}>{detail.description}</Text>
-          <Text style={s.help}>{historyKind({ kind: detail.kind })}</Text>
+          <Text style={s.heading}>
+            {opening ? "Saldo inicial da conta" : detail.description}
+          </Text>
+          <Text style={s.help}>
+            {opening ? "Posição inicial" : historyKind({ kind: detail.kind })}
+          </Text>
           <Text
             style={[
               s.amount,
@@ -175,12 +186,22 @@ function DetailView({
               </View>
             </>
           )}
+          {opening && (
+            <Image
+              source={require("../../assets/pipo-opening-detail.webp")}
+              style={s.openingArt}
+            />
+          )}
           {(transfer ? detail.rows.slice(2) : detail.rows).map((row, i) => (
             <View key={i} style={s.row}>
               <Text style={s.label}>
                 {transfer && row.label === "Data do lançamento"
                   ? "Data da transferência"
-                  : row.label}
+                  : opening && row.label === "Data do lançamento"
+                    ? "Data de referência"
+                    : opening && i === 0
+                      ? "Conta"
+                      : row.label}
               </Text>
               <Text style={s.value}>{row.value}</Text>
             </View>
@@ -200,6 +221,17 @@ function DetailView({
             </Pressable>
           )}
         </View>
+        {opening && (
+          <View style={s.openingNotice}>
+            <Text style={s.heading}>Saldo inicial não é receita</Text>
+            <Text style={s.value}>
+              Representa o dinheiro que já existia na conta na data de
+              referência. Compõe o saldo, mas não entra nas receitas nem no
+              resultado do período.
+            </Text>
+            <Text style={s.help}>Não é um lançamento recorrente.</Text>
+          </View>
+        )}
         <View style={s.card}>
           <Text style={s.heading}>Registro</Text>
           <Text style={s.help}>Informações de auditoria deste lançamento.</Text>
@@ -232,14 +264,35 @@ function DetailView({
             <Text>Ver movimentação de estorno</Text>
           </Pressable>
         )}
+        {opening && (
+          <Pressable
+            accessibilityRole="button"
+            style={[s.button, s.primary]}
+            onPress={() =>
+              router.push({
+                pathname: "/composicao-saldo",
+                params: {
+                  household,
+                  account: detail.postings[0].accountId,
+                  currency: detail.currency,
+                  ...(period ? { period } : {}),
+                },
+              })
+            }
+          >
+            <Text style={{ color: "white" }}>↗ Ver conta</Text>
+          </Pressable>
+        )}
         <Pressable
           accessibilityRole="button"
-          style={[s.button, s.primary]}
+          style={[s.button, !opening && s.primary]}
           onPress={back}
         >
-          <Text style={{ color: "white" }}>← Voltar ao histórico</Text>
+          <Text style={{ color: opening ? "#315f3b" : "white" }}>
+            ← Voltar ao histórico
+          </Text>
         </Pressable>
-        {!done && (canReverse(detail) || pending) && (
+        {!done && ((!opening && canReverse(detail)) || pending) && (
           <Pressable
             accessibilityRole="button"
             style={[s.button, s.reverse]}
@@ -260,17 +313,19 @@ function DetailView({
         <Pressable style={s.button} onPress={state.retry}>
           <Text>Atualizar</Text>
         </Pressable>
-        <Text style={s.help}>
-          {transfer
-            ? "O estorno desfaz os dois lados da transferência em uma única operação, mantendo o original."
-            : "O estorno mantém o original e cria uma movimentação de compensação."}
-        </Text>
+        {!opening && (
+          <Text style={s.help}>
+            {transfer
+              ? "O estorno desfaz os dois lados da transferência em uma única operação, mantendo o original."
+              : "O estorno mantém o original e cria uma movimentação de compensação."}
+          </Text>
+        )}
       </ScrollView>
       <Modal
         transparent
         visible={
           !done &&
-          (canReverse(detail) || pending || saving) &&
+          ((!opening && canReverse(detail)) || pending || saving) &&
           (confirm || (pending && !dismissed) || saving)
         }
         animationType="slide"
@@ -343,6 +398,15 @@ const s = StyleSheet.create({
   green: { color: "#315f3b" },
   hero: { flexDirection: "row", alignItems: "center", gap: 10 },
   title: { fontFamily: t.serif, fontSize: 25, color: "#214b36" },
+  openingArt: { width: "100%", height: 170, resizeMode: "contain" },
+  openingNotice: {
+    padding: 17,
+    borderWidth: 1,
+    borderColor: "#efd58f",
+    borderRadius: 12,
+    backgroundColor: "#fff5d9",
+    gap: 8,
+  },
   transferArt: { width: "100%", height: 155, resizeMode: "contain" },
   accounts: { gap: 4 },
   account: {

@@ -298,3 +298,7 @@ O botão fica indisponível para originais já estornados e transações do tipo
 ### Transfer detail
 
 The canonical transaction detail route uses the server kind to select the transfer presentation in both clients. The shared repository sorts signed postings and requires transfers to have two balanced legs on distinct accounts. Clients show source and destination together without representing the transfer as income or expense. Reversal reuses the transaction-scoped durable store and the existing atomic .NET reversal operation; there is no per-account reversal write. This keeps financial rules in the shared domain and backend while the two adapters own responsive rendering.
+
+### Opening balance detail
+
+The canonical transaction view renders opening balances as initial positions, preserving their signed posting and separating the account reference date from the audit posting timestamp. The shared repository requires one account posting and supplies neutral account/reference labels. Both UI adapters link to the existing authorized account composition detail by account ID, preserving household/currency/period. No new .NET use case is needed: the ledger already exposes exact transaction history and excludes opening balances from operating results. This follows the project's inward dependency rule: domain data and invariants stay in the shared/backend layers, while presentation and navigation stay in the clients.

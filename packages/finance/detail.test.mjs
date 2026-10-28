@@ -312,3 +312,44 @@ test("transfer detail rejects a missing leg or two legs on the same account", as
     { code: "invalid" },
   );
 });
+
+test("opening balance detail preserves account, reference date, audit and signed position without classifying it as income", async () => {
+  for (const [direction, expected] of [
+    ["credit", 32000],
+    ["debit", -32000],
+  ]) {
+    const detail = await repo([
+      {
+        ...row,
+        kind: "openingBalance",
+        direction,
+        categoryId: null,
+        categoryName: null,
+        description: "Saldo inicial",
+      },
+    ]).transaction("h", id);
+    assert.equal(detail.kind, "openingbalance");
+    assert.equal(detail.amount, expected);
+    assert.equal(detail.postings[0].accountId, row.accountId);
+    assert.equal(detail.createdBy, row.createdBy);
+    assert.equal(detail.postedAt, row.postedAt);
+    assert.deepEqual(
+      detail.rows.map((r) => r.label),
+      ["Conta", "Moeda", "Data de referência", "Descrição"],
+    );
+    assert.equal(
+      detail.rows.find((r) => r.label === "Data de referência").value,
+      "28/10/2026",
+    );
+  }
+});
+test("opening balance detail rejects multiple account postings", async () => {
+  const opening = { ...row, kind: "openingBalance", categoryName: null };
+  await assert.rejects(
+    repo([
+      opening,
+      { ...opening, accountId: "b", direction: "credit" },
+    ]).transaction("h", id),
+    { code: "invalid" },
+  );
+});

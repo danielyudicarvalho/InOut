@@ -25,26 +25,29 @@ export function BalanceCompositionScreen() {
     currency = typeof p.currency === "string" ? p.currency : "";
   return (
     <BalanceView
-      key={`${household}:${period}:${currency}`}
+      key={`${household}:${period}:${currency}:${p.account ?? ""}`}
       initialHouseholdId={household}
       initialPeriod={period}
       initialCurrency={currency}
+      initialAccountId={typeof p.account === "string" ? p.account : ""}
     />
   );
 }
 function BalanceView({
   initialCurrency,
+  initialAccountId,
   ...options
 }: {
   initialHouseholdId: string;
   initialPeriod: string;
   initialCurrency: string;
+  initialAccountId: string;
 }) {
   const state = useFinancialHome(options);
   const scroll = useRef<ComponentRef<typeof ScrollView>>(null);
   const [chosen, setCurrency] = useState(initialCurrency),
     [hidden, setHidden] = useState(false),
-    [accountId, setAccount] = useState<string | null>(null);
+    [accountId, setAccount] = useState<string | null>(initialAccountId || null);
   const back = () =>
     router.replace({
       pathname: "/inicio",
@@ -163,6 +166,12 @@ function BalanceView({
             e confira os lançamentos.
           </Text>
         ) : null}
+        {accountId && !account && (
+          <Text accessibilityLiveRegion="polite" style={s.help}>
+            A conta solicitada não está disponível nesta composição. Confira as
+            contas abaixo ou selecione outro período.
+          </Text>
+        )}
         {account ? (
           <View style={s.panel}>
             <Pressable

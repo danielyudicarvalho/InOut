@@ -19,29 +19,32 @@ export function BalanceCompositionScreen() {
     currency = params.get("currency") ?? "";
   return (
     <BalanceView
-      key={`${household}:${period}:${currency}`}
+      key={`${household}:${period}:${currency}:${params.get("account") ?? ""}`}
       initialHouseholdId={household}
       initialPeriod={period}
       initialCurrency={currency}
+      initialAccountId={params.get("account") ?? ""}
     />
   );
 }
 function BalanceView({
   initialCurrency,
+  initialAccountId,
   ...options
 }: {
   initialHouseholdId: string;
   initialPeriod: string;
   initialCurrency: string;
+  initialAccountId: string;
 }) {
   const state = useFinancialHome(options);
   const heading = useRef<HTMLHeadingElement>(null);
   const [chosen, setCurrency] = useState(initialCurrency),
     [hidden, setHidden] = useState(false),
-    [accountId, setAccount] = useState<string | null>(null);
+    [accountId, setAccount] = useState<string | null>(initialAccountId || null);
   useEffect(() => {
     heading.current?.focus();
-  }, [accountId]);
+  }, [accountId, state.status]);
   if (state.status !== "ready" || !state.data || !state.data.currencies.length)
     return (
       <main className="financial-state">
@@ -170,6 +173,12 @@ function BalanceView({
             e confira os lançamentos.
           </p>
         ) : null}
+        {accountId && !account && (
+          <p role="status" className="dashboard-caption">
+            A conta solicitada não está disponível nesta composição. Confira as
+            contas abaixo ou selecione outro período.
+          </p>
+        )}
         {account ? (
           <section
             className="dashboard-panel balance-account-detail"

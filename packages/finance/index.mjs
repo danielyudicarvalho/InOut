@@ -423,6 +423,7 @@ export function createFinanceRepository({
         incoming = postings.find((p) => p.amount > 0);
       if (
         (kind === "transfer" && postings.length !== 2) ||
+        (kind === "openingbalance" && postings.length !== 1) ||
         (postings.length > 1 &&
           (postings.length !== 2 ||
             !outgoing ||
@@ -437,9 +438,11 @@ export function createFinanceRepository({
             ? p.amount < 0
               ? "Conta de origem"
               : "Conta de destino"
-            : kind === "income"
-              ? "Conta de destino"
-              : "Conta de origem",
+            : kind === "openingbalance"
+              ? "Conta"
+              : kind === "income"
+                ? "Conta de destino"
+                : "Conta de origem",
         value: p.accountName,
       }));
       rows.push({ label: "Moeda", value: postings[0].currency });
@@ -461,7 +464,10 @@ export function createFinanceRepository({
         });
       rows.push(
         {
-          label: "Data do lançamento",
+          label:
+            kind === "openingbalance"
+              ? "Data de referência"
+              : "Data do lançamento",
           value: displayDate(date(first.occurredOn)),
         },
         {

@@ -717,3 +717,16 @@ Prompt final: “Transparent wide watercolor storybook hero for Ninho household 
 - Browser/device visual acceptance and live .NET/database integration remain pending. No real financial operation was performed during verification.
 
 - Transfer-detail verification: web 112/112 tests, mobile 105/105 tests, formatting, lint and TypeScript passed; Next production build passed after clearing corrupt local Turbopack cache. The new .NET domain test was not executed because the SDK is unavailable.
+
+## Opening balance detail — 2026-10-28
+
+- The authenticated canonical `/lancamento` route selects the opening-balance presentation from the actual API transaction kind in both clients. It displays the signed original position, the financial account and currency, reference date, persisted description, actual status and audit identifiers.
+- The dedicated warning distinguishes the starting position from revenue, the period result and recurring transactions. Existing .NET dashboard rules already exclude opening balances from period results. No financial data is mocked or written by viewing the screen.
+- “Ver conta” links to `/composicao-saldo` with household, currency, period and the posting's actual account ID. Both clients initialize the existing real account detail from that ID and report when it is absent from the selected composition, rather than displaying another account as the requested one.
+- The reference has no new reversal action for an opening position, so this presentation exposes account/history navigation. An already persisted reversal attempt from an earlier UI remains recoverable with its original key and payload; pending operations are not discarded.
+- Shared repository validation requires one posting for an opening balance. Regression tests cover positive/negative signed positions, reference-date labels and audit data, plus rejection of multiple postings.
+- Audit remains the API user UUID and `PostedAt` labelled “Registrado em”, not an invented display name or creation timestamp. Device timezone is stated.
+- Built-in image-generation tool created the dedicated illustration, inspected and prepared as transparent WebP in `frontend/public/images/pipo-opening-detail.webp` and `mobile/assets/pipo-opening-detail.webp`. Prompt: “Transparent watercolor illustration for Ninho opening account balance detail. Pipo fluffy small golden-yellow bird, green leaf tuft, orange beak, rust-red scarf, gently putting a single gold coin next to an open cream notebook recording the starting point of a household account. Sage leafy plants behind and a tiny wooden pencil. Cozy delicate hand-painted storybook watercolor, warm honey, sage, terracotta and cream, soft paper texture. Entire bird, notebook and coin visible, generous transparent margins, landscape composition. No words, letters, numbers, logos, UI or watermark.”
+- Browser/device visual acceptance and live .NET/database integration remain pending. No financial write was performed during verification.
+
+- Opening-detail verification: web 114/114 tests, mobile 107/107 tests, formatting, lint and TypeScript passed; Next production build passed. No native build, browser/device acceptance or live .NET integration was executed.
