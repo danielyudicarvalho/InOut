@@ -10,7 +10,7 @@ import { useRecord } from "../lib/finance/use-record";
 const titles = {
   income: "Nova entrada",
   expense: "Nova saída",
-  transfer: "Transferência",
+  transfer: "Nova transferência",
 };
 export function NewRecordScreen() {
   const p = useSearchParams(),
@@ -135,9 +135,9 @@ function RecordForm({
   }
   return (
     <main
-      className={`record-page ${state.kind !== "transfer" ? `record-income-layout ${state.kind === "expense" ? "record-expense-layout" : ""}` : ""}`}
+      className={`record-page record-income-layout ${state.kind === "expense" ? "record-expense-layout" : state.kind === "transfer" ? "record-transfer-layout" : ""}`}
     >
-      {state.kind !== "transfer" && (
+      {
         <aside className="dashboard-sidebar">
           <Link
             className="dashboard-brand"
@@ -165,7 +165,7 @@ function RecordForm({
             Grandes conquistas também nascem de pequenos registros. ♡
           </p>
         </aside>
-      )}
+      }
       <div className="record-main">
         <section className="dashboard-panel record-form-panel">
           <header>
@@ -178,7 +178,7 @@ function RecordForm({
                   ? "/images/pipo-income-form.webp"
                   : state.kind === "expense"
                     ? "/images/pipo-expense-form.webp"
-                    : "/images/pipo-new-record.webp"
+                    : "/images/pipo-transfer-form.webp"
               }
               width={600}
               height={300}
@@ -188,14 +188,14 @@ function RecordForm({
                   ? "Pipo guardando uma moeda em uma bolsinha"
                   : state.kind === "expense"
                     ? "Pipo conferindo as compras e o recibo"
-                    : "Pipo escrevendo em um caderno"
+                    : "Pipo levando uma moeda pela ponte entre duas contas"
               }
             />
             <p>{householdName}</p>
             <h1>{titles[state.kind]}</h1>
             <p>
               {state.kind === "transfer"
-                ? "Mova dinheiro entre suas contas. Transferências não contam como receita ou despesa."
+                ? "Mova dinheiro entre as contas do seu lar."
                 : state.kind === "income"
                   ? "Registre um dinheiro que entrou no seu lar."
                   : "Registre um gasto do seu lar."}
@@ -244,7 +244,48 @@ function RecordForm({
                     ))}
                   </select>
                 </label>
-                {state.kind !== "transfer" && (
+                {state.kind === "transfer" && (
+                  <label className="record-destination">
+                    Conta de destino *
+                    <select
+                      required
+                      disabled={!account || locked}
+                      value={fields.destinationId}
+                      onChange={(e) =>
+                        state.edit("destinationId", e.target.value)
+                      }
+                    >
+                      <option value="">Selecione</option>
+                      {destinations.map((row) => (
+                        <option key={row.id} value={row.id}>
+                          {row.name} · {row.currency}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+                {state.kind === "transfer" && account && (
+                  <div className="record-unavailable">
+                    <strong>Contas indisponíveis</strong>
+                    {options.accounts
+                      .filter(
+                        (a) =>
+                          a.id === account.id ||
+                          a.currency !== account.currency,
+                      )
+                      .map((a) => (
+                        <p key={a.id}>
+                          {a.name} · {a.currency}
+                          <small>
+                            {a.id === account.id
+                              ? "Mesma conta de origem"
+                              : "Moeda incompatível"}
+                          </small>
+                        </p>
+                      ))}
+                  </div>
+                )}
+                {
                   <label className="record-currency">
                     Moeda da conta
                     <input
@@ -254,7 +295,7 @@ function RecordForm({
                     />
                     <small>A moeda é definida pela conta escolhida. 🔒</small>
                   </label>
-                )}
+                }
                 <label className="record-amount">
                   Valor * {account ? `(${account.currency})` : ""}
                   <input
@@ -269,25 +310,7 @@ function RecordForm({
                     milhar.
                   </small>
                 </label>
-                {state.kind === "transfer" ? (
-                  <label>
-                    Conta de destino
-                    <select
-                      required
-                      value={fields.destinationId}
-                      onChange={(e) =>
-                        state.edit("destinationId", e.target.value)
-                      }
-                    >
-                      <option value="">Selecione</option>
-                      {destinations.map((row) => (
-                        <option key={row.id} value={row.id}>
-                          {row.name} · {row.currency}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                ) : (
+                {state.kind !== "transfer" && (
                   <label className="record-category">
                     Categoria *
                     <select
@@ -372,6 +395,14 @@ function RecordForm({
                   </small>
                 </label>
               </fieldset>
+              {state.kind === "transfer" && (
+                <div className="record-transfer-notice">
+                  <strong>
+                    ⓘ Transferências não contam como receita ou despesa.
+                  </strong>
+                  <p>Escolha contas diferentes e com a mesma moeda.</p>
+                </div>
+              )}
               <div className="record-actions">
                 <small>* Campos obrigatórios</small>
                 <Link
@@ -402,7 +433,7 @@ function RecordForm({
                         ? "Registrar entrada"
                         : state.kind === "expense"
                           ? "Registrar saída"
-                          : "Salvar transferência"}
+                          : "Registrar transferência"}
                 </button>
               </div>
             </form>

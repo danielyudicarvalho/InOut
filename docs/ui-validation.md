@@ -645,3 +645,15 @@ Arte gerada com imagegen integrado, inspecionada e preparada com transparência 
 Prompt final: “Transparent wide watercolor storybook hero for Ninho household finance NEW EXPENSE form. Pipo, fluffy golden yellow bird, green leaf tuft, orange beak and rust red scarf, carefully checking a blank shopping receipt beside a wicker basket of carrots, green vegetables and bread, small blank notebook on table. Cozy warm cream sage terracotta palette, whole character and objects with generous transparent margins. No letters numbers text logos or UI.”
 
 Build de produção Next.js da atualização Nova saída passou.
+
+## Nova transferência — 2026-10-28
+
+Referência implementada no formulário compartilhado de web e mobile: origem e destino distintos, moeda somente leitura, valor, data, descrição, lista de contas indisponíveis com razões explícitas (mesma origem ou moeda incompatível), aviso de exclusão do resultado e ação Registrar transferência. Desktop usa barra lateral e formulário em colunas; mobile apresenta a ilustração da ponte acima dos campos e uma seta entre as contas. Não há campos de categoria ou fonte em transferência.
+
+Mantido o contrato existente de POST `/transfers`, com autorização, centavos inteiros, mesma moeda, chave idempotente e tentativa durável. Mudar origem continua limpando o destino. A tela não apresenta conversão cambial e não oferece contas incompatíveis como destinos selecionáveis. Descrição mantém o limite de 500 caracteres aceito pelo contrato existente. Cancelar não envia operação, e fica bloqueado durante envio; pendências incertas permanecem recuperáveis.
+
+Validação: 91 testes web, 84 mobile, formatação, lint, tipagem de ambas plataformas e build de produção Next.js passaram. Sem transferência real durante testes, integração .NET, QA em dispositivo ou export nativo.
+
+Arte própria criada com imagegen integrado e inspecionada, preparada em `frontend/public/images/pipo-transfer-form.webp` e `mobile/assets/pipo-transfer-form.webp`.
+
+Prompt final: “Transparent wide watercolor storybook hero for Ninho household finance internal TRANSFER form. Pipo fluffy golden yellow bird with green leaf tuft orange beak rust red scarf, smiling while carrying one golden coin across a small wooden rope bridge between two dark sage green purses decorated with simple leaf emblems. Gentle leafy plants at both ends. Cozy cream honey terracotta sage palette, full bridge character and both purses, generous transparent margins. No text letters numbers logos or UI.”

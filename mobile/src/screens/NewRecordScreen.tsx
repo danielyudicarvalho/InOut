@@ -23,7 +23,7 @@ import { theme as t } from "../theme";
 const titles = {
   income: "Nova entrada",
   expense: "Nova saída",
-  transfer: "Transferência",
+  transfer: "Nova transferência",
 };
 export function NewRecordScreen() {
   const p = useLocalSearchParams(),
@@ -228,14 +228,22 @@ function RecordForm({
           <Text style={s.link}>‹ Lançamentos</Text>
         </Pressable>
         <Text style={s.caption}>{householdName}</Text>
-        <View style={s.hero}>
+        <View
+          style={[
+            s.hero,
+            state.kind === "transfer" && {
+              flexDirection: "column",
+              alignItems: "stretch",
+            },
+          ]}
+        >
           <View style={{ flex: 1 }}>
             <Text accessibilityRole="header" style={s.title}>
               {titles[state.kind]}
             </Text>
             <Text style={s.help}>
               {state.kind === "transfer"
-                ? "Mova dinheiro entre suas contas. Transferências não contam como receita ou despesa."
+                ? "Mova dinheiro entre as contas do seu lar."
                 : state.kind === "income"
                   ? "Registre um dinheiro que entrou no seu lar."
                   : "Registre um gasto do seu lar."}
@@ -247,16 +255,19 @@ function RecordForm({
                 ? require("../../assets/pipo-income-form.webp")
                 : state.kind === "expense"
                   ? require("../../assets/pipo-expense-form.webp")
-                  : require("../../assets/pipo-new-record.webp")
+                  : require("../../assets/pipo-transfer-form.webp")
             }
-            style={s.heroArt}
+            style={[
+              s.heroArt,
+              state.kind === "transfer" && { width: "100%", height: 140 },
+            ]}
             resizeMode="contain"
             accessibilityLabel={
               state.kind === "income"
                 ? "Pipo guardando uma moeda em uma bolsinha"
                 : state.kind === "expense"
                   ? "Pipo conferindo as compras e o recibo"
-                  : "Pipo escrevendo em um caderno"
+                  : "Pipo levando uma moeda pela ponte entre duas contas"
             }
           />
         </View>
@@ -312,7 +323,55 @@ function RecordForm({
             >
               <Text style={s.help}>{label("accountId") || "Selecione"} ▾</Text>
             </Pressable>
-            {state.kind !== "transfer" && (
+            {state.kind === "transfer" && (
+              <View>
+                <Text
+                  style={{
+                    textAlign: "center",
+                    color: "#b58b24",
+                    fontSize: 26,
+                  }}
+                >
+                  ↓
+                </Text>
+                <Text style={s.label}>Conta de destino *</Text>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Selecionar conta de destino"
+                  disabled={locked || !account || !destinations.length}
+                  style={s.input}
+                  onPress={() => setPicker("destinationId")}
+                >
+                  <Text style={s.help}>
+                    {label("destinationId") ||
+                      (!account
+                        ? "Escolha a conta de origem"
+                        : "Selecione")}{" "}
+                    ▾
+                  </Text>
+                </Pressable>
+                {account && (
+                  <View style={s.unavailable}>
+                    <Text style={s.label}>Contas indisponíveis</Text>
+                    {options.accounts
+                      .filter(
+                        (a) =>
+                          a.id === account.id ||
+                          a.currency !== account.currency,
+                      )
+                      .map((a) => (
+                        <Text key={a.id} style={s.caption}>
+                          {a.name} · {a.currency} —{" "}
+                          {a.id === account.id
+                            ? "Mesma conta de origem"
+                            : "Moeda incompatível"}
+                        </Text>
+                      ))}
+                  </View>
+                )}
+              </View>
+            )}
+            {
               <View>
                 <Text style={s.label}>Moeda da conta</Text>
                 <View style={[s.input, { backgroundColor: "#efeee8" }]}>
@@ -322,7 +381,7 @@ function RecordForm({
                   A moeda é definida pela conta escolhida.
                 </Text>
               </View>
-            )}
+            }
             <Text style={s.label}>
               Valor * {account ? `(${account.currency})` : ""}
             </Text>
@@ -347,7 +406,7 @@ function RecordForm({
             {(
               [
                 ...(state.kind === "transfer"
-                  ? [{ field: "destinationId", title: "Conta de destino" }]
+                  ? []
                   : [{ field: "categoryId", title: "Categoria *" }]),
                 ...(state.kind === "income"
                   ? [{ field: "sourceId", title: "Fonte de renda (opcional)" }]
@@ -410,6 +469,16 @@ function RecordForm({
             <Text style={[s.caption, { textAlign: "right" }]}>
               {fields.description.length}/500
             </Text>
+            {state.kind === "transfer" && (
+              <View style={s.transferNotice}>
+                <Text style={s.help}>
+                  ⓘ Transferências não contam como receita ou despesa.
+                </Text>
+                <Text style={s.caption}>
+                  Escolha contas diferentes e com a mesma moeda.
+                </Text>
+              </View>
+            )}
             <Text style={s.caption}>* Campos obrigatórios</Text>
             <Pressable
               accessibilityRole="button"
@@ -450,7 +519,7 @@ function RecordForm({
                       ? "Registrar entrada"
                       : state.kind === "expense"
                         ? "Registrar saída"
-                        : "Salvar transferência"}
+                        : "Registrar transferência"}
               </Text>
             </Pressable>
           </>
@@ -531,6 +600,20 @@ function RecordDateInput({
   );
 }
 const s = StyleSheet.create({
+  unavailable: {
+    padding: 12,
+    backgroundColor: "#efeee7",
+    borderRadius: 10,
+    marginTop: 8,
+    gap: 7,
+  },
+  transferNotice: {
+    padding: 14,
+    backgroundColor: "#f5efd3",
+    borderRadius: 10,
+    gap: 8,
+    marginTop: 12,
+  },
   safe: { flex: 1, backgroundColor: t.cream },
   content: {
     padding: 22,
