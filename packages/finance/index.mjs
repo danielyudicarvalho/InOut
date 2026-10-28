@@ -166,7 +166,9 @@ export function createFinanceRepository({
               }
             : {}),
         },
-        ...(write ? { method: "POST", body: JSON.stringify(write.body) } : {}),
+        ...(write
+          ? { method: write.method ?? "POST", body: JSON.stringify(write.body) }
+          : {}),
         cache: "no-store",
         signal,
         redirect: "error",
@@ -486,6 +488,11 @@ export function createFinanceRepository({
           first.description == null
             ? "Sem descrição"
             : string(first.description),
+        categoryId: first.categoryId == null ? null : string(first.categoryId),
+        sourceId:
+          first.incomeSourceId == null ? null : string(first.incomeSourceId),
+        rawDescription:
+          first.description == null ? "" : string(first.description),
         date: date(first.occurredOn),
         postedAt: string(first.postedAt),
         createdBy: string(first.createdBy),
@@ -496,6 +503,25 @@ export function createFinanceRepository({
         rows,
         reversalOf: first.reversalOf == null ? null : string(first.reversalOf),
       };
+    },
+    async correctClassification(household, transactionId, body, key, signal) {
+      if (!validOperationKey(transactionId) || !validOperationKey(key))
+        throw new FinanceFailure("validation");
+      const result = await get(
+        `/api/v1/households/${encodeURIComponent(household)}/ledger/transactions/${encodeURIComponent(transactionId)}`,
+        signal,
+        { body, key, method: "PATCH" },
+      );
+      if (
+        !result ||
+        String(result.transactionId).toLowerCase() !==
+          transactionId.toLowerCase() ||
+        result.categoryId !== body.categoryId ||
+        (result.incomeSourceId ?? null) !== body.incomeSourceId ||
+        (result.description ?? null) !== body.description
+      )
+        throw new FinanceFailure("invalid");
+      return { transactionId: result.transactionId, replayed: false };
     },
     async reverse(household, transactionId, body, key, signal) {
       if (!validOperationKey(transactionId) || !validOperationKey(key))
@@ -1964,4 +1990,117 @@ export function createReversalStore(
         ),
     },
   });
+}
+
+export function canCorrectClassification(detail) {
+  return (
+    detail?.status === "posted" &&
+    ["income", "expense"].includes(detail.kind) &&
+    !detail.reversalOf
+  );
+}
+export function createClassificationStore(
+  repository,
+  household,
+  transactionId,
+  options,
+) {
+  const restore = (body) => {
+    if (
+      body.transactionId !== transactionId ||
+      typeof body.categoryId !== "string" ||
+      (body.incomeSourceId !== null &&
+        typeof body.incomeSourceId !== "string") ||
+      (body.description !== null && typeof body.description !== "string") ||
+      (body.description ?? "").length > 500
+    )
+      throw new FinanceFailure("pending");
+    return {
+      categoryId: body.categoryId,
+      sourceId: body.incomeSourceId ?? "",
+      description: body.description ?? "",
+    };
+  };
+  return createWriteStore(repository, household, "classification", "", {
+    ...options,
+    spec: {
+      kinds: ["classification"],
+      initialFields: () => ({ categoryId: "", sourceId: "", description: "" }),
+      options: async (repo, id, signal) => {
+        const [detail, catalogs] = await Promise.all([
+          repo.transaction(id, transactionId, signal),
+          repo.recordOptions(id, signal),
+        ]);
+        return { ...catalogs, detail };
+      },
+      initialize: (fields, options) => ({
+        categoryId: options.detail.categoryId ?? "",
+        sourceId: options.detail.sourceId ?? "",
+        description: options.detail.rawDescription,
+      }),
+      restore,
+      prepare: (kind, fields, options) => {
+        if (
+          !canCorrectClassification(options.detail) ||
+          !options.categories.some(
+            (c) => c.id === fields.categoryId && c.flow === options.detail.kind,
+          ) ||
+          (fields.sourceId &&
+            (options.detail.kind !== "income" ||
+              !options.sources.some((s) => s.id === fields.sourceId)))
+        )
+          throw new FinanceFailure("validation");
+        const description = fields.description.trim();
+        if (description.length > 500) throw new FinanceFailure("validation");
+        return {
+          transactionId,
+          categoryId: fields.categoryId,
+          incomeSourceId: fields.sourceId || null,
+          description: description || null,
+        };
+      },
+      post: (repo, id, kind, body, key, signal) =>
+        repo.correctClassification(
+          id,
+          transactionId,
+          {
+            categoryId: body.categoryId,
+            incomeSourceId: body.incomeSourceId,
+            description: body.description,
+          },
+          key,
+          signal,
+        ),
+    },
+  });
+}
+export function classificationChoices(options) {
+  const categories = options.categories
+    .filter((c) => c.flow === options.detail.kind)
+    .map((c) => ({
+      id: c.id,
+      name: c.parentId
+        ? `${options.categories.find((p) => p.id === c.parentId)?.name ?? "Categoria"} › ${c.name}`
+        : c.name,
+    }));
+  const sources = [{ id: "", name: "Sem fonte de renda" }, ...options.sources];
+  if (
+    options.detail.categoryId &&
+    !categories.some((c) => c.id === options.detail.categoryId)
+  )
+    categories.push({
+      id: options.detail.categoryId,
+      name: "Categoria atual indisponível — selecione outra",
+      disabled: true,
+    });
+  if (
+    options.detail.sourceId &&
+    !sources.some((s) => s.id === options.detail.sourceId)
+  )
+    sources.push({
+      id: options.detail.sourceId,
+      name: "Fonte atual indisponível — selecione outra ou remova",
+      disabled: true,
+    });
+  return { categories, sources };
 }

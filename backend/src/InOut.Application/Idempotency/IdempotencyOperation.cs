@@ -11,4 +11,5 @@ public enum IdempotencyOperation
     PostTransfer,
     ReverseTransaction,
     SetBudget,
+    CorrectClassification,
 }

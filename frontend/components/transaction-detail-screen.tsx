@@ -1,4 +1,5 @@
 "use client";
+import { ClassificationDialog } from "./classification-dialog";
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
@@ -36,6 +37,8 @@ function DetailView({
   currency: string;
 }) {
   const state = useReversal(household, id),
+    [classify, setClassify] = useState(false),
+    [corrected, setCorrected] = useState(false),
     [confirm, setConfirm] = useState(false),
     [dismissed, setDismissed] = useState(false);
   const back = `/lancamentos?${new URLSearchParams({ household, ...(period ? { period } : {}), currency: state.options?.currency ?? currency })}`;
@@ -268,6 +271,9 @@ function DetailView({
             Ver movimentação de estorno
           </Link>
         )}
+        {corrected && (
+          <p role="status">Classificação atualizada com sucesso.</p>
+        )}
         <footer className="transaction-actions">
           {opening && (
             <Link
@@ -296,6 +302,13 @@ function DetailView({
                   : "Estornar lançamento"}
             </button>
           )}
+          {["income", "expense"].includes(detail.kind) && (
+            <button onClick={() => setClassify(true)}>
+              {detail.status === "posted"
+                ? "Corrigir classificação"
+                : "Consultar classificação"}
+            </button>
+          )}
           <button onClick={state.retry}>Atualizar</button>
         </footer>
         {!opening && (
@@ -306,6 +319,18 @@ function DetailView({
           </p>
         )}
       </div>
+      {classify && (
+        <ClassificationDialog
+          household={household}
+          transactionId={id}
+          onClose={() => setClassify(false)}
+          onSaved={() => {
+            setClassify(false);
+            setCorrected(true);
+            state.retry();
+          }}
+        />
+      )}
       {!done &&
         ((!opening && canReverse(detail)) || pending || saving) &&
         (confirm || (pending && !dismissed) || saving) && (

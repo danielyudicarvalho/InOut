@@ -17,6 +17,14 @@ public sealed partial class EfLedgerStore
         CancellationToken cancellationToken)
     {
         await using var databaseTransaction = await dbContext.BeginUserTransactionAsync(actorUserId, cancellationToken);
+        var result = await QueryHistoryAsync(householdId, limit, filter, cancellationToken);
+        await databaseTransaction.CommitAsync(cancellationToken);
+        return result;
+    }
+
+    private async Task<IReadOnlyList<LedgerHistoryItem>> QueryHistoryAsync(
+        Guid householdId, int limit, LedgerHistoryFilter filter, CancellationToken cancellationToken)
+    {
         var transactions = dbContext.FinancialTransactions.AsNoTracking()
             .Where(item => item.HouseholdId == householdId);
         if (filter.TransactionId is not null)
@@ -77,7 +85,6 @@ public sealed partial class EfLedgerStore
             .Skip(Math.Max(0, filter.Offset))
             .Take(limit)
             .ToListAsync(cancellationToken);
-        await databaseTransaction.CommitAsync(cancellationToken);
         return rows
             .Select(item => new LedgerHistoryItem(
                 item.TransactionId,
@@ -227,10 +234,18 @@ public sealed partial class EfLedgerStore
         Guid? categoryId,
         Guid? incomeSourceId,
         string? description,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        IdempotencyRequest? idempotencyRequest = null)
     {
         await using var databaseTransaction = await dbContext.BeginUserTransactionAsync(
             actorUserId, cancellationToken);
+        var acquisition = idempotencyRequest is null ? null :
+            await idempotency.AcquireAsync<LedgerHistoryItem>(idempotencyRequest, cancellationToken);
+        if (acquisition is { IsReplay: true })
+        {
+            await databaseTransaction.CommitAsync(cancellationToken);
+            return acquisition.Response!;
+        }
 
         await dbContext.Database.ExecuteSqlInterpolatedAsync(
             $"select id from public.transactions where household_id = {householdId} and id = {transactionId} for update",
@@ -309,21 +324,17 @@ public sealed partial class EfLedgerStore
             transactionId);
 
         await dbContext.SaveChangesAsync(cancellationToken);
-        await databaseTransaction.CommitAsync(cancellationToken);
-
-        var historyList = await GetHistoryAsync(
-            actorUserId,
-            householdId,
-            200,
-            new LedgerHistoryFilter(),
-            cancellationToken);
-
-        var historyItem = historyList.FirstOrDefault(item => item.TransactionId == transactionId);
-        if (historyItem is null)
+        var historyList = await QueryHistoryAsync(
+            householdId, 2, new LedgerHistoryFilter(TransactionId: transactionId), cancellationToken);
+        var historyItem = historyList.FirstOrDefault()
+            ?? throw new InvalidOperationException("Failed to retrieve updated transaction history item.");
+        if (acquisition is not null)
         {
-            throw new InvalidOperationException("Failed to retrieve updated transaction history item.");
+            idempotency.Complete(acquisition.Record, historyItem, (int)HttpStatusCode.OK,
+                PersistenceVocabulary.EntityTypes.Transaction, transactionId);
+            await dbContext.SaveChangesAsync(cancellationToken);
         }
-
+        await databaseTransaction.CommitAsync(cancellationToken);
         return historyItem;
     }
 

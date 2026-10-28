@@ -4915,3 +4915,66 @@ button:disabled {
     grid-template-columns: 95px 1fr;
   }
 }
+
+.classification-dialog {
+  width: min(510px, calc(100vw - 28px));
+}
+.classification-dialog .aux-content {
+  position: relative;
+}
+.classification-dialog header {
+  min-height: 110px;
+  align-items: flex-start;
+}
+.classification-dialog header > div {
+  max-width: 65%;
+}
+.classification-dialog h2 {
+  font-family: Georgia, serif;
+  color: #234c36;
+  margin: 8px 0;
+}
+.classification-dialog p,
+.classification-dialog small {
+  font-size: 12px;
+  line-height: 1.6;
+  color: #6b705f;
+}
+.classification-art {
+  position: absolute;
+  right: 24px;
+  top: 32px;
+  width: 34%;
+  height: 105px;
+  object-fit: contain;
+  pointer-events: none;
+}
+.classification-summary {
+  background: #e9edd9;
+  padding: 14px;
+  border-radius: 8px;
+  display: grid;
+  gap: 5px;
+}
+.classification-summary strong {
+  font-size: 14px;
+  color: #234c36;
+}
+.classification-dialog form {
+  display: grid;
+  gap: 16px;
+}
+.classification-dialog label {
+  display: grid;
+  gap: 7px;
+  font-size: 13px;
+}
+.classification-dialog footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.classification-dialog footer > button {
+  flex: 1;
+  min-height: 44px;
+}

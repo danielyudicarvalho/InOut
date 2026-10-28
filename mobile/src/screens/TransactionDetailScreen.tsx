@@ -1,3 +1,4 @@
+import { ClassificationSheet } from "../components/ClassificationSheet";
 import { useState } from "react";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import {
@@ -40,6 +41,8 @@ function DetailView({
   currency: string;
 }) {
   const state = useReversal(household, id),
+    [classify, setClassify] = useState(false),
+    [corrected, setCorrected] = useState(false),
     [confirm, setConfirm] = useState(false),
     [dismissed, setDismissed] = useState(false);
   const back = () =>
@@ -310,6 +313,24 @@ function DetailView({
             </Text>
           </Pressable>
         )}
+        {corrected && (
+          <Text accessibilityLiveRegion="polite" style={s.help}>
+            Classificação atualizada com sucesso.
+          </Text>
+        )}
+        {["income", "expense"].includes(detail.kind) && (
+          <Pressable
+            accessibilityRole="button"
+            style={s.button}
+            onPress={() => setClassify(true)}
+          >
+            <Text>
+              {detail.status === "posted"
+                ? "Corrigir classificação"
+                : "Consultar classificação"}
+            </Text>
+          </Pressable>
+        )}
         <Pressable style={s.button} onPress={state.retry}>
           <Text>Atualizar</Text>
         </Pressable>
@@ -321,6 +342,18 @@ function DetailView({
           </Text>
         )}
       </ScrollView>
+      {classify && (
+        <ClassificationSheet
+          household={household}
+          transactionId={id}
+          onClose={() => setClassify(false)}
+          onSaved={() => {
+            setClassify(false);
+            setCorrected(true);
+            state.retry();
+          }}
+        />
+      )}
       <Modal
         transparent
         visible={

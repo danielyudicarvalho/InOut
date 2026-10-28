@@ -261,6 +261,7 @@ public static class LedgerEndpoints
             Guid householdId,
             Guid transactionId,
             CorrectTransactionClassificationRequest request,
+            [FromHeader(Name = ApiContract.Headers.IdempotencyKey)] Guid? idempotencyKey,
             ClaimsPrincipal principal,
             LedgerService service,
             CancellationToken cancellationToken) =>
@@ -272,7 +273,8 @@ public static class LedgerEndpoints
                 request.CategoryId,
                 request.IncomeSourceId,
                 request.Description,
-                cancellationToken);
+                cancellationToken,
+                idempotencyKey);
             return Results.Ok(updatedItem);
         }).WithName(ApiContract.EndpointNames.CorrectTransactionClassification);
 

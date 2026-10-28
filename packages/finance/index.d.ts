@@ -192,6 +192,9 @@ export function createAuxiliaryStore(
   submit(): Promise<void>;
 };
 export type TransactionDetail = {
+  categoryId: string | null;
+  sourceId: string | null;
+  rawDescription: string;
   id: string;
   kind: string;
   status: string;
@@ -239,7 +242,53 @@ export function createReversalStore(
   edit(field: "date" | "description", value: string): void;
   submit(): Promise<void>;
 };
+export type ClassificationFields = {
+  categoryId: string;
+  sourceId: string;
+  description: string;
+};
+export type ClassificationOptions = RecordOptions & {
+  detail: TransactionDetail;
+};
+export function canCorrectClassification(
+  detail: TransactionDetail | null,
+): boolean;
+export function classificationChoices(options: ClassificationOptions): {
+  categories: { id: string; name: string; disabled?: boolean }[];
+  sources: { id: string; name: string; disabled?: boolean }[];
+};
+export function createClassificationStore(
+  repository: FinanceRepository,
+  household: string,
+  transactionId: string,
+  options: Parameters<typeof createReversalStore>[3],
+): {
+  getSnapshot(): {
+    status: "loading" | "ready" | "saving" | "uncertain" | "success" | "error";
+    fields: ClassificationFields;
+    options: ClassificationOptions | null;
+    notice: string;
+    result: RecordResult | null;
+  };
+  subscribe(listener: () => void): () => void;
+  start(): () => void;
+  retry(): void;
+  edit(field: keyof ClassificationFields, value: string): void;
+  submit(): Promise<void>;
+};
 export interface FinanceRepository {
+  correctClassification(
+    household: string,
+    transactionId: string,
+    body: {
+      categoryId: string;
+      incomeSourceId: string | null;
+      description: string | null;
+    },
+    key: string,
+    signal?: AbortSignal,
+  ): Promise<RecordResult>;
+
   transaction(
     household: string,
     transactionId: string,
