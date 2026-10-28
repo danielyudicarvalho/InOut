@@ -122,7 +122,7 @@ select throws_ok(
   $$ select * from public.households $$,
   '42501',
   'permission denied for table households',
-  'the Flutter client cannot read business tables directly'
+  'the client cannot read business tables directly'
 );
 
 reset role;

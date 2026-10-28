@@ -9,7 +9,7 @@ services:
       Supabase__Jwt__Issuer: ${SUPABASE_URL:?Set SUPABASE_URL in .env.cloud}/auth/v1
       Supabase__Jwt__Audience: authenticated
       Supabase__Jwt__Secret: ${SUPABASE_JWT_SECRET:-}
-      Cors__AllowedOrigins__0: http://localhost:8081
+      Cors__AllowedOrigins__0: http://localhost:3000
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
       OTEL_SERVICE_NAME: inout-api
     ports:
@@ -20,13 +20,18 @@ services:
   web:
     build:
       context: .
-      dockerfile: Dockerfile.flutter
+      dockerfile: frontend/Dockerfile
       args:
-        SUPABASE_URL: ${SUPABASE_URL:?Set SUPABASE_URL in .env.cloud}
-        SUPABASE_PUBLISHABLE_KEY: ${SUPABASE_PUBLISHABLE_KEY:?Set SUPABASE_PUBLISHABLE_KEY in .env.cloud}
-        API_BASE_URL: http://localhost:8080
+        NEXT_PUBLIC_SUPABASE_URL: ${SUPABASE_URL:?Set SUPABASE_URL in .env.cloud}
+        NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${SUPABASE_PUBLISHABLE_KEY:?Set SUPABASE_PUBLISHABLE_KEY in .env.cloud}
+        NEXT_PUBLIC_API_URL: http://localhost:8080
+    environment:
+      NEXT_PUBLIC_SUPABASE_URL: ${SUPABASE_URL:?Set SUPABASE_URL in .env.cloud}
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${SUPABASE_PUBLISHABLE_KEY:?Set SUPABASE_PUBLISHABLE_KEY in .env.cloud}
+      NEXT_PUBLIC_API_URL: http://localhost:8080
+      PORT: 3000
     ports:
-      - 127.0.0.1:8081:80
+      - 127.0.0.1:3000:3000
     depends_on:
       - api
     volumes:

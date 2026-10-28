@@ -32,5 +32,5 @@ umask 077
 } > .env.docker.local
 
 docker compose --env-file .env.docker.local up --build -d
-echo 'Flutter: http://localhost:8081  API: http://localhost:8080/health/live'
+echo 'Frontend (Next.js): http://localhost:3000  API: http://localhost:8080/health/live'
 echo 'Supabase API: http://localhost:54321  Database: localhost:54322'

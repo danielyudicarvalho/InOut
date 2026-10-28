@@ -1,0 +1,22 @@
+{
+  "name": "@inout/identity",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "default": "./index.mjs"
+    },
+    "./supabase": {
+      "types": "./supabase.d.ts",
+      "default": "./supabase.mjs"
+    }
+  },
+  "scripts": {
+    "test": "node --test *.test.mjs"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "2.118.0"
+  }
+}
