@@ -14,11 +14,14 @@ public sealed record GetIncomeBreakdownQuery(
 public sealed record IncomeBreakdownItem(
     Guid TransactionId, Guid EntryId, Guid AccountId, string AccountName,
     DateOnly OccurredOn, string? Description, string? CategoryName,
-    string? IncomeSourceName, long AmountCents, bool IsReversal, Guid? ReversalOf);
+    string? IncomeSourceName, long AmountCents, bool IsReversal, Guid? ReversalOf, Guid? IncomeSourceId);
+
+public sealed record IncomeSourceBreakdown(
+    Guid? IncomeSourceId, string IncomeSourceName, long AmountCents, int EntryCount);
 
 public sealed record IncomeBreakdown(
     DateOnly PeriodStart, DateOnly PeriodEnd, string Currency, long TotalCents,
-    bool IsReconciled, int TotalCount, int Offset, string SnapshotId, IReadOnlyList<IncomeBreakdownItem> Items);
+    bool IsReconciled, int TotalCount, int Offset, string SnapshotId, IReadOnlyList<IncomeBreakdownItem> Items, IReadOnlyList<IncomeSourceBreakdown> Sources);
 
 public sealed class GetIncomeBreakdown(
     IHouseholdMembershipReader membershipReader, IDashboardReader dashboardReader)
@@ -47,10 +50,21 @@ public sealed class GetIncomeBreakdown(
                 accounts[item.Posting.AccountId].Name, item.Posting.OccurredOn, item.Posting.Description,
                 item.Posting.CategoryId is { } categoryId && categories.TryGetValue(categoryId, out var categoryName) ? categoryName : null,
                 item.Posting.IncomeSourceId is { } sourceId && incomeSources.TryGetValue(sourceId, out var sourceName) ? sourceName : null,
-                item.Amount!.Value, item.Posting.Kind == FinancialTransactionKind.Reversal, item.Posting.ReversalOf))
+                item.Amount!.Value, item.Posting.Kind == FinancialTransactionKind.Reversal, item.Posting.ReversalOf, item.Posting.IncomeSourceId))
             .OrderByDescending(item => item.OccurredOn)
             .ThenByDescending(item => item.TransactionId)
             .ThenBy(item => item.EntryId)
+            .ToArray();
+        var sources = items.GroupBy(item => item.IncomeSourceId)
+            .Select(group => new IncomeSourceBreakdown(
+                group.Key,
+                group.Key is { } id
+                    ? incomeSources.GetValueOrDefault(id, "Fonte indisponível")
+                    : "Sem fonte de renda",
+                group.Aggregate(0L, (sum, item) => checked(sum + item.AmountCents)),
+                group.Count()))
+            .OrderByDescending(group => group.AmountCents)
+            .ThenBy(group => group.IncomeSourceId)
             .ToArray();
         var total = items.Aggregate(0L, (sum, item) => checked(sum + item.AmountCents));
         var snapshotId = Convert.ToHexString(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(items)));
@@ -58,6 +72,6 @@ public sealed class GetIncomeBreakdown(
         var limit = Math.Clamp(query.Limit, 1, 200);
         return new IncomeBreakdown(period.Start, period.End, currency, total,
             source.PostedTransactionCount == source.EntryTransactionCount, items.Length, offset, snapshotId,
-            items.Skip(offset).Take(limit).ToArray());
+            items.Skip(offset).Take(limit).ToArray(), sources);
     }
 }

@@ -38,9 +38,34 @@ public sealed class GetIncomeBreakdownTests
         Assert.Equal(500000L, result.TotalCents);
         Assert.Equal(totals.Currencies.Single(row => row.Currency == "BRL").IncomeCents, result.TotalCents);
         Assert.Equal(2, result.TotalCount);
+        Assert.Equal(2, Assert.Single(result.Sources).EntryCount);
+        Assert.Equal(500000L, result.Sources[0].AmountCents);
         Assert.Single(result.Items);
         Assert.True(result.Items[0].IsReversal);
         Assert.Equal(-100000L, result.Items[0].AmountCents);
+    }
+
+    [Fact]
+    public async Task SourcesAreGroupedByIdBeforePaginationAndKeepZeroNetIncome()
+    {
+        var account = Guid.NewGuid();
+        var first = Guid.NewGuid();
+        var second = Guid.NewGuid();
+        var source = new DashboardSourceData(
+            [new DashboardAccountSource(account, "Principal", "BRL", 0)], [],
+            [new DashboardPosting(account, null, FinancialTransactionKind.Income, null, 100, first),
+                new DashboardPosting(account, null, FinancialTransactionKind.Reversal, FinancialTransactionKind.Income, 100, first),
+                new DashboardPosting(account, null, FinancialTransactionKind.Income, null, 50, second),
+                new DashboardPosting(account, null, FinancialTransactionKind.Income, null, 20)],
+            [], [], [new DashboardIncomeSourceSource(first, "Salário"), new DashboardIncomeSourceSource(second, "Salário")], 4, 4);
+        var result = await new GetIncomeBreakdown(new Member(true), new Reader(source)).ExecuteAsync(
+            new GetIncomeBreakdownQuery(Guid.NewGuid(), Guid.NewGuid(), "BRL", 2026, 10, Limit: 1), CancellationToken.None);
+        Assert.Single(result.Items);
+        Assert.Equal(3, result.Sources.Count);
+        Assert.Equal(4, result.Sources.Sum(group => group.EntryCount));
+        Assert.Equal(70L, result.TotalCents);
+        Assert.Equal(0L, result.Sources.Single(group => group.IncomeSourceId == first).AmountCents);
+        Assert.Equal(20L, result.Sources.Single(group => group.IncomeSourceId is null).AmountCents);
     }
 
     private sealed class Member(bool allowed) : IHouseholdMembershipReader

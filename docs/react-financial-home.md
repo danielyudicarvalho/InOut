@@ -171,3 +171,22 @@ not produce misleading pie-chart shares. The category drilldown reads paginated
 expense entries and matches category IDs rather than names. Until all pages are
 loaded it explicitly reports that the results are partial. The new expense DTO
 includes `categoryId`; deploy the backend and clients together.
+
+## Income source summary
+
+`/fontes-renda` on web and native opens from the dashboard income card and
+preserves the authorized household, selected period and currency. It uses the
+income breakdown endpoint, whose response now includes the source identifier for
+each item and complete `sources` totals and entry counts calculated before
+pagination. The grouping uses source IDs, keeps equal names separate and retains
+zero-net groups and entries without an assigned source. Reversals reduce income
+using the dashboard classifier; transfers are excluded.
+
+Client validation checks source totals and counts against the full breakdown.
+The source accordion shows actual loaded entries, reports partial counts and
+loads further ledger pages on request. The existing snapshot fingerprint prevents
+combining changed pages. Percent charts are hidden when a net negative amount or
+zero total makes proportions misleading. Details expose account, category,
+date and signed amount. Deploy the API change with the clients; an older API is
+reported explicitly instead of inventing source totals. The reader still loads
+the period in memory, as documented for the other breakdowns.

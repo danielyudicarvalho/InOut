@@ -47,11 +47,19 @@ export type IncomeItem = {
   category: string | null;
   categoryId: string | null;
   source: string | null;
+  sourceId: string | null;
   amount: number;
   isReversal: boolean;
   reversalOf: string | null;
 };
+export type IncomeSourceGroup = {
+  id: string | null;
+  name: string;
+  amount: number;
+  count: number;
+};
 export type IncomePage = {
+  sources?: IncomeSourceGroup[];
   periodStart: string;
   periodEnd: string;
   currency: string;

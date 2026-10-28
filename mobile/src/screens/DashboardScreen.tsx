@@ -325,6 +325,24 @@ function DashboardView({
                   </Text>
                 </Pressable>
               ) : null}
+              {item.label === "Receitas" ? (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Ver receitas por fonte de renda"
+                  onPress={() =>
+                    router.push({
+                      pathname: "/fontes-renda",
+                      params: {
+                        household: state.householdId,
+                        period: state.period,
+                        currency,
+                      },
+                    })
+                  }
+                >
+                  <Text style={s.caption}>Ver por fonte de renda ›</Text>
+                </Pressable>
+              ) : null}
               {item.label === "Despesas" ? (
                 <Pressable
                   accessibilityRole="button"

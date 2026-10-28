@@ -817,3 +817,66 @@ test("category summary reads the authenticated dashboard and archived category c
     calls.some((call) => call.url.endsWith("/categories?includeArchived=true")),
   );
 });
+
+test("income source totals cover the full period before pagination and preserve source ids", async () => {
+  const raw = {
+    periodStart: "2026-10-01",
+    periodEnd: "2026-10-31",
+    currency: "BRL",
+    snapshotId: "A".repeat(64),
+    totalCents: 100,
+    totalCount: 3,
+    offset: 0,
+    isReconciled: true,
+    sources: [
+      {
+        incomeSourceId: "a",
+        incomeSourceName: "Salário",
+        amountCents: 100,
+        entryCount: 1,
+      },
+      {
+        incomeSourceId: "b",
+        incomeSourceName: "Salário",
+        amountCents: 0,
+        entryCount: 2,
+      },
+    ],
+    items: [
+      {
+        entryId: "e",
+        transactionId: "t",
+        accountId: "bank",
+        accountName: "Conta",
+        occurredOn: "2026-10-03",
+        incomeSourceId: "a",
+        incomeSourceName: "Salário",
+        amountCents: 100,
+        isReversal: false,
+      },
+    ],
+  };
+  const repo = createFinanceRepository({
+    baseUrl: "https://api.example",
+    getToken: async () => "jwt",
+    fetcher: async () => json(raw),
+  });
+  const data = await repo.income("home", "2026-10", "BRL", 0);
+  assert.equal(data.items.length, 1);
+  assert.equal(data.totalCount, 3);
+  assert.equal(data.sources.length, 2);
+  assert.equal(data.sources[1].amount, 0);
+  assert.equal(data.sources[1].count, 2);
+  assert.equal(data.items[0].sourceId, "a");
+  raw.sources[0].amountCents = 101;
+  await assert.rejects(
+    repo.income("home", "2026-10", "BRL", 0),
+    (e) => e.code === "invalid",
+  );
+  raw.sources[0].amountCents = 100;
+  raw.sources[1].entryCount = 1;
+  await assert.rejects(
+    repo.income("home", "2026-10", "BRL", 0),
+    (e) => e.code === "invalid",
+  );
+});

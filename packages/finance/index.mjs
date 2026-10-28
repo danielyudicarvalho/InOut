@@ -206,6 +206,8 @@ export function createFinanceRepository({
         categoryId: row.categoryId == null ? null : string(row.categoryId),
         source:
           row.incomeSourceName == null ? null : string(row.incomeSourceName),
+        sourceId:
+          row.incomeSourceId == null ? null : string(row.incomeSourceId),
         amount: integer(row.amountCents),
         isReversal: row.isReversal === true,
         reversalOf: row.reversalOf == null ? null : string(row.reversalOf),
@@ -217,7 +219,33 @@ export function createFinanceRepository({
       (items.length === 0 && offset < totalCount)
     )
       throw new FinanceFailure("invalid");
+    let sources;
+    if (kind === "income" && raw.sources !== undefined) {
+      sources = array(raw.sources).map((row) => {
+        const count = integer(row.entryCount);
+        if (count <= 0) throw new FinanceFailure("invalid");
+        return {
+          id: row.incomeSourceId == null ? null : string(row.incomeSourceId),
+          name: string(row.incomeSourceName),
+          amount: integer(row.amountCents),
+          count,
+        };
+      });
+      if (
+        new Set(sources.map((row) => row.id)).size !== sources.length ||
+        sources.reduce((sum, row) => sum + BigInt(row.amount), 0n) !==
+          BigInt(integer(raw.totalCents)) ||
+        sources.reduce((sum, row) => sum + BigInt(row.count), 0n) !==
+          BigInt(totalCount)
+      )
+        throw new FinanceFailure("invalid");
+      for (const item of items) {
+        if (!sources.some((row) => row.id === item.sourceId))
+          throw new FinanceFailure("invalid");
+      }
+    }
     return {
+      sources,
       periodStart: bounds.from,
       periodEnd: bounds.to,
       currency: code,

@@ -514,3 +514,22 @@ words, letters, numbers, UI, logo or watermark.”
 The .NET test for the expense category identifier could not be run here because
 the .NET SDK is unavailable. The financial endpoints must be deployed with the
 client because the expense response now carries the category identifier.
+
+## Income source summary
+
+A dedicated Pipo illustration was generated using the built-in image tool,
+inspected and saved at `frontend/public/images/pipo-income-sources.webp` and
+`mobile/assets/pipo-income-sources.webp`. Prompt: “Transparent wide landscape 2:1
+header illustration for Ninho household income source summary. Pipo, round
+fluffy golden yellow bird with green leaf tuft, orange beak and rust red scarf,
+gently watering three small leafy plants with golden coins blooming like flowers,
+a green watering can in his wing. Cozy warm watercolor storybook, sage, cream,
+honey colors. Complete character and plants, generous transparent surrounding
+space. No text, lettering, numbers, UI, logo or watermark.”
+
+Shared client tests cover full source totals on a partial page, equal source
+names with distinct IDs, zero-net groups, source identities and inconsistent
+amounts/counts. The backend tests cover grouping before pagination, unassigned
+income and a fully reversed source. The .NET tests and live API integration were
+not run because the environment has no .NET SDK. Native build export remains
+pending the earlier approval block; no external Expo build was requested.

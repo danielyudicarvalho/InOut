@@ -337,6 +337,14 @@ function DashboardView({
                       Ver {item.label.toLowerCase()} ›
                     </Link>
                   ) : null}
+                  {item.label === "Receitas" ? (
+                    <Link
+                      className="income-card-link"
+                      href={`/fontes-renda?${new URLSearchParams({ household: state.householdId, period: state.period, currency })}`}
+                    >
+                      Ver por fonte de renda ›
+                    </Link>
+                  ) : null}
                   {item.label === "Despesas" ? (
                     <Link
                       className="income-card-link"
