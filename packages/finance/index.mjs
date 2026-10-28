@@ -300,6 +300,7 @@ export function createFinanceRepository({
         offset: String(offset),
       });
       for (const key of [
+        "transactionId",
         "search",
         "kind",
         "accountId",
@@ -343,6 +344,15 @@ export function createFinanceRepository({
           reversalOf: row.reversalOf == null ? null : string(row.reversalOf),
         };
       });
+      if (
+        filters.transactionId &&
+        rows.some(
+          (row) =>
+            row.transactionId.toLowerCase() !==
+            filters.transactionId.toLowerCase(),
+        )
+      )
+        throw new FinanceFailure("invalid");
       return { items: rows.slice(0, 50), hasMore: rows.length > 50 };
     },
     async historyOptions(householdId, signal) {

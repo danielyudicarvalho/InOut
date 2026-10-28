@@ -677,3 +677,17 @@ Arte própria criada com imagegen integrado e inspecionada, preparada com transp
 Prompt final: “Transparent wide watercolor storybook hero for Ninho household finance REVIEW BEFORE CONFIRMATION screen. Pipo, fluffy golden-yellow bird with green leaf tuft, orange beak and rust-red scarf, carefully reviewing a blank notebook checklist with a pencil, beside a cream mug and small sage leafy plant. Warm cream honey terracotta sage palette, cozy attentive expression, whole character and objects, generous transparent margins. No words letters numbers logos or UI. A single simple green check mark on the notebook is allowed.”
 
 Validação mobile concluída: 94 testes, formatação, lint e tipagem passaram. As mesmas verificações de código também passaram no web.
+
+## Lançamento registrado — 2026-10-28
+
+Tela de sucesso web/mobile implementada após confirmação real do backend, com arte exclusiva, resumo dos dados e ações Ver lançamento, Novo registro e Voltar ao histórico. Atende entrada, saída e transferência; saída mantém destaque terracota. O sucesso não é exibido para tentativas incertas ou erros. Valores demonstrativos do mockup não são preenchidos como dados reais.
+
+Ver lançamento usa o UUID retornado pelo POST, com filtro de transação acrescentado ao endpoint/read model de histórico, dentro do escopo da residência autorizada. O cliente recusa resposta com UUID diferente. Transferências preservam ambas as movimentações; detalhes mobile incluem tipo, valor, data, classificação e situação. Novo registro abre uma instância nova do formulário mesmo ao escolher o mesmo tipo.
+
+Validação: suíte web com 103 testes passou, incluindo consulta exata de transação e rejeição de filtro ignorado; o build Next.js passou após limpeza de cache Turbopack inválido. Formatação, lint e tipagem web/mobile passaram. Teste EF existente ampliado para consultar os dois movimentos da mesma transferência por UUID e verificar UUID inexistente, mas não executado por ausência do SDK .NET/Postgres. Sem lançamento real, integração real, QA visual no navegador/dispositivo ou build nativo.
+
+Arte criada com imagegen integrado, inspecionada e preparada em `frontend/public/images/pipo-saved.webp` e `mobile/assets/pipo-saved.webp`.
+
+Prompt final: “Transparent wide watercolor storybook hero for Ninho household finance RECORD SAVED success screen. Pipo, fluffy golden-yellow bird with green leaf tuft, orange beak and rust-red scarf, smiling proudly while stamping an open blank notebook with one simple green checkmark. Gentle leafy branches frame both sides. Warm cream honey terracotta sage palette, cozy joyful mood, whole character and notebook, generous transparent margins. No text letters numbers logos or UI.”
+
+Validação mobile final: 96 testes, lint e tipagem passaram.

@@ -138,6 +138,7 @@ export function applyHistoryDraft(draft: HistoryDraft): {
   filters: HistoryFilters;
 };
 export type HistoryFilters = {
+  transactionId?: string;
   categoryId?: string;
   incomeSourceId?: string;
   includeSubcategories?: boolean;

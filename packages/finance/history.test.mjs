@@ -193,3 +193,33 @@ test("filter catalogs are authorized first and include archived historical class
   );
   assert.equal(unauthorized.length, 1);
 });
+
+test("saved-record links query the exact transaction identifier within the authorized household and period", async () => {
+  const id = "bd9c216f-c566-48a3-9c3d-fec8a6fd771a",
+    calls = [];
+  const page = await repository(
+    [{ ...row, transactionId: id }],
+    calls,
+  ).ledgerHistory("h", "2026-10", { transactionId: id });
+  const url = new URL(calls[1]);
+  assert.equal(url.searchParams.get("transactionId"), id);
+  assert.equal(url.searchParams.get("from"), "2026-10-01");
+  assert.equal(page.items[0].transactionId, id);
+  const denied = [];
+  await assert.rejects(
+    repository([], denied, []).ledgerHistory("other", "2026-10", {
+      transactionId: id,
+    }),
+    { code: "forbidden" },
+  );
+  assert.equal(denied.length, 1);
+});
+
+test("an ignored transaction filter never displays another record as the saved transaction", async () => {
+  await assert.rejects(
+    repository([row], []).ledgerHistory("h", "2026-10", {
+      transactionId: "bd9c216f-c566-48a3-9c3d-fec8a6fd771a",
+    }),
+    { code: "invalid" },
+  );
+});

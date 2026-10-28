@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   Image,
   Modal,
@@ -14,12 +15,15 @@ export function NewRecordPicker({
   period,
   currency,
   onClose,
+  fresh = false,
 }: {
   household: string;
   period: string;
   currency: string;
   onClose: () => void;
+  fresh?: boolean;
 }) {
+  const [draft] = useState(() => Date.now().toString(36));
   return (
     <Modal visible transparent animationType="slide" onRequestClose={onClose}>
       <View style={s.overlay}>
@@ -87,7 +91,13 @@ export function NewRecordPicker({
                   onClose();
                   router.push({
                     pathname: "/novo-registro",
-                    params: { household, period, currency, kind: item.kind },
+                    params: {
+                      household,
+                      period,
+                      currency,
+                      kind: item.kind,
+                      ...(fresh ? { draft } : {}),
+                    },
                   });
                 }}
               >

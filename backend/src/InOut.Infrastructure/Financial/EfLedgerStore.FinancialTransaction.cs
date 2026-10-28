@@ -19,6 +19,8 @@ public sealed partial class EfLedgerStore
         await using var databaseTransaction = await dbContext.BeginUserTransactionAsync(actorUserId, cancellationToken);
         var transactions = dbContext.FinancialTransactions.AsNoTracking()
             .Where(item => item.HouseholdId == householdId);
+        if (filter.TransactionId is not null)
+            transactions = transactions.Where(item => item.Id == filter.TransactionId.Value);
         if (filter.From is not null)
             transactions = transactions.Where(item => item.OccurredOn >= filter.From.Value);
         if (filter.To is not null)

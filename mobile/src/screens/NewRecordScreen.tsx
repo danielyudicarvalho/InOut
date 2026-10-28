@@ -1,3 +1,5 @@
+import { RecordSaved } from "../components/RecordSaved";
+import { NewRecordPicker } from "../components/NewRecordPicker";
 import { useState, useRef, type ComponentRef } from "react";
 import { RecordReviewPanel } from "../components/RecordReview";
 import {
@@ -52,7 +54,7 @@ export function NewRecordScreen() {
     );
   return (
     <RecordView
-      key={`${kind}:${household}:${period}:${currency}`}
+      key={`${kind}:${household}:${period}:${currency}:${typeof p.draft === "string" ? p.draft : ""}`}
       kind={kind as RecordKind}
       household={household}
       period={period}
@@ -132,7 +134,8 @@ function RecordForm({
 }) {
   const state = useRecord(household, kind, currency);
   const [reviewing, setReviewing] = useState(false),
-    [reviewError, setReviewError] = useState("");
+    [reviewError, setReviewError] = useState(""),
+    [newOpen, setNewOpen] = useState(false);
   const scroll = useRef<ComponentRef<typeof ScrollView>>(null),
     positions = useRef<Record<string, number>>({});
 
@@ -212,7 +215,7 @@ function RecordForm({
     state.status === "uncertain" ||
     state.status === "saving";
   let summary: RecordReview | null = null;
-  if (showReview) {
+  if (showReview || state.status === "success") {
     try {
       summary = recordReview(state.kind, fields, options);
     } catch {
@@ -236,93 +239,100 @@ function RecordForm({
         contentContainerStyle={s.content}
         keyboardShouldPersistTaps="handled"
       >
-        <Pressable
-          accessibilityRole="button"
-          style={s.textButton}
-          onPress={back}
-        >
-          <Text style={s.link}>
-            {showReview && state.status === "ready"
-              ? `‹ ${titles[state.kind]}`
-              : "‹ Lançamentos"}
-          </Text>
-        </Pressable>
-        <Text style={s.caption}>{householdName}</Text>
-        <View
-          style={[
-            s.hero,
-            state.kind === "transfer" && {
-              flexDirection: "column",
-              alignItems: "stretch",
-            },
-          ]}
-        >
-          <View style={{ flex: 1 }}>
-            <Text accessibilityRole="header" style={s.title}>
-              {state.status === "success"
-                ? "Lançamento registrado"
-                : showReview
-                  ? "Revise seu lançamento"
-                  : titles[state.kind]}
-            </Text>
-            <Text style={s.help}>
-              {showReview
-                ? "Confira os dados antes de confirmar."
-                : state.kind === "transfer"
-                  ? "Mova dinheiro entre as contas do seu lar."
-                  : state.kind === "income"
-                    ? "Registre um dinheiro que entrou no seu lar."
-                    : "Registre um gasto do seu lar."}
-            </Text>
-          </View>{" "}
-          <Image
-            source={
-              showReview
-                ? require("../../assets/pipo-review.webp")
-                : state.kind === "income"
-                  ? require("../../assets/pipo-income-form.webp")
-                  : state.kind === "expense"
-                    ? require("../../assets/pipo-expense-form.webp")
-                    : require("../../assets/pipo-transfer-form.webp")
-            }
-            style={[
-              s.heroArt,
-              state.kind === "transfer" && { width: "100%", height: 140 },
-            ]}
-            resizeMode="contain"
-            accessibilityLabel={
-              showReview
-                ? "Pipo revisando uma lista no caderno"
-                : state.kind === "income"
-                  ? "Pipo guardando uma moeda em uma bolsinha"
-                  : state.kind === "expense"
-                    ? "Pipo conferindo as compras e o recibo"
-                    : "Pipo levando uma moeda pela ponte entre duas contas"
-            }
-          />
-        </View>
-        {state.status === "success" ? (
-          <View>
-            <Text accessibilityLiveRegion="polite" style={s.help}>
-              Registro salvo com sucesso.
-            </Text>
+        {state.status !== "success" && (
+          <>
             <Pressable
               accessibilityRole="button"
-              style={s.button}
-              onPress={() =>
-                router.replace({
-                  pathname: "/inicio",
-                  params: {
-                    household,
-                    period: fields.date.slice(0, 7),
-                    currency: account?.currency ?? currency,
-                  },
-                })
-              }
+              style={s.textButton}
+              onPress={back}
             >
-              <Text style={s.buttonText}>Ver o período do lançamento</Text>
+              <Text style={s.link}>
+                {showReview && state.status === "ready"
+                  ? `‹ ${titles[state.kind]}`
+                  : "‹ Lançamentos"}
+              </Text>
             </Pressable>
-          </View>
+            <Text style={s.caption}>{householdName}</Text>
+            <View
+              style={[
+                s.hero,
+                state.kind === "transfer" && {
+                  flexDirection: "column",
+                  alignItems: "stretch",
+                },
+              ]}
+            >
+              <View style={{ flex: 1 }}>
+                <Text accessibilityRole="header" style={s.title}>
+                  {showReview ? "Revise seu lançamento" : titles[state.kind]}
+                </Text>
+                <Text style={s.help}>
+                  {showReview
+                    ? "Confira os dados antes de confirmar."
+                    : state.kind === "transfer"
+                      ? "Mova dinheiro entre as contas do seu lar."
+                      : state.kind === "income"
+                        ? "Registre um dinheiro que entrou no seu lar."
+                        : "Registre um gasto do seu lar."}
+                </Text>
+              </View>{" "}
+              <Image
+                source={
+                  showReview
+                    ? require("../../assets/pipo-review.webp")
+                    : state.kind === "income"
+                      ? require("../../assets/pipo-income-form.webp")
+                      : state.kind === "expense"
+                        ? require("../../assets/pipo-expense-form.webp")
+                        : require("../../assets/pipo-transfer-form.webp")
+                }
+                style={[
+                  s.heroArt,
+                  state.kind === "transfer" && { width: "100%", height: 140 },
+                ]}
+                resizeMode="contain"
+                accessibilityLabel={
+                  showReview
+                    ? "Pipo revisando uma lista no caderno"
+                    : state.kind === "income"
+                      ? "Pipo guardando uma moeda em uma bolsinha"
+                      : state.kind === "expense"
+                        ? "Pipo conferindo as compras e o recibo"
+                        : "Pipo levando uma moeda pela ponte entre duas contas"
+                }
+              />
+            </View>
+          </>
+        )}
+        {state.status === "success" ? (
+          <RecordSaved
+            kind={state.kind}
+            summary={summary}
+            description={fields.description}
+            transactionId={state.result!.transactionId}
+            onNew={() => setNewOpen(true)}
+            onHistory={() =>
+              router.replace({
+                pathname: "/lancamentos",
+                params: {
+                  household,
+                  period: fields.date.slice(0, 7),
+                  currency: account?.currency ?? currency,
+                },
+              })
+            }
+            onDetails={() =>
+              router.push({
+                pathname: "/lancamentos",
+                params: {
+                  household,
+                  period: fields.date.slice(0, 7),
+                  currency: account?.currency ?? currency,
+                  transaction: state.result!.transactionId,
+                },
+              })
+            }
+          />
         ) : showReview ? (
           <RecordReviewPanel
             kind={state.kind}
@@ -619,6 +629,15 @@ function RecordForm({
           </>
         )}
       </ScrollView>
+      {newOpen && (
+        <NewRecordPicker
+          household={household}
+          period={fields.date.slice(0, 7)}
+          currency={account?.currency ?? currency}
+          fresh
+          onClose={() => setNewOpen(false)}
+        />
+      )}
     </SafeAreaView>
   );
 }

@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowUp, ArrowDown, ArrowsLeftRight, X } from "@phosphor-icons/react";
@@ -8,12 +8,15 @@ export function NewRecordPicker({
   period,
   currency,
   onClose,
+  fresh = false,
 }: {
   household: string;
   period: string;
   currency: string;
   onClose: () => void;
+  fresh?: boolean;
 }) {
+  const [draft] = useState(() => Date.now().toString(36));
   const dialog = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     const node = dialog.current;
@@ -82,7 +85,7 @@ export function NewRecordPicker({
           <Link
             key={kind}
             className={`new-record-choice ${kind}`}
-            href={`/novo-registro?${new URLSearchParams({ household, period, currency, kind })}`}
+            href={`/novo-registro?${new URLSearchParams({ household, period, currency, kind, ...(fresh ? { draft } : {}) })}`}
             onClick={onClose}
           >
             <span className="new-record-icon">

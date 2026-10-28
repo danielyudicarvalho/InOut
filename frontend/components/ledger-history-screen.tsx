@@ -25,7 +25,9 @@ export function LedgerHistoryScreen() {
   const [periodOpen, setPeriodOpen] = useState(false),
     [recordOpen, setRecordOpen] = useState(false),
     [filtersOpen, setFiltersOpen] = useState(false),
-    [filters, setFilters] = useState<HistoryFilters>({}),
+    [filters, setFilters] = useState<HistoryFilters>(() => ({
+      transactionId: p.get("transaction") ?? "",
+    })),
     [search, setSearch] = useState(""),
     [offset, setOffset] = useState(0);
   const params = new URLSearchParams({
@@ -79,6 +81,17 @@ export function LedgerHistoryScreen() {
               height={200}
             />
           </div>
+          {filters.transactionId && (
+            <Link
+              href={`/lancamentos?${params}`}
+              onClick={() => {
+                setFilters({});
+                setOffset(0);
+              }}
+            >
+              Ver histórico completo
+            </Link>
+          )}
           <div className="ledger-tools">
             <form
               onSubmit={(e) => {
@@ -240,7 +253,7 @@ function HistoryRows({
                   </span>
                 </td>
                 <td>
-                  <details>
+                  <details open={filters.transactionId === item.transactionId}>
                     <summary>
                       <span
                         className={

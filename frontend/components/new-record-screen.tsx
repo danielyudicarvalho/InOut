@@ -2,6 +2,8 @@
 import { AuxiliarySelector, DateSelector } from "./auxiliary-selector";
 import { BrandLogo } from "./brand-logo";
 import { useState, useEffect, type FormEvent } from "react";
+import { RecordSaved } from "./record-saved";
+import { NewRecordPicker } from "./new-record-picker";
 import { RecordReviewPanel } from "./record-review";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
@@ -35,7 +37,7 @@ export function NewRecordScreen() {
     );
   return (
     <RecordView
-      key={`${kind}:${household}:${period}:${currency}`}
+      key={`${kind}:${household}:${period}:${currency}:${p.get("draft") ?? ""}`}
       kind={kind as RecordKind}
       household={household}
       period={period}
@@ -101,7 +103,8 @@ function RecordForm({
 }) {
   const state = useRecord(household, kind, currency);
   const [reviewing, setReviewing] = useState(false),
-    [reviewError, setReviewError] = useState("");
+    [reviewError, setReviewError] = useState(""),
+    [newOpen, setNewOpen] = useState(false);
   const [focusField, setFocusField] = useState<keyof RecordFields | null>(null);
   useEffect(() => {
     if (!reviewing && focusField) {
@@ -170,7 +173,7 @@ function RecordForm({
     state.status === "uncertain" ||
     state.status === "saving";
   let summary: RecordReview | null = null;
-  if (showReview) {
+  if (showReview || state.status === "success") {
     try {
       summary = recordReview(state.kind, fields, options);
     } catch {
@@ -186,14 +189,20 @@ function RecordForm({
       setReviewError(financeMessage(error));
     }
   }
-  const successHref = `/inicio?${new URLSearchParams({ household, period: fields.date.slice(0, 7), currency: account?.currency ?? currency })}`;
+  const savedParams = new URLSearchParams({
+    household,
+    period: fields.date.slice(0, 7),
+    currency: account?.currency ?? currency,
+  });
+  const historyHref = `/lancamentos?${savedParams}`;
+  const detailHref = `${historyHref}&transaction=${encodeURIComponent(state.result?.transactionId ?? "")}`;
   function submit(event: FormEvent) {
     event.preventDefault();
     review();
   }
   return (
     <main
-      className={`record-page record-income-layout ${state.kind === "expense" ? "record-expense-layout" : state.kind === "transfer" ? "record-transfer-layout" : ""}`}
+      className={`record-page ${state.status === "success" ? "record-saved-layout" : ""} record-income-layout ${state.kind === "expense" ? "record-expense-layout" : state.kind === "transfer" ? "record-transfer-layout" : ""}`}
     >
       {
         <aside className="dashboard-sidebar">
@@ -284,12 +293,15 @@ function RecordForm({
             </p>
           </header>
           {state.status === "success" ? (
-            <div>
-              <p role="status">Registro salvo com sucesso.</p>
-              <Link className="primary record-success" href={successHref}>
-                Ver o período do lançamento
-              </Link>
-            </div>
+            <RecordSaved
+              kind={state.kind}
+              summary={summary}
+              description={fields.description}
+              transactionId={state.result!.transactionId}
+              historyHref={historyHref}
+              detailHref={detailHref}
+              onNew={() => setNewOpen(true)}
+            />
           ) : showReview ? (
             <RecordReviewPanel
               kind={state.kind}
@@ -537,6 +549,15 @@ function RecordForm({
           )}
         </section>
       </div>
+      {newOpen && (
+        <NewRecordPicker
+          household={household}
+          period={fields.date.slice(0, 7)}
+          currency={account?.currency ?? currency}
+          fresh
+          onClose={() => setNewOpen(false)}
+        />
+      )}
     </main>
   );
 }

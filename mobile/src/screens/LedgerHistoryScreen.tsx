@@ -31,7 +31,9 @@ export function LedgerHistoryScreen() {
     initialHouseholdId: typeof p.household === "string" ? p.household : "",
     initialPeriod: typeof p.period === "string" ? p.period : "",
   });
-  const [filters, setFilters] = useState<HistoryFilters>({}),
+  const [filters, setFilters] = useState<HistoryFilters>(() => ({
+      transactionId: typeof p.transaction === "string" ? p.transaction : "",
+    })),
     [search, setSearch] = useState(""),
     [offset, setOffset] = useState(0),
     [picker, setPicker] = useState(false),
@@ -69,6 +71,11 @@ export function LedgerHistoryScreen() {
             style={s.image}
           />
         </View>
+        {filters.transactionId && (
+          <Pressable style={s.button} onPress={() => change({})}>
+            <Text>Ver histórico completo</Text>
+          </Pressable>
+        )}
         <TextInput
           style={s.input}
           accessibilityLabel="Buscar pela descrição"
@@ -177,7 +184,15 @@ function HistoryRows({
   onPage: (value: number) => void;
 }) {
   const state = useLedgerHistory(household, period, filters, offset),
-    [selected, setSelected] = useState<HistoryItem | null>(null);
+    [selected, setSelected] = useState<HistoryItem | null>(null),
+    [autoClosed, setAutoClosed] = useState(false);
+  const detail =
+    selected ??
+    (!autoClosed && filters.transactionId ? (state.items[0] ?? null) : null);
+  const closeDetail = () => {
+    setSelected(null);
+    setAutoClosed(true);
+  };
   if (state.loading)
     return (
       <Text accessibilityLiveRegion="polite">Carregando lançamentos…</Text>
@@ -265,23 +280,43 @@ function HistoryRows({
         </Pressable>
       </View>
       <Modal
-        visible={selected !== null}
+        visible={detail !== null}
         transparent
         animationType="slide"
-        onRequestClose={() => setSelected(null)}
+        onRequestClose={closeDetail}
       >
         <View style={s.overlay}>
           <View style={s.card}>
             <Text style={s.title}>Detalhes do lançamento</Text>
-            <Text selectable>ID: {selected?.transactionId}</Text>
-            <Text>{selected?.description}</Text>
-            <Text>
-              {selected?.accountName} · {selected?.currency}
-            </Text>
-            {selected?.reversalOf && (
-              <Text selectable>Estorno de: {selected.reversalOf}</Text>
+            <Text selectable>ID: {detail?.transactionId}</Text>
+            <Text>{detail?.description}</Text>
+            {detail && (
+              <>
+                <Text>
+                  {historyKind(detail)} · {displayDate(detail.date)}
+                </Text>
+                <Text>{money(detail.amount, detail.currency)}</Text>
+                <Text>
+                  {detail.category}
+                  {detail.source ? ` · ${detail.source}` : ""}
+                </Text>
+                <Text>
+                  Situação:{" "}
+                  {detail.status === "posted"
+                    ? "Registrado"
+                    : detail.status === "reversed"
+                      ? "Estornado"
+                      : detail.status}
+                </Text>
+              </>
             )}
-            <Pressable style={s.button} onPress={() => setSelected(null)}>
+            <Text>
+              {detail?.accountName} · {detail?.currency}
+            </Text>
+            {detail?.reversalOf && (
+              <Text selectable>Estorno de: {detail.reversalOf}</Text>
+            )}
+            <Pressable style={s.button} onPress={closeDetail}>
               <Text>Fechar</Text>
             </Pressable>
           </View>
