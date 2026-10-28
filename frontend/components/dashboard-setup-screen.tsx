@@ -45,6 +45,13 @@ export function DashboardSetupScreen({
         <small>Finanças para o seu lar</small>
         <nav aria-label="Navegação principal">
           <Link
+            className="income-nav-link"
+            href={`/lancamentos?${new URLSearchParams(context)}`}
+          >
+            <Receipt size={21} />
+            Lançamentos
+          </Link>
+          <Link
             className="income-nav-link income-nav-current"
             aria-current="page"
             href={homeHref}

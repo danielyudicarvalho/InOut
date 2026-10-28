@@ -587,3 +587,13 @@ its refactor. Tests use fake HTTP responses, and no real accounts or transaction
 were created. The .NET SDK is unavailable, so the new reader projection and API
 tests still require backend build/integration validation. Native exports remain
 pending the previously reported approval block.
+
+## Histórico de lançamentos — 2026-10-28
+
+- Rotas autenticadas `/lancamentos` no web e Expo; navegação pelo dashboard, incluindo estados iniciais. Busca por descrição, período mensal ou intervalo, conta e tipo; paginação em servidor; lista vazia, erro com retry e carregamento explícitos.
+- Transferências preservam movimentos por conta. Originais estornados têm valor riscado e situação própria; detalhes incluem ID, moeda e referência ao original. Sem dados demonstrativos ou operações financeiras durante validação.
+- Testes compartilhados: limites inclusivos, busca escapada, offset e lookahead; moedas distintas, pernas de transferência, referência de estorno, autorização, vazio e rejeição de valores/direções inválidos. 47 testes financeiros passaram; 86 testes no comando web e 79 no mobile. Formatação, lint e tipagem de ambos passaram.
+- Build de produção Next.js passou com a rota `/lancamentos`. O primeiro build encontrou cache Turbopack inválido; o build passou após remover somente `.next`.
+- Teste EF existente ampliado para verificar segunda perna da transferência com offset e página esgotada. Não executado: SDK .NET/Postgres indisponíveis. Integração real, QA visual no dispositivo e exports nativos não executados.
+- Arte criada com ferramenta imagegen integrada, inspecionada e salva em `frontend/public/images/pipo-history.webp` e `mobile/assets/pipo-history.webp`.
+- Prompt final: “Use case: illustration-story. Transparent landscape hero illustration for Ninho financial transaction history. Pipo, round fluffy golden-yellow bird, green leaf tuft, orange beak and rust-red scarf, examining an open accounting book with a magnifying glass, beside small stacks of books and potted leafy plants. Cozy watercolor storybook, cream sage honey palette. Whole scene isolated, generous transparent margins. No text, numbers, logos or UI.”

@@ -240,3 +240,13 @@ share one durable submission lifecycle while retaining separate pending-operatio
 namespaces. Generated account IDs and operation keys are restored unchanged on
 retry. The old `/conta-pronta` route now reads the actual dashboard instead of
 rendering an unverified success state. No new database tables are required.
+
+## Histórico de lançamentos
+
+`/lancamentos` (web e Expo) usa o endpoint autenticado de histórico da residência. Busca por descrição e filtros de conta/tipo são aplicados no servidor antes da paginação. O filtro opcional `Offset` foi acrescentado ao DTO de aplicação, com `offset` na rota GET e `Skip` antes de `Take` no adaptador EF; consultas antigas continuam começando em zero. Nenhuma migração é necessária.
+
+A página solicita 51 movimentos por vez, exibe 50 e usa o último apenas para habilitar Próxima. O rodapé informa a quantidade da página, sem inventar um total global. A unidade é a movimentação em conta: uma transferência preserva suas duas pernas e pode atravessar páginas. O cliente não soma moedas nem transforma transferências em receita/despesa. Estornos preservam direção e referência ao lançamento original; os originais estornados continuam visíveis com valor riscado.
+
+A paginação é por offset e reflete a consulta atual, sem snapshot: novos lançamentos podem deslocar registros entre páginas. A interface informa essa limitação e oferece Atualizar. Publicar backend e clientes juntos para habilitar offset; versões antigas do backend ignorariam o novo parâmetro.
+
+Os hooks cancelam a consulta ao desmontar e ignoram respostas tardias. Cada conjunto de residência, período, filtros e página monta uma consulta isolada. A lista de residências é validada antes de consultar dados financeiros; acesso negado não mantém a lista anterior visível. Os detalhes são somente leitura, e Novo registro abre o seletor existente com residência/período/moeda.

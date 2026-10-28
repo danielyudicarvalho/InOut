@@ -286,6 +286,57 @@ export function createFinanceRepository({
     };
   }
   return {
+    async ledgerHistory(householdId, period, filters = {}, offset = 0, signal) {
+      const homes = await this.households(signal);
+      if (!homes.some((h) => h.id === householdId))
+        throw new FinanceFailure("forbidden");
+      if (!Number.isSafeInteger(offset) || offset < 0)
+        throw new FinanceFailure("validation");
+      const bounds = parsePeriod(period);
+      const query = new URLSearchParams({
+        from: bounds.from,
+        to: bounds.to,
+        limit: "51",
+        offset: String(offset),
+      });
+      for (const key of ["search", "kind", "accountId"])
+        if (filters[key]) query.set(key, filters[key]);
+      const rows = array(
+        await get(
+          `/api/v1/households/${encodeURIComponent(householdId)}/ledger/history?${query}`,
+          signal,
+        ),
+      ).map((row) => {
+        const direction = string(row.direction).toLowerCase();
+        if (
+          !["debit", "credit"].includes(direction) ||
+          integer(row.amountCents) < 0
+        )
+          throw new FinanceFailure("invalid");
+        return {
+          transactionId: string(row.transactionId),
+          accountId: string(row.accountId),
+          accountName: string(row.accountName),
+          description:
+            row.description == null ? "Sem descrição" : string(row.description),
+          date: string(row.occurredOn),
+          kind: string(row.kind).toLowerCase(),
+          status: string(row.status).toLowerCase(),
+          amount:
+            integer(row.amountCents) *
+            (string(row.direction).toLowerCase() === "debit" ? -1 : 1),
+          currency: currency(row.currency),
+          category:
+            row.categoryName == null
+              ? "Sem categoria"
+              : string(row.categoryName),
+          source:
+            row.incomeSourceName == null ? null : string(row.incomeSourceName),
+          reversalOf: row.reversalOf == null ? null : string(row.reversalOf),
+        };
+      });
+      return { items: rows.slice(0, 50), hasMore: rows.length > 50 };
+    },
     async households(signal) {
       return array(await get("/api/v1/households", signal)).map((row) => ({
         id: string(row.id),
@@ -1395,4 +1446,16 @@ export function createAccountStore(repository, household, code, options) {
     ...options,
     spec: accountWriteSpec,
   });
+}
+
+export function historyKind(item) {
+  return (
+    {
+      income: "Entrada",
+      expense: "Saída",
+      transfer: "Transferência",
+      reversal: "Estorno",
+      openingbalance: "Saldo inicial",
+    }[item.kind] ?? item.kind
+  );
 }

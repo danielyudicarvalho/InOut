@@ -855,6 +855,12 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
                 new LedgerHistoryFilter(Kind: FinancialTransactionKind.Transfer), CancellationToken.None);
             Assert.Equal(2, transfer.Count);
             Assert.All(transfer, item => Assert.Null(item.CategoryId));
+            var secondLeg = await service.GetHistoryAsync(actorUserId, householdId, 1,
+                new LedgerHistoryFilter(Kind: FinancialTransactionKind.Transfer, Offset: 1), CancellationToken.None);
+            Assert.Equal(transfer[1], Assert.Single(secondLeg));
+            var exhausted = await service.GetHistoryAsync(actorUserId, householdId, 1,
+                new LedgerHistoryFilter(Kind: FinancialTransactionKind.Transfer, Offset: 2), CancellationToken.None);
+            Assert.Empty(exhausted);
         }
     }
 

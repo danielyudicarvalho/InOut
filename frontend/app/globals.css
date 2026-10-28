@@ -3634,3 +3634,131 @@ button:disabled {
     gap: 8px;
   }
 }
+
+.ledger-content {
+  padding: 24px;
+  max-width: 1400px;
+  margin: auto;
+}
+.ledger-hero {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+}
+.ledger-hero h1 {
+  font-size: clamp(26px, 3vw, 40px);
+  color: #214b36;
+}
+.ledger-hero img {
+  object-fit: contain;
+  max-width: 35%;
+  height: auto;
+}
+.ledger-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  margin: 20px 0;
+}
+.ledger-tools form {
+  display: flex;
+  gap: 8px;
+  flex: 1;
+}
+.ledger-tools input {
+  min-width: 120px;
+  width: 100%;
+  padding: 12px;
+}
+.ledger-tools button,
+.ledger-tools select {
+  padding: 10px;
+  border: 1px solid #e5dec9;
+  border-radius: 10px;
+  background: #fbf8ee;
+  color: #254d38;
+}
+.ledger-tools .primary {
+  background: #245d3b;
+  color: white;
+}
+.ledger-table {
+  overflow-x: auto;
+  border: 1px solid #e7dfcc;
+  border-radius: 14px;
+  background: #fffcf4;
+}
+.ledger-table table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+.ledger-table th {
+  background: #efeedf;
+  font-weight: 500;
+}
+.ledger-table td,
+.ledger-table th {
+  padding: 18px 14px;
+  border-bottom: 1px solid #e9e3d4;
+}
+.ledger-table small {
+  display: block;
+  margin-top: 5px;
+  color: #736f61;
+}
+.ledger-table details p {
+  max-width: 220px;
+  overflow-wrap: anywhere;
+}
+.ledger-in {
+  color: #14743d;
+}
+.ledger-out {
+  color: #b42b24;
+}
+.ledger-transfer {
+  color: #966309;
+}
+.ledger-posted,
+.ledger-reversed {
+  display: inline-block;
+  padding: 5px 9px;
+  border-radius: 9px;
+  font-size: 13px;
+  background: #e0edd7;
+  color: #275836;
+}
+.ledger-reversed {
+  background: #ffe1d6;
+  color: #aa2924;
+}
+.ledger-help {
+  font-size: 13px;
+  color: #726e61;
+}
+.ledger-page nav {
+  display: grid;
+  gap: 24px;
+  margin-top: 32px;
+}
+@media (max-width: 700px) {
+  .ledger-content {
+    padding: 16px;
+  }
+  .ledger-hero img {
+    max-width: 34%;
+  }
+  .ledger-tools form {
+    flex-basis: 100%;
+  }
+  .ledger-table td,
+  .ledger-table th {
+    padding: 12px;
+  }
+  .ledger-table table {
+    min-width: 800px;
+  }
+}

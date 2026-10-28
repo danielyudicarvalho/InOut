@@ -187,6 +187,23 @@ export function DashboardSetupScreen({
       <View style={s.bottom}>
         <Pressable
           accessibilityRole="button"
+          style={s.nav}
+          onPress={() =>
+            router.push({
+              pathname: "/lancamentos",
+              params: { household: householdId, period, currency },
+            })
+          }
+        >
+          <MaterialCommunityIcons
+            name="receipt-text-outline"
+            size={23}
+            color="#315b3d"
+          />
+          <Text style={s.caption}>Lançamentos</Text>
+        </Pressable>
+        <Pressable
+          accessibilityRole="button"
           accessibilityState={{ selected: true }}
           style={s.nav}
           onPress={onRefresh}

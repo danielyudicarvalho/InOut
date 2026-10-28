@@ -157,6 +157,12 @@ function DashboardView({
   const rows = data.transactions.slice(0, 4);
   const household = state.households.find((h) => h.id === state.householdId)!;
   function unavailable(label: string) {
+    if (label === "Lançamentos") {
+      router.push(
+        `/lancamentos?${new URLSearchParams({ household: state.householdId, period: state.period, currency: chosenCurrency })}`,
+      );
+      return;
+    }
     setNotice(`${label}: esta área ainda não está disponível no aplicativo.`);
   }
   return (

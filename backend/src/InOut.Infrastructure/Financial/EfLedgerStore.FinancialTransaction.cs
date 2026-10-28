@@ -71,6 +71,7 @@ public sealed partial class EfLedgerStore
                 entry.AmountCents,
                 account.Currency,
             })
+            .Skip(Math.Max(0, filter.Offset))
             .Take(limit)
             .ToListAsync(cancellationToken);
         await databaseTransaction.CommitAsync(cancellationToken);

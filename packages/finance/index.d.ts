@@ -98,7 +98,34 @@ export function buildCategorySummary(
   total: number,
   isReconciled?: boolean,
 ): CategorySummary;
+export type HistoryItem = {
+  transactionId: string;
+  accountId: string;
+  accountName: string;
+  description: string;
+  date: string;
+  kind: string;
+  status: string;
+  amount: number;
+  currency: string;
+  category: string;
+  source: string | null;
+  reversalOf: string | null;
+};
+export type HistoryFilters = {
+  search?: string;
+  kind?: string;
+  accountId?: string;
+};
+export function historyKind(item: HistoryItem): string;
 export interface FinanceRepository {
+  ledgerHistory(
+    householdId: string,
+    period: string,
+    filters?: HistoryFilters,
+    offset?: number,
+    signal?: AbortSignal,
+  ): Promise<{ items: HistoryItem[]; hasMore: boolean }>;
   accountOptions(
     householdId: string,
     signal?: AbortSignal,
