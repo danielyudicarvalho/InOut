@@ -799,6 +799,14 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
                 new LedgerHistoryFilter(CategoryId: childId, Kind: FinancialTransactionKind.Expense),
                 CancellationToken.None);
             Assert.Equal("Cinema", Assert.Single(history).CategoryName);
+            var exactParent = await service.GetHistoryAsync(actorUserId, householdId, 100,
+                new LedgerHistoryFilter(CategoryId: rootId, Kind: FinancialTransactionKind.Expense),
+                CancellationToken.None);
+            Assert.Empty(exactParent);
+            var familyHistory = await service.GetHistoryAsync(actorUserId, householdId, 100,
+                new LedgerHistoryFilter(CategoryId: rootId, Kind: FinancialTransactionKind.Expense,
+                    IncludeSubcategories: true), CancellationToken.None);
+            Assert.Equal("Cinema", Assert.Single(familyHistory).CategoryName);
 
             // Re-archiving is a no-op
             await service.ArchiveCategoryAsync(householdId, childId, actorUserId, CancellationToken.None);

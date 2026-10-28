@@ -1,4 +1,5 @@
 "use client";
+import { HistoryFiltersPanel } from "./history-filters";
 import { BrandLogo } from "./brand-logo";
 import { useState } from "react";
 import Image from "next/image";
@@ -51,6 +52,9 @@ export function LedgerHistoryScreen() {
               value={home.householdId}
               onChange={(e) => {
                 home.selectHousehold(e.target.value);
+                setFilters({});
+                setSearch("");
+                setFiltersOpen(false);
                 setOffset(0);
               }}
             >
@@ -98,7 +102,7 @@ export function LedgerHistoryScreen() {
               aria-expanded={filtersOpen}
               onClick={() => setFiltersOpen(!filtersOpen)}
             >
-              Filtros
+              Filtros {Object.values(filters).filter(Boolean).length ? "•" : ""}
             </button>
             <button
               className="primary"
@@ -108,59 +112,6 @@ export function LedgerHistoryScreen() {
               + Novo registro
             </button>
           </div>
-          {filtersOpen && (
-            <div className="ledger-tools">
-              <label>
-                Tipo{" "}
-                <select
-                  value={filters.kind ?? ""}
-                  onChange={(e) => {
-                    setFilters({ ...filters, kind: e.target.value });
-                    setOffset(0);
-                  }}
-                >
-                  {[
-                    ["", "Todos"],
-                    ["income", "Entrada"],
-                    ["expense", "Saída"],
-                    ["transfer", "Transferência"],
-                    ["reversal", "Estorno"],
-                    ["openingbalance", "Saldo inicial"],
-                  ].map(([v, l]) => (
-                    <option key={v} value={v}>
-                      {l}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                Conta{" "}
-                <select
-                  value={filters.accountId ?? ""}
-                  onChange={(e) => {
-                    setFilters({ ...filters, accountId: e.target.value });
-                    setOffset(0);
-                  }}
-                >
-                  <option value="">Todas</option>
-                  {home.data?.setupAccounts.map((a) => (
-                    <option key={a.id} value={a.id}>
-                      {a.name} · {a.currency}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <button
-                onClick={() => {
-                  setFilters({});
-                  setSearch("");
-                  setOffset(0);
-                }}
-              >
-                Limpar filtros
-              </button>
-            </div>
-          )}
           {home.status === "ready" ? (
             <HistoryRows
               key={`${home.householdId}:${home.period}:${JSON.stringify(filters)}:${offset}`}
@@ -179,6 +130,22 @@ export function LedgerHistoryScreen() {
           )}
         </section>
       </div>
+      {filtersOpen && (
+        <HistoryFiltersPanel
+          key={home.householdId}
+          household={home.householdId}
+          period={home.period}
+          filters={filters}
+          onClose={() => setFiltersOpen(false)}
+          onApply={(period, next) => {
+            home.selectPeriod(period);
+            setFilters(next);
+            setSearch(next.search ?? "");
+            setOffset(0);
+            setFiltersOpen(false);
+          }}
+        />
+      )}
       {periodOpen && (
         <PeriodPicker
           value={home.period}

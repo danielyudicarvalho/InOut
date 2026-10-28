@@ -99,3 +99,97 @@ test("history rejects corrupt directions and negative unsigned cents", async () 
       { code: "invalid" },
     );
 });
+
+test("filter draft restores hierarchy without mutating applied filters and removes incompatible income source", async () => {
+  const { historyDraft, applyHistoryDraft } = await import("./index.mjs");
+  const catalog = {
+    accounts: [],
+    sources: [],
+    categories: [
+      { id: "root", name: "Casa", parentId: null, flow: "expense" },
+      { id: "child", name: "Luz", parentId: "root", flow: "expense" },
+    ],
+  };
+  const applied = {
+    kind: "expense",
+    categoryId: "child",
+    incomeSourceId: "stale",
+  };
+  const draft = historyDraft("2026-10", applied, catalog);
+  assert.equal(draft.parentId, "root");
+  assert.equal(draft.subcategoryId, "child");
+  draft.search = "  energia  ";
+  assert.equal(applied.search, undefined);
+  const next = applyHistoryDraft(draft);
+  assert.equal(next.filters.categoryId, "child");
+  assert.equal(next.filters.includeSubcategories, false);
+  assert.equal(next.filters.incomeSourceId, "");
+  assert.equal(next.filters.search, "energia");
+  const parent = applyHistoryDraft({ ...draft, subcategoryId: "" });
+  assert.equal(parent.filters.categoryId, "root");
+  assert.equal(parent.filters.includeSubcategories, true);
+});
+test("filter drafts validate real inclusive dates before applying and retain source only for income", async () => {
+  const { applyHistoryDraft } = await import("./index.mjs");
+  const draft = {
+    from: "2026-10-01",
+    to: "2026-10-31",
+    parentId: "",
+    subcategoryId: "",
+    kind: "income",
+    incomeSourceId: "salary",
+  };
+  assert.equal(applyHistoryDraft(draft).filters.incomeSourceId, "salary");
+  for (const invalid of [
+    { ...draft, from: "2026-11-01" },
+    { ...draft, to: "2026-02-30" },
+  ])
+    assert.throws(() => applyHistoryDraft(invalid), { code: "period" });
+});
+test("history forwards category family and income-source filters to the backend", async () => {
+  const calls = [];
+  await repository([], calls).ledgerHistory("h", "2026-10", {
+    categoryId: "root",
+    includeSubcategories: true,
+    incomeSourceId: "salary",
+  });
+  const url = new URL(calls[1]);
+  assert.equal(url.searchParams.get("categoryId"), "root");
+  assert.equal(url.searchParams.get("includeSubcategories"), "true");
+  assert.equal(url.searchParams.get("incomeSourceId"), "salary");
+});
+test("filter catalogs are authorized first and include archived historical classification", async () => {
+  const calls = [];
+  const repo = createFinanceRepository({
+    baseUrl: "https://api.example",
+    getToken: async () => "token",
+    fetcher: async (url) => {
+      calls.push(url);
+      let rows = [];
+      if (url.endsWith("/households")) rows = [{ id: "h", name: "Casa" }];
+      if (url.includes("/categories?"))
+        rows = [
+          {
+            id: "old",
+            name: "Antiga",
+            flow: "expense",
+            parentId: "root",
+            archivedAt: "2026-01-01",
+          },
+        ];
+      return new Response(JSON.stringify(rows));
+    },
+  });
+  const options = await repo.historyOptions("h");
+  assert.equal(options.categories[0].parentId, "root");
+  assert.equal(
+    calls.filter((u) => u.includes("includeArchived=true")).length,
+    3,
+  );
+  const unauthorized = [];
+  await assert.rejects(
+    repository([], unauthorized, []).historyOptions("other"),
+    { code: "forbidden" },
+  );
+  assert.equal(unauthorized.length, 1);
+});

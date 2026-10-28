@@ -38,7 +38,6 @@ public sealed partial class EfLedgerStore
             from transaction in transactions
             from entry in transaction.Entries
             where (filter.AccountId == null || entry.AccountId == filter.AccountId)
-                && (filter.CategoryId == null || entry.CategoryId == filter.CategoryId)
             join account in dbContext.Accounts.AsNoTracking()
                 on new { entry.HouseholdId, Id = entry.AccountId }
                 equals new { account.HouseholdId, account.Id }
@@ -46,6 +45,8 @@ public sealed partial class EfLedgerStore
                 on new { entry.HouseholdId, Id = entry.CategoryId }
                 equals new { category.HouseholdId, Id = (Guid?)category.Id } into categoryRows
             from category in categoryRows.DefaultIfEmpty()
+            where filter.CategoryId == null || entry.CategoryId == filter.CategoryId
+                || (filter.IncludeSubcategories && category != null && category.ParentId == filter.CategoryId)
             join source in dbContext.IncomeSources.AsNoTracking()
                 on new { transaction.HouseholdId, Id = transaction.IncomeSourceId }
                 equals new { source.HouseholdId, Id = (Guid?)source.Id } into sourceRows

@@ -250,3 +250,11 @@ A página solicita 51 movimentos por vez, exibe 50 e usa o último apenas para h
 A paginação é por offset e reflete a consulta atual, sem snapshot: novos lançamentos podem deslocar registros entre páginas. A interface informa essa limitação e oferece Atualizar. Publicar backend e clientes juntos para habilitar offset; versões antigas do backend ignorariam o novo parâmetro.
 
 Os hooks cancelam a consulta ao desmontar e ignoram respostas tardias. Cada conjunto de residência, período, filtros e página monta uma consulta isolada. A lista de residências é validada antes de consultar dados financeiros; acesso negado não mantém a lista anterior visível. Os detalhes são somente leitura, e Novo registro abre o seletor existente com residência/período/moeda.
+
+## Painel de busca e filtros
+
+O histórico abre um drawer modal no web e uma folha modal no Expo. A edição usa um draft local, separado dos filtros da lista. Fechar descarta a edição; Aplicar valida o intervalo inclusive e reinicia a página. Limpar remove texto/tipo/conta/categoria/subcategoria/fonte do draft e restaura o período que estava aplicado. Pílulas removíveis mostram os filtros adicionais em edição.
+
+Os catálogos são carregados com autenticação e validação da residência antes das consultas, incluindo registros arquivados para encontrar classificações históricas. As categorias têm `parentId`; selecionar outra categoria limpa a subcategoria, e mudar tipo limpa categoria/subcategoria. A fonte só pode ser escolhida para Entrada e é removida ao aplicar outro tipo.
+
+`categoryId`, `incomeSourceId` e `includeSubcategories` são encaminhados ao GET de histórico. O novo `LedgerHistoryFilter.IncludeSubcategories` é falso por padrão, preservando filtros exatos antigos. Quando verdadeiro, a consulta EF inclui a categoria e seus filhos diretos, compatível com o limite de dois níveis do domínio. Os filtros seguem antes de Skip/Take e dentro da transação do usuário. Nenhuma migração é necessária. Publicar backend e clientes juntos para obter o filtro por família de categoria.

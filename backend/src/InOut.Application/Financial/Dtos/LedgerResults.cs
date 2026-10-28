@@ -33,7 +33,8 @@ public sealed record LedgerHistoryFilter(
     FinancialTransactionKind? Kind = null,
     Guid? IncomeSourceId = null,
     string? Search = null,
-    int Offset = 0);
+    int Offset = 0,
+    bool IncludeSubcategories = false);
 
 public sealed record LedgerHistoryItem(
     Guid TransactionId,

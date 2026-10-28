@@ -1,3 +1,4 @@
+import { HistoryFiltersPanel } from "../components/HistoryFilters";
 import { useState } from "react";
 import {
   View,
@@ -93,57 +94,6 @@ export function LedgerHistoryScreen() {
             <Text>Filtros</Text>
           </Pressable>
         </View>
-        {filterOpen && (
-          <View style={s.card}>
-            <Text style={s.heading}>Tipo</Text>
-            {[
-              ["", "Todos"],
-              ["income", "Entrada"],
-              ["expense", "Saída"],
-              ["transfer", "Transferência"],
-              ["reversal", "Estorno"],
-              ["openingbalance", "Saldo inicial"],
-            ].map(([v, l]) => (
-              <Pressable
-                key={v}
-                style={s.button}
-                accessibilityRole="button"
-                accessibilityState={{ selected: (filters.kind ?? "") === v }}
-                onPress={() => change({ ...filters, kind: v })}
-              >
-                <Text>
-                  {(filters.kind ?? "") === v ? "✓ " : ""}
-                  {l}
-                </Text>
-              </Pressable>
-            ))}
-            <Text style={s.heading}>Conta</Text>
-            {[
-              { id: "", name: "Todas", currency: "" },
-              ...(home.data?.setupAccounts ?? []),
-            ].map((a) => (
-              <Pressable
-                key={a.id}
-                style={s.button}
-                onPress={() => change({ ...filters, accountId: a.id })}
-              >
-                <Text>
-                  {(filters.accountId ?? "") === a.id ? "✓ " : ""}
-                  {a.name} {a.currency}
-                </Text>
-              </Pressable>
-            ))}
-            <Pressable
-              style={s.button}
-              onPress={() => {
-                change({});
-                setSearch("");
-              }}
-            >
-              <Text>Limpar filtros</Text>
-            </Pressable>
-          </View>
-        )}
         <Pressable
           style={s.primary}
           disabled={!home.householdId}
@@ -172,6 +122,21 @@ export function LedgerHistoryScreen() {
           conta. Novos registros podem alterar as páginas.
         </Text>
       </ScrollView>
+      {filterOpen && (
+        <HistoryFiltersPanel
+          key={home.householdId}
+          household={home.householdId}
+          period={home.period}
+          filters={filters}
+          onClose={() => setFilterOpen(false)}
+          onApply={(period, next) => {
+            home.selectPeriod(period);
+            change(next);
+            setSearch(next.search ?? "");
+            setFilterOpen(false);
+          }}
+        />
+      )}
       {recordOpen && (
         <NewRecordPicker
           household={home.householdId}

@@ -112,13 +112,45 @@ export type HistoryItem = {
   source: string | null;
   reversalOf: string | null;
 };
+export type HistoryOptions = {
+  accounts: { id: string; name: string; currency: string }[];
+  categories: {
+    id: string;
+    name: string;
+    flow: string;
+    parentId: string | null;
+  }[];
+  sources: { id: string; name: string }[];
+};
+export type HistoryDraft = HistoryFilters & {
+  from: string;
+  to: string;
+  parentId: string;
+  subcategoryId: string;
+};
+export function historyDraft(
+  period: string,
+  filters: HistoryFilters,
+  catalog: HistoryOptions,
+): HistoryDraft;
+export function applyHistoryDraft(draft: HistoryDraft): {
+  period: string;
+  filters: HistoryFilters;
+};
 export type HistoryFilters = {
+  categoryId?: string;
+  incomeSourceId?: string;
+  includeSubcategories?: boolean;
   search?: string;
   kind?: string;
   accountId?: string;
 };
 export function historyKind(item: HistoryItem): string;
 export interface FinanceRepository {
+  historyOptions(
+    householdId: string,
+    signal?: AbortSignal,
+  ): Promise<HistoryOptions>;
   ledgerHistory(
     householdId: string,
     period: string,

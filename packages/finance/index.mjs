@@ -299,8 +299,16 @@ export function createFinanceRepository({
         limit: "51",
         offset: String(offset),
       });
-      for (const key of ["search", "kind", "accountId"])
+      for (const key of [
+        "search",
+        "kind",
+        "accountId",
+        "categoryId",
+        "incomeSourceId",
+      ])
         if (filters[key]) query.set(key, filters[key]);
+      if (filters.includeSubcategories)
+        query.set("includeSubcategories", "true");
       const rows = array(
         await get(
           `/api/v1/households/${encodeURIComponent(householdId)}/ledger/history?${query}`,
@@ -336,6 +344,34 @@ export function createFinanceRepository({
         };
       });
       return { items: rows.slice(0, 50), hasMore: rows.length > 50 };
+    },
+    async historyOptions(householdId, signal) {
+      const homes = await this.households(signal);
+      if (!homes.some((h) => h.id === householdId))
+        throw new FinanceFailure("forbidden");
+      const root = `/api/v1/households/${encodeURIComponent(householdId)}/ledger`;
+      const [accounts, categories, sources] = await Promise.all([
+        get(`${root}/accounts?includeArchived=true`, signal),
+        get(`${root}/categories?includeArchived=true`, signal),
+        get(`${root}/income-sources?includeArchived=true`, signal),
+      ]);
+      return {
+        accounts: array(accounts).map((a) => ({
+          id: string(a.id),
+          name: string(a.name),
+          currency: currency(a.currency),
+        })),
+        categories: array(categories).map((c) => ({
+          id: string(c.id),
+          name: string(c.name),
+          flow: string(c.flow).toLowerCase(),
+          parentId: c.parentId == null ? null : string(c.parentId),
+        })),
+        sources: array(sources).map((s) => ({
+          id: string(s.id),
+          name: string(s.name),
+        })),
+      };
     },
     async households(signal) {
       return array(await get("/api/v1/households", signal)).map((row) => ({
@@ -1458,4 +1494,28 @@ export function historyKind(item) {
       openingbalance: "Saldo inicial",
     }[item.kind] ?? item.kind
   );
+}
+
+export function historyDraft(period, filters, catalog) {
+  const bounds = parsePeriod(period);
+  const category = catalog.categories.find((c) => c.id === filters.categoryId);
+  return {
+    ...filters,
+    from: bounds.from,
+    to: bounds.to,
+    parentId: category?.parentId ?? filters.categoryId ?? "",
+    subcategoryId: category?.parentId ? category.id : "",
+  };
+}
+export function applyHistoryDraft(draft) {
+  const period = rangePeriod(draft.from, draft.to);
+  const filters = {
+    search: (draft.search ?? "").trim(),
+    kind: draft.kind ?? "",
+    accountId: draft.accountId ?? "",
+    categoryId: draft.subcategoryId || draft.parentId || "",
+    includeSubcategories: !!draft.parentId && !draft.subcategoryId,
+    incomeSourceId: draft.kind === "income" ? (draft.incomeSourceId ?? "") : "",
+  };
+  return { period, filters };
 }

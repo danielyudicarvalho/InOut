@@ -607,3 +607,13 @@ Marca própria criada com imagegen integrado: casinha sobre ninho, folha discret
 Prompt: “Create the final primary logo for Ninho, a cozy household finance app. Transparent background, wide horizontal logo lockup. At left a simple warm terracotta pitched roof outlining a small cream house resting directly on a stylized nest of three broad curved brown strokes, tiny sage leaf accent. No bird, no coin, no heart, no detailed twigs. At right exact word 'Ninho' in beautiful highly legible dark forest green serif lettering. Flat clean brand illustration with subtle organic curves, crisp edges, minimal shapes, professional scalable appearance, no shadows, no gradients, no watercolor texture. House-nest symbol should read clearly at small app sizes. Generous clear transparent margin around logo. Only text is 'Ninho'. No tagline, no mockup.”
 
 Validação do logo: lint e tipagem web/mobile passaram; build de produção Next.js passou. Arte gerada inspecionada visualmente. Sem testes novos para a substituição visual; QA em dispositivo e builds nativos não executados.
+
+## Busca e filtros — 2026-10-28
+
+Painel de referência implementado no histórico web/mobile: texto por descrição, datas inclusivas, tipos, conta, categoria/subcategoria, fonte apenas para entradas, pílulas removíveis e botões Limpar/Aplicar. Fechar não aplica o draft. O web usa dialog modal com foco nativo e fechamento por Escape; o mobile usa Modal com botão Fechar e retorno do sistema. Datas no Expo usam campos DD/MM/AAAA com validação real do calendário.
+
+Testes financeiros adicionados cobrem restauração da hierarquia, imutabilidade do filtro aplicado, intervalo inválido, descarte de fonte incompatível, encaminhamento dos parâmetros e catálogos históricos após autorização. Teste EF de categorias arquivadas ampliado para distinguir categoria exata de categoria com filhos; não executado por ausência de SDK .NET e banco de integração. Lint, formatação, tipagem web/mobile e build Next.js passaram. Sem operações financeiras reais, QA de dispositivo ou exports nativos.
+
+Ilustração criada com imagegen integrado e inspecionada, salva em `frontend/public/images/pipo-filters.webp` e `mobile/assets/pipo-filters.webp`.
+
+Prompt final: “Transparent horizontal watercolor storybook hero for Ninho household finance search and filters panel. Pipo, a small fluffy golden-yellow bird with green leaf tuft, orange beak and rust-red scarf, holding a magnifying glass beside three neat blank index-card dividers and small sage leafy potted plants. Warm cream honey terracotta sage palette, airy gentle composition, full character, transparent margins. No words, letters, numbers, labels, logos or UI.”
