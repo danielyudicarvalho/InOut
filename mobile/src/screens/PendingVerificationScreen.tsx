@@ -1,18 +1,23 @@
-import { useState } from "react";
+import { useEffect } from "react";
 import {
   Image,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
   View,
-  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
-import { money, displayDate, type RecordKind, type RecordReview } from "@inout/finance";
+import type { RecordKind, RecordReview } from "@inout/finance";
 import { useFinancialHome } from "../finance/use-financial-home";
+import { usePendingVerification } from "../finance/use-pending-verification";
+import {
+  VerificationCard,
+  VerificationWarning,
+  VerificationActions,
+  VerificationBottomNotice,
+} from "../components/verification";
 import { theme as t } from "../theme";
 
 export function PendingVerificationScreen({
@@ -70,15 +75,22 @@ export function PendingVerificationScreen({
     initialPeriod: qPeriod,
   });
 
+  const resolvedHousehold = qHousehold || home.householdId || "";
   const activeHouseholdName =
     householdName ||
-    home.households.find((h) => h.id === (qHousehold || home.householdId))
-      ?.name ||
-    "Residência";
+    home.households.find((h) => h.id === resolvedHousehold)?.name ||
+    "Nosso Ninho";
 
-  const resolvedHousehold = qHousehold || home.householdId || "";
-
-  const [checking, setChecking] = useState(false);
+  // Connect to real backend verification
+  const backend = usePendingVerification({
+    householdId: resolvedHousehold,
+    initialKind: qKind,
+    initialCurrency: qCurrency,
+    initialDescription: qDescription,
+    initialAmount: qAmount,
+    initialDate: qDate,
+    initialAccount: qAccount,
+  });
 
   const backToHistory = () => {
     router.replace({
@@ -91,23 +103,34 @@ export function PendingVerificationScreen({
     });
   };
 
-  const handleVerifyAgain = () => {
+  useEffect(() => {
+    if (backend.confirmedTransaction) {
+      router.replace({
+        pathname: "/lancamento",
+        params: {
+          ...(resolvedHousehold ? { household: resolvedHousehold } : {}),
+          transaction: backend.confirmedTransaction,
+          ...(qPeriod ? { period: qPeriod } : {}),
+          currency: qCurrency,
+        },
+      });
+    }
+  }, [backend.confirmedTransaction, resolvedHousehold, qPeriod, qCurrency]);
+
+  const handleVerify = () => {
     if (onRetry) {
       onRetry();
     } else {
-      setChecking(true);
-      setTimeout(() => {
-        setChecking(false);
-        backToHistory();
-      }, 1000);
+      void backend.verify();
     }
   };
 
-  const isExpense = qKind === "expense";
-  const isIncome = qKind === "income";
-  const isTransfer = qKind === "transfer";
+  const isSubmitting = submitting || backend.status === "verifying";
 
-  const formattedAmount = money(Math.abs(qAmount), qCurrency);
+  const activeDescription = backend.data.hasStoredPending ? backend.data.description : qDescription;
+  const activeAmount = backend.data.hasStoredPending ? backend.data.amount : qAmount;
+  const activeDate = backend.data.hasStoredPending ? backend.data.date : qDate;
+  const activeKind = backend.data.hasStoredPending ? backend.data.kind : qKind;
 
   return (
     <SafeAreaView style={s.safe}>
@@ -119,47 +142,49 @@ export function PendingVerificationScreen({
         <View style={s.topbar}>
           <View style={s.brandGroup}>
             <MaterialCommunityIcons
-              name="leaf"
-              size={20}
-              color="#5e7e4d"
+              name="sprout"
+              size={24}
+              color="#2d7a3e"
               accessible={false}
             />
-            <Text style={s.brandText}>Ninho</Text>
+            <Text style={s.brandName}>Ninho</Text>
           </View>
 
           <View style={s.residencePill}>
             <MaterialCommunityIcons
-              name="home-variant"
-              size={16}
-              color="#486049"
+              name="home-outline"
+              size={15}
+              color="#2d7a3e"
               accessible={false}
             />
-            <Text style={s.residenceText}>{activeHouseholdName}</Text>
+            <Text style={s.residenceText} numberOfLines={1}>
+              {activeHouseholdName}
+            </Text>
             <MaterialCommunityIcons
               name="chevron-down"
-              size={16}
-              color="#486049"
+              size={14}
+              color="#526251"
               accessible={false}
             />
           </View>
 
-          <View style={s.notificationBtn}>
+          <View style={s.notificationIcon}>
             <MaterialCommunityIcons
               name="bell-outline"
               size={20}
-              color="#3e503f"
+              color="#3a4b3b"
               accessible={false}
             />
           </View>
         </View>
 
-        {/* Hero Artwork */}
-        <View style={s.artContainer}>
+        {/* Mascot Artwork */}
+        <View style={s.heroArtwork}>
           <Image
             source={require("../../assets/pipo-verifying-record.webp")}
-            style={s.art}
+            style={s.heroImage}
             resizeMode="contain"
-            accessibilityLabel="Pipo verificando lançamento com caderno e ampulheta"
+            accessibilityLabel="Pipo conferindo as anotações do lançamento com uma ampulheta ao lado"
           />
         </View>
 
@@ -172,180 +197,34 @@ export function PendingVerificationScreen({
           registrado.
         </Text>
 
-        {/* Verification Card */}
-        <View style={s.card}>
-          {/* Card Header */}
-          <View style={s.cardHeader}>
-            <View style={s.cardIconCircle}>
-              <MaterialCommunityIcons
-                name={
-                  isTransfer
-                    ? "swap-horizontal"
-                    : isIncome
-                      ? "cash-plus"
-                      : "cart-outline"
-                }
-                size={22}
-                color="#2d4a30"
-                accessible={false}
-              />
-            </View>
-            <Text style={s.recordTitle} numberOfLines={1}>
-              {qDescription.trim() ||
-                (isTransfer
-                  ? "Transferência"
-                  : isIncome
-                    ? "Entrada"
-                    : "Saída")}
-            </Text>
-            <View style={s.badge}>
-              <MaterialCommunityIcons
-                name="clock-outline"
-                size={14}
-                color="#9a4811"
-                accessible={false}
-              />
-              <Text style={s.badgeText}>Em verificação</Text>
-            </View>
-          </View>
+        {backend.notice && backend.status === "uncertain" ? (
+          <Text accessibilityRole="alert" style={s.notice}>
+            {backend.notice}
+          </Text>
+        ) : null}
 
-          {/* Rows List */}
-          <View style={s.rowsContainer}>
-            {/* Tipo */}
-            <View style={s.fieldRow}>
-              <View style={s.fieldLabelGroup}>
-                <MaterialCommunityIcons
-                  name={isExpense ? "arrow-bottom-left" : "arrow-top-right"}
-                  size={16}
-                  color={isExpense ? "#b85b43" : "#2d7a3e"}
-                  accessible={false}
-                />
-                <Text style={s.fieldLabel}>Tipo</Text>
-              </View>
-              <Text style={s.fieldValue}>
-                {isExpense ? "Saída" : isIncome ? "Entrada" : "Transferência"}
-              </Text>
-            </View>
+        {/* Transaction Summary Card */}
+        <VerificationCard
+          kind={activeKind}
+          description={activeDescription}
+          amount={activeAmount}
+          currency={qCurrency}
+          accountName={qAccount}
+          date={activeDate}
+        />
 
-            {/* Valor */}
-            <View style={s.fieldRow}>
-              <View style={s.fieldLabelGroup}>
-                <MaterialCommunityIcons
-                  name="currency-usd"
-                  size={16}
-                  color="#637763"
-                  accessible={false}
-                />
-                <Text style={s.fieldLabel}>Valor</Text>
-              </View>
-              <Text style={[s.fieldValue, s.amountValue]}>
-                {formattedAmount}
-              </Text>
-            </View>
-
-            {/* Conta */}
-            <View style={s.fieldRow}>
-              <View style={s.fieldLabelGroup}>
-                <MaterialCommunityIcons
-                  name="credit-card-outline"
-                  size={16}
-                  color="#637763"
-                  accessible={false}
-                />
-                <Text style={s.fieldLabel}>Conta</Text>
-              </View>
-              <Text style={s.fieldValue}>{qAccount || "—"}</Text>
-            </View>
-
-            {/* Data */}
-            <View style={[s.fieldRow, { borderBottomWidth: 0 }]}>
-              <View style={s.fieldLabelGroup}>
-                <MaterialCommunityIcons
-                  name="calendar-blank-outline"
-                  size={16}
-                  color="#637763"
-                  accessible={false}
-                />
-                <Text style={s.fieldLabel}>Data</Text>
-              </View>
-              <Text style={s.fieldValue}>{displayDate(qDate)}</Text>
-            </View>
-          </View>
-
-          {/* Card Warning Alert */}
-          <View style={s.cardWarning}>
-            <MaterialCommunityIcons
-              name="alert-circle"
-              size={18}
-              color="#d97706"
-              accessible={false}
-            />
-            <Text style={s.warningText}>
-              Para evitar duplicidade, não crie outro lançamento igual enquanto
-              verificamos.
-            </Text>
-          </View>
-        </View>
+        {/* Callout Warning */}
+        <VerificationWarning />
 
         {/* Action Buttons */}
-        <View style={s.actions}>
-          <Pressable
-            accessibilityRole="button"
-            style={[
-              s.primaryBtn,
-              (submitting || checking) && s.btnDisabled,
-            ]}
-            onPress={handleVerifyAgain}
-            disabled={submitting || checking}
-          >
-            {submitting || checking ? (
-              <ActivityIndicator size="small" color="#ffffff" />
-            ) : (
-              <MaterialCommunityIcons
-                name="reload"
-                size={18}
-                color="#ffffff"
-                accessible={false}
-              />
-            )}
-            <Text style={s.primaryBtnText}>
-              {submitting || checking
-                ? "Verificando…"
-                : "Verificar novamente"}
-            </Text>
-          </Pressable>
+        <VerificationActions
+          onVerify={handleVerify}
+          onHistory={backToHistory}
+          submitting={isSubmitting}
+        />
 
-          <Pressable
-            accessibilityRole="button"
-            style={s.secondaryBtn}
-            onPress={backToHistory}
-          >
-            <MaterialCommunityIcons
-              name="file-document-outline"
-              size={18}
-              color="#2d4a30"
-              accessible={false}
-            />
-            <Text style={s.secondaryBtnText}>Ir ao histórico</Text>
-          </Pressable>
-
-          <Text style={s.actionsHelp}>
-            Ao verificar novamente, consultamos esta mesma operação.
-          </Text>
-        </View>
-
-        {/* Bottom Reassurance Banner */}
-        <View style={s.bottomNotice}>
-          <MaterialCommunityIcons
-            name="sprout"
-            size={18}
-            color="#49654d"
-            accessible={false}
-          />
-          <Text style={s.bottomNoticeText}>
-            Você pode sair desta tela e conferir o resultado no histórico.
-          </Text>
-        </View>
+        {/* Bottom Sprout Safe Exit Notice */}
+        <VerificationBottomNotice />
       </ScrollView>
     </SafeAreaView>
   );
@@ -354,19 +233,22 @@ export function PendingVerificationScreen({
 const s = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: "#fcfaf5",
+    backgroundColor: t.cream,
   },
   content: {
     paddingHorizontal: 20,
-    paddingTop: 10,
+    paddingTop: 12,
     paddingBottom: 40,
+    maxWidth: 580,
+    width: "100%",
+    alignSelf: "center",
     alignItems: "center",
   },
   topbar: {
-    width: "100%",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    width: "100%",
     marginBottom: 16,
   },
   brandGroup: {
@@ -374,235 +256,75 @@ const s = StyleSheet.create({
     alignItems: "center",
     gap: 6,
   },
-  brandText: {
+  brandName: {
     fontFamily: t.serif,
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: "700",
-    color: "#1e3020",
+    color: "#1e3323",
   },
   residencePill: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: "#f3ede2",
+    backgroundColor: "#ffffff",
     borderWidth: 1,
-    borderColor: "#e7dcce",
+    borderColor: "#e5e1d5",
     borderRadius: 20,
-    paddingVertical: 6,
+    paddingVertical: 5,
     paddingHorizontal: 12,
+    maxWidth: "52%",
   },
   residenceText: {
     fontFamily: t.sans,
     fontSize: 13,
     fontWeight: "600",
-    color: "#2b3a2b",
+    color: "#2d4a30",
+    flexShrink: 1,
   },
-  notificationBtn: {
+  notificationIcon: {
     width: 36,
     height: 36,
     borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
   },
-  artContainer: {
+  heroArtwork: {
     width: "100%",
     alignItems: "center",
-    marginVertical: 12,
+    justifyContent: "center",
+    marginVertical: 4,
   },
-  art: {
+  heroImage: {
     width: 250,
-    height: 160,
+    height: 180,
   },
   title: {
     fontFamily: t.serif,
-    fontSize: 23,
+    fontSize: 25,
     fontWeight: "700",
-    color: "#1e3020",
+    color: "#173e2b",
     textAlign: "center",
     marginBottom: 8,
-    lineHeight: 28,
+    lineHeight: 31,
   },
   subtitle: {
     fontFamily: t.sans,
     fontSize: 14,
-    color: "#5e6f5f",
+    color: "#4c5749",
     textAlign: "center",
     lineHeight: 20,
-    maxWidth: 320,
-    marginBottom: 24,
+    marginBottom: 22,
+    paddingHorizontal: 8,
   },
-  card: {
-    width: "100%",
-    backgroundColor: "#ffffff",
-    borderWidth: 1.5,
-    borderColor: "#ebdccb",
-    borderRadius: 18,
-    padding: 18,
-    shadowColor: "#503214",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    elevation: 2,
-    marginBottom: 24,
-  },
-  cardHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    paddingBottom: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: "#f2e9de",
-    marginBottom: 10,
-  },
-  cardIconCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "#e6efe5",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  recordTitle: {
-    flex: 1,
-    fontFamily: t.sans,
-    fontSize: 15.5,
-    fontWeight: "700",
-    color: "#1e3020",
-  },
-  badge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    backgroundColor: "#fde8cc",
-    borderRadius: 14,
-    paddingVertical: 4,
-    paddingHorizontal: 9,
-  },
-  badgeText: {
-    fontFamily: t.sans,
-    fontSize: 11.5,
-    fontWeight: "600",
-    color: "#9a4811",
-  },
-  rowsContainer: {
-    marginBottom: 14,
-  },
-  fieldRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: "#f7f1e9",
-  },
-  fieldLabelGroup: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  fieldLabel: {
+  notice: {
     fontFamily: t.sans,
     fontSize: 13,
-    color: "#788777",
-  },
-  fieldValue: {
-    fontFamily: t.sans,
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#212f22",
-  },
-  amountValue: {
-    fontWeight: "700",
-    color: "#1e3020",
-  },
-  cardWarning: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    backgroundColor: "#fef3c7",
-    borderWidth: 1,
-    borderColor: "#fde68a",
-    borderRadius: 10,
+    color: "#9b4229",
+    backgroundColor: "#fbf2eb",
     padding: 10,
-  },
-  warningText: {
-    flex: 1,
-    fontFamily: t.sans,
-    fontSize: 12,
-    color: "#92400e",
-    lineHeight: 16,
-  },
-  actions: {
+    borderRadius: 10,
+    marginBottom: 14,
     width: "100%",
-    alignItems: "center",
-    gap: 10,
-    marginBottom: 20,
-  },
-  primaryBtn: {
-    width: "100%",
-    backgroundColor: "#2d4a30",
-    borderRadius: 25,
-    paddingVertical: 14,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    shadowColor: "#2d4a30",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    elevation: 3,
-  },
-  btnDisabled: {
-    opacity: 0.7,
-  },
-  primaryBtnText: {
-    fontFamily: t.sans,
-    fontSize: 15,
-    fontWeight: "700",
-    color: "#ffffff",
-  },
-  secondaryBtn: {
-    width: "100%",
-    backgroundColor: "#ffffff",
-    borderWidth: 1.5,
-    borderColor: "#2d4a30",
-    borderRadius: 25,
-    paddingVertical: 13,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-  },
-  secondaryBtnText: {
-    fontFamily: t.sans,
-    fontSize: 15,
-    fontWeight: "700",
-    color: "#2d4a30",
-  },
-  actionsHelp: {
-    fontFamily: t.sans,
-    fontSize: 12,
-    color: "#7b887a",
     textAlign: "center",
-  },
-  bottomNotice: {
-    width: "100%",
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    backgroundColor: "#edf4ea",
-    borderWidth: 1,
-    borderColor: "#d7e5d5",
-    borderRadius: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-  },
-  bottomNoticeText: {
-    flex: 1,
-    fontFamily: t.sans,
-    fontSize: 12.5,
-    color: "#3b573d",
-    lineHeight: 16,
   },
 });

@@ -12,3 +12,4 @@ export * from "./filters/history-filters";
 export * from "./reversals/reversal-detail";
 export * from "./reversals/reversal-dialog";
 export * from "./reversals/classification-dialog";
+export * from "./verification";

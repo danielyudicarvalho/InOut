@@ -1,31 +1,25 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import Link from "next/link";
 import Image from "next/image";
 import {
-  ArrowsClockwise,
   Bell,
-  CalendarBlank,
-  CreditCard,
-  FileText,
   MagnifyingGlass,
   Plant,
-  ShoppingCart,
-  TrendDown,
-  TrendUp,
-  WarningCircle,
-  Coins,
-  Clock,
-  ArrowsLeftRight,
   House,
   CaretDown,
 } from "@phosphor-icons/react";
-import { money, displayDate, type RecordKind, type RecordReview } from "@inout/finance";
-import { BrandLogo } from "../ui/brand-logo";
+import type { RecordKind, RecordReview } from "@inout/finance";
 import { useFinancialHome } from "../../lib/finance/use-financial-home";
+import { usePendingVerification } from "../../lib/finance/use-pending-verification";
 import { DashboardSidebar } from "../layout/dashboard-sidebar";
+import {
+  VerificationCard,
+  VerificationWarning,
+  VerificationActions,
+  VerificationBottomNotice,
+} from "../financial/verification";
 
 export function PendingVerificationScreen({
   household = "",
@@ -75,14 +69,22 @@ export function PendingVerificationScreen({
     initialPeriod: qPeriod,
   });
 
+  const resolvedHousehold = qHousehold || home.householdId || "";
   const activeHouseholdName =
     householdName ||
-    home.households.find((h) => h.id === (qHousehold || home.householdId))?.name ||
-    "Residência";
+    home.households.find((h) => h.id === resolvedHousehold)?.name ||
+    "Nosso Ninho";
 
-  const resolvedHousehold = qHousehold || home.householdId || "";
-
-  const [checking, setChecking] = useState(false);
+  // Real backend verification integration
+  const backend = usePendingVerification({
+    householdId: resolvedHousehold,
+    initialKind: qKind,
+    initialCurrency: qCurrency,
+    initialDescription: qDescription,
+    initialAmount: qAmount,
+    initialDate: qDate,
+    initialAccount: qAccount,
+  });
 
   const backToHistory =
     historyHref ||
@@ -92,23 +94,35 @@ export function PendingVerificationScreen({
       currency: qCurrency,
     })}`;
 
-  const handleVerifyAgain = () => {
+  // When backend confirms the operation, redirect to the recorded transaction
+  useEffect(() => {
+    if (backend.confirmedTransaction) {
+      router.replace(
+        `/lancamento?${new URLSearchParams({
+          ...(resolvedHousehold ? { household: resolvedHousehold } : {}),
+          transaction: backend.confirmedTransaction,
+          ...(qPeriod ? { period: qPeriod } : {}),
+          currency: qCurrency,
+        })}`,
+      );
+    }
+  }, [backend.confirmedTransaction, resolvedHousehold, qPeriod, qCurrency, router]);
+
+  const handleVerify = () => {
     if (onRetry) {
       onRetry();
     } else {
-      setChecking(true);
-      setTimeout(() => {
-        setChecking(false);
-        router.push(backToHistory);
-      }, 1000);
+      void backend.verify();
     }
   };
 
-  const isExpense = qKind === "expense";
-  const isIncome = qKind === "income";
-  const isTransfer = qKind === "transfer";
+  const isSubmitting = submitting || backend.status === "verifying";
 
-  const formattedAmount = money(Math.abs(qAmount), qCurrency);
+  // Use either active hook data or query params
+  const activeDescription = backend.data.hasStoredPending ? backend.data.description : qDescription;
+  const activeAmount = backend.data.hasStoredPending ? backend.data.amount : qAmount;
+  const activeDate = backend.data.hasStoredPending ? backend.data.date : qDate;
+  const activeKind = backend.data.hasStoredPending ? backend.data.kind : qKind;
 
   return (
     <main className="dashboard verification-page">
@@ -129,10 +143,10 @@ export function PendingVerificationScreen({
           </div>
 
           <div className="topbar-actions">
-            <button className="topbar-icon-btn" aria-label="Pesquisar">
+            <button className="topbar-icon-btn" aria-label="Pesquisar" type="button">
               <MagnifyingGlass size={19} />
             </button>
-            <button className="topbar-icon-btn" aria-label="Notificações">
+            <button className="topbar-icon-btn" aria-label="Notificações" type="button">
               <Bell size={19} />
             </button>
             <div className="user-avatar-sprout" aria-label="Usuário">
@@ -146,8 +160,8 @@ export function PendingVerificationScreen({
             <Image
               src="/images/pipo-verifying-record.webp"
               alt="Pipo verificando lançamento com caderno e ampulheta"
-              width={380}
-              height={230}
+              width={420}
+              height={260}
               priority
             />
           </div>
@@ -158,121 +172,30 @@ export function PendingVerificationScreen({
             registrado.
           </p>
 
-          <section
-            className="verification-card"
-            aria-label="Dados do lançamento em verificação"
-          >
-            <div className="verification-card-header">
-              <div className="verification-icon-circle">
-                {isTransfer ? (
-                  <ArrowsLeftRight size={22} weight="bold" />
-                ) : isIncome ? (
-                  <Coins size={22} weight="bold" />
-                ) : (
-                  <ShoppingCart size={22} weight="bold" />
-                )}
-              </div>
-              <strong className="verification-record-title">
-                {qDescription.trim() ||
-                  (isTransfer
-                    ? "Transferência"
-                    : isIncome
-                      ? "Entrada"
-                      : "Saída")}
-              </strong>
-              <div className="verification-badge">
-                <Clock size={15} weight="bold" />
-                <span>Em verificação</span>
-              </div>
-            </div>
+          {backend.notice && backend.status === "uncertain" ? (
+            <p className="verification-notice" role="alert">
+              {backend.notice}
+            </p>
+          ) : null}
 
-            <div className="verification-card-grid">
-              <div className="verification-grid-item">
-                <dt>
-                  {isExpense ? (
-                    <TrendDown size={16} className="trend-down" />
-                  ) : (
-                    <TrendUp size={16} className="trend-up" />
-                  )}
-                  <span>Tipo</span>
-                </dt>
-                <dd>
-                  {isExpense
-                    ? "Saída"
-                    : isIncome
-                      ? "Entrada"
-                      : "Transferência"}
-                </dd>
-              </div>
+          <VerificationCard
+            kind={activeKind}
+            description={activeDescription}
+            amount={activeAmount}
+            currency={qCurrency}
+            accountName={qAccount}
+            date={activeDate}
+          />
 
-              <div className="verification-grid-item">
-                <dt>
-                  <Coins size={16} />
-                  <span>Valor</span>
-                </dt>
-                <dd className="verification-amount">{formattedAmount}</dd>
-              </div>
+          <VerificationWarning />
 
-              <div className="verification-grid-item">
-                <dt>
-                  <CreditCard size={16} />
-                  <span>Conta</span>
-                </dt>
-                <dd>{qAccount || "—"}</dd>
-              </div>
+          <VerificationActions
+            onVerify={handleVerify}
+            historyHref={backToHistory}
+            submitting={isSubmitting}
+          />
 
-              <div className="verification-grid-item">
-                <dt>
-                  <CalendarBlank size={16} />
-                  <span>Data</span>
-                </dt>
-                <dd>{displayDate(qDate)}</dd>
-              </div>
-            </div>
-
-            <div className="verification-card-warning" role="alert">
-              <WarningCircle size={20} weight="fill" />
-              <span>
-                Para evitar duplicidade, não crie outro lançamento igual
-                enquanto verificamos.
-              </span>
-            </div>
-          </section>
-
-          <div className="verification-actions">
-            <button
-              className="verification-primary-btn"
-              onClick={handleVerifyAgain}
-              disabled={submitting || checking}
-            >
-              <ArrowsClockwise
-                size={18}
-                weight="bold"
-                className={submitting || checking ? "spin" : ""}
-              />
-              <span>
-                {submitting || checking
-                  ? "Verificando…"
-                  : "Verificar novamente"}
-              </span>
-            </button>
-
-            <Link className="verification-secondary-btn" href={backToHistory}>
-              <FileText size={18} />
-              <span>Ir ao histórico</span>
-            </Link>
-
-            <small className="verification-actions-help">
-              Ao verificar novamente, consultamos esta mesma operação.
-            </small>
-          </div>
-
-          <aside className="verification-bottom-notice">
-            <Plant size={19} weight="fill" />
-            <span>
-              Você pode sair desta tela e conferir o resultado no histórico.
-            </span>
-          </aside>
+          <VerificationBottomNotice />
         </div>
       </div>
     </main>
