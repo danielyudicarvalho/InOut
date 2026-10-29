@@ -1,4 +1,4 @@
-import { RegisterScreen } from "../../components/register-screen";
+import { RegisterScreen } from "../../components/screens/register-screen";
 
 export default function Page() {
   return <RegisterScreen />;

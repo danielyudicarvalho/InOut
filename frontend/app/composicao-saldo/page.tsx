@@ -1,6 +1,6 @@
 import { Suspense } from "react";
-import { AuthenticatedGate } from "../../components/authenticated-gate";
-import { BalanceCompositionScreen } from "../../components/balance-composition-screen";
+import { AuthenticatedGate } from "../../components/auth/authenticated-gate";
+import { BalanceCompositionScreen } from "../../components/screens/balance-composition-screen";
 export default function Page() {
   return (
     <AuthenticatedGate>

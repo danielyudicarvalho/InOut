@@ -1,6 +1,6 @@
 import { Suspense } from "react";
-import { AuthenticatedGate } from "../../components/authenticated-gate";
-import { NewRecordScreen } from "../../components/new-record-screen";
+import { AuthenticatedGate } from "../../components/auth/authenticated-gate";
+import { NewRecordScreen } from "../../components/screens/new-record-screen";
 export default function Page() {
   return (
     <AuthenticatedGate>

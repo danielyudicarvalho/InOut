@@ -634,3 +634,56 @@ export function createCorrectionChainStore(
   retry(): void;
 };
 
+export type DuplicateRecord = {
+  id: string;
+  displayId: string;
+  description: string;
+  amount: number;
+  currency: string;
+  kind: string;
+  date: string;
+  status: string;
+  accountName: string;
+  categoryName: string | null;
+  subcategoryName: string | null;
+  createdBy: string;
+  postedAt: string;
+  raw: TransactionDetail;
+};
+
+export type DuplicateComparison = {
+  householdId: string;
+  first: DuplicateRecord;
+  second: DuplicateRecord;
+  suggestedToReverseId: string;
+};
+
+export function shortTransactionId(id: string): string;
+export function formatDuplicateRecord(detail: TransactionDetail): DuplicateRecord;
+export function getDuplicateComparison(
+  repository: FinanceRepository,
+  household: string,
+  firstId: string,
+  secondId?: string,
+  signal?: AbortSignal,
+): Promise<DuplicateComparison>;
+
+export function createDuplicateResolutionStore(
+  repository: FinanceRepository,
+  household: string,
+  firstId: string,
+  secondId?: string,
+): {
+  getSnapshot(): {
+    status: "loading" | "ready" | "error";
+    comparison: DuplicateComparison | null;
+    selectedId: string;
+    notice: string;
+  };
+  subscribe(listener: () => void): () => void;
+  start(): void;
+  retry(): void;
+  select(id: string): void;
+};
+
+

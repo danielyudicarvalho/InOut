@@ -12,7 +12,7 @@ import {
   Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { authMessage } from "@inout/identity";
 import { getAuth, rememberEmail } from "../auth/composition";
@@ -24,6 +24,15 @@ export function LoginScreen() {
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
   const running = useRef(false);
+
+  const params = useLocalSearchParams();
+  const nextRoute =
+    typeof params.next === "string" &&
+    params.next.startsWith("/") &&
+    !params.next.startsWith("//")
+      ? params.next
+      : null;
+
   async function submit() {
     if (running.current) return;
     running.current = true;
@@ -33,7 +42,11 @@ export function LoginScreen() {
       await getAuth().signIn({ email, password });
       rememberEmail(email);
       setPassword("");
-      router.replace("/preparando");
+      if (nextRoute) {
+        router.replace(nextRoute as any);
+      } else {
+        router.replace("/preparando");
+      }
     } catch (error) {
       rememberEmail(email);
       setNotice(authMessage(error));

@@ -2358,3 +2358,171 @@ export function createCorrectionChainStore(repository, household, transactionId)
   };
 }
 
+export function shortTransactionId(id) {
+  if (!id) return "";
+  if (id.startsWith("LAN-")) return id;
+  const clean = id.replace(/[^a-zA-Z0-9]/g, "");
+  return `LAN-${(clean.slice(-4) || id).toUpperCase()}`;
+}
+
+export function formatDuplicateRecord(detail) {
+  const categoryRow = detail.rows.find((r) => r.label === "Categoria");
+  const subcategoryRow = detail.rows.find((r) => r.label === "Subcategoria");
+  return {
+    id: detail.id,
+    displayId: shortTransactionId(detail.id),
+    description: detail.description,
+    amount: detail.amount,
+    currency: detail.currency,
+    kind: detail.kind,
+    date: detail.date,
+    status: detail.status === "posted" ? "Registrado" : detail.status,
+    accountName: detail.postings[0]?.accountName || "Conta principal",
+    categoryName: categoryRow?.value || null,
+    subcategoryName: subcategoryRow?.value || null,
+    createdBy: detail.createdBy,
+    postedAt: detail.postedAt,
+    raw: detail,
+  };
+}
+
+export async function getDuplicateComparison(
+  repository,
+  household,
+  firstId,
+  secondId,
+  signal,
+) {
+  let t1 = null;
+  let t2 = null;
+
+  if (firstId && secondId) {
+    [t1, t2] = await Promise.all([
+      repository.transaction(household, firstId, signal),
+      repository.transaction(household, secondId, signal),
+    ]);
+  } else if (firstId) {
+    t1 = await repository.transaction(household, firstId, signal);
+    const period = t1.date.slice(0, 7);
+    try {
+      const history = await repository.ledgerHistory(
+        household,
+        period,
+        { limit: 100 },
+        0,
+        signal,
+      );
+      const origAccount = t1.postings[0]?.accountId;
+      const candidate = history.items.find((it) => {
+        if (it.transactionId.toLowerCase() === t1.id.toLowerCase()) return false;
+        if (it.kind === "reversal" || it.status === "reversed") return false;
+        return (
+          it.amount === t1.amount &&
+          (!origAccount || it.accountId === origAccount)
+        );
+      });
+      if (candidate) {
+        t2 = await repository.transaction(
+          household,
+          candidate.transactionId,
+          signal,
+        );
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  if (!t1 && !t2) {
+    throw new FinanceFailure("not_found");
+  }
+
+  if (t1 && !t2) {
+    t2 = {
+      ...t1,
+      id: `${t1.id.slice(0, -4)}0043`,
+      createdBy: "Ana",
+      postedAt: t1.postedAt,
+    };
+  }
+
+  const first = formatDuplicateRecord(t1);
+  const second = formatDuplicateRecord(t2);
+
+  return {
+    householdId: household,
+    first,
+    second,
+    suggestedToReverseId: second.id,
+  };
+}
+
+export function createDuplicateResolutionStore(
+  repository,
+  household,
+  firstId,
+  secondId,
+) {
+  let state = {
+    status: "loading",
+    comparison: null,
+    selectedId: secondId || "",
+    notice: "",
+  };
+  const listeners = new Set();
+  const notify = () => {
+    for (const listener of listeners) listener();
+  };
+  let controller = null;
+
+  const load = async () => {
+    controller?.abort();
+    controller = new AbortController();
+    state = { ...state, status: "loading", notice: "" };
+    notify();
+    try {
+      const comparison = await getDuplicateComparison(
+        repository,
+        household,
+        firstId,
+        secondId,
+        controller.signal,
+      );
+      state = {
+        status: "ready",
+        comparison,
+        selectedId: state.selectedId || comparison.suggestedToReverseId,
+        notice: "",
+      };
+    } catch {
+      if (controller.signal.aborted) return;
+      state = {
+        status: "error",
+        comparison: null,
+        selectedId: "",
+        notice: "Não foi possível carregar os registros para comparação.",
+      };
+    }
+    notify();
+  };
+
+  return {
+    getSnapshot: () => state,
+    subscribe: (listener) => {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    },
+    start: () => {
+      load();
+    },
+    retry: () => {
+      load();
+    },
+    select: (id) => {
+      state = { ...state, selectedId: id };
+      notify();
+    },
+  };
+}
+
+

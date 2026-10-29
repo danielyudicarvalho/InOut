@@ -1,6 +1,6 @@
 import { Suspense } from "react";
-import { AuthenticatedGate } from "../../components/authenticated-gate";
-import { CorrectionHistoryScreen } from "../../components/correction-history-screen";
+import { AuthenticatedGate } from "../../components/auth/authenticated-gate";
+import { CorrectionHistoryScreen } from "../../components/screens/correction-history-screen";
 
 export default function Page() {
   return (

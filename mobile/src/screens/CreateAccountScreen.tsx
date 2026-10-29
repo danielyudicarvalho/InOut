@@ -1,7 +1,6 @@
 import { useState } from "react";
 import {
   Image,
-  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -14,18 +13,18 @@ import { router, useLocalSearchParams } from "expo-router";
 import { useFinancialHome } from "../finance/use-financial-home";
 import { useAccount } from "../finance/use-account";
 import { theme as t } from "../theme";
-const kinds = [
-  ["checking", "Conta corrente"],
-  ["cash", "Carteira"],
-  ["savings", "Poupança"],
-  ["investment", "Investimento"],
-  ["other", "Outro"],
-];
+import {
+  AccountKindPickerModal,
+  ACCOUNT_KINDS,
+} from "../components/account/AccountKindPickerModal";
+import { AccountSuccessView } from "../components/account/AccountSuccessView";
+
 export function CreateAccountScreen() {
-  const p = useLocalSearchParams(),
-    household = typeof p.household === "string" ? p.household : "",
-    period = typeof p.period === "string" ? p.period : "",
-    currency = typeof p.currency === "string" ? p.currency : "BRL";
+  const p = useLocalSearchParams();
+  const household = typeof p.household === "string" ? p.household : "";
+  const period = typeof p.period === "string" ? p.period : "";
+  const currency = typeof p.currency === "string" ? p.currency : "BRL";
+
   return (
     <AccountView
       key={`${household}:${period}:${currency}`}
@@ -35,6 +34,7 @@ export function CreateAccountScreen() {
     />
   );
 }
+
 function AccountView({
   household,
   period,
@@ -48,7 +48,8 @@ function AccountView({
     initialHouseholdId: household,
     initialPeriod: period,
   });
-  if (home.status !== "ready" || !home.data)
+
+  if (home.status !== "ready" || !home.data) {
     return (
       <SafeAreaView style={s.safe}>
         <View style={s.content}>
@@ -77,18 +78,20 @@ function AccountView({
         </View>
       </SafeAreaView>
     );
+  }
+
+  const activeHousehold = home.households.find((h) => h.id === home.householdId);
+
   return (
     <AccountForm
       household={home.householdId}
       period={home.period}
       currency={currency}
-      householdName={
-        home.households.find((h) => h.id === home.householdId)?.name ??
-        "Residência"
-      }
+      householdName={activeHousehold?.name ?? "Residência"}
     />
   );
 }
+
 function AccountForm({
   household,
   period,
@@ -100,14 +103,16 @@ function AccountForm({
   currency: string;
   householdName: string;
 }) {
-  const state = useAccount(household, currency),
-    [picker, setPicker] = useState(false);
+  const state = useAccount(household, currency);
+  const [pickerOpen, setPickerOpen] = useState(false);
+
   const back = () =>
     router.replace({
       pathname: "/inicio",
       params: { household, period, currency },
     });
-  if (state.status === "loading" || state.status === "error")
+
+  if (state.status === "loading" || state.status === "error") {
     return (
       <SafeAreaView style={s.safe}>
         <View style={s.content}>
@@ -134,13 +139,19 @@ function AccountForm({
         </View>
       </SafeAreaView>
     );
-  const fields = state.fields,
-    locked = state.status !== "ready",
-    context = {
-      household,
-      period: fields.date.slice(0, 7),
-      currency: fields.currency.trim().toUpperCase(),
-    };
+  }
+
+  const { fields } = state;
+  const locked = state.status !== "ready";
+  const context = {
+    household,
+    period: fields.date.slice(0, 7),
+    currency: fields.currency.trim().toUpperCase(),
+  };
+
+  const selectedKindLabel =
+    ACCOUNT_KINDS.find(([id]) => id === fields.kind)?.[1] ?? "Selecionar tipo";
+
   return (
     <SafeAreaView style={s.safe}>
       <ScrollView
@@ -154,6 +165,7 @@ function AccountForm({
         >
           <Text style={s.link}>‹ Voltar ao início</Text>
         </Pressable>
+
         <Image
           source={
             state.status === "success"
@@ -168,6 +180,7 @@ function AccountForm({
               : "Pipo preparando seu ninho"
           }
         />
+
         <Text style={s.help}>{householdName}</Text>
         <Text accessibilityRole="header" style={s.title}>
           {state.status === "success"
@@ -178,38 +191,9 @@ function AccountForm({
           Conta financeira é onde seu dinheiro fica. Pode ser sua carteira,
           conta corrente ou poupança.
         </Text>
+
         {state.status === "success" ? (
-          <>
-            <Text accessibilityLiveRegion="polite" style={s.help}>
-              Conta criada com sucesso.
-            </Text>
-            {(["income", "expense"] as const).map((kind) => (
-              <Pressable
-                accessibilityRole="button"
-                style={s.button}
-                key={kind}
-                onPress={() =>
-                  router.push({
-                    pathname: "/novo-registro",
-                    params: { ...context, kind },
-                  })
-                }
-              >
-                <Text style={s.buttonText}>
-                  Registrar {kind === "income" ? "entrada" : "saída"}
-                </Text>
-              </Pressable>
-            ))}
-            <Pressable
-              accessibilityRole="button"
-              style={s.textButton}
-              onPress={() =>
-                router.replace({ pathname: "/inicio", params: context })
-              }
-            >
-              <Text style={s.link}>Ir para o início</Text>
-            </Pressable>
-          </>
+          <AccountSuccessView context={context} />
         ) : (
           <>
             {state.notice ? (
@@ -217,6 +201,7 @@ function AccountForm({
                 {state.notice}
               </Text>
             ) : null}
+
             <Text style={s.label}>Nome da conta</Text>
             <TextInput
               accessibilityLabel="Nome da conta"
@@ -227,17 +212,17 @@ function AccountForm({
               onChangeText={(value) => state.edit("name", value)}
               placeholder="Minha conta principal"
             />
+
             <Text style={s.label}>Tipo</Text>
             <Pressable
               accessibilityRole="button"
               disabled={locked}
               style={s.input}
-              onPress={() => setPicker(true)}
+              onPress={() => setPickerOpen(true)}
             >
-              <Text style={s.help}>
-                {kinds.find(([id]) => id === fields.kind)?.[1]} ▾
-              </Text>
+              <Text style={s.help}>{selectedKindLabel} ▾</Text>
             </Pressable>
+
             <Text style={s.label}>Moeda (código de três letras)</Text>
             <TextInput
               accessibilityLabel="Moeda"
@@ -251,6 +236,7 @@ function AccountForm({
               }
               placeholder="BRL"
             />
+
             <Text style={s.label}>Saldo inicial</Text>
             <TextInput
               accessibilityLabel="Saldo inicial"
@@ -264,6 +250,7 @@ function AccountForm({
               O saldo inicial é o dinheiro que você já tinha. Pode ser zero ou
               negativo.
             </Text>
+
             <Text style={s.label}>Data do saldo inicial (AAAA-MM-DD)</Text>
             <TextInput
               accessibilityLabel="Data do saldo inicial"
@@ -273,6 +260,7 @@ function AccountForm({
               maxLength={10}
               onChangeText={(value) => state.edit("date", value)}
             />
+
             <Pressable
               accessibilityRole="button"
               disabled={state.status === "saving"}
@@ -294,94 +282,90 @@ function AccountForm({
           </>
         )}
       </ScrollView>
-      <Modal
-        visible={picker}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setPicker(false)}
-      >
-        <View style={s.overlay}>
-          <View style={s.modal} accessibilityViewIsModal>
-            {kinds.map(([id, label]) => (
-              <Pressable
-                accessibilityRole="radio"
-                accessibilityState={{ checked: fields.kind === id }}
-                key={id}
-                style={s.textButton}
-                onPress={() => {
-                  state.edit("kind", id);
-                  setPicker(false);
-                }}
-              >
-                <Text style={s.help}>{label}</Text>
-              </Pressable>
-            ))}
-            <Pressable
-              accessibilityRole="button"
-              style={s.textButton}
-              onPress={() => setPicker(false)}
-            >
-              <Text style={s.link}>Fechar seleção</Text>
-            </Pressable>
-          </View>
-        </View>
-      </Modal>
+
+      <AccountKindPickerModal
+        visible={pickerOpen}
+        selectedKind={fields.kind}
+        onSelect={(kind) => {
+          state.edit("kind", kind);
+          setPickerOpen(false);
+        }}
+        onClose={() => setPickerOpen(false)}
+      />
     </SafeAreaView>
   );
 }
+
 const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: t.cream },
   content: {
-    padding: 22,
-    paddingBottom: 40,
-    gap: 8,
-    maxWidth: 620,
+    padding: 24,
+    gap: 12,
+    alignItems: "stretch",
+  },
+  art: {
     width: "100%",
+    height: 180,
     alignSelf: "center",
   },
   title: {
     fontFamily: t.serif,
-    fontSize: 28,
-    color: "#173e2b",
-    marginBottom: 8,
+    fontSize: 24,
+    fontWeight: "700",
+    color: t.ink,
+    textAlign: "center",
   },
-  art: { width: 270, height: 135, alignSelf: "center" },
-  help: { fontFamily: t.sans, fontSize: 14, color: "#4c5749", lineHeight: 21 },
-  label: { fontFamily: t.sans, fontSize: 14, color: "#1d4530", marginTop: 12 },
-  input: {
-    minHeight: 48,
-    borderWidth: 1,
-    borderColor: "#dfd7c4",
-    borderRadius: 10,
-    padding: 12,
-    fontFamily: t.sans,
-    fontSize: 15,
-    color: "#203c2a",
-    backgroundColor: "#fffdf8",
-  },
-  notice: {
+  help: {
     fontFamily: t.sans,
     fontSize: 14,
-    color: "#9b4229",
-    lineHeight: 21,
+    color: t.muted,
+    textAlign: "center",
+  },
+  label: {
+    fontFamily: t.sans,
+    fontSize: 14,
+    fontWeight: "600",
+    color: t.ink,
+    marginTop: 8,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: t.line,
+    backgroundColor: "#fff",
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 16,
+    color: t.ink,
   },
   button: {
-    minHeight: 48,
-    backgroundColor: "#315f3b",
-    borderRadius: 12,
-    padding: 14,
+    backgroundColor: t.green,
+    borderRadius: 8,
+    paddingVertical: 14,
     alignItems: "center",
-    justifyContent: "center",
-    marginTop: 14,
+    marginTop: 12,
   },
-  buttonText: { fontFamily: t.sans, fontSize: 15, color: "white" },
-  textButton: { minHeight: 44, justifyContent: "center" },
-  link: { fontFamily: t.sans, fontSize: 14, color: "#315f3b" },
-  overlay: {
-    flex: 1,
-    backgroundColor: "#20261c88",
-    justifyContent: "center",
-    padding: 24,
+  buttonText: {
+    fontFamily: t.sans,
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "600",
   },
-  modal: { backgroundColor: t.cream, borderRadius: 18, padding: 22 },
+  textButton: {
+    paddingVertical: 8,
+    alignItems: "center",
+  },
+  link: {
+    fontFamily: t.sans,
+    color: t.green,
+    fontSize: 14,
+  },
+  notice: {
+    backgroundColor: "#fff",
+    borderWidth: 1,
+    borderColor: t.line,
+    padding: 12,
+    borderRadius: 8,
+    color: t.ink,
+  },
 });

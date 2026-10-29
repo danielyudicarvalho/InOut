@@ -39,10 +39,12 @@ export function SessionView({
   state,
   notice = "",
   onRetry,
+  onLogin,
 }: {
   state: SessionState;
   notice?: string;
   onRetry?: () => void;
+  onLogin?: () => void;
 }) {
   const current = content[state];
   return (
@@ -90,7 +92,7 @@ export function SessionView({
           <Pressable
             accessibilityRole="button"
             style={state === "expired" ? s.primary : s.linkTarget}
-            onPress={() => router.replace("/entrar")}
+            onPress={onLogin ?? (() => router.replace("/entrar"))}
           >
             <Text style={state === "expired" ? s.primaryText : s.link}>
               Ir para entrar

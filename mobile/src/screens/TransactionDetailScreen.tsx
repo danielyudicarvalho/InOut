@@ -328,6 +328,25 @@ function DetailView({
                 <Text>Histórico de correções</Text>
               </Pressable>
             )}
+            {!reversed && !detail.reversalOf && detail.kind !== "reversal" && (
+              <Pressable
+                accessibilityRole="button"
+                style={s.button}
+                onPress={() =>
+                  router.push({
+                    pathname: "/resolver-duplicidade",
+                    params: {
+                      household,
+                      transaction: id,
+                      ...(period ? { period } : {}),
+                      currency: state.options?.currency ?? currency,
+                    },
+                  })
+                }
+              >
+                <Text>Resolver duplicidade</Text>
+              </Pressable>
+            )}
             {!done && ((!opening && canReverse(detail)) || pending) && (
               <Pressable
                 accessibilityRole="button"
