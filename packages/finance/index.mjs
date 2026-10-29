@@ -2152,3 +2152,209 @@ export function reversalReconciliation(detail, original) {
     };
   });
 }
+
+export async function getCorrectionChain(
+  repository,
+  household,
+  transactionId,
+  signal,
+) {
+  if (!validOperationKey(transactionId)) throw new FinanceFailure("validation");
+  const target = await repository.transaction(household, transactionId, signal);
+  let original = null;
+  let reversal = null;
+  let substitute = null;
+
+  if (target.kind === "reversal") {
+    reversal = target;
+    if (target.reversalOf) {
+      try {
+        original = await repository.transaction(household, target.reversalOf, signal);
+      } catch {
+        // original might not be found
+      }
+    }
+  } else if (target.status === "reversed") {
+    original = target;
+    try {
+      const period = target.date.slice(0, 7);
+      const history = await repository.ledgerHistory(
+        household,
+        period,
+        { limit: 100 },
+        0,
+        signal,
+      );
+      const reversalItem = history.items.find(
+        (it) =>
+          it.kind === "reversal" &&
+          it.reversalOf?.toLowerCase() === target.id.toLowerCase(),
+      );
+      if (reversalItem) {
+        reversal = await repository.transaction(
+          household,
+          reversalItem.transactionId,
+          signal,
+        );
+      }
+    } catch {
+      // ignore
+    }
+  } else {
+    original = target;
+  }
+
+  // Look for substitute in history if we have original and reversal
+  if (original && reversal) {
+    try {
+      const period = (original.date || target.date).slice(0, 7);
+      const history = await repository.ledgerHistory(
+        household,
+        period,
+        { limit: 100 },
+        0,
+        signal,
+      );
+      const origAccount = original.postings[0]?.accountId;
+      const origCat = original.categoryId;
+      const candidate = history.items.find((it) => {
+        const idLower = it.transactionId.toLowerCase();
+        if (idLower === original.id.toLowerCase()) return false;
+        if (idLower === reversal.id.toLowerCase()) return false;
+        if (it.kind === "reversal" || it.status === "reversed") return false;
+        const sameAccount = !origAccount || it.accountId === origAccount;
+        return sameAccount;
+      });
+      if (candidate) {
+        if (candidate.transactionId.toLowerCase() === target.id.toLowerCase()) {
+          substitute = target;
+        } else {
+          try {
+            substitute = await repository.transaction(
+              household,
+              candidate.transactionId,
+              signal,
+            );
+          } catch {
+            // ignore
+          }
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  const steps = [];
+  if (original) {
+    steps.push({
+      step: 1,
+      kind: "original",
+      title: "1 · Lançamento original",
+      detail: original,
+      note: reversal ? "Este lançamento foi compensado por um estorno." : undefined,
+      statusBadge: original.status === "reversed" ? "Estornado" : "Registrado",
+    });
+  }
+
+  if (reversal) {
+    steps.push({
+      step: steps.length + 1,
+      kind: "reversal",
+      title: `${steps.length + 1} · Estorno`,
+      detail: reversal,
+      reason: reversal.rawDescription ? `Motivo: ${reversal.rawDescription}` : undefined,
+      note: substitute
+        ? "Após o estorno, foi criado um novo lançamento com o valor correto."
+        : undefined,
+      statusBadge: "Registrado",
+      isReversal: true,
+    });
+  }
+
+  if (substitute) {
+    steps.push({
+      step: steps.length + 1,
+      kind: "substitute",
+      title: `${steps.length + 1} · Lançamento substituto`,
+      detail: substitute,
+      statusBadge: "Registrado",
+    });
+  }
+
+  const currencyCode = target.currency;
+  let netCents = 0;
+  for (const s of steps) {
+    netCents += s.detail.amount;
+  }
+
+  const netLabel =
+    netCents === 0
+      ? money(0, currencyCode)
+      : netCents < 0
+        ? `saída de ${money(Math.abs(netCents), currencyCode)}`
+        : `entrada de ${money(netCents, currencyCode)}`;
+
+  return {
+    transactionId,
+    householdId: household,
+    steps,
+    netAmount: netCents,
+    currency: currencyCode,
+    netLabel,
+    hasSubstitute: Boolean(substitute),
+    hasReversal: Boolean(reversal),
+  };
+}
+
+export function createCorrectionChainStore(repository, household, transactionId) {
+  let state = {
+    status: "loading",
+    chain: null,
+    notice: "",
+  };
+  const listeners = new Set();
+  const notify = () => {
+    for (const listener of listeners) listener();
+  };
+  let controller = null;
+
+  const load = async () => {
+    controller?.abort();
+    controller = new AbortController();
+    state = { status: "loading", chain: null, notice: "" };
+    notify();
+    try {
+      const chain = await getCorrectionChain(
+        repository,
+        household,
+        transactionId,
+        controller.signal,
+      );
+      state = { status: "ready", chain, notice: "" };
+    } catch {
+      if (controller.signal.aborted) return;
+      state = {
+        status: "error",
+        chain: null,
+        notice: "Não foi possível carregar o histórico de correções.",
+      };
+    }
+    notify();
+  };
+
+  return {
+    getSnapshot: () => state,
+    subscribe: (listener) => {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    },
+    start: () => {
+      load();
+    },
+    retry: () => {
+      load();
+    },
+  };
+}
+

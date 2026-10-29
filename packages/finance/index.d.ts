@@ -589,3 +589,48 @@ export function reversalReconciliation(
   compensation: number;
   net: number;
 }[];
+
+export type CorrectionChainStep = {
+  step: number;
+  kind: "original" | "reversal" | "substitute";
+  title: string;
+  detail: TransactionDetail;
+  reason?: string;
+  note?: string;
+  statusBadge: "Estornado" | "Registrado";
+  isReversal?: boolean;
+};
+
+export type CorrectionChain = {
+  transactionId: string;
+  householdId: string;
+  steps: CorrectionChainStep[];
+  netAmount: number;
+  currency: string;
+  netLabel: string;
+  hasSubstitute: boolean;
+  hasReversal: boolean;
+};
+
+export function getCorrectionChain(
+  repository: FinanceRepository,
+  household: string,
+  transactionId: string,
+  signal?: AbortSignal,
+): Promise<CorrectionChain>;
+
+export function createCorrectionChainStore(
+  repository: FinanceRepository,
+  household: string,
+  transactionId: string,
+): {
+  getSnapshot(): {
+    status: "loading" | "ready" | "error";
+    chain: CorrectionChain | null;
+    notice: string;
+  };
+  subscribe(listener: () => void): () => void;
+  start(): void;
+  retry(): void;
+};
+

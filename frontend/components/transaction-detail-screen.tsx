@@ -316,6 +316,13 @@ function DetailView({
               <Link className={opening ? undefined : "primary"} href={back}>
                 ← Voltar ao histórico
               </Link>
+              {(reversed || reversal || detail.reversalOf) && (
+                <Link
+                  href={`/historico-correcoes?${new URLSearchParams({ household, transaction: id, ...(period ? { period } : {}), currency: state.options?.currency ?? currency })}`}
+                >
+                  Histórico de correções
+                </Link>
+              )}
               {!done && ((!opening && canReverse(detail)) || pending) && (
                 <button
                   className="transaction-reverse"

@@ -309,6 +309,25 @@ function DetailView({
                 ← Voltar ao histórico
               </Text>
             </Pressable>
+            {(reversed || detail.reversalOf || detail.kind === "reversal") && (
+              <Pressable
+                accessibilityRole="button"
+                style={s.button}
+                onPress={() =>
+                  router.push({
+                    pathname: "/historico-correcoes",
+                    params: {
+                      household,
+                      transaction: id,
+                      ...(period ? { period } : {}),
+                      currency: state.options?.currency ?? currency,
+                    },
+                  })
+                }
+              >
+                <Text>Histórico de correções</Text>
+              </Pressable>
+            )}
             {!done && ((!opening && canReverse(detail)) || pending) && (
               <Pressable
                 accessibilityRole="button"

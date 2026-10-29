@@ -203,6 +203,11 @@ export function ReversalDetail({
         <Info weight="fill" /> O lançamento original permanece no histórico.
       </p>
       <footer className="transaction-actions reversal-actions">
+        <Link
+          href={`/historico-correcoes?transaction=${detail.id}&${backHref.split("?")[1] || ""}`}
+        >
+          Histórico de correções
+        </Link>
         <Link className="primary" href={originalHref}>
           <ArrowSquareOut /> Ver lançamento original
         </Link>

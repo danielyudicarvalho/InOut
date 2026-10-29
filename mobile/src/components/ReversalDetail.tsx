@@ -1,4 +1,5 @@
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
+import { router } from "expo-router";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import {
   displayDate,
@@ -207,6 +208,27 @@ export function ReversalDetail({
           O lançamento original permanece no histórico.
         </Text>
       </View>
+      <Pressable
+        accessibilityRole="button"
+        style={s.button}
+        onPress={() =>
+          router.push({
+            pathname: "/historico-correcoes",
+            params: {
+              transaction: detail.id,
+              currency: detail.currency,
+            },
+          })
+        }
+      >
+        <MaterialCommunityIcons
+          name="history"
+          size={18}
+          color="#315f3b"
+          accessible={false}
+        />
+        <Text style={s.value}>Histórico de correções</Text>
+      </Pressable>
       <Pressable
         accessibilityRole="button"
         style={[s.button, s.primary]}
