@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { DM_Sans, Lora } from "next/font/google";
 import "./tokens.css";
 import "./globals.css";
+import "../components/ui/ui.css";
 const dmSans = DM_Sans({
   subsets: ["latin", "latin-ext"],
   weight: ["400", "500", "600", "700"],
