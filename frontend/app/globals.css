@@ -1,4 +1,3 @@
-@import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Lora:wght@600;700&display=swap");
 * {
   box-sizing: border-box;
 }
@@ -6,7 +5,7 @@ body {
   margin: 0;
   background: var(--cream);
   color: var(--ink);
-  font-family: "DM Sans", Arial, sans-serif;
+  font-family: var(--font-sans);
 }
 button,
 a {
@@ -65,7 +64,7 @@ header {
   gap: 8px;
   color: var(--ink);
   text-decoration: none;
-  font-family: "Lora", Georgia, serif;
+  font-family: var(--font-serif);
   font-size: 34px;
   font-weight: 700;
 }
@@ -73,10 +72,7 @@ header {
   color: #5e7e4d;
 }
 .brand-caption {
-  font:
-    11px "DM Sans",
-    Arial,
-    sans-serif;
+  font: 11px var(--font-sans);
   align-self: flex-end;
   margin-bottom: 7px;
   color: #6d604c;
@@ -105,7 +101,7 @@ header {
   margin-bottom: 20px;
 }
 h1 {
-  font-family: "Lora", Georgia, serif;
+  font-family: var(--font-serif);
   font-weight: 700;
   letter-spacing: -2px;
   font-size: clamp(44px, 4.3vw, 70px);
@@ -166,7 +162,7 @@ h1 {
   color: #66513a;
 }
 .feature strong {
-  font-family: "Lora", Georgia, serif;
+  font-family: var(--font-serif);
   font-size: 16px;
   display: block;
   letter-spacing: -0.5px;
@@ -236,10 +232,7 @@ dialog::backdrop {
   backdrop-filter: blur(4px);
 }
 dialog h2 {
-  font:
-    700 27px/1.2 "Lora",
-    Georgia,
-    serif;
+  font: 700 27px/1.2 var(--font-serif);
 }
 dialog p {
   line-height: 1.7;
@@ -428,14 +421,14 @@ dialog .primary {
   text-shadow: 0 1px 8px #fff8;
 }
 .signin-art-copy h1 {
-  font-family: Lora, Georgia, serif;
+  font-family: var(--font-serif);
   font-size: clamp(34px, 4vw, 58px);
   line-height: 1.06;
   letter-spacing: -2px;
   margin: 34px 0 12px;
 }
 .signin-art-copy p {
-  font-family: Georgia, serif;
+  font-family: var(--font-serif);
   font-size: 19px;
 }
 .signin-panel {
@@ -449,12 +442,12 @@ dialog .primary {
   margin: auto;
 }
 .signin-form h2 {
-  font-family: Lora, Georgia, serif;
+  font-family: var(--font-serif);
   font-size: 44px;
   margin: 40px 0 4px;
 }
 .signin-form > p {
-  font-family: Georgia, serif;
+  font-family: var(--font-serif);
   font-size: 19px;
   margin: 0 0 34px;
 }
@@ -630,7 +623,7 @@ dialog .primary {
 }
 .register-info strong {
   display: block;
-  font-family: Georgia, serif;
+  font-family: var(--font-serif);
   font-size: 14px;
 }
 .register-info span {
@@ -678,14 +671,14 @@ dialog .primary {
 }
 
 .confirmation-title {
-  font-family: Lora, Georgia, serif;
+  font-family: var(--font-serif);
   font-size: clamp(28px, 3vw, 40px);
   line-height: 1.15;
   letter-spacing: -1px;
   margin: 18px 0 12px;
 }
 .signin-form > .confirmation-preview {
-  font-family: "DM Sans", Arial, sans-serif;
+  font-family: var(--font-sans);
   font-size: 11px;
   line-height: 1.5;
   margin: 24px 0 12px;
@@ -698,7 +691,7 @@ dialog .primary {
 }
 .confirmation-recipient small {
   display: block;
-  font-family: "DM Sans", Arial, sans-serif;
+  font-family: var(--font-sans);
   font-size: 10px;
   color: #615543;
   margin-top: 4px;
@@ -791,7 +784,7 @@ dialog .primary {
 }
 
 .recovery-copy {
-  font-family: Georgia, serif;
+  font-family: var(--font-serif);
   font-size: 18px;
   line-height: 1.5;
   margin: 12px 0 26px;
@@ -856,7 +849,7 @@ dialog .primary {
   margin: 0 0 12px;
 }
 .session-description {
-  font-family: Georgia, serif;
+  font-family: var(--font-serif);
   font-size: 18px;
   line-height: 1.5;
   max-width: 440px;
@@ -946,7 +939,7 @@ dialog .primary {
   letter-spacing: -1px;
 }
 .household-subtitle {
-  font-family: Georgia, serif;
+  font-family: var(--font-serif);
   font-size: 18px;
   line-height: 1.5;
   margin: 0 0 24px;
@@ -971,14 +964,14 @@ dialog .primary {
   margin-bottom: 12px;
 }
 .household-card h2 {
-  font-family: Lora, Georgia, serif;
+  font-family: var(--font-serif);
   font-size: 27px;
   line-height: 1.2;
   margin: 0 0 12px;
   letter-spacing: -0.6px;
 }
 .household-card p {
-  font-family: Georgia, serif;
+  font-family: var(--font-serif);
   font-size: 17px;
   line-height: 1.45;
   margin: 0 0 20px;
@@ -1005,7 +998,7 @@ dialog .primary {
   align-items: center;
   justify-content: center;
   gap: 12px;
-  font-family: Georgia, serif;
+  font-family: var(--font-serif);
   font-size: 15px;
   line-height: 1.5;
   margin: 24px 0 12px;
@@ -1082,7 +1075,7 @@ dialog .primary {
   margin: 22px 0 10px;
 }
 .create-household-story p {
-  font-family: Georgia, serif;
+  font-family: var(--font-serif);
   font-size: 21px;
   line-height: 1.5;
   margin: 0;
@@ -1094,7 +1087,7 @@ dialog .primary {
   padding: 28px;
 }
 .create-household-panel h2 {
-  font-family: Lora, Georgia, serif;
+  font-family: var(--font-serif);
   font-size: 38px;
   line-height: 1.15;
   letter-spacing: -1px;
@@ -1102,7 +1095,7 @@ dialog .primary {
 }
 .create-household-panel label {
   display: block;
-  font-family: Lora, Georgia, serif;
+  font-family: var(--font-serif);
   font-size: 15px;
   margin: 24px 0 10px;
 }
@@ -1170,7 +1163,7 @@ dialog .primary {
   align-items: center;
 }
 .invitation-title {
-  font-family: Lora, Georgia, serif;
+  font-family: var(--font-serif);
   font-size: 36px;
   line-height: 1.15;
   letter-spacing: -1px;
@@ -1216,7 +1209,7 @@ dialog .primary {
 }
 .invitation-details dd {
   margin: 0;
-  font-family: Georgia, serif;
+  font-family: var(--font-serif);
   font-size: 20px;
 }
 .invitation .register-info span {
@@ -1268,7 +1261,7 @@ dialog .primary {
 .invitation-result-description {
   max-width: 540px;
   margin: 0 auto 24px;
-  font-family: Georgia, serif;
+  font-family: var(--font-serif);
   font-size: 19px;
   line-height: 1.45;
 }
@@ -1309,11 +1302,11 @@ dialog .primary {
 .account-header > span {
   border-left: 1px solid var(--line);
   padding-left: 22px;
-  font-family: Georgia, serif;
+  font-family: var(--font-serif);
   color: #615543;
 }
 .account-story h1 {
-  font-family: Lora, Georgia, serif;
+  font-family: var(--font-serif);
   font-size: 38px;
   letter-spacing: -1px;
   line-height: 1.15;
@@ -1321,9 +1314,7 @@ dialog .primary {
 }
 .account-story > p {
   max-width: 380px;
-  font:
-    20px/1.4 Georgia,
-    serif;
+  font: 20px/1.4 var(--font-serif);
 }
 .account-desktop-art {
   width: 100%;
@@ -1337,9 +1328,7 @@ dialog .primary {
   font-size: 30px;
 }
 .account-panel > p {
-  font:
-    16px/1.4 Georgia,
-    serif;
+  font: 16px/1.4 var(--font-serif);
 }
 .account-panel label {
   margin: 15px 0 7px;
@@ -1386,10 +1375,7 @@ dialog .primary {
   height: auto;
 }
 .account-ready h1 {
-  font:
-    bold 32px/1.2 Lora,
-    Georgia,
-    serif;
+  font: bold 32px/1.2 var(--font-serif);
 }
 .account-next-actions {
   display: flex;
@@ -1838,9 +1824,7 @@ button:disabled {
   display: flex;
   gap: 8px;
   align-items: center;
-  font:
-    bold 28px Georgia,
-    serif;
+  font: bold 28px var(--font-serif);
   text-decoration: none;
   margin: 24px 12px 30px;
 }
@@ -1873,9 +1857,7 @@ button:disabled {
 .dashboard-motto {
   margin-top: auto;
   padding: 30px 18px;
-  font:
-    italic 22px Georgia,
-    serif;
+  font: italic 22px var(--font-serif);
   line-height: 1.6;
   color: #80633d;
 }
@@ -1930,9 +1912,7 @@ button:disabled {
   min-height: 145px;
 }
 .dashboard-hero h1 {
-  font:
-    bold clamp(25px, 2.5vw, 38px) Georgia,
-    serif;
+  font: bold clamp(25px, 2.5vw, 38px) var(--font-serif);
   margin: 12px 0 8px;
 }
 .dashboard-hero p {
@@ -1947,9 +1927,7 @@ button:disabled {
   margin-left: auto;
 }
 .dashboard h2 {
-  font:
-    bold 19px Georgia,
-    serif;
+  font: bold 19px var(--font-serif);
   margin: 12px 0;
 }
 .dashboard-preview {
@@ -1979,9 +1957,7 @@ button:disabled {
   font-size: 12px;
 }
 .dashboard-balance strong {
-  font:
-    bold 26px Georgia,
-    serif;
+  font: bold 26px var(--font-serif);
 }
 .dashboard-balance > svg {
   margin-left: auto;
@@ -2049,9 +2025,7 @@ button:disabled {
   margin: 0 0 6px;
 }
 .dashboard-stat strong {
-  font:
-    bold clamp(18px, 1.8vw, 25px) Georgia,
-    serif;
+  font: bold clamp(18px, 1.8vw, 25px) var(--font-serif);
 }
 .dashboard-caption {
   font-size: 10px;
@@ -2412,9 +2386,7 @@ button:disabled {
   object-fit: contain;
 }
 .period-heading h2 {
-  font:
-    bold 23px Georgia,
-    serif;
+  font: bold 23px var(--font-serif);
   margin: 10px 0 6px;
 }
 .period-heading p {
@@ -2573,9 +2545,7 @@ button:disabled {
   gap: 16px;
 }
 .balance-heading h1 {
-  font:
-    bold clamp(27px, 3vw, 38px) Georgia,
-    serif;
+  font: bold clamp(27px, 3vw, 38px) var(--font-serif);
   margin: 14px 0 8px;
 }
 .balance-heading p {
@@ -2616,9 +2586,7 @@ button:disabled {
   margin: 5px 0;
 }
 .balance-total {
-  font:
-    bold 34px Georgia,
-    serif;
+  font: bold 34px var(--font-serif);
 }
 .balance-segments {
   display: flex;
@@ -2776,9 +2744,7 @@ button:disabled {
   gap: 12px;
 }
 .income-hero h1 {
-  font:
-    bold clamp(28px, 3vw, 39px) Georgia,
-    serif;
+  font: bold clamp(28px, 3vw, 39px) var(--font-serif);
   margin: 6px 0 10px;
 }
 .income-hero p {
@@ -2819,9 +2785,7 @@ button:disabled {
   color: #756e5c;
 }
 .income-total strong {
-  font:
-    bold clamp(28px, 4vw, 42px) Georgia,
-    serif;
+  font: bold clamp(28px, 4vw, 42px) var(--font-serif);
 }
 .income-table-wrap {
   overflow-x: auto;
@@ -2974,9 +2938,7 @@ button:disabled {
   font-weight: 700;
 }
 .result-cards strong {
-  font:
-    bold clamp(20px, 2vw, 28px) Georgia,
-    serif;
+  font: bold clamp(20px, 2vw, 28px) var(--font-serif);
 }
 .result-cards .result-expense strong {
   color: #a9432d;
@@ -2993,9 +2955,7 @@ button:disabled {
   padding: 24px;
 }
 .result-entries h2 {
-  font:
-    bold 22px Georgia,
-    serif;
+  font: bold 22px var(--font-serif);
 }
 .result-entries > p {
   color: #756e5c;
@@ -3039,9 +2999,7 @@ button:disabled {
   padding: 22px;
 }
 .category-overview > strong {
-  font:
-    bold 32px Georgia,
-    serif;
+  font: bold 32px var(--font-serif);
 }
 .category-donut {
   width: 200px;
@@ -3137,9 +3095,7 @@ button:disabled {
   background: #f8faed;
 }
 .source-total strong {
-  font:
-    bold clamp(28px, 4vw, 42px) Georgia,
-    serif;
+  font: bold clamp(28px, 4vw, 42px) var(--font-serif);
   color: #075b39;
 }
 .source-total p {
@@ -3148,9 +3104,7 @@ button:disabled {
 .source-distribution h2,
 .source-groups h2,
 .source-details h2 {
-  font:
-    bold 22px Georgia,
-    serif;
+  font: bold 22px var(--font-serif);
 }
 .source-distribution-body {
   display: flex;
@@ -3303,9 +3257,7 @@ button:disabled {
 }
 .new-record-dialog h2 {
   text-align: center;
-  font:
-    bold clamp(24px, 4vw, 30px) Georgia,
-    serif;
+  font: bold clamp(24px, 4vw, 30px) var(--font-serif);
   margin: 8px 0 4px;
 }
 .new-record-dialog > p {
@@ -3333,9 +3285,7 @@ button:disabled {
   flex: 1;
 }
 .new-record-choice strong {
-  font:
-    bold 21px Georgia,
-    serif;
+  font: bold 21px var(--font-serif);
 }
 .new-record-choice p {
   margin: 5px 0 0;
@@ -3393,9 +3343,7 @@ button:disabled {
   margin: 0 auto;
 }
 .record-form-panel h1 {
-  font:
-    bold 30px Georgia,
-    serif;
+  font: bold 30px var(--font-serif);
 }
 .record-form-panel fieldset {
   border: 0;
@@ -3494,9 +3442,7 @@ button:disabled {
   padding-top: 30px;
 }
 .setup-copy h1 {
-  font:
-    bold clamp(30px, 3.5vw, 44px) Georgia,
-    serif;
+  font: bold clamp(30px, 3.5vw, 44px) var(--font-serif);
   color: #075532;
   margin: 18px 0;
   line-height: 1.12;
@@ -3827,7 +3773,7 @@ button:disabled {
   object-fit: contain;
 }
 .history-filter-sheet h2 {
-  font-family: var(--font-lora), serif;
+  font-family: var(--font-serif);
   font-size: 28px;
   margin: 0;
 }
@@ -4304,7 +4250,7 @@ button:disabled {
   margin: 0 0 8px;
 }
 .review-amount {
-  font-family: Georgia, serif;
+  font-family: var(--font-serif);
   font-size: 32px;
   color: #285f3c;
 }
@@ -4438,7 +4384,7 @@ button:disabled {
   margin: 6px auto 12px;
 }
 .saved-panel h1 {
-  font-family: Georgia, serif;
+  font-family: var(--font-serif);
   font-size: 32px;
   margin: 0;
   color: #204732;
@@ -4583,7 +4529,7 @@ button:disabled {
   gap: 15px;
 }
 .transaction-hero h1 {
-  font-family: Georgia, serif;
+  font-family: var(--font-serif);
   font-size: 34px;
   margin-bottom: 8px;
 }
@@ -4604,7 +4550,7 @@ button:disabled {
   margin: 16px 0;
 }
 .transaction-card h2 {
-  font-family: Georgia, serif;
+  font-family: var(--font-serif);
   font-size: 20px;
   margin: 0 0 7px;
   overflow-wrap: anywhere;
@@ -4617,7 +4563,7 @@ button:disabled {
 }
 .transaction-summary strong {
   display: block;
-  font-family: Georgia, serif;
+  font-family: var(--font-serif);
   font-size: 30px;
   margin-top: 7px;
 }
@@ -4785,7 +4731,7 @@ button:disabled {
   overflow-wrap: anywhere;
 }
 .transfer-accounts strong {
-  font-family: Georgia, serif;
+  font-family: var(--font-serif);
   margin: 4px 0;
 }
 .transfer-accounts small {
@@ -4883,7 +4829,7 @@ button:disabled {
   color: #4c4933;
 }
 .opening-detail-notice strong {
-  font-family: Georgia, serif;
+  font-family: var(--font-serif);
   font-size: 18px;
 }
 .opening-detail-notice p {
@@ -4923,7 +4869,7 @@ button:disabled {
   max-width: 65%;
 }
 .classification-dialog h2 {
-  font-family: Georgia, serif;
+  font-family: var(--font-serif);
   color: #234c36;
   margin: 8px 0;
 }
@@ -5146,9 +5092,7 @@ button:disabled {
 }
 .reversal-compensation strong {
   display: block;
-  font:
-    bold 28px Georgia,
-    serif;
+  font: bold 28px var(--font-serif);
   margin-top: 4px;
 }
 .reversal-info {
@@ -5242,9 +5186,7 @@ button:disabled {
   margin-bottom: 5px;
 }
 .reversal-equation-cell strong {
-  font:
-    bold 17px Georgia,
-    serif;
+  font: bold 17px var(--font-serif);
 }
 .reversal-detail-effect h3 {
   font-size: 13px;
@@ -5431,7 +5373,7 @@ button:disabled {
 }
 
 .correction-hero-copy h1 {
-  font-family: var(--font-lora, "Lora", Georgia, serif);
+  font-family: var(--font-serif);
   font-size: 34px;
   font-weight: 700;
   color: #1e3020;
@@ -5896,7 +5838,7 @@ button:disabled {
 }
 
 .duplicate-hero-copy h1 {
-  font-family: var(--font-lora, "Lora", Georgia, serif);
+  font-family: var(--font-serif);
   font-size: 34px;
   font-weight: 700;
   color: #1e3020;
@@ -6318,7 +6260,7 @@ button:disabled {
 }
 
 .verification-title {
-  font-family: var(--font-lora, "Lora", Georgia, serif);
+  font-family: var(--font-serif);
   font-size: 30px;
   font-weight: 700;
   color: #1e3020;
