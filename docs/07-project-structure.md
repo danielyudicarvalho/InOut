@@ -1,57 +1,50 @@
-# Estrutura inicial do projeto Flutter
+# Estrutura do Projeto InOut
 
-## Targets do MVP
+## Targets da Aplicação
 
-- Android nativo;
-- iOS nativo;
-- Flutter Web/PWA para navegador e desktop.
+- **Frontend Web**: Next.js 16 (`frontend/`) para navegador e PWA.
+- **Mobile**: React Native com Expo (`mobile/`) para Android e iOS nativos.
+- **Backend API**: ASP.NET Core 10 (`backend/`) para publicação de contratos e casos de uso de negócio.
+- **Pacotes Compartilhados**: `packages/identity/` para contratos e fluxos de autenticação desacoplados.
 
-Windows, macOS e Linux nativos não são gerados no MVP.
-
-## Limites
-
-```text
-lib/src/
-  domain/          regras e tipos puros de negócio
-  application/     casos de uso e portas
-  infrastructure/  implementações de portas e SDKs externos
-  presentation/    Flutter, navegação, providers, temas e telas
-```
-
-Dependências permitidas:
+## Camadas e Limites
 
 ```text
-presentation -> application -> domain
-infrastructure -> application -> domain
+frontend/         Next.js App Router, componentes React e rotas de UI
+mobile/           React Native + Expo, telas e fluxos mobile
+packages/         Lógica e portas compartilhadas (ex.: packages/identity)
+backend/src/
+  InOut.Domain/          Regras e tipos puros de negócio financeiro
+  InOut.Application/     Casos de uso e portas de aplicação
+  InOut.Infrastructure/  Persistência EF Core / Npgsql e integrações
+  InOut.Api/             Endpoints ASP.NET Core, middleware e contratos
 ```
 
-O domínio não pode importar Flutter, Riverpod, Supabase, HTTP ou persistência.
+## Regras de Dependência
 
-## Bootstrap executável
+1. As interfaces (`frontend/` e `mobile/`) interagem com o Supabase Auth para sessão e enviam o JWT autenticado para a API ASP.NET Core.
+2. A API valida o JWT (via Supabase JWKS) e executa as regras financeiras autoritativas.
+3. As interfaces web/mobile não implementam regras financeiras nem acessam tabelas de negócio diretamente.
 
-O adaptador `DemoHouseholdSummaryRepository` mantém a tela demonstrativa e os
-testes executáveis sem configuração externa. Quando URL e chave publicável são
-fornecidas, o bootstrap usa adaptadores Supabase para autenticação, restauração
-de sessão, criação da residência e entrada por convite.
+## Comandos de Validação
 
-## Comandos de validação
-
+### Frontend
 ```bash
-flutter pub get
-./tool/check_architecture.sh
-dart format --output=none --set-exit-if-changed lib test
-flutter analyze
-flutter test
-flutter build web --release
-flutter build apk --debug
+cd frontend
+npm ci
+npm run check
+npm run build
 ```
 
-O build iOS deve ser validado em macOS:
-
+### Mobile
 ```bash
-flutter build ios --simulator
+cd mobile
+npm ci
+npm run check
 ```
 
-## Decisão relacionada
-
-- [ADR-003: stack multiplataforma e hospedagem do MVP](adr/ADR-003-application-stack-and-hosting.md)
+### Backend
+```bash
+cd backend
+dotnet test InOut.sln
+```

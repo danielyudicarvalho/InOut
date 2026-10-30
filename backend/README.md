@@ -100,4 +100,4 @@ domínio continuam independentes da chave; consulte a ADR-006.
 
 ## Limites
 
-Domain e Application não podem depender de ASP.NET Core, EF Core, Npgsql, Supabase ou Flutter. Os testes de arquitetura bloqueiam violações básicas dessa direção.
+Domain e Application não podem depender de ASP.NET Core, EF Core, Npgsql, Supabase ou frameworks de interface. Os testes de arquitetura bloqueiam violações básicas dessa direção.
