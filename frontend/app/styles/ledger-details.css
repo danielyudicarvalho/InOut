@@ -1,0 +1,650 @@
+/* Detalhes de transferência e estorno. Extraído de globals.css (PR 7). */
+/* Transfer details keep both sides of the same ledger operation together. */
+.transfer-detail-page .transaction-card:first-of-type {
+  position: relative;
+  overflow: hidden;
+}
+.transfer-detail-page .transaction-summary {
+  min-height: 155px;
+  padding-right: 44%;
+}
+.transfer-detail-page .transaction-summary strong {
+  color: #173f31;
+  font-size: var(--text-2xl);
+}
+.transfer-detail-page .transaction-summary {
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+.transfer-detail-art {
+  position: absolute;
+  right: 12px;
+  top: 10px;
+  width: 43%;
+  height: 175px;
+  object-fit: contain;
+  pointer-events: none;
+}
+.transfer-detail-page .transaction-status {
+  white-space: nowrap;
+}
+.transfer-accounts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 56px;
+  padding: var(--space-2);
+  border: 1px solid #ede5d1;
+  border-radius: var(--radius-md);
+}
+.transfer-origin,
+.transfer-destination {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  position: relative;
+  min-width: 0;
+}
+.transfer-origin {
+  background: #e9edd9;
+}
+.transfer-destination {
+  background: #f9edcd;
+}
+.transfer-accounts strong,
+.transfer-accounts small {
+  display: block;
+  overflow-wrap: anywhere;
+}
+.transfer-accounts strong {
+  font-family: var(--font-serif);
+  margin: 4px 0;
+}
+.transfer-accounts small {
+  font-size: var(--text-xs);
+}
+.transfer-account-icon {
+  font-size: var(--text-xl);
+  color: var(--color-link);
+}
+.transfer-account-arrow {
+  position: absolute;
+  right: -40px;
+  font-size: var(--text-2xl);
+}
+.transfer-detail-page .transaction-fields {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.transfer-detail-page .transaction-help {
+  background: #f0f0df;
+  padding: var(--space-3);
+  border-radius: var(--radius-sm);
+  line-height: 1.6;
+}
+@media (max-width: 760px) {
+  .transfer-detail-page .transaction-summary {
+    min-height: auto;
+    padding-right: 0;
+  }
+  .transfer-detail-page .transaction-summary strong {
+    font-size: var(--text-2xl);
+  }
+  .transfer-detail-art {
+    position: static;
+    width: 100%;
+    height: 160px;
+  }
+  .transfer-accounts,
+  .transfer-detail-page .transaction-fields {
+    grid-template-columns: 1fr;
+  }
+  .transfer-accounts {
+    gap: 30px;
+  }
+  .transfer-account-arrow {
+    right: 50%;
+    bottom: -30px;
+    transform: rotate(90deg);
+  }
+}
+
+.opening-detail-page .transaction-card:first-of-type {
+  position: relative;
+  min-height: 320px;
+}
+.opening-detail-page .transaction-card:first-of-type .transaction-summary,
+.opening-detail-page .transaction-card:first-of-type .transaction-fields {
+  width: 57%;
+}
+.opening-detail-page .transaction-summary {
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+.opening-detail-page .transaction-summary small {
+  background: #f8de94;
+  border-radius: 15px;
+  padding: 4px 8px;
+  font-size: var(--text-xs);
+}
+.opening-detail-page .transaction-summary strong {
+  font-size: var(--text-2xl);
+}
+.opening-detail-page .transaction-fields {
+  grid-template-columns: 1fr;
+  gap: var(--space-3);
+}
+.opening-detail-page .transaction-fields > div {
+  display: grid;
+  grid-template-columns: 110px 1fr;
+  gap: var(--space-3);
+}
+.opening-detail-art {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 42%;
+  height: 270px;
+  object-fit: contain;
+  pointer-events: none;
+}
+.opening-detail-notice {
+  border: 1px solid #efd58f;
+  border-radius: var(--radius-md);
+  padding: 18px 22px;
+  background: #fff5d9;
+  color: #4c4933;
+}
+.opening-detail-notice strong {
+  font-family: var(--font-serif);
+  font-size: var(--text-lg);
+}
+.opening-detail-notice p {
+  font-size: var(--text-xs);
+  line-height: 1.7;
+  margin: 7px 0;
+}
+.opening-detail-notice small {
+  color: #6c6953;
+}
+@media (max-width: 760px) {
+  .opening-detail-page .transaction-card:first-of-type .transaction-summary,
+  .opening-detail-page .transaction-card:first-of-type .transaction-fields {
+    width: 100%;
+  }
+  .opening-detail-art {
+    position: static;
+    width: 100%;
+    height: 170px;
+  }
+  .opening-detail-page .transaction-fields > div {
+    grid-template-columns: 95px 1fr;
+  }
+}
+
+.classification-dialog {
+  width: min(510px, calc(100vw - 28px));
+}
+.classification-dialog .aux-content {
+  position: relative;
+}
+.classification-dialog header {
+  min-height: 110px;
+  align-items: flex-start;
+}
+.classification-dialog header > div {
+  max-width: 65%;
+}
+.classification-dialog h2 {
+  font-family: var(--font-serif);
+  color: var(--color-link);
+  margin: 8px 0;
+}
+.classification-dialog p,
+.classification-dialog small {
+  font-size: var(--text-xs);
+  line-height: 1.6;
+  color: #6b705f;
+}
+.classification-art {
+  position: absolute;
+  right: 24px;
+  top: 32px;
+  width: 34%;
+  height: 105px;
+  object-fit: contain;
+  pointer-events: none;
+}
+.classification-summary {
+  background: #e9edd9;
+  padding: var(--space-3);
+  border-radius: var(--radius-sm);
+  display: grid;
+  gap: var(--space-1);
+}
+.classification-summary strong {
+  font-size: var(--text-sm);
+  color: var(--color-link);
+}
+.classification-dialog form {
+  display: grid;
+  gap: var(--space-4);
+}
+.classification-dialog label {
+  display: grid;
+  gap: var(--space-2);
+  font-size: var(--text-xs);
+}
+.classification-dialog footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+.classification-dialog footer > button {
+  flex: 1;
+  min-height: 44px;
+}
+
+.reversal-dialog {
+  width: min(480px, calc(100vw - 28px));
+}
+.reversal-dialog .aux-content {
+  gap: var(--space-3);
+}
+.reversal-dialog header {
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+.reversal-dialog header > div {
+  flex: 1;
+  text-align: center;
+}
+.reversal-dialog h2 {
+  margin: 3px 0 5px;
+  font-size: var(--text-xl);
+  color: #173f31;
+}
+.reversal-dialog p,
+.reversal-dialog small {
+  font-size: var(--text-xs);
+  line-height: 1.6;
+  margin: 3px 0;
+}
+.reversal-art {
+  width: 100%;
+  height: 130px;
+  object-fit: contain;
+}
+.reversal-original {
+  padding: var(--space-3);
+  border: 1px solid #e6deca;
+  border-radius: var(--radius-sm);
+}
+.reversal-original h3,
+.reversal-effect h3 {
+  margin: 0 0 7px;
+  font-size: var(--text-xs);
+  color: var(--color-link);
+}
+.reversal-original > div {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+}
+.reversal-effect {
+  padding: var(--space-3);
+  border-radius: var(--radius-sm);
+  background: #e9edd9;
+}
+.reversal-bank-note {
+  padding: 11px;
+  border-radius: var(--radius-sm);
+  background: #fbefcf;
+}
+.reversal-dialog label {
+  display: grid;
+  gap: var(--space-2);
+  font-size: var(--text-xs);
+  color: var(--color-link);
+}
+.reversal-dialog label b {
+  color: var(--color-danger);
+}
+.reversal-date {
+  font-size: var(--text-xs);
+  color: #68745d;
+}
+.reversal-date summary {
+  cursor: pointer;
+  padding: 10px 0;
+}
+.reversal-dialog footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.reversal-dialog footer button {
+  flex: 1;
+  min-height: 44px;
+}
+.reversal-dialog .reversal-confirm {
+  background: var(--color-danger);
+  color: white;
+  border-color: var(--color-danger);
+}
+.reversal-dialog .reversal-confirm:disabled {
+  opacity: 0.65;
+}
+
+/* Reversal details retain the original entry and reconcile each account. */
+.reversal-detail-page .transaction-content {
+  max-width: 1040px;
+}
+.reversal-detail-page .transaction-card {
+  margin: 12px 0;
+  padding: var(--space-4);
+}
+.reversal-detail-page .transaction-hero {
+  position: static;
+  inset: auto;
+  min-height: 125px;
+}
+.reversal-detail-page .transaction-hero img {
+  height: 125px;
+}
+.reversal-detail-page .transaction-hero h1 {
+  font-size: var(--text-2xl);
+}
+.reversal-summary {
+  display: flex;
+  gap: var(--space-4);
+  align-items: center;
+}
+.reversal-cart {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-full);
+  background: #b65d40;
+  color: #fff8e9;
+}
+.reversal-summary-copy {
+  flex: 1;
+  min-width: 0;
+}
+.reversal-badges {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+.reversal-badges span {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 4px 10px;
+  border-radius: var(--radius-lg);
+  background: #f6e1cd;
+  color: #9a452e;
+  font-size: var(--text-xs);
+}
+.reversal-badges span + span {
+  background: #e7ebd9;
+  color: var(--color-link);
+}
+.reversal-badges svg,
+.reversal-info svg,
+.reversal-section-heading svg,
+.reversal-actions svg {
+  width: 17px;
+  height: 17px;
+  flex-shrink: 0;
+}
+.reversal-account {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 10px 0 0;
+  font-size: var(--text-xs);
+}
+.reversal-compensation {
+  text-align: right;
+}
+.reversal-compensation small {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+.reversal-compensation strong {
+  display: block;
+  font: bold 28px var(--font-serif);
+  margin-top: 4px;
+}
+.reversal-info {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  border: 1px solid #e2e2cd;
+  background: #eeeedf;
+  color: #315339;
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-xs);
+  line-height: 1.5;
+}
+.reversal-summary-card .reversal-info {
+  margin: 16px 0 0;
+}
+.reversal-section-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.reversal-section-heading a {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-xs);
+}
+.reversal-detail-original-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  background: #f5f0e5;
+  border: 1px solid #ece5d6;
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  margin-top: 8px;
+}
+.reversal-detail-original-row > svg:first-child {
+  color: #a94c32;
+  flex-shrink: 0;
+}
+.reversal-detail-original-row > div {
+  flex: 1;
+  min-width: 0;
+}
+.reversal-detail-original-row small {
+  display: block;
+  margin-top: 5px;
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+}
+.reversal-detail-original-row strong {
+  overflow-wrap: anywhere;
+}
+.reversal-equation {
+  display: grid;
+  grid-template-columns: 1fr 16px 1fr 16px 1fr;
+  gap: var(--space-3);
+  align-items: center;
+  margin-top: 12px;
+}
+.reversal-equation-cell {
+  background: #f5f0e5;
+  border-radius: var(--radius-sm);
+  padding: var(--space-3);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+.reversal-equation-cell > svg {
+  background: #a75539;
+  border-radius: var(--radius-full);
+  color: white;
+  padding: var(--space-1);
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+}
+.reversal-equation-cell:nth-of-type(2) > svg {
+  background: #527445;
+}
+.reversal-equation-cell:nth-of-type(3) > svg {
+  background: #59886a;
+}
+.reversal-equation-cell small {
+  display: block;
+  font-size: var(--text-xs);
+  margin-bottom: 5px;
+}
+.reversal-equation-cell strong {
+  font: bold 17px var(--font-serif);
+}
+.reversal-detail-effect h3 {
+  font-size: var(--text-xs);
+  margin: 15px 0 0;
+}
+.reversal-metadata {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+}
+.reversal-metadata .transaction-card {
+  margin: 0;
+}
+.reversal-metadata dl {
+  margin: 14px 0 0;
+}
+.reversal-metadata dl > div {
+  display: grid;
+  grid-template-columns: 25px 1fr;
+  margin-top: 14px;
+  gap: 4px 10px;
+}
+.reversal-metadata dl svg {
+  grid-row: span 2;
+  width: 21px;
+  height: 21px;
+}
+.reversal-metadata dt {
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+.reversal-metadata dd {
+  margin: 0;
+  font-size: var(--text-xs);
+  overflow-wrap: anywhere;
+  line-height: 1.5;
+}
+.reversal-metadata dd small {
+  display: block;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+.reversal-actions > a {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: var(--space-2);
+}
+@media (max-width: 760px) {
+  .reversal-detail-page .transaction-hero h1 {
+    font-size: 25px;
+  }
+  .reversal-detail-page .transaction-hero img {
+    max-width: 32%;
+    height: 100px;
+  }
+  .reversal-detail-page .transaction-card {
+    padding: var(--space-3);
+  }
+  .reversal-summary {
+    flex-wrap: wrap;
+    gap: var(--space-3);
+  }
+  .reversal-cart {
+    width: 44px;
+    height: 44px;
+  }
+  .reversal-compensation {
+    width: 100%;
+    text-align: center;
+  }
+  .reversal-detail-original-row {
+    flex-wrap: wrap;
+    gap: var(--space-3);
+  }
+  .reversal-detail-original-row > div {
+    flex-basis: 65%;
+  }
+  .reversal-detail-original-row > .transaction-status {
+    margin-left: auto;
+  }
+  .reversal-section-heading h2 {
+    font-size: var(--text-md);
+  }
+  .reversal-section-heading a {
+    font-size: var(--text-xs);
+  }
+  .reversal-equation {
+    grid-template-columns: 1fr;
+    gap: var(--space-2);
+  }
+  .reversal-operator {
+    display: none;
+  }
+  .reversal-equation-cell {
+    padding: 8px 10px;
+  }
+  .reversal-equation-cell > div {
+    display: flex;
+    flex: 1;
+    justify-content: space-between;
+    gap: var(--space-3);
+    align-items: center;
+  }
+  .reversal-equation-cell small {
+    margin: 0;
+  }
+  .reversal-metadata {
+    grid-template-columns: 1fr;
+  }
+  .reversal-actions {
+    flex-direction: column;
+  }
+}
+.reversal-detail-page a {
+  color: inherit;
+  text-decoration: none;
+}
+.reversal-detail-page a:focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 4px;
+}
+.reversal-detail-page a:hover {
+  text-decoration: underline;
+}
+.reversal-actions a.primary {
+  color: var(--color-surface);
+}
+.reversal-detail-page .reversal-detail-effect {
+  background: transparent;
+  padding: 0;
+  border: 0;
+}

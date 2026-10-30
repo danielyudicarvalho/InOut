@@ -1,5 +1,5 @@
 "use client";
-import { BrandLogo } from "../ui/brand-logo";
+import { BrandLogo, Button, Input } from "../ui";
 import { useRef, useState, type FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { authMessage } from "@inout/identity";
@@ -87,48 +87,51 @@ export function LoginScreen() {
           </h2>
           <p>Acesse seu cantinho financeiro.</p>
           <form method="post" onSubmit={submit}>
-            <label htmlFor="email">E-mail</label>
-            <div className="signin-input">
-              <EnvelopeSimple size={21} aria-hidden="true" />
-              <input
-                id="email"
-                name="email"
-                type="email"
-                autoComplete="email"
-                placeholder="voce@exemplo.com"
-                required
-              />
-            </div>
-            <label htmlFor="password">Senha</label>
-            <div className="signin-input">
-              <LockSimple size={21} aria-hidden="true" />
-              <input
-                id="password"
-                name="password"
-                type={visible ? "text" : "password"}
-                autoComplete="current-password"
-                required
-              />
-              <button
-                type="button"
-                aria-label={visible ? "Ocultar senha" : "Mostrar senha"}
-                aria-pressed={visible}
-                onClick={() => setVisible(!visible)}
-              >
-                {visible ? <EyeSlash size={21} /> : <Eye size={21} />}
-              </button>
-            </div>
+            <Input
+              id="email"
+              label="E-mail"
+              name="email"
+              type="email"
+              autoComplete="email"
+              placeholder="voce@exemplo.com"
+              required
+              iconStart={<EnvelopeSimple size={21} />}
+            />
+            <Input
+              id="password"
+              label="Senha"
+              name="password"
+              type={visible ? "text" : "password"}
+              autoComplete="current-password"
+              required
+              iconStart={<LockSimple size={21} />}
+              trailing={
+                <button
+                  type="button"
+                  aria-label={visible ? "Ocultar senha" : "Mostrar senha"}
+                  aria-pressed={visible}
+                  onClick={() => setVisible(!visible)}
+                >
+                  {visible ? (
+                    <EyeSlash size={21} aria-hidden="true" />
+                  ) : (
+                    <Eye size={21} aria-hidden="true" />
+                  )}
+                </button>
+              }
+            />
             <Link href="/esqueci-senha" className="signin-forgot">
               Esqueci minha senha
             </Link>
-            <button
-              className="primary signin-submit"
+            <Button
               type="submit"
+              className="signin-submit"
+              loading={busy}
               disabled={busy}
-              aria-busy={busy}
+              iconEnd={<CaretRight size={20} />}
             >
-              {busy ? "Entrando…" : "Entrar"} <CaretRight size={20} />
-            </button>
+              {busy ? "Entrando…" : "Entrar"}
+            </Button>
             <p role="status" className="signin-notice">
               {notice}
             </p>
