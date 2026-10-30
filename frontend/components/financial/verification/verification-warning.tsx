@@ -7,7 +7,8 @@ export function VerificationWarning() {
     <div className="verification-card-warning" role="alert">
       <WarningCircle size={20} weight="fill" />
       <span>
-        Para evitar duplicidade, não crie outro lançamento igual enquanto verificamos.
+        Para evitar duplicidade, não crie outro lançamento igual enquanto
+        verificamos.
       </span>
     </div>
   );

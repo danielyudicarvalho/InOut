@@ -25,7 +25,9 @@ export function DashboardSidebar({
     ...(period ? { period } : {}),
     ...(currency ? { currency } : {}),
   });
-  const queryString = queryParams.toString() ? `?${queryParams.toString()}` : "";
+  const queryString = queryParams.toString()
+    ? `?${queryParams.toString()}`
+    : "";
 
   return (
     <aside className="dashboard-sidebar">

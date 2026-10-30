@@ -1,16 +1,7 @@
 import React from "react";
-import {
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
+import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import type { RecordKind, RecordOptions } from "@inout/finance";
-import {
-  AuxiliarySelector,
-  DateSelector,
-} from "../AuxiliarySelector";
+import { AuxiliarySelector, DateSelector } from "../AuxiliarySelector";
 import { theme as t } from "../../theme";
 
 interface RecordFormFieldsProps {
@@ -34,9 +25,16 @@ interface RecordFormFieldsProps {
   parentId: string;
   selectedCategory?: RecordOptions["categories"][number];
   roots: RecordOptions["categories"];
-  children: RecordOptions["categories"];
+  childCategories: RecordOptions["categories"];
   onEdit: (
-    field: "accountId" | "destinationId" | "amount" | "categoryId" | "sourceId" | "date" | "description",
+    field:
+      | "accountId"
+      | "destinationId"
+      | "amount"
+      | "categoryId"
+      | "sourceId"
+      | "date"
+      | "description",
     val: string,
   ) => void;
   creation: (
@@ -70,7 +68,7 @@ export function RecordFormFields({
   parentId,
   selectedCategory,
   roots,
-  children,
+  childCategories,
   onEdit,
   creation,
   onLayoutField,
@@ -122,7 +120,8 @@ export function RecordFormFields({
             items={options.accounts.map((a) => ({
               ...a,
               detail: `${a.currency}${a.id === account?.id ? " · Mesma conta de origem" : a.currency !== account?.currency ? " · Moeda incompatível" : ""}`,
-              disabled: a.id === account?.id || a.currency !== account?.currency,
+              disabled:
+                a.id === account?.id || a.currency !== account?.currency,
             }))}
             disabled={locked || !account}
             onChange={(id) => onEdit("destinationId", id)}
@@ -133,8 +132,7 @@ export function RecordFormFields({
               <Text style={s.label}>Contas indisponíveis</Text>
               {options.accounts
                 .filter(
-                  (a) =>
-                    a.id === account.id || a.currency !== account.currency,
+                  (a) => a.id === account.id || a.currency !== account.currency,
                 )
                 .map((a) => (
                   <Text key={a.id} style={s.caption}>
@@ -154,9 +152,7 @@ export function RecordFormFields({
         <View style={[s.input, { backgroundColor: "#efeee8" }]}>
           <Text>{account?.currency ?? "Selecione uma conta"} 🔒</Text>
         </View>
-        <Text style={s.caption}>
-          A moeda é definida pela conta escolhida.
-        </Text>
+        <Text style={s.caption}>A moeda é definida pela conta escolhida.</Text>
       </View>
 
       <Text
@@ -187,7 +183,9 @@ export function RecordFormFields({
       {kind !== "transfer" && (
         <>
           <Text
-            onLayout={(e) => onLayoutField("categoryId", e.nativeEvent.layout.y)}
+            onLayout={(e) =>
+              onLayoutField("categoryId", e.nativeEvent.layout.y)
+            }
             style={s.label}
           >
             Categoria *
@@ -230,7 +228,7 @@ export function RecordFormFields({
             value={selectedCategory?.parentId ? fields.categoryId : ""}
             items={[
               { id: "", name: "Usar a categoria selecionada" },
-              ...children,
+              ...childCategories,
             ]}
             context={`Categoria: ${categories.find((c) => c.id === parentId)?.name ?? ""}`}
             disabled={locked || !parentId}
@@ -300,10 +298,7 @@ export function RecordFormFields({
           busy: isSaving,
         }}
         disabled={isSaving || (isReady && unavailable)}
-        style={[
-          s.button,
-          kind === "expense" && { backgroundColor: "#bc4938" },
-        ]}
+        style={[s.button, kind === "expense" && { backgroundColor: "#bc4938" }]}
         onPress={onSubmitReview}
       >
         <Text style={s.buttonText}>

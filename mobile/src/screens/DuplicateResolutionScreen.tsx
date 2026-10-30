@@ -1,4 +1,3 @@
-import { useState } from "react";
 import {
   Image,
   Pressable,
@@ -10,7 +9,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
-import { money, displayDate, type DuplicateRecord } from "@inout/finance";
+import { money, displayDate } from "@inout/finance";
 import { useDuplicateResolution } from "../finance/use-duplicate-resolution";
 import { theme as t } from "../theme";
 
@@ -90,7 +89,11 @@ function DuplicateResolutionView({
       },
     });
 
-  if (state.status === "loading" || state.status === "error" || !state.comparison) {
+  if (
+    state.status === "loading" ||
+    state.status === "error" ||
+    !state.comparison
+  ) {
     return (
       <SafeAreaView style={s.safe}>
         <View style={s.stateContainer}>
@@ -190,20 +193,13 @@ function DuplicateResolutionView({
                 {/* Radio Header */}
                 <View style={s.radioRow}>
                   <MaterialCommunityIcons
-                    name={
-                      isSelected
-                        ? "radiobox-marked"
-                        : "radiobox-blank"
-                    }
+                    name={isSelected ? "radiobox-marked" : "radiobox-blank"}
                     size={20}
                     color={isSelected ? "#b85b43" : "#8c9b8d"}
                     accessible={false}
                   />
                   <Text
-                    style={[
-                      s.radioLabel,
-                      isSelected && s.radioLabelSelected,
-                    ]}
+                    style={[s.radioLabel, isSelected && s.radioLabelSelected]}
                   >
                     {isSelected
                       ? "Selecionado para estorno"
@@ -231,9 +227,7 @@ function DuplicateResolutionView({
                           : "arrow-bottom-left"
                       }
                       size={18}
-                      color={
-                        record.kind === "expense" ? "#b85b43" : "#326b3e"
-                      }
+                      color={record.kind === "expense" ? "#b85b43" : "#326b3e"}
                       accessible={false}
                     />
                     <Text
@@ -358,10 +352,7 @@ function DuplicateResolutionView({
             <Pressable style={s.cancelBtn} onPress={back}>
               <Text style={s.cancelBtnText}>Cancelar</Text>
             </Pressable>
-            <Pressable
-              style={s.reviewBtn}
-              onPress={handleReviewReversal}
-            >
+            <Pressable style={s.reviewBtn} onPress={handleReviewReversal}>
               <Text style={s.reviewBtnText}>Revisar estorno</Text>
             </Pressable>
           </View>

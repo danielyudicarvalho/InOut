@@ -5551,7 +5551,9 @@ button:disabled {
   justify-content: space-between;
   gap: 20px;
   box-shadow: 0 2px 8px rgba(80, 50, 20, 0.03);
-  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+  transition:
+    box-shadow 0.2s ease,
+    border-color 0.2s ease;
 }
 
 .correction-card:hover {
@@ -5696,7 +5698,9 @@ button:disabled {
   text-decoration: none;
   padding: 4px 8px;
   border-radius: 6px;
-  transition: background-color 0.15s ease, color 0.15s ease;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
 }
 
 .correction-action-link:hover {
@@ -6585,6 +6589,3 @@ button:disabled {
     max-width: 100%;
   }
 }
-
-
-

@@ -13,7 +13,8 @@ export function VerificationWarning() {
         accessible={false}
       />
       <Text style={s.warningText}>
-        Para evitar duplicidade, não crie outro lançamento igual enquanto verificamos.
+        Para evitar duplicidade, não crie outro lançamento igual enquanto
+        verificamos.
       </Text>
     </View>
   );

@@ -1,11 +1,5 @@
 import { useState, useRef, type ComponentRef } from "react";
-import {
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
 import {
@@ -144,6 +138,12 @@ function RecordForm({
   const [newOpen, setNewOpen] = useState(false);
   const scroll = useRef<ComponentRef<typeof ScrollView>>(null);
   const positions = useRef<Record<string, number>>({});
+  const { flowCategories, selectedCategory, parentId, roots, children } =
+    useCategoryHierarchy(
+      state.options?.categories ?? [],
+      state.kind,
+      state.fields?.categoryId ?? "",
+    );
 
   const back = () => {
     if (reviewing && state.status === "ready") {
@@ -156,7 +156,11 @@ function RecordForm({
     });
   };
 
-  if (state.status === "loading" || state.status === "error" || !state.options) {
+  if (
+    state.status === "loading" ||
+    state.status === "error" ||
+    !state.options
+  ) {
     return (
       <SafeAreaView style={s.safe}>
         <View style={s.content}>
@@ -192,12 +196,8 @@ function RecordForm({
   const locked = state.status !== "ready";
   const account = options.accounts.find((row) => row.id === fields.accountId);
 
-  const { flowCategories, selectedCategory, parentId, roots, children } =
-    useCategoryHierarchy(options.categories, state.kind, fields.categoryId);
-
   const destinations = options.accounts.filter(
-    (row) =>
-      row.id !== fields.accountId && row.currency === account?.currency,
+    (row) => row.id !== fields.accountId && row.currency === account?.currency,
   );
 
   const unavailable =
@@ -362,7 +362,7 @@ function RecordForm({
               parentId={parentId}
               selectedCategory={selectedCategory}
               roots={roots}
-              children={children}
+              childCategories={children}
               onEdit={(field, val) => state.edit(field, val)}
               creation={creation}
               onLayoutField={(field, y) => {

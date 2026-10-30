@@ -48,15 +48,21 @@ export function usePendingVerification({
     hasStoredPending: false,
   });
 
-  const [status, setStatus] = useState<"idle" | "verifying" | "confirmed" | "uncertain" | "error">("idle");
-  const [confirmedTransaction, setConfirmedTransaction] = useState<string | null>(null);
+  const [status, setStatus] = useState<
+    "idle" | "verifying" | "confirmed" | "uncertain" | "error"
+  >("idle");
+  const [confirmedTransaction, setConfirmedTransaction] = useState<
+    string | null
+  >(null);
   const [notice, setNotice] = useState<string>("");
 
   const repository = createFinanceRepository({
     baseUrl: process.env.EXPO_PUBLIC_API_BASE_URL,
     getToken: async () => {
-      const { data: sessionData, error } = await getAuthClient().auth.getSession();
-      if (error || !sessionData.session) throw new FinanceFailure("unauthorized");
+      const { data: sessionData, error } =
+        await getAuthClient().auth.getSession();
+      if (error || !sessionData.session)
+        throw new FinanceFailure("unauthorized");
       return sessionData.session.access_token;
     },
   });
@@ -78,9 +84,15 @@ export function usePendingVerification({
             const parsed = JSON.parse(raw);
             const body = parsed.body || {};
             const kind = (parsed.kind as RecordKind) || initialKind;
-            const amount = typeof body.amountCents === "number" ? body.amountCents : initialAmount;
+            const amount =
+              typeof body.amountCents === "number"
+                ? body.amountCents
+                : initialAmount;
             const desc = body.description || initialDescription;
-            const date = body.occurredOn || initialDate || new Date().toISOString().slice(0, 10);
+            const date =
+              body.occurredOn ||
+              initialDate ||
+              new Date().toISOString().slice(0, 10);
 
             setData({
               kind,
@@ -108,7 +120,15 @@ export function usePendingVerification({
     return () => {
       active = false;
     };
-  }, [householdId, initialKind, initialDescription, initialAmount, initialDate, initialCurrency, initialAccount]);
+  }, [
+    householdId,
+    initialKind,
+    initialDescription,
+    initialAmount,
+    initialDate,
+    initialCurrency,
+    initialAccount,
+  ]);
 
   const verify = useCallback(async () => {
     if (!householdId || status === "verifying") return;
@@ -119,8 +139,12 @@ export function usePendingVerification({
     try {
       const { data: userData } = await getAuthClient().auth.getUser();
       const actorId = userData?.user?.id;
-      const storageKey = actorId ? `inout:pending-record:v1:${actorId}:${householdId}` : null;
-      const rawStored = storageKey ? await AsyncStorage.getItem(storageKey) : null;
+      const storageKey = actorId
+        ? `inout:pending-record:v1:${actorId}:${householdId}`
+        : null;
+      const rawStored = storageKey
+        ? await AsyncStorage.getItem(storageKey)
+        : null;
 
       // 1. If stored pending record exists, submit idempotent replay to real backend
       if (rawStored) {
@@ -151,7 +175,8 @@ export function usePendingVerification({
       const match = history.items.find((item: HistoryItem) => {
         const sameDate = item.date === data.date;
         const sameAmount = Math.abs(item.amount) === Math.abs(data.amount);
-        const sameDesc = !data.description || item.description === data.description;
+        const sameDesc =
+          !data.description || item.description === data.description;
         return sameDate && (sameAmount || sameDesc);
       });
 
@@ -161,7 +186,9 @@ export function usePendingVerification({
         setStatus("confirmed");
       } else {
         setStatus("uncertain");
-        setNotice("Ainda em processamento pelo servidor. Tente novamente em instantes.");
+        setNotice(
+          "Ainda em processamento pelo servidor. Tente novamente em instantes.",
+        );
       }
     } catch (err) {
       const msg = financeMessage(err);

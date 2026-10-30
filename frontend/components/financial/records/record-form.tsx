@@ -55,7 +55,7 @@ export function RecordForm({
   onReview,
 }: RecordFormProps) {
   const [reviewError, setReviewError] = useState("");
-  const [focusField, setFocusField] = useState<keyof RecordFields | null>(null);
+  const [focusField] = useState<keyof RecordFields | null>(null);
   const locked = status !== "ready";
 
   useEffect(() => {
@@ -88,11 +88,11 @@ export function RecordForm({
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
     try {
-      const summary = recordReview(
-        kind,
-        fields,
-        { accounts, categories, sources },
-      );
+      const summary = recordReview(kind, fields, {
+        accounts,
+        categories,
+        sources,
+      });
       setReviewError("");
       onReview(summary);
     } catch (error) {

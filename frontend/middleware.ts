@@ -40,7 +40,9 @@ export function middleware(req: NextRequest) {
   // Retrieve session token from HttpOnly cookie or Supabase project cookie fallback
   const sessionCookie =
     req.cookies.get("inout-session")?.value ||
-    req.cookies.getAll().find((c) => c.name.startsWith("sb-") && c.name.endsWith("-auth-token"))
+    req.cookies
+      .getAll()
+      .find((c) => c.name.startsWith("sb-") && c.name.endsWith("-auth-token"))
       ?.value;
 
   const isAuthenticated = Boolean(sessionCookie);

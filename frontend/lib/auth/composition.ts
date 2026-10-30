@@ -8,7 +8,11 @@ import { createSupabaseAuthRepository } from "@inout/identity/supabase";
 let client: SupabaseClient | undefined;
 
 export function syncSessionCookie(
-  session: { access_token?: string; refresh_token?: string; expires_in?: number } | null,
+  session: {
+    access_token?: string;
+    refresh_token?: string;
+    expires_in?: number;
+  } | null,
 ) {
   if (typeof window === "undefined") return;
   if (session?.access_token) {

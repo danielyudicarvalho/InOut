@@ -36,7 +36,10 @@ export function VerificationCard({
   const formattedAmount = money(Math.abs(amount), currency);
 
   return (
-    <section className="verification-card" aria-label="Dados do lançamento em verificação">
+    <section
+      className="verification-card"
+      aria-label="Dados do lançamento em verificação"
+    >
       <div className="verification-card-header">
         <div className="verification-icon-circle">
           {isTransfer ? (
@@ -49,11 +52,7 @@ export function VerificationCard({
         </div>
         <strong className="verification-record-title">
           {description.trim() ||
-            (isTransfer
-              ? "Transferência"
-              : isIncome
-                ? "Entrada"
-                : "Saída")}
+            (isTransfer ? "Transferência" : isIncome ? "Entrada" : "Saída")}
         </strong>
         <div className="verification-badge">
           <Clock size={15} weight="bold" />
@@ -72,11 +71,7 @@ export function VerificationCard({
             <span>Tipo</span>
           </dt>
           <dd>
-            {isExpense
-              ? "Saída"
-              : isIncome
-                ? "Entrada"
-                : "Transferência"}
+            {isExpense ? "Saída" : isIncome ? "Entrada" : "Transferência"}
           </dd>
         </div>
 

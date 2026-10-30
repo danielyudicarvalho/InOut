@@ -80,7 +80,9 @@ function AccountView({
     );
   }
 
-  const activeHousehold = home.households.find((h) => h.id === home.householdId);
+  const activeHousehold = home.households.find(
+    (h) => h.id === home.householdId,
+  );
 
   return (
     <AccountForm

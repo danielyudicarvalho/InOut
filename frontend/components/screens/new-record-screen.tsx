@@ -79,7 +79,9 @@ function RecordView({
     );
   }
 
-  const activeHousehold = home.households.find((row) => row.id === home.householdId);
+  const activeHousehold = home.households.find(
+    (row) => row.id === home.householdId,
+  );
 
   return (
     <RecordScreenContent
@@ -112,7 +114,11 @@ function RecordScreenContent({
 
   const backHref = `/lancamentos?${new URLSearchParams({ household, period, currency })}`;
 
-  if (state.status === "loading" || state.status === "error" || !state.options) {
+  if (
+    state.status === "loading" ||
+    state.status === "error" ||
+    !state.options
+  ) {
     return (
       <main className="financial-state">
         <h1>{recordTitles[kind]}</h1>
@@ -131,14 +137,18 @@ function RecordScreenContent({
 
   const { options, fields } = state;
   const account = options.accounts.find((row) => row.id === fields.accountId);
-  const categories = options.categories.filter((row) => row.flow === state.kind);
+  const categories = options.categories.filter(
+    (row) => row.flow === state.kind,
+  );
   const destinations = options.accounts.filter(
     (row) => row.id !== fields.accountId && row.currency === account?.currency,
   );
 
   const unavailable =
     !options.accounts.length ||
-    (state.kind === "transfer" ? destinations.length === 0 : categories.length === 0);
+    (state.kind === "transfer"
+      ? destinations.length === 0
+      : categories.length === 0);
 
   const showReview =
     (reviewing && state.status !== "success") ||

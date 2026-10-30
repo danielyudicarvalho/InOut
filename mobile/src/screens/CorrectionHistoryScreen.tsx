@@ -277,7 +277,8 @@ function CorrectionHistoryView({
                     {/* Subtitle / Details */}
                     {isReversal ? (
                       <Text style={s.metaSubtitle}>
-                        {step.reason || "Motivo: valor informado incorretamente."}
+                        {step.reason ||
+                          "Motivo: valor informado incorretamente."}
                       </Text>
                     ) : (
                       <Text style={s.metaSubtitle}>
@@ -307,9 +308,7 @@ function CorrectionHistoryView({
                         <Text
                           style={[
                             s.amountText,
-                            step.detail.amount < 0
-                              ? s.amountOut
-                              : s.amountIn,
+                            step.detail.amount < 0 ? s.amountOut : s.amountIn,
                           ]}
                         >
                           {signedAmount}
@@ -397,10 +396,7 @@ function CorrectionHistoryView({
         </View>
 
         {/* Back Button */}
-        <Pressable
-          style={s.backButton}
-          onPress={() => target(transactionId)}
-        >
+        <Pressable style={s.backButton} onPress={() => target(transactionId)}>
           <MaterialCommunityIcons
             name="arrow-left"
             size={18}

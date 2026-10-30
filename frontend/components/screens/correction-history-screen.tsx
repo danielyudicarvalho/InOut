@@ -12,7 +12,6 @@ import {
   ShoppingCart,
   ArrowsLeftRight,
   User,
-  Wallet,
 } from "@phosphor-icons/react";
 import { money, type CorrectionChainStep } from "@inout/finance";
 import { BrandLogo } from "../ui/brand-logo";
@@ -149,7 +148,10 @@ function CorrectionHistoryView({
       <div className="correction-history-content">
         <header className="correction-hero-header">
           <div className="correction-hero-copy">
-            <nav className="correction-breadcrumb" aria-label="Trilha de navegação">
+            <nav
+              className="correction-breadcrumb"
+              aria-label="Trilha de navegação"
+            >
               <Link href={backToHistory}>+ Lançamentos</Link>
               <span className="breadcrumb-separator">/</span>
               <span>Histórico de correções</span>
@@ -168,11 +170,13 @@ function CorrectionHistoryView({
           </div>
         </header>
 
-        <section className="correction-timeline" aria-label="Linha do tempo de correções">
+        <section
+          className="correction-timeline"
+          aria-label="Linha do tempo de correções"
+        >
           {chain.steps.map((step, idx) => {
             const isOriginal = step.kind === "original";
             const isReversal = step.kind === "reversal";
-            const isSubstitute = step.kind === "substitute";
             const signedAmount =
               step.detail.amount < 0
                 ? `- ${money(Math.abs(step.detail.amount), step.detail.currency)}`
@@ -234,7 +238,8 @@ function CorrectionHistoryView({
 
                         {isReversal ? (
                           <p className="correction-meta-subtitle">
-                            {step.reason || "Motivo: valor informado incorretamente."}
+                            {step.reason ||
+                              "Motivo: valor informado incorretamente."}
                           </p>
                         ) : (
                           <p className="correction-meta-subtitle">
@@ -309,17 +314,13 @@ function CorrectionHistoryView({
           <div className="correction-summary-net">
             <Coins size={24} weight="fill" />
             <p>
-              Efeito final desta cadeia:{" "}
-              <strong>{chain.netLabel}</strong>.
+              Efeito final desta cadeia: <strong>{chain.netLabel}</strong>.
             </p>
           </div>
         </section>
 
         <footer className="correction-footer">
-          <Link
-            className="correction-back-button"
-            href={target(transactionId)}
-          >
+          <Link className="correction-back-button" href={target(transactionId)}>
             <ArrowLeft size={18} />
             <span>Voltar ao lançamento</span>
           </Link>

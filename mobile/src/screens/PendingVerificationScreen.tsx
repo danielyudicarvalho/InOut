@@ -1,11 +1,5 @@
 import { useEffect } from "react";
-import {
-  Image,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { Image, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useLocalSearchParams } from "expo-router";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
@@ -127,8 +121,12 @@ export function PendingVerificationScreen({
 
   const isSubmitting = submitting || backend.status === "verifying";
 
-  const activeDescription = backend.data.hasStoredPending ? backend.data.description : qDescription;
-  const activeAmount = backend.data.hasStoredPending ? backend.data.amount : qAmount;
+  const activeDescription = backend.data.hasStoredPending
+    ? backend.data.description
+    : qDescription;
+  const activeAmount = backend.data.hasStoredPending
+    ? backend.data.amount
+    : qAmount;
   const activeDate = backend.data.hasStoredPending ? backend.data.date : qDate;
   const activeKind = backend.data.hasStoredPending ? backend.data.kind : qKind;
 

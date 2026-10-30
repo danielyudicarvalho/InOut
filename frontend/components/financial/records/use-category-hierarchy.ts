@@ -15,7 +15,9 @@ export function useCategoryHierarchy(
   selectedCategoryId: string,
 ): CategoryHierarchy {
   return useMemo(() => {
-    const selectedCategory = categories.find((c) => c.id === selectedCategoryId);
+    const selectedCategory = categories.find(
+      (c) => c.id === selectedCategoryId,
+    );
     const parentId = selectedCategory?.parentId ?? selectedCategoryId;
     const roots = categories.filter((c) => !c.parentId);
     const children = categories.filter((c) => c.parentId === parentId);

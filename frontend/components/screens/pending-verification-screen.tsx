@@ -25,7 +25,6 @@ export function PendingVerificationScreen({
   household = "",
   householdName = "",
   kind = "expense",
-  summary = null,
   description = "",
   amount = 0,
   currency = "BRL",
@@ -52,7 +51,9 @@ export function PendingVerificationScreen({
   const router = useRouter();
 
   const qHousehold = p?.get("household") || household;
-  const qKind = ((p?.get("kind") as RecordKind) || kind || "expense") as RecordKind;
+  const qKind = ((p?.get("kind") as RecordKind) ||
+    kind ||
+    "expense") as RecordKind;
   const qDescription = p?.get("description") ?? description;
   const rawAmount = p?.get("amount") ?? amount;
   const qAmount =
@@ -106,7 +107,13 @@ export function PendingVerificationScreen({
         })}`,
       );
     }
-  }, [backend.confirmedTransaction, resolvedHousehold, qPeriod, qCurrency, router]);
+  }, [
+    backend.confirmedTransaction,
+    resolvedHousehold,
+    qPeriod,
+    qCurrency,
+    router,
+  ]);
 
   const handleVerify = () => {
     if (onRetry) {
@@ -119,8 +126,12 @@ export function PendingVerificationScreen({
   const isSubmitting = submitting || backend.status === "verifying";
 
   // Use either active hook data or query params
-  const activeDescription = backend.data.hasStoredPending ? backend.data.description : qDescription;
-  const activeAmount = backend.data.hasStoredPending ? backend.data.amount : qAmount;
+  const activeDescription = backend.data.hasStoredPending
+    ? backend.data.description
+    : qDescription;
+  const activeAmount = backend.data.hasStoredPending
+    ? backend.data.amount
+    : qAmount;
   const activeDate = backend.data.hasStoredPending ? backend.data.date : qDate;
   const activeKind = backend.data.hasStoredPending ? backend.data.kind : qKind;
 
@@ -143,10 +154,18 @@ export function PendingVerificationScreen({
           </div>
 
           <div className="topbar-actions">
-            <button className="topbar-icon-btn" aria-label="Pesquisar" type="button">
+            <button
+              className="topbar-icon-btn"
+              aria-label="Pesquisar"
+              type="button"
+            >
               <MagnifyingGlass size={19} />
             </button>
-            <button className="topbar-icon-btn" aria-label="Notificações" type="button">
+            <button
+              className="topbar-icon-btn"
+              aria-label="Notificações"
+              type="button"
+            >
               <Bell size={19} />
             </button>
             <div className="user-avatar-sprout" aria-label="Usuário">
@@ -166,7 +185,9 @@ export function PendingVerificationScreen({
             />
           </div>
 
-          <h1 className="verification-title">Estamos verificando seu lançamento</h1>
+          <h1 className="verification-title">
+            Estamos verificando seu lançamento
+          </h1>
           <p className="verification-subtitle">
             Ainda não foi possível confirmar o resultado. Ele pode já ter sido
             registrado.

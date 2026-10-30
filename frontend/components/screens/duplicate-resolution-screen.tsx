@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -15,9 +14,8 @@ import {
   TrendUp,
   User,
   Clock,
-  ArrowSquareOut,
 } from "@phosphor-icons/react";
-import { money, displayDate, type DuplicateRecord } from "@inout/finance";
+import { money, displayDate } from "@inout/finance";
 import { BrandLogo } from "../ui/brand-logo";
 import { useDuplicateResolution } from "../../lib/finance/use-duplicate-resolution";
 
@@ -82,7 +80,11 @@ function DuplicateResolutionView({
     ...(currency ? { currency } : {}),
   })}`;
 
-  if (state.status === "loading" || state.status === "error" || !state.comparison) {
+  if (
+    state.status === "loading" ||
+    state.status === "error" ||
+    !state.comparison
+  ) {
     return (
       <main className="financial-state">
         <h1>Resolver duplicidade</h1>
@@ -151,7 +153,10 @@ function DuplicateResolutionView({
       <div className="duplicate-content">
         <header className="duplicate-hero-header">
           <div className="duplicate-hero-copy">
-            <nav className="duplicate-breadcrumb" aria-label="Trilha de navegação">
+            <nav
+              className="duplicate-breadcrumb"
+              aria-label="Trilha de navegação"
+            >
               <Link href={backToHistory}>Lançamentos</Link>
               <span className="breadcrumb-separator">/</span>
               <span>Resolver duplicidade</span>

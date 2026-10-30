@@ -47,11 +47,7 @@ export function VerificationCard({
 
         <Text style={s.recordTitle} numberOfLines={1}>
           {description.trim() ||
-            (isTransfer
-              ? "Transferência"
-              : isIncome
-                ? "Entrada"
-                : "Saída")}
+            (isTransfer ? "Transferência" : isIncome ? "Entrada" : "Saída")}
         </Text>
 
         <View style={s.badge}>

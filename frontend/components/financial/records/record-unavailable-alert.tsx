@@ -30,7 +30,8 @@ export function RecordUnavailableAlert({
   if (kind !== "transfer" && !hasCategories) {
     return (
       <p role="alert">
-        Cadastre uma categoria correspondente a este tipo de movimentação antes de registrar.
+        Cadastre uma categoria correspondente a este tipo de movimentação antes
+        de registrar.
       </p>
     );
   }

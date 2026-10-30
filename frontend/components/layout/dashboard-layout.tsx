@@ -1,7 +1,10 @@
 "use client";
 
 import { type ReactNode } from "react";
-import { DashboardSidebar, type DashboardSidebarProps } from "./dashboard-sidebar";
+import {
+  DashboardSidebar,
+  type DashboardSidebarProps,
+} from "./dashboard-sidebar";
 
 export interface DashboardLayoutProps extends DashboardSidebarProps {
   children: ReactNode;

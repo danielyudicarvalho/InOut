@@ -1,12 +1,14 @@
 "use client";
 
-import type {
-  RecordFields,
-  RecordKind,
-  RecordOptions,
-} from "@inout/finance";
-import { AuxiliarySelector, DateSelector } from "../selectors/auxiliary-selector";
-import { useCategoryHierarchy, type CategoryOption } from "./use-category-hierarchy";
+import type { RecordFields, RecordKind, RecordOptions } from "@inout/finance";
+import {
+  AuxiliarySelector,
+  DateSelector,
+} from "../selectors/auxiliary-selector";
+import {
+  useCategoryHierarchy,
+  type CategoryOption,
+} from "./use-category-hierarchy";
 
 export type AccountOption = RecordOptions["accounts"][number];
 export type SourceOption = RecordOptions["sources"][number];
@@ -46,8 +48,10 @@ export function RecordFormFields({
   onEdit,
   createHelper,
 }: RecordFormFieldsProps) {
-  const { selectedCategory, parentId, roots, children } =
-    useCategoryHierarchy(categories, fields.categoryId);
+  const { selectedCategory, parentId, roots, children } = useCategoryHierarchy(
+    categories,
+    fields.categoryId,
+  );
 
   return (
     <fieldset disabled={locked}>
@@ -215,9 +219,7 @@ export function RecordFormFields({
           value={fields.description}
           onChange={(e) => onEdit("description", e.target.value)}
         />
-        <small className="record-count">
-          {fields.description.length}/500
-        </small>
+        <small className="record-count">{fields.description.length}/500</small>
       </label>
     </fieldset>
   );

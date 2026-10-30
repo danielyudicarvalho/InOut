@@ -42,7 +42,9 @@ export function AccountKindPickerModal({
                 style={[s.optionItem, isSelected && s.optionItemSelected]}
                 onPress={() => onSelect(id)}
               >
-                <Text style={[s.optionText, isSelected && s.optionTextSelected]}>
+                <Text
+                  style={[s.optionText, isSelected && s.optionTextSelected]}
+                >
                   {label}
                 </Text>
               </Pressable>
