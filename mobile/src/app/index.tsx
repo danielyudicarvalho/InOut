@@ -1,4 +1,9 @@
+import { AuthenticatedGate } from "../auth/AuthenticatedGate";
 import { WelcomeScreen } from "../screens/WelcomeScreen";
 export default function Page() {
-  return <WelcomeScreen fontsReady />;
+  return (
+    <AuthenticatedGate allowAnonymous>
+      <WelcomeScreen fontsReady />
+    </AuthenticatedGate>
+  );
 }

@@ -1,3 +1,4 @@
+import { BrandLogo } from "../components/BrandLogo";
 import { useRef, useState } from "react";
 import {
   View,
@@ -40,7 +41,9 @@ export function RegisterScreen() {
       const result = await getAuth().signUp(values);
       rememberEmail(values.email);
       setValues({ ...values, password: "", confirmation: "" });
-      router.replace(result === "signedIn" ? "/comecar" : "/confirmar-email");
+      router.replace(
+        result === "signedIn" ? "/preparando" : "/confirmar-email",
+      );
     } catch (error) {
       setNotice(authMessage(error));
     } finally {
@@ -90,8 +93,7 @@ export function RegisterScreen() {
             onPress={() => router.replace("/")}
             style={s.brand}
           >
-            <MaterialCommunityIcons name="sprout" size={28} color={t.green} />
-            <Text style={s.brandText}>ninho</Text>
+            <BrandLogo />
           </Pressable>
           <Image
             source={require("../../assets/pipo-home.webp")}

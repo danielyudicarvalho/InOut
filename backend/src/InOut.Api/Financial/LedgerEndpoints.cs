@@ -147,6 +147,9 @@ public static class LedgerEndpoints
         ledger.MapGet(ApiContract.Routes.History, async (
             Guid householdId,
             int? limit,
+            int? offset,
+            bool? includeSubcategories,
+            Guid? transactionId,
             DateOnly? from,
             DateOnly? to,
             Guid? accountId,
@@ -160,7 +163,7 @@ public static class LedgerEndpoints
         {
             FinancialTransactionKind? parsedKind = !string.IsNullOrWhiteSpace(kind) && Enum.TryParse<FinancialTransactionKind>(kind, ignoreCase: true, out var k) ? k : null;
             return Results.Ok(await service.GetHistoryAsync(UserId(principal), householdId, limit ?? 100,
-                new LedgerHistoryFilter(from, to, accountId, categoryId, parsedKind, incomeSourceId, search), cancellationToken));
+                new LedgerHistoryFilter(from, to, accountId, categoryId, parsedKind, incomeSourceId, search, Math.Max(0, offset ?? 0), includeSubcategories ?? false, transactionId), cancellationToken));
         }).WithName(ApiContract.EndpointNames.GetLedgerHistory);
 
         ledger.MapPost(ApiContract.Routes.Income, async (
@@ -258,6 +261,7 @@ public static class LedgerEndpoints
             Guid householdId,
             Guid transactionId,
             CorrectTransactionClassificationRequest request,
+            [FromHeader(Name = ApiContract.Headers.IdempotencyKey)] Guid? idempotencyKey,
             ClaimsPrincipal principal,
             LedgerService service,
             CancellationToken cancellationToken) =>
@@ -269,7 +273,8 @@ public static class LedgerEndpoints
                 request.CategoryId,
                 request.IncomeSourceId,
                 request.Description,
-                cancellationToken);
+                cancellationToken,
+                idempotencyKey);
             return Results.Ok(updatedItem);
         }).WithName(ApiContract.EndpointNames.CorrectTransactionClassification);
 
@@ -330,6 +335,42 @@ public static class LedgerEndpoints
                 new GetFinancialDashboardQuery(UserId(principal), householdId, year, month, from, to),
                 cancellationToken)))
             .WithName(ApiContract.EndpointNames.GetFinancialDashboard);
+
+        ledger.MapGet(ApiContract.Routes.IncomeBreakdown, async (
+            Guid householdId,
+            string currency,
+            int? year,
+            int? month,
+            DateOnly? from,
+            DateOnly? to,
+            int? offset,
+            int? limit,
+            ClaimsPrincipal principal,
+            GetIncomeBreakdown useCase,
+            CancellationToken cancellationToken) =>
+            Results.Ok(await useCase.ExecuteAsync(
+                new GetIncomeBreakdownQuery(UserId(principal), householdId, currency,
+                    year, month, from, to, offset ?? 0, limit ?? 50),
+                cancellationToken)))
+            .WithName(ApiContract.EndpointNames.GetIncomeBreakdown);
+
+        ledger.MapGet(ApiContract.Routes.ExpenseBreakdown, async (
+            Guid householdId,
+            string currency,
+            int? year,
+            int? month,
+            DateOnly? from,
+            DateOnly? to,
+            int? offset,
+            int? limit,
+            ClaimsPrincipal principal,
+            GetExpenseBreakdown useCase,
+            CancellationToken cancellationToken) =>
+            Results.Ok(await useCase.ExecuteAsync(
+                new GetExpenseBreakdownQuery(UserId(principal), householdId, currency,
+                    year, month, from, to, offset ?? 0, limit ?? 50),
+                cancellationToken)))
+            .WithName(ApiContract.EndpointNames.GetExpenseBreakdown);
 
         ledger.MapGet(ApiContract.Routes.CompareDashboard, async (
             Guid householdId,

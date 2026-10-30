@@ -327,7 +327,7 @@ public sealed class FinancialTransaction
             targetCategoryId = newCategory.Id;
         }
 
-        Guid? targetIncomeSourceId = IncomeSourceId;
+        Guid? targetIncomeSourceId = null;
         if (newIncomeSource is not null)
         {
             if (Kind != FinancialTransactionKind.Income)

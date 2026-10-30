@@ -1,4 +1,9 @@
-import { WelcomeScreen } from "../components/welcome-screen";
+import { AuthenticatedGate } from "../components/auth/authenticated-gate";
+import { WelcomeScreen } from "../components/screens/welcome-screen";
 export default function Home() {
-  return <WelcomeScreen />;
+  return (
+    <AuthenticatedGate allowAnonymous>
+      <WelcomeScreen />
+    </AuthenticatedGate>
+  );
 }

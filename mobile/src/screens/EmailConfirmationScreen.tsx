@@ -1,3 +1,4 @@
+import { BrandLogo } from "../components/BrandLogo";
 import { useConfirmation } from "../auth/use-confirmation";
 import {
   View,
@@ -52,8 +53,7 @@ export function EmailConfirmationScreen({
           onPress={() => router.replace("/")}
           style={s.brand}
         >
-          <MaterialCommunityIcons name="sprout" color={t.green} size={28} />
-          <Text style={s.brandText}>ninho</Text>
+          <BrandLogo />
         </Pressable>
         <Image
           source={require("../../assets/pipo-home.webp")}

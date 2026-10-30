@@ -1,5 +1,9 @@
-import { InvitationResultScreen } from "../../components/invitation-result-screen";
-
+import { AuthenticatedGate } from "../../components/auth/authenticated-gate";
+import { InvitationResultScreen } from "../../components/screens/invitation-result-screen";
 export default function Page() {
-  return <InvitationResultScreen result="used" />;
+  return (
+    <AuthenticatedGate>
+      <InvitationResultScreen key="used" result="used" />
+    </AuthenticatedGate>
+  );
 }

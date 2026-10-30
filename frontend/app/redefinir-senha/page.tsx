@@ -1,4 +1,4 @@
-import { ResetPasswordScreen } from "../../components/reset-password-screen";
+import { ResetPasswordScreen } from "../../components/screens/reset-password-screen";
 
 export default function Page() {
   return <ResetPasswordScreen />;

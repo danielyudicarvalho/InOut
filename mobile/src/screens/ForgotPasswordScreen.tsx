@@ -1,3 +1,4 @@
+import { BrandLogo } from "../components/BrandLogo";
 import { useState } from "react";
 import {
   View,
@@ -45,8 +46,7 @@ export function ForgotPasswordScreen() {
             onPress={() => router.replace("/")}
             style={s.brand}
           >
-            <MaterialCommunityIcons name="sprout" size={28} color={t.green} />
-            <Text style={s.brandText}>ninho</Text>
+            <BrandLogo />
           </Pressable>
           <Image
             source={

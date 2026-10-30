@@ -102,7 +102,8 @@ public sealed class GetFinancialDashboard(
                     account.BalanceCents,
                     activity?.InflowCents ?? 0,
                     activity?.OutflowCents ?? 0,
-                    activity?.NetChangeCents ?? 0);
+                    activity?.NetChangeCents ?? 0,
+                    account.InitialBalanceCents);
             }).ToArray(),
             categoryExpenses,
             incomeSourceIncomes,
@@ -121,6 +122,7 @@ public sealed class GetFinancialDashboard(
                 goal.Name,
                 goal.TargetCents,
                 goal.AllocatedCents,
-                goal.TargetDate)).ToArray());
+                goal.TargetDate)).ToArray(),
+            source.HasFinancialActivity);
     }
 }

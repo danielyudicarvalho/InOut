@@ -61,6 +61,7 @@ internal static class PersistenceVocabulary
         internal const string PostTransfer = "post_transfer";
         internal const string ReverseTransaction = "reverse_transaction";
         internal const string SetBudget = "set_budget";
+        internal const string CorrectClassification = "correct_classification";
     }
 
     internal static class MetricTags

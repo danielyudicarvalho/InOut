@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { BrandLogo } from "../components/BrandLogo";
+import { useEffect } from "react";
 import {
   Text,
   View,
@@ -10,41 +11,42 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
-import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
+import { useSessionRestoration } from "../auth/use-session-restoration";
 import { theme as t } from "../theme";
-
-type SessionState = "loading" | "expired" | "error";
-const copy = {
+export type SessionState = "loading" | "expired" | "error";
+const content = {
   loading: {
     title: "Preparando seu Ninho...",
     description: "Estamos verificando seu acesso.",
+    art: require("../../assets/pipo-session-loading.webp"),
+    alt: "Pipo sentado em seu ninho entre flores",
   },
   expired: {
     title: "Entre novamente",
     description: "Sua sessão expirou. Entre para continuar.",
+    art: require("../../assets/pipo-session-expired.webp"),
+    alt: "Pipo ao lado de uma chave dourada",
   },
   error: {
     title: "Não foi possível continuar",
     description:
       "Não conseguimos verificar seu acesso. Confira sua conexão e tente novamente.",
+    art: require("../../assets/pipo-session-error.webp"),
+    alt: "Pipo com um símbolo de conexão indisponível",
   },
 };
-export function SessionScreen({
-  initialState = "loading",
+export function SessionView({
+  state,
+  notice = "",
+  onRetry,
+  onLogin,
 }: {
-  initialState?: SessionState;
+  state: SessionState;
+  notice?: string;
+  onRetry?: () => void;
+  onLogin?: () => void;
 }) {
-  const [state, setState] = useState(initialState);
-  const [retrying, setRetrying] = useState(false);
-  useEffect(() => {
-    if (!retrying) return;
-    const timer = setTimeout(() => {
-      setState("error");
-      setRetrying(false);
-    }, 1200);
-    return () => clearTimeout(timer);
-  }, [retrying]);
-  const current = copy[state];
+  const current = content[state];
   return (
     <SafeAreaView style={s.safe}>
       <ScrollView contentContainerStyle={s.content}>
@@ -54,85 +56,86 @@ export function SessionScreen({
           onPress={() => router.replace("/")}
           style={s.brand}
         >
-          <MaterialCommunityIcons name="sprout" size={32} color={t.green} />
-          <Text style={s.brandText}>ninho</Text>
+          <BrandLogo />
         </Pressable>
         <Image
-          source={require("../../assets/pipo-home.webp")}
+          source={current.art}
           style={s.art}
-          resizeMode="cover"
-          accessibilityLabel="Pipo em seu ninho entre plantas"
+          resizeMode="contain"
+          accessibilityLabel={current.alt}
         />
-        <View style={s.icon}>
-          {state === "loading" ? (
-            <ActivityIndicator
-              size="large"
-              color={t.green}
-              accessibilityLabel="Verificando acesso"
-            />
-          ) : (
-            <MaterialCommunityIcons
-              name={state === "expired" ? "key-outline" : "wifi-off"}
-              size={38}
-              color={t.green}
-            />
-          )}
-        </View>
+        {state === "loading" ? (
+          <ActivityIndicator
+            size="large"
+            color={t.green}
+            accessibilityLabel="Verificando acesso"
+            style={s.spinner}
+          />
+        ) : null}
         <View accessibilityLiveRegion="polite">
           <Text accessibilityRole="header" style={s.title}>
             {current.title}
           </Text>
           <Text style={s.description}>{current.description}</Text>
+          {notice ? <Text style={s.detail}>{notice}</Text> : null}
         </View>
-        {state === "error" && (
+        {state === "error" && onRetry ? (
           <Pressable
             accessibilityRole="button"
             style={s.primary}
-            onPress={() => {
-              setState("loading");
-              setRetrying(true);
-            }}
+            onPress={onRetry}
           >
             <Text style={s.primaryText}>Tentar novamente</Text>
           </Pressable>
-        )}
-        {state !== "loading" && (
+        ) : null}
+        {state !== "loading" ? (
           <Pressable
             accessibilityRole="button"
-            onPress={() => router.replace("/entrar")}
             style={state === "expired" ? s.primary : s.linkTarget}
+            onPress={onLogin ?? (() => router.replace("/entrar"))}
           >
             <Text style={state === "expired" ? s.primaryText : s.link}>
               Ir para entrar
             </Text>
           </Pressable>
-        )}
-        <Text style={s.preview}>
-          Prévia de interface. A restauração de sessão ainda não está integrada.
-          {retrying ? " Demonstrando uma nova tentativa." : ""}
-        </Text>
-        <Text style={s.preview}>Ver estados de demonstração:</Text>
-        <View style={s.demos}>
-          {(
-            [
-              { route: "/preparando", label: "Carregando" },
-              { route: "/sessao-expirada", label: "Sessão expirada" },
-              { route: "/falha-acesso", label: "Falha ao restaurar" },
-              { route: "/entrar", label: "Entrar" },
-            ] as const
-          ).map(({ route, label }) => (
-            <Pressable
-              accessibilityRole="button"
-              key={route}
-              onPress={() => router.replace(route)}
-              style={s.linkTarget}
-            >
-              <Text style={s.link}>{label}</Text>
-            </Pressable>
-          ))}
-        </View>
+        ) : null}
       </ScrollView>
     </SafeAreaView>
+  );
+}
+export function SessionScreen({
+  initialState = "loading",
+}: {
+  initialState?: SessionState;
+}) {
+  return initialState === "loading" ? (
+    <RestoringSessionScreen />
+  ) : (
+    <SessionView
+      state={initialState}
+      onRetry={() => router.replace("/preparando")}
+    />
+  );
+}
+function RestoringSessionScreen() {
+  const { status, notice, retry } = useSessionRestoration();
+  useEffect(() => {
+    if (status === "authenticated") router.replace("/comecar");
+    else if (status === "confirmationRequired")
+      router.replace("/confirmar-email");
+  }, [status]);
+  return (
+    <SessionView
+      state={
+        status === "expired"
+          ? "expired"
+          : status === "error"
+            ? "error"
+            : "loading"
+      }
+      notice={notice}
+      onRetry={() => void retry()}
+    />
   );
 }
 const s = StyleSheet.create({
@@ -148,19 +151,8 @@ const s = StyleSheet.create({
   },
   brand: { flexDirection: "row", alignItems: "center", gap: 7, minHeight: 44 },
   brandText: { fontFamily: t.serif, fontSize: 30, color: t.ink },
-  art: {
-    width: 280,
-    maxWidth: "100%",
-    height: 210,
-    borderRadius: 24,
-    marginTop: 22,
-  },
-  icon: {
-    height: 42,
-    justifyContent: "center",
-    marginTop: 22,
-    marginBottom: 12,
-  },
+  art: { width: "100%", maxWidth: 340, height: 200, marginTop: 22 },
+  spinner: { marginTop: 12, marginBottom: 18 },
   title: {
     fontFamily: t.serif,
     fontSize: 27,
@@ -176,6 +168,14 @@ const s = StyleSheet.create({
     color: t.ink,
     textAlign: "center",
     marginBottom: 22,
+  },
+  detail: {
+    fontFamily: t.sans,
+    fontSize: 12,
+    lineHeight: 18,
+    color: t.muted,
+    textAlign: "center",
+    marginBottom: 18,
   },
   primary: {
     width: "100%",
@@ -199,19 +199,5 @@ const s = StyleSheet.create({
     fontSize: 12,
     color: "#35502a",
     textDecorationLine: "underline",
-  },
-  preview: {
-    fontFamily: t.sans,
-    fontSize: 11,
-    lineHeight: 17,
-    color: t.muted,
-    textAlign: "center",
-    marginTop: 18,
-  },
-  demos: {
-    flexDirection: "row",
-    justifyContent: "center",
-    flexWrap: "wrap",
-    gap: 5,
   },
 });

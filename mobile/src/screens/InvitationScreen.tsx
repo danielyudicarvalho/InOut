@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { BrandLogo } from "../components/BrandLogo";
+import { useRef, useState, type ComponentRef } from "react";
 import {
   View,
   Text,
@@ -9,6 +10,7 @@ import {
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
+  Keyboard,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
@@ -19,8 +21,23 @@ export function InvitationScreen() {
   const [step, setStep] = useState<"code" | "review">("code");
   const [code, setCode] = useState("");
   const [notice, setNotice] = useState("");
+  const scroll = useRef<ComponentRef<typeof ScrollView>>(null);
+  const input = useRef<ComponentRef<typeof TextInput>>(null);
+  function back() {
+    if (step === "review") {
+      setStep("code");
+      setNotice("");
+      scroll.current?.scrollTo({ y: 0, animated: false });
+    } else router.replace("/comecar");
+  }
   function verify() {
     const demoCode = code.trim().toUpperCase();
+    if (!demoCode) {
+      setNotice("Informe o código do convite.");
+      input.current?.focus();
+      return;
+    }
+    Keyboard.dismiss();
     if (demoCode === "NINHO-EXPIRADO") {
       router.push("/convite-expirado");
       return;
@@ -33,7 +50,7 @@ export function InvitationScreen() {
       router.push("/convite-utilizado");
       return;
     }
-    if (code.trim().toUpperCase() !== "NINHO-7K2M") {
+    if (demoCode !== "NINHO-7K2M") {
       setNotice(
         "Nesta prévia, use o código de demonstração NINHO-7K2M. Nenhum convite real foi consultado.",
       );
@@ -41,6 +58,7 @@ export function InvitationScreen() {
     }
     setNotice("");
     setStep("review");
+    scroll.current?.scrollTo({ y: 0, animated: false });
   }
   return (
     <SafeAreaView style={s.safe}>
@@ -49,23 +67,14 @@ export function InvitationScreen() {
         behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
         <ScrollView
+          ref={scroll}
           contentContainerStyle={s.content}
           keyboardShouldPersistTaps="handled"
         >
           <View style={s.brand}>
-            <MaterialCommunityIcons name="sprout" size={30} color={t.green} />
-            <Text style={s.brandText}>ninho</Text>
+            <BrandLogo />
           </View>
-          <Pressable
-            accessibilityRole="button"
-            style={s.back}
-            onPress={() => {
-              if (step === "review") {
-                setStep("code");
-                setNotice("");
-              } else router.replace("/comecar");
-            }}
-          >
+          <Pressable accessibilityRole="button" style={s.back} onPress={back}>
             <MaterialCommunityIcons
               name="arrow-left"
               size={20}
@@ -87,7 +96,11 @@ export function InvitationScreen() {
                 : "Pipo dando boas-vindas ao lado de uma casa de telhado verde"
             }
           />
-          <Text accessibilityRole="header" style={s.title}>
+          <Text
+            accessibilityRole="header"
+            accessibilityLiveRegion="polite"
+            style={s.title}
+          >
             {step === "code" ? "Entrar por convite" : "Este é o seu convite"}
           </Text>
           <Text style={s.subtitle}>
@@ -99,6 +112,7 @@ export function InvitationScreen() {
             <>
               <Text style={s.label}>Código do convite</Text>
               <TextInput
+                ref={input}
                 accessibilityLabel="Código do convite"
                 value={code}
                 onChangeText={(value) => {
@@ -202,7 +216,8 @@ export function InvitationScreen() {
           <Text style={s.preview}>
             Prévia com dados fictícios. Use NINHO-7K2M para revisar o exemplo.
             Outros estados: NINHO-EXPIRADO, NINHO-INVALIDO e NINHO-USADO. Nenhum
-            convite é verificado ou aceito no servidor.
+            convite é consultado ou aceito no servidor. Confirmar abre uma
+            prévia de resultado.
           </Text>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -212,7 +227,7 @@ export function InvitationScreen() {
 const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: t.cream },
   content: {
-    padding: 22,
+    padding: 18,
     paddingBottom: 32,
     width: "100%",
     maxWidth: 560,
@@ -227,7 +242,7 @@ const s = StyleSheet.create({
     color: "#35502a",
     textDecorationLine: "underline",
   },
-  art: { width: "100%", height: 180, marginBottom: 14 },
+  art: { width: "100%", aspectRatio: 2.5, marginBottom: 8 },
   title: { fontFamily: t.serif, fontSize: 31, lineHeight: 36, color: t.ink },
   subtitle: {
     fontFamily: t.sans,

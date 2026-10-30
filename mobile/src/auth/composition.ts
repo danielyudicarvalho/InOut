@@ -1,5 +1,6 @@
 import "react-native-url-polyfill/auto";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as SecureStore from "expo-secure-store";
 import {
   createClient,
   processLock,
@@ -9,6 +10,28 @@ import { Platform } from "react-native";
 import * as Linking from "expo-linking";
 import { createAuthService, requirePublicConfig } from "@inout/identity";
 import { createSupabaseAuthRepository } from "@inout/identity/supabase";
+
+export const secureAuthStorage = {
+  getItem: async (key: string): Promise<string | null> => {
+    if (Platform.OS === "web") {
+      return AsyncStorage.getItem(key);
+    }
+    return SecureStore.getItemAsync(key);
+  },
+  setItem: async (key: string, value: string): Promise<void> => {
+    if (Platform.OS === "web") {
+      return AsyncStorage.setItem(key, value);
+    }
+    return SecureStore.setItemAsync(key, value);
+  },
+  removeItem: async (key: string): Promise<void> => {
+    if (Platform.OS === "web") {
+      return AsyncStorage.removeItem(key);
+    }
+    return SecureStore.deleteItemAsync(key);
+  },
+};
+
 let client: SupabaseClient | undefined;
 let email = "";
 export function getAuthClient() {
@@ -17,7 +40,7 @@ export function getAuthClient() {
   requirePublicConfig(url, key);
   return (client ??= createClient(url!, key!, {
     auth: {
-      storage: AsyncStorage,
+      storage: secureAuthStorage,
       flowType: "pkce",
       detectSessionInUrl: false,
       persistSession: true,

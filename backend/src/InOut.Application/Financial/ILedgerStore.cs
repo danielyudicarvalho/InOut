@@ -81,7 +81,8 @@ public interface ILedgerStore
         Guid? categoryId,
         Guid? incomeSourceId,
         string? description,
-        CancellationToken cancellationToken);
+        CancellationToken cancellationToken,
+        IdempotencyRequest? idempotencyRequest = null);
 
     Task<IReadOnlyList<AccountBalance>> GetBalancesAsync(
         Guid actorUserId,

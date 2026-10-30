@@ -25,6 +25,12 @@ public sealed class EfDashboardReader(InOutDbContext dbContext) : IDashboardRead
         var goals = await ReadGoalsAsync(householdId, cancellationToken);
         var reconciliation = await ReadReconciliationAsync(householdId, cancellationToken);
 
+        var hasFinancialActivity = await dbContext.FinancialTransactions.AsNoTracking()
+            .AnyAsync(item => item.HouseholdId == householdId &&
+                item.Kind != FinancialTransactionKind.OpeningBalance &&
+                (item.Status == FinancialTransactionStatus.Posted || item.Status == FinancialTransactionStatus.Reversed),
+                cancellationToken);
+
         await transaction.CommitAsync(cancellationToken);
         return new DashboardSourceData(
             accounts,
@@ -34,7 +40,8 @@ public sealed class EfDashboardReader(InOutDbContext dbContext) : IDashboardRead
             goals,
             incomeSources,
             reconciliation.PostedTransactionCount,
-            reconciliation.EntryTransactionCount);
+            reconciliation.EntryTransactionCount,
+            hasFinancialActivity);
     }
 
     private async Task<IReadOnlyList<DashboardAccountSource>> ReadAccountsAsync(
@@ -55,6 +62,15 @@ public sealed class EfDashboardReader(InOutDbContext dbContext) : IDashboardRead
                  where entry.HouseholdId == householdId &&
                      entry.AccountId == account.Id &&
                      transaction.OccurredOn <= through
+                 select (long?)(entry.Direction == EntryDirection.Credit
+                     ? entry.AmountCents
+                     : -entry.AmountCents)).Sum() ?? 0,
+                (from entry in dbContext.Entries
+                 join transaction in dbContext.FinancialTransactions
+                     on new { entry.HouseholdId, Id = entry.TransactionId }
+                     equals new { transaction.HouseholdId, transaction.Id }
+                 where entry.HouseholdId == householdId && entry.AccountId == account.Id &&
+                     transaction.Kind == FinancialTransactionKind.OpeningBalance
                  select (long?)(entry.Direction == EntryDirection.Credit
                      ? entry.AmountCents
                      : -entry.AmountCents)).Sum() ?? 0))
@@ -109,7 +125,12 @@ public sealed class EfDashboardReader(InOutDbContext dbContext) : IDashboardRead
                         ? kind
                         : null,
                     entry.AmountCents,
-                    transaction.IncomeSourceId)))
+                    transaction.IncomeSourceId,
+                    transaction.Id,
+                    entry.Id,
+                    transaction.OccurredOn,
+                    transaction.Description,
+                    transaction.ReversalOf)))
             .ToArray();
     }
 

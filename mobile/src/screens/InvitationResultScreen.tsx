@@ -1,15 +1,8 @@
+import { BrandLogo } from "../components/BrandLogo";
 import { useState } from "react";
-import {
-  View,
-  Text,
-  Image,
-  ScrollView,
-  Pressable,
-  StyleSheet,
-} from "react-native";
+import { Text, Image, ScrollView, Pressable, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
-import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { theme as t } from "../theme";
 
 type InvitationResult = "accepted" | "expired" | "invalid" | "used";
@@ -64,8 +57,7 @@ export function InvitationResultScreen({
           onPress={() => router.replace("/")}
           style={s.brand}
         >
-          <MaterialCommunityIcons name="sprout" size={30} color={t.green} />
-          <Text style={s.brandText}>ninho</Text>
+          <BrandLogo />
         </Pressable>
         <Image
           source={current.image}
@@ -102,33 +94,15 @@ export function InvitationResultScreen({
             <Text style={s.link}>{current.secondary}</Text>
           </Pressable>
         )}
-        <Text accessibilityLiveRegion="polite" style={s.notice}>
-          {notice}
-        </Text>
+        {notice ? (
+          <Text accessibilityLiveRegion="polite" style={s.notice}>
+            {notice}
+          </Text>
+        ) : null}
         <Text style={s.preview}>
           Prévia de interface com dados fictícios. Nenhum convite foi consultado
           ou aceito; nenhuma participação foi alterada.
         </Text>
-        <Text style={s.preview}>Ver resultados de demonstração:</Text>
-        <View style={s.demos}>
-          {(
-            [
-              { route: "/convite-aceito", label: "Aceito" },
-              { route: "/convite-expirado", label: "Expirado" },
-              { route: "/convite-invalido", label: "Inválido" },
-              { route: "/convite-utilizado", label: "Já utilizado" },
-            ] as const
-          ).map((item) => (
-            <Pressable
-              accessibilityRole="button"
-              key={item.route}
-              onPress={() => router.replace(item.route)}
-              style={s.linkTarget}
-            >
-              <Text style={s.link}>{item.label}</Text>
-            </Pressable>
-          ))}
-        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -136,7 +110,7 @@ export function InvitationResultScreen({
 const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: t.cream },
   content: {
-    padding: 24,
+    padding: 18,
     paddingBottom: 32,
     width: "100%",
     maxWidth: 560,
@@ -145,7 +119,7 @@ const s = StyleSheet.create({
   },
   brand: { flexDirection: "row", alignItems: "center", gap: 6, minHeight: 44 },
   brandText: { fontFamily: t.serif, fontSize: 28, color: t.ink },
-  art: { width: "100%", height: 210, marginTop: 30, marginBottom: 16 },
+  art: { width: "100%", aspectRatio: 2.5, marginTop: 24, marginBottom: 12 },
   title: {
     fontFamily: t.serif,
     fontSize: 29,
@@ -202,11 +176,5 @@ const s = StyleSheet.create({
     color: t.muted,
     textAlign: "center",
     marginTop: 14,
-  },
-  demos: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "center",
-    gap: 5,
   },
 });

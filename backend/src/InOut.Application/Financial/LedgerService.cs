@@ -126,7 +126,8 @@ public sealed class LedgerService(ILedgerStore store)
         Guid? categoryId,
         Guid? incomeSourceId,
         string? description,
-        CancellationToken cancellationToken) =>
+        CancellationToken cancellationToken,
+        Guid? idempotencyKey = null) =>
         store.CorrectClassificationAsync(
             householdId,
             transactionId,
@@ -134,7 +135,10 @@ public sealed class LedgerService(ILedgerStore store)
             categoryId,
             incomeSourceId,
             description,
-            cancellationToken);
+            cancellationToken,
+            idempotencyKey is null ? null : IdempotencyRequest.Create(
+                householdId, actorUserId, IdempotencyOperation.CorrectClassification,
+                idempotencyKey.Value, transactionId, categoryId, incomeSourceId, description));
 
     public Task<LedgerWriteResult> PostIncomeAsync(
         Guid actorUserId,
