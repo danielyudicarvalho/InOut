@@ -86,11 +86,3 @@
   --shadow-sm: 0 3px 9px rgb(105 75 37 / 6%);
   --shadow-lg: 0 24px 100px rgb(64 39 30 / 25%);
 }
-
-/* Aliases legados — removidos no PR 8 (trava). */
-:root {
-  --cream: var(--color-bg);
-  --ink: var(--color-text);
-  --green: var(--color-primary);
-  --line: var(--color-border);
-}

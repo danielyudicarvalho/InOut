@@ -206,7 +206,7 @@
   background: transparent;
   border: 0;
   font: inherit;
-  color: var(--ink);
+  color: var(--color-text);
 }
 .create-household-panel select:focus-visible {
   outline: 3px solid var(--color-focus);
@@ -285,7 +285,7 @@
 }
 .invitation-details {
   margin: 20px 0;
-  border: 1px solid var(--line);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   padding: 0 14px;
 }
@@ -296,7 +296,7 @@
   padding: 14px 0;
 }
 .invitation-details > div + div {
-  border-top: 1px solid var(--line);
+  border-top: 1px solid var(--color-border);
 }
 .invitation-details svg {
   color: #77624c;
@@ -400,7 +400,7 @@
   gap: var(--space-5);
 }
 .account-header > span {
-  border-left: 1px solid var(--line);
+  border-left: 1px solid var(--color-border);
   padding-left: 22px;
   font-family: var(--font-serif);
   color: var(--color-text-muted);
@@ -625,7 +625,7 @@ button:disabled {
   max-width: 1100px;
   margin: auto;
   padding: var(--space-8);
-  border: 1px solid var(--line);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
 }
 .password-reset.recovery-sent .signin-panel > .brand {
