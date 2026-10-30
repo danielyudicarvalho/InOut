@@ -1,0 +1,95 @@
+/*
+ * Ninho / InOut design tokens — fonte única de cores, tipografia, raios,
+ * espaçamento e sombras. Ver docs da spec de design (PR #73).
+ * Breakpoints (CSS não aceita var em @media — usar literais):
+ *   sm ≤ 480px · md ≤ 760px · lg ≥ 1500px
+ */
+:root {
+  color-scheme: light;
+  /* Superfícies */
+  --color-bg: #fbf6e8; /* era --cream */
+  --color-surface: #fffdf6; /* cards, inputs, dialogs */
+  --color-surface-muted: #f3ecdb; /* faixas informativas */
+  --color-surface-sunken: #ece4d2; /* hover de botões ghost, trilhos */
+  /* Texto */
+  --color-text: #40271e; /* era --ink */
+  --color-text-muted: #615543;
+  --color-text-subtle: #6d604c; /* menor contraste permitido para texto */
+  --color-text-inverse: #ffffff;
+  /* Primária (verde) */
+  --color-primary: #4e6a3e; /* era #5e7e4d — escurecido p/ AA folgado */
+  --color-primary-hover: #3f5932;
+  --color-primary-strong: #315f3b; /* superfícies verdes escuras (sidebar, badges) */
+  --color-on-primary: #ffffff;
+  --color-link: #3f5932;
+  /* Perigo / terracota */
+  --color-danger: #a3432c; /* era #b85b43 (4.21:1, reprovava) */
+  --color-danger-hover: #8a3622;
+  --color-danger-surface: #fbe6dc;
+  /* Bordas */
+  --color-border: #e9dfcd; /* divisores decorativos apenas */
+  --color-border-strong: #8f8068; /* contorno de cards interativos/checkbox */
+  --color-border-input: #8a7b63; /* contorno de campos */
+  /* Foco */
+  --color-focus: #9b4a24;
+  /* Chips (bg/fg) */
+  --chip-green-bg: #d6e3bc;
+  --chip-green-fg: #3e6127;
+  --chip-peach-bg: #ffc7a2;
+  --chip-peach-fg: #7f3216;
+  --chip-yellow-bg: #f9d98c;
+  --chip-yellow-fg: #6e401c;
+  --chip-sage-bg: #d2d9b8;
+  --chip-sage-fg: #55432f;
+  /* Acento das ilustrações Pipo (amostrado de pipo-result.webp) */
+  --color-accent-mustard: #dcbb60; /* só decorativo */
+  --color-overlay: rgb(50 41 30 / 44%);
+}
+
+:root {
+  --font-sans:
+    "DM Sans", system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
+  --font-serif: "Lora", ui-serif, Georgia, "Times New Roman", serif;
+  --text-xs: 0.75rem; /* 12px — mínimo absoluto (legendas, metadados) lh 1.5 */
+  --text-sm: 0.875rem; /* 14px — labels, texto secundário        lh 1.5 */
+  --text-md: 1rem; /* 16px — corpo, inputs (evita zoom iOS)  lh 1.55 */
+  --text-lg: 1.125rem; /* 18px — subtítulos, lead               lh 1.5 */
+  --text-xl: 1.5rem; /* 24px — h3 / títulos de card (serif)    lh 1.3 */
+  --text-2xl: 2rem; /* 32px — h2 (serif)                      lh 1.2 */
+  --text-display: clamp(
+    2.5rem,
+    4.3vw,
+    4.375rem
+  ); /* 40–70px h1 serif lh 1.05, ls -0.02em */
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+}
+
+:root {
+  --radius-sm: 8px; /* chips pequenos, badges, inputs internos */
+  --radius-md: 12px; /* inputs, botões */
+  --radius-lg: 16px; /* cards */
+  --radius-xl: 24px; /* dialogs, painéis */
+  --radius-full: 9999px; /* pílulas, avatares (substitui 50%) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --shadow-sm: 0 3px 9px rgb(105 75 37 / 6%);
+  --shadow-lg: 0 24px 100px rgb(64 39 30 / 25%);
+}
+
+/* Aliases legados — removidos no PR 8 (trava). */
+:root {
+  --cream: var(--color-bg);
+  --ink: var(--color-text);
+  --green: var(--color-primary);
+  --line: var(--color-border);
+}
