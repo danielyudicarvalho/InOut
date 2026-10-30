@@ -11,17 +11,19 @@
     "lint:fix": "eslint . --fix --max-warnings 0",
     "format": "prettier --write . --ignore-path ../.prettierignore",
     "format:check": "prettier --check . --ignore-path ../.prettierignore",
-    "check": "npm run format:check && npm run lint && npm run typecheck",
-    "test": "node --test ../packages/identity/*.test.mjs ../packages/finance/*.test.mjs tests/*.test.mjs"
+    "check": "npm run format:check && npm run lint && npm run lint:css && npm run typecheck",
+    "test": "node --test ../packages/identity/*.test.mjs ../packages/finance/*.test.mjs tests/*.test.mjs",
+    "codemod:colors": "node scripts/codemod-colors.mjs",
+    "lint:css": "stylelint \"app/**/*.css\" \"components/**/*.css\""
   },
   "dependencies": {
+    "@inout/finance": "file:../packages/finance",
     "@inout/identity": "file:../packages/identity",
     "@phosphor-icons/react": "2.1.10",
     "@supabase/supabase-js": "2.118.0",
     "next": "16.4.3",
     "react": "19.3.1",
-    "react-dom": "19.3.1",
-    "@inout/finance": "file:../packages/finance"
+    "react-dom": "19.3.1"
   },
   "devDependencies": {
     "@types/node": "26.6.5",
@@ -31,6 +33,7 @@
     "eslint-config-next": "^16.4.3",
     "eslint-config-prettier": "^10.1.8",
     "prettier": "^3.9.10",
+    "stylelint": "^16.26.1",
     "typescript": "~5.9.3"
   }
 }
