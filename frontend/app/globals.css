@@ -4,8 +4,8 @@
 }
 body {
   margin: 0;
-  background: var(--cream);
-  color: var(--ink);
+  background: var(--color-bg);
+  color: var(--color-text);
   font-family: var(--font-sans);
 }
 button,
