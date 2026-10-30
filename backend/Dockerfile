@@ -1,7 +1,16 @@
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
-COPY backend/ ./backend/
+
+# Copy project manifests and restore dependencies first for Docker layer caching
+COPY backend/Directory.Build.props backend/Directory.Packages.props backend/InOut.sln ./backend/
+COPY backend/src/InOut.Domain/*.csproj ./backend/src/InOut.Domain/
+COPY backend/src/InOut.Application/*.csproj ./backend/src/InOut.Application/
+COPY backend/src/InOut.Infrastructure/*.csproj ./backend/src/InOut.Infrastructure/
+COPY backend/src/InOut.Api/*.csproj ./backend/src/InOut.Api/
 RUN dotnet restore backend/src/InOut.Api/InOut.Api.csproj
+
+# Copy source code and build release
+COPY backend/src/ ./backend/src/
 RUN dotnet publish backend/src/InOut.Api/InOut.Api.csproj -c Release --no-restore -o /app/publish /p:UseAppHost=false
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0

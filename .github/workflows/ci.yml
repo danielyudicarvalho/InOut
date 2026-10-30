@@ -13,10 +13,21 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
-env:
-  FLUTTER_VERSION: 3.47.2
-
 jobs:
+  security:
+    name: Secrets and logging privacy
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Check repository for secrets
+        run: ./tool/check_secrets.sh
+
+      - name: Check logging privacy
+        run: bash ./tool/check_logging_privacy.sh
+
   database:
     name: Database migrations and RLS
     runs-on: ubuntu-latest
@@ -48,75 +59,3 @@ jobs:
       - name: Stop local Supabase
         if: always()
         run: supabase stop --no-backup
-
-  quality:
-    name: Format, analyze and test
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - name: Set up Flutter
-        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
-        with:
-          flutter-version: ${{ env.FLUTTER_VERSION }}
-          channel: stable
-          cache: true
-
-      - name: Resolve dependencies
-        run: flutter pub get --enforce-lockfile
-
-      - name: Check formatting
-        run: dart format --output=none --set-exit-if-changed lib test
-
-      - name: Check architecture and design boundaries
-        run: ./tool/check_architecture.sh
-
-      - name: Check repository for secrets
-        run: ./tool/check_secrets.sh
-
-      - name: Check logging privacy
-        run: bash ./tool/check_logging_privacy.sh
-
-      - name: Analyze
-        run: flutter analyze --fatal-infos
-
-      - name: Test
-        run: flutter test --coverage
-
-  build-web:
-    name: Build Web
-    needs: quality
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
-        with:
-          flutter-version: ${{ env.FLUTTER_VERSION }}
-          channel: stable
-          cache: true
-      - run: flutter pub get --enforce-lockfile
-      - run: flutter build web --release
-
-  build-android:
-    name: Build Android
-    needs: quality
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Set up Java
-        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
-        with:
-          distribution: temurin
-          java-version: '17'
-          cache: gradle
-      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
-        with:
-          flutter-version: ${{ env.FLUTTER_VERSION }}
-          channel: stable
-          cache: true
-      - run: flutter pub get --enforce-lockfile
-      - run: flutter build apk --debug

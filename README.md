@@ -24,7 +24,6 @@ Registrar entradas, saídas e transferências; organizar categorias e subcategor
 - [Plano de entrega em sete dias](docs/04-one-week-plan.md)
 - [Qualidade, segurança e operação](docs/05-quality-security-operations.md)
 - [Design visual e sistema de cores](docs/06-visual-design.md)
-- [Estrutura inicial do projeto Flutter](docs/07-project-structure.md)
 - [Ambientes, dependências e integração contínua](docs/08-environments-and-ci.md)
 - [Banco de dados e isolamento por residência](docs/09-database-security.md)
 - [Inventário dos limites Supabase e plano de migração](docs/10-supabase-boundary-inventory.md)
@@ -33,9 +32,13 @@ Registrar entradas, saídas e transferências; organizar categorias e subcategor
 
 ## Desenvolvimento
 
-O cliente usa Flutter para Android, iOS e Web/PWA. Os casos de uso são publicados por uma API ASP.NET Core; Supabase fornece PostgreSQL e Auth. O Flutter não implementa regras financeiras nem cria novas dependências de RPCs de negócio.
+A aplicação é composta por:
+- **Frontend Web**: Next.js 16 (`frontend/`)
+- **Mobile (Android/iOS)**: React Native + Expo (`mobile/`)
+- **Backend API**: ASP.NET Core 10 (`backend/`)
+- **Banco e Auth**: Supabase Pro (PostgreSQL + Supavisor pooler + Auth)
 
-### Docker: API and Flutter with hosted Supabase
+### Docker: API and Frontend with hosted Supabase
 
 ```bash
 cp cloud.env.example .env.cloud
@@ -45,16 +48,23 @@ docker compose -f compose.cloud.yaml --env-file .env.cloud up --build -d
 
 See [hosted Supabase setup](docs/cloud-docker.md) for role and migration prerequisites, or [isolated local Supabase setup](docs/local-docker.md) to run Auth and database locally.
 
-### Flutter
+### Frontend Web (Next.js)
 
 ```bash
-flutter pub get
-flutter analyze
-flutter test
-flutter run -d chrome
+cd frontend
+npm ci
+npm run dev
 ```
 
-### Backend
+### Mobile (React Native + Expo)
+
+```bash
+cd mobile
+npm ci
+npm start
+```
+
+### Backend (.NET)
 
 ```bash
 cd backend
@@ -64,7 +74,7 @@ dotnet test InOut.sln --configuration Release --no-build
 dotnet run --project src/InOut.Api/InOut.Api.csproj
 ```
 
-Consulte a [estrutura inicial](docs/07-project-structure.md), os [ADRs da stack e do backend](docs/adr/README.md) e o [guia do backend](backend/README.md) antes de adicionar módulos ou dependências.
+Consulte os [ADRs da stack e do backend](docs/adr/README.md) e o [guia do backend](backend/README.md) antes de adicionar módulos ou dependências.
 
 ## Escopo do MVP
 

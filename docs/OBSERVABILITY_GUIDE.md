@@ -9,7 +9,7 @@ This guide provides a comprehensive manual on how to use the **InOut** Observabi
 ```mermaid
 flowchart TD
     subgraph Client & Backend
-        Flutter["Flutter Web App (:8081)"]
+        Frontend["Next.js Web App (:3000)"]
         API[".NET 10 Web API (:8080)"]
     end
 
@@ -32,7 +32,7 @@ flowchart TD
         Grafana["Grafana UI (:3000)<br/><i>Dashboards & Exploration</i>"]
     end
 
-    Flutter -->|"X-Correlation-ID / W3C TraceContext"| API
+    Frontend -->|"X-Correlation-ID / W3C TraceContext"| API
     API --> OTelSDK
     API --> EFCoreInst
     OTelSDK -->|"OTLP gRPC"| Collector

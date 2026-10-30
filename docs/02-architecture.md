@@ -4,14 +4,14 @@
 
 ## Resumo da solução
 
-O InOut adota um **monólito modular ASP.NET Core**, um cliente Flutter e um único banco PostgreSQL. Essa escolha é coerente com dois usuários, prazo de sete dias e baixa escala. O livro *Full Cycle* reforça que monólitos não são inerentemente ruins e que decisões devem responder ao contexto e às restrições.
+O InOut adota um **monólito modular ASP.NET Core**, clientes modernos de interface (Next.js para Web e React Native / Expo para Mobile) e um único banco PostgreSQL. Essa escolha é coerente com dois usuários, prazo de sete dias e baixa escala. O livro *Full Cycle* reforça que monólitos não são inerentemente ruins e que decisões devem responder ao contexto e às restrições.
 
 Aplicamos arquitetura limpa de modo pragmático: dependências apontam para as regras de negócio, enquanto interface, autenticação e persistência permanecem substituíveis.
 
 ## Limites internos
 
 ```text
-Flutter -> HTTPS API
+Frontend/Mobile -> HTTPS API
 API -> application -> domain
               ^          ^
               |          |
@@ -22,11 +22,11 @@ API -> application -> domain
 - **application**: casos de uso, autorização da casa, transações e portas.
 - **infrastructure**: banco, autenticação, relógio, IDs, logs e exportação.
 - **api**: endpoints, contratos HTTP, autenticação e mapeamento de erros.
-- **presentation Flutter**: telas, estado de UI, validação de formato e navegação.
+- **presentation (Next.js / Expo)**: telas, estado de UI, validação de formato e navegação.
 
-O Flutter obtém sessão no Supabase Auth e envia o JWT à API. A API valida o token, resolve usuário e residência, executa o caso de uso C# e persiste via EF Core/Npgsql.
+Os clientes obtêm sessão no Supabase Auth e enviam o JWT à API. A API valida o token, resolve usuário e residência, executa o caso de uso C# e persiste via EF Core/Npgsql.
 
-Domain e Application não importam ASP.NET, EF Core, Supabase SDK, Flutter ou detalhes HTTP.
+Domain e Application não importam ASP.NET, EF Core, Supabase SDK, bibliotecas de UI ou detalhes HTTP.
 
 ## Módulos do monólito
 

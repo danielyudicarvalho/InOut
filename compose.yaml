@@ -9,7 +9,7 @@ services:
       Supabase__Jwt__Issuer: http://127.0.0.1:54321/auth/v1
       Supabase__Jwt__Audience: authenticated
       Supabase__Jwt__LocalSecret: ${SUPABASE_JWT_SECRET:?Run ./tool/local-up.sh}
-      Cors__AllowedOrigins__0: http://localhost:8081
+      Cors__AllowedOrigins__0: http://localhost:3000
     extra_hosts:
       - host.docker.internal:host-gateway
     ports:
@@ -20,13 +20,18 @@ services:
   web:
     build:
       context: .
-      dockerfile: Dockerfile.flutter
+      dockerfile: frontend/Dockerfile
       args:
-        SUPABASE_URL: http://localhost:54321
-        SUPABASE_PUBLISHABLE_KEY: ${SUPABASE_ANON_KEY:?Run ./tool/local-up.sh}
-        API_BASE_URL: http://localhost:8080
+        NEXT_PUBLIC_SUPABASE_URL: http://localhost:54321
+        NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${SUPABASE_ANON_KEY:?Run ./tool/local-up.sh}
+        NEXT_PUBLIC_API_URL: http://localhost:8080
+    environment:
+      NEXT_PUBLIC_SUPABASE_URL: http://localhost:54321
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${SUPABASE_ANON_KEY:?Run ./tool/local-up.sh}
+      NEXT_PUBLIC_API_URL: http://localhost:8080
+      PORT: 3000
     ports:
-      - 127.0.0.1:8081:80
+      - 127.0.0.1:3000:3000
     depends_on:
       - api
     volumes:
