@@ -15,10 +15,7 @@ import {
   Sparkle,
   ArrowLeft,
 } from "@phosphor-icons/react";
-import {
-  displayDate,
-  type RecordKind,
-} from "@inout/finance";
+import { displayDate, type RecordKind } from "@inout/finance";
 import { useFinancialHome } from "../lib/finance/use-financial-home";
 import { useRecord } from "../lib/finance/use-record";
 import {
@@ -155,7 +152,11 @@ function RecordForm({
   const [sourceModalOpen, setSourceModalOpen] = useState(false);
   const [dateModalOpen, setDateModalOpen] = useState(false);
 
-  if (state.status === "loading" || state.status === "error" || !state.options) {
+  if (
+    state.status === "loading" ||
+    state.status === "error" ||
+    !state.options
+  ) {
     return (
       <main className="financial-state">
         <h1>{titles[kind]}</h1>
@@ -177,10 +178,15 @@ function RecordForm({
   const locked = state.status !== "ready";
   const account = options.accounts.find((row) => row.id === fields.accountId);
 
-  const categories = options.categories.filter((row) => row.flow === state.kind);
-  const selectedCategory = categories.find((row) => row.id === fields.categoryId) ?? null;
-  const selectedSubcategory =
-    categories.find((row) => row.id === fields.subcategoryId) ?? null;
+  const categories = options.categories.filter(
+    (row) => row.flow === state.kind,
+  );
+  const selectedLeaf =
+    categories.find((row) => row.id === fields.categoryId) ?? null;
+  const selectedCategory = selectedLeaf?.parentId
+    ? (categories.find((row) => row.id === selectedLeaf.parentId) ?? null)
+    : selectedLeaf;
+  const selectedSubcategory = selectedLeaf?.parentId ? selectedLeaf : null;
 
   const destinations = options.accounts.filter(
     (row) => row.id !== fields.accountId && row.currency === account?.currency,
@@ -295,7 +301,10 @@ function RecordForm({
                 {/* Row 1: Valor & Data */}
                 <div className="ninho-form-grid-2">
                   <div className="ninho-field-group">
-                    <label htmlFor="record-amount-input" className="ninho-field-label">
+                    <label
+                      htmlFor="record-amount-input"
+                      className="ninho-field-label"
+                    >
                       Valor {account ? `(${account.currency})` : ""}
                     </label>
                     <div className="ninho-input-wrap">
@@ -315,7 +324,10 @@ function RecordForm({
                   </div>
 
                   <div className="ninho-field-group">
-                    <label htmlFor="record-date-input" className="ninho-field-label">
+                    <label
+                      htmlFor="record-date-input"
+                      className="ninho-field-label"
+                    >
                       Data
                     </label>
                     <div className="ninho-date-picker-wrap">
@@ -350,7 +362,10 @@ function RecordForm({
                       placeholder="Selecionar categoria"
                       icon={
                         selectedCategory ? (
-                          <CategoryIcon name={selectedCategory.name} size={18} />
+                          <CategoryIcon
+                            name={selectedCategory.name}
+                            size={18}
+                          />
                         ) : (
                           <Sparkle size={18} weight="duotone" />
                         )
@@ -393,7 +408,9 @@ function RecordForm({
                 <div className="ninho-form-grid-2">
                   <SelectorTrigger
                     id="select-account-trigger"
-                    label={state.kind === "transfer" ? "Conta de origem" : "Conta"}
+                    label={
+                      state.kind === "transfer" ? "Conta de origem" : "Conta"
+                    }
                     valueText={
                       account ? `${account.name} · ${account.currency}` : null
                     }
@@ -456,7 +473,10 @@ function RecordForm({
 
                 {/* Row 4: Descrição */}
                 <div className="ninho-field-group">
-                  <label htmlFor="record-description-input" className="ninho-field-label">
+                  <label
+                    htmlFor="record-description-input"
+                    className="ninho-field-label"
+                  >
                     Descrição (opcional)
                   </label>
                   <input
@@ -497,7 +517,9 @@ function RecordForm({
         {/* Right Illustration: Pipo holding note with leaf */}
         <aside className="ninho-stage-art ninho-stage-art-right">
           <div className="ninho-art-bubble-right">
-            <span className="ninho-tiny-badge">Pequenas escolhas, grandes conquistas.</span>
+            <span className="ninho-tiny-badge">
+              Pequenas escolhas, grandes conquistas.
+            </span>
             <p>Organizar hoje, um Ninho mais tranquilo amanhã.</p>
           </div>
           <Image
@@ -515,7 +537,7 @@ function RecordForm({
       {categoryModalOpen ? (
         <CategorySelectorModal
           categories={options.categories}
-          selectedId={fields.categoryId}
+          selectedId={selectedCategory?.id ?? ""}
           flow={state.kind === "income" ? "income" : "expense"}
           onSelect={(id) => {
             state.edit("categoryId", id);
@@ -537,9 +559,9 @@ function RecordForm({
         <SubcategorySelectorModal
           categories={options.categories}
           parentCategory={selectedCategory}
-          selectedId={fields.subcategoryId ?? ""}
+          selectedId={selectedSubcategory?.id ?? ""}
           onSelect={(id) => {
-            state.edit("subcategoryId", id);
+            state.edit("categoryId", id);
           }}
           onClose={() => setSubcategoryModalOpen(false)}
           onCreateSubcategory={async (name, parentId, flow) => {

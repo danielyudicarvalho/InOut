@@ -117,8 +117,47 @@ export type HistoryFilters = {
   kind?: string;
   accountId?: string;
 };
-export function historyKind(item: HistoryItem): string;
+export function historyKind(item: Pick<HistoryItem, "kind">): string;
 export interface FinanceRepository {
+  createCategory(
+    household: string,
+    body: {
+      name: string;
+      flow: "income" | "expense";
+      parentId?: string | null;
+    },
+    key: string,
+  ): Promise<{ id: string; name: string; flow: string; parentId?: string }>;
+  createIncomeSource(
+    household: string,
+    body: { name: string },
+    id: string,
+  ): Promise<{ id: string; name: string }>;
+
+  correctClassification(
+    household: string,
+    transactionId: string,
+    body: {
+      categoryId: string;
+      incomeSourceId: string | null;
+      description: string | null;
+      expectedState?: {
+        status: string;
+        categoryId: string | null;
+        incomeSourceId: string | null;
+        description: string | null;
+      };
+    },
+    key: string,
+    signal?: AbortSignal,
+  ): Promise<RecordResult>;
+
+  transaction(
+    household: string,
+    transactionId: string,
+    signal?: AbortSignal,
+  ): Promise<TransactionDetail>;
+
   ledgerHistory(
     householdId: string,
     period: string,
@@ -270,8 +309,13 @@ export type RecordFields = {
   description: string;
 };
 export type RecordOptions = {
-  accounts: { id: string; name: string; currency: string }[];
-  categories: { id: string; name: string; flow: "income" | "expense" }[];
+  accounts: { id: string; name: string; currency: string; kind?: string }[];
+  categories: {
+    id: string;
+    name: string;
+    flow: "income" | "expense";
+    parentId?: string;
+  }[];
   sources: { id: string; name: string }[];
 };
 export type RecordResult = { transactionId: string; replayed: boolean };
@@ -364,4 +408,86 @@ export function createAccountStore(
   retry: () => void;
   edit: (field: keyof AccountFields, value: string) => void;
   submit: () => Promise<void>;
+};
+
+export type TransactionDetail = {
+  reversalId: string | null;
+  categoryId: string | null;
+  sourceId: string | null;
+  rawDescription: string;
+  id: string;
+  kind: string;
+  status: string;
+  description: string;
+  date: string;
+  postedAt: string;
+  createdBy: string;
+  currency: string;
+  amount: number;
+  postings: {
+    accountId: string;
+    accountName: string;
+    currency: string;
+    amount: number;
+  }[];
+  rows: { label: string; value: string }[];
+  reversalOf: string | null;
+};
+export type ClassificationFields = {
+  categoryId: string;
+  sourceId: string;
+  description: string;
+};
+export type ClassificationOptions = RecordOptions & {
+  detail: TransactionDetail;
+};
+export function canCorrectClassification(
+  detail: TransactionDetail | null,
+): boolean;
+export function classificationChoices(options: ClassificationOptions): {
+  categories: { id: string; name: string; disabled?: boolean }[];
+  sources: { id: string; name: string; disabled?: boolean }[];
+};
+export function createClassificationStore(
+  repository: FinanceRepository,
+  household: string,
+  transactionId: string,
+  options: Parameters<typeof createRecordStore>[4],
+): {
+  getSnapshot(): {
+    status:
+      | "loading"
+      | "ready"
+      | "saving"
+      | "uncertain"
+      | "success"
+      | "error"
+      | "stale";
+    fields: ClassificationFields;
+    options: ClassificationOptions | null;
+    notice: string;
+    result: RecordResult | null;
+  };
+  subscribe(listener: () => void): () => void;
+  start(): () => void;
+  retry(): void;
+  edit(field: keyof ClassificationFields, value: string): void;
+  submit(): Promise<void>;
+};
+
+export function createTransactionDetailStore(
+  repository: FinanceRepository,
+  household: string,
+  transactionId: string,
+  options?: { timeoutMs?: number },
+): {
+  getSnapshot(): {
+    status: "loading" | "ready" | "error";
+    detail: TransactionDetail | null;
+    notice: string;
+    refreshed: boolean;
+  };
+  subscribe(listener: () => void): () => void;
+  start(): () => void;
+  reload(): Promise<boolean>;
 };

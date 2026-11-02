@@ -32,6 +32,7 @@ public static class FinancialErrorCodes
     public const string NegativeMoney = "negative_money";
     public const string ReversalOfReversal = "reversal_of_reversal";
     public const string SameTransferAccount = "same_transfer_account";
+    public const string TransactionChanged = "transaction_changed";
     public const string TransactionNotFound = "transaction_not_found";
     public const string TransactionNotReversible = "transaction_not_reversible";
     public const string InvalidTransactionState = "invalid_transaction_state";

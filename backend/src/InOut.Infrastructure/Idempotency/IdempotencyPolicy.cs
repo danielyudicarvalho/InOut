@@ -18,6 +18,7 @@ public sealed class IdempotencyPolicy : IIdempotencyPolicy
         IdempotencyOperation.PostTransfer => FinancialCommand(),
         IdempotencyOperation.ReverseTransaction => FinancialCommand(),
         IdempotencyOperation.SetBudget => FinancialCommand(),
+        IdempotencyOperation.CorrectClassification => FinancialCommand(),
         _ => throw new ArgumentOutOfRangeException(nameof(operation), operation, null),
     };
 

@@ -1184,6 +1184,70 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
                      postCorrectionBalances.Single(b => b.AccountId == accountId).BalanceCents);
     }
 
+    [Fact]
+    public async Task StaleCorrectionRollsBackWhileIdempotentReplayDoesNotOverwriteTheCurrentRecord()
+    {
+        Guid transactionId;
+        await using (var setup = CreateContext())
+        {
+            var result = await new LedgerService(CreateStore(setup)).PostExpenseAsync(actorUserId,
+                new PostExpenseCommand(householdId, accountId, expenseCategoryId, 32_000, "BRL",
+                    new DateOnly(2026, 11, 2), Guid.NewGuid(), "Original"), CancellationToken.None);
+            transactionId = result.TransactionId;
+        }
+        var original = new TransactionClassificationSnapshot(FinancialTransactionStatus.Posted, expenseCategoryId, null, "Original");
+        var winnerKey = Guid.NewGuid();
+        async Task<LedgerHistoryItem> CorrectAsync(string description, Guid key, TransactionClassificationSnapshot expected)
+        {
+            await using var context = CreateContext();
+            return await new LedgerService(CreateStore(context)).CorrectClassificationAsync(householdId,
+                transactionId, actorUserId, expenseCategoryId, null, description,
+                CancellationToken.None, key, expected);
+        }
+
+        var winner = await CorrectAsync("Winner", winnerKey, original);
+        var failure = await Assert.ThrowsAsync<FinancialRuleException>(() => CorrectAsync("Stale update", Guid.NewGuid(), original));
+        Assert.Equal(FinancialErrorCodes.TransactionChanged, failure.Code);
+        var refreshed = original with { Description = "Winner" };
+        await CorrectAsync("Latest", Guid.NewGuid(), refreshed);
+        var replay = await CorrectAsync("Winner", winnerKey, original);
+        Assert.Equal(winner.Description, replay.Description);
+
+        await using var verification = CreateContext();
+        var store = CreateStore(verification);
+        var rows = await store.GetHistoryAsync(actorUserId, householdId, 2,
+            new LedgerHistoryFilter(TransactionId: transactionId), CancellationToken.None);
+        Assert.Equal("Latest", Assert.Single(rows).Description);
+        var balances = await store.GetBalancesAsync(actorUserId, householdId, CancellationToken.None);
+        Assert.Equal(-32_000, balances.Single(balance => balance.AccountId == accountId).BalanceCents);
+    }
+
+    [Fact]
+    public async Task CorrectionAfterReversalIsRejectedAndTheCompensationCanBeReadByOriginalId()
+    {
+        Guid transactionId;
+        await using (var setup = CreateContext())
+        {
+            var result = await new LedgerService(CreateStore(setup)).PostExpenseAsync(actorUserId,
+                new PostExpenseCommand(householdId, accountId, expenseCategoryId, 32_000, "BRL",
+                    new DateOnly(2026, 11, 2), Guid.NewGuid(), "Original"), CancellationToken.None);
+            transactionId = result.TransactionId;
+        }
+        var reversal = await ReverseAsync(transactionId, Guid.NewGuid());
+        await using var context = CreateContext();
+        var store = CreateStore(context);
+        var failure = await Assert.ThrowsAsync<FinancialRuleException>(() =>
+            new LedgerService(store).CorrectClassificationAsync(householdId, transactionId, actorUserId,
+                expenseCategoryId, null, "Stale", CancellationToken.None, Guid.NewGuid(),
+                new TransactionClassificationSnapshot(FinancialTransactionStatus.Posted, expenseCategoryId, null, "Original")));
+        Assert.Equal(FinancialErrorCodes.TransactionChanged, failure.Code);
+        var rows = await store.GetHistoryAsync(actorUserId, householdId, 2,
+            new LedgerHistoryFilter(ReversalOf: transactionId), CancellationToken.None);
+        Assert.Equal(reversal.TransactionId, Assert.Single(rows).TransactionId);
+        var balances = await store.GetBalancesAsync(actorUserId, householdId, CancellationToken.None);
+        Assert.Equal(0, balances.Single(balance => balance.AccountId == accountId).BalanceCents);
+    }
+
     private async Task<LedgerWriteResult> PostIncomeAsync(
         Guid idempotencyKey,
         long amountCents = 1_000,

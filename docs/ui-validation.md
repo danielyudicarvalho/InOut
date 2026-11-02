@@ -597,3 +597,14 @@ pending the previously reported approval block.
 - Teste EF existente ampliado para verificar segunda perna da transferência com offset e página esgotada. Não executado: SDK .NET/Postgres indisponíveis. Integração real, QA visual no dispositivo e exports nativos não executados.
 - Arte criada com ferramenta imagegen integrada, inspecionada e salva em `frontend/public/images/pipo-history.webp` e `mobile/assets/pipo-history.webp`.
 - Prompt final: “Use case: illustration-story. Transparent landscape hero illustration for Ninho financial transaction history. Pipo, round fluffy golden-yellow bird, green leaf tuft, orange beak and rust-red scarf, examining an open accounting book with a magnifying glass, beside small stacks of books and potted leafy plants. Cozy watercolor storybook, cream sage honey palette. Whole scene isolated, generous transparent margins. No text, numbers, logos or UI.”
+
+## Conflito ou registro desatualizado — 2026-11-02
+
+A referência `image(20261102-033956).png` foi implementada no detalhe autenticado
+web e mobile. O PATCH de classificação compara o estado observado dentro da
+transação do backend; o domínio rejeita divergências com `transaction_changed`.
+O aviso usa arte própria, explica a rejeição e recarrega somente dados reais.
+Após a recarga, o estado estornado oculta a correção e oferece o vínculo real
+com a compensação. Respostas incertas preservam a tentativa, sem afirmar que
+nada foi salvo. Ver contratos, prompt da arte e limites de validação em
+[transaction-conflict.md](features/transaction-conflict.md).

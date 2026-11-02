@@ -126,15 +126,25 @@ public sealed class LedgerService(ILedgerStore store)
         Guid? categoryId,
         Guid? incomeSourceId,
         string? description,
-        CancellationToken cancellationToken) =>
-        store.CorrectClassificationAsync(
-            householdId,
-            transactionId,
-            actorUserId,
-            categoryId,
-            incomeSourceId,
-            description,
-            cancellationToken);
+        CancellationToken cancellationToken,
+        Guid? idempotencyKey = null,
+        TransactionClassificationSnapshot? expectedState = null)
+    {
+        IdempotencyRequest? request = null;
+        if (idempotencyKey is { } key)
+        {
+            object?[] semanticValues = expectedState is null
+                ? [transactionId, categoryId, incomeSourceId, description]
+                : [transactionId, categoryId, incomeSourceId, description,
+                   expectedState.Status, expectedState.CategoryId, expectedState.IncomeSourceId, expectedState.Description];
+            request = IdempotencyRequest.Create(householdId, actorUserId,
+                IdempotencyOperation.CorrectClassification, key, semanticValues);
+        }
+
+        return store.CorrectClassificationAsync(
+            householdId, transactionId, actorUserId, categoryId, incomeSourceId,
+            description, cancellationToken, request, expectedState);
+    }
 
     public Task<LedgerWriteResult> PostIncomeAsync(
         Guid actorUserId,

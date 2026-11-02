@@ -48,7 +48,8 @@ public sealed record ReverseTransactionRequest(
 public sealed record CorrectTransactionClassificationRequest(
     Guid? CategoryId,
     Guid? IncomeSourceId,
-    string? Description);
+    string? Description,
+    TransactionClassificationSnapshot? ExpectedState = null);
 
 public sealed record SetBudgetRequest(
     Guid? Id,

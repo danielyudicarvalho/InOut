@@ -173,6 +173,7 @@ internal sealed class EfIdempotencyCoordinator(
         IdempotencyOperation.PostTransfer => PersistenceVocabulary.OperationNames.PostTransfer,
         IdempotencyOperation.ReverseTransaction => PersistenceVocabulary.OperationNames.ReverseTransaction,
         IdempotencyOperation.SetBudget => PersistenceVocabulary.OperationNames.SetBudget,
+        IdempotencyOperation.CorrectClassification => PersistenceVocabulary.OperationNames.CorrectClassification,
         _ => throw new ArgumentOutOfRangeException(nameof(operation), operation, null),
     };
 

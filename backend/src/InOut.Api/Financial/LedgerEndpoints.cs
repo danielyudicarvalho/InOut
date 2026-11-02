@@ -148,6 +148,8 @@ public static class LedgerEndpoints
             Guid householdId,
             int? limit,
             int? offset,
+            Guid? transactionId,
+            Guid? reversalOf,
             DateOnly? from,
             DateOnly? to,
             Guid? accountId,
@@ -161,7 +163,7 @@ public static class LedgerEndpoints
         {
             FinancialTransactionKind? parsedKind = !string.IsNullOrWhiteSpace(kind) && Enum.TryParse<FinancialTransactionKind>(kind, ignoreCase: true, out var k) ? k : null;
             return Results.Ok(await service.GetHistoryAsync(UserId(principal), householdId, limit ?? 100,
-                new LedgerHistoryFilter(from, to, accountId, categoryId, parsedKind, incomeSourceId, search, Math.Max(0, offset ?? 0)), cancellationToken));
+                new LedgerHistoryFilter(from, to, accountId, categoryId, parsedKind, incomeSourceId, search, Math.Max(0, offset ?? 0), transactionId, reversalOf), cancellationToken));
         }).WithName(ApiContract.EndpointNames.GetLedgerHistory);
 
         ledger.MapPost(ApiContract.Routes.Income, async (
@@ -259,6 +261,7 @@ public static class LedgerEndpoints
             Guid householdId,
             Guid transactionId,
             CorrectTransactionClassificationRequest request,
+            [FromHeader(Name = ApiContract.Headers.IdempotencyKey)] Guid? idempotencyKey,
             ClaimsPrincipal principal,
             LedgerService service,
             CancellationToken cancellationToken) =>
@@ -270,7 +273,9 @@ public static class LedgerEndpoints
                 request.CategoryId,
                 request.IncomeSourceId,
                 request.Description,
-                cancellationToken);
+                cancellationToken,
+                idempotencyKey,
+                request.ExpectedState);
             return Results.Ok(updatedItem);
         }).WithName(ApiContract.EndpointNames.CorrectTransactionClassification);
 

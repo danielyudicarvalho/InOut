@@ -284,11 +284,27 @@ public sealed class FinancialTransaction
         }
     }
 
+    public void EnsureClassificationUnchanged(TransactionClassificationSnapshot? expectedState)
+    {
+        if (expectedState is not null &&
+            (Status != expectedState.Status ||
+             entries.Any(entry => entry.CategoryId != expectedState.CategoryId) ||
+             IncomeSourceId != expectedState.IncomeSourceId ||
+             !string.Equals(Description, expectedState.Description, StringComparison.Ordinal)))
+        {
+            throw new FinancialRuleException(
+                FinancialErrorCodes.TransactionChanged,
+                "Transaction changed. Reload its current state before making another correction.");
+        }
+    }
+
     public FinancialTransaction CorrectClassification(
         Category? newCategory,
         IncomeSource? newIncomeSource,
-        string? newDescription)
+        string? newDescription,
+        TransactionClassificationSnapshot? expectedState = null)
     {
+        EnsureClassificationUnchanged(expectedState);
         if (Status == FinancialTransactionStatus.Reversed || ReversalOf is not null || Kind == FinancialTransactionKind.Reversal)
         {
             throw new FinancialRuleException(
@@ -327,7 +343,7 @@ public sealed class FinancialTransaction
             targetCategoryId = newCategory.Id;
         }
 
-        Guid? targetIncomeSourceId = IncomeSourceId;
+        Guid? targetIncomeSourceId = null;
         if (newIncomeSource is not null)
         {
             if (Kind != FinancialTransactionKind.Income)

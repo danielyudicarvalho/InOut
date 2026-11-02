@@ -33,7 +33,9 @@ public sealed record LedgerHistoryFilter(
     FinancialTransactionKind? Kind = null,
     Guid? IncomeSourceId = null,
     string? Search = null,
-    int Offset = 0);
+    int Offset = 0,
+    Guid? TransactionId = null,
+    Guid? ReversalOf = null);
 
 public sealed record LedgerHistoryItem(
     Guid TransactionId,
