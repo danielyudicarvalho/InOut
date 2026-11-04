@@ -773,6 +773,7 @@ export function createFinanceRepository({
           .map((row) => ({
             id: string(row.id),
             name: string(row.name),
+            kind: row.kind ? string(row.kind) : null,
             currency: currency(row.currency),
             ...(row.kind ? { kind: string(row.kind) } : {}),
           })),
@@ -786,12 +787,65 @@ export function createFinanceRepository({
               id: string(row.id),
               name: string(row.name),
               flow,
-              parentId: row.parentId ?? undefined,
+              parentId: row.parentId ? string(row.parentId) : null,
             };
           }),
         sources: array(sources)
           .filter((row) => row.archivedAt == null)
           .map((row) => ({ id: string(row.id), name: string(row.name) })),
+      };
+    },
+    async createCategory(householdId, { name, flow, parentId }, key, signal) {
+      if (!validOperationKey(key)) throw new FinanceFailure("validation");
+      const normalizedFlow = string(flow).toLowerCase();
+      if (!["income", "expense"].includes(normalizedFlow))
+        throw new FinanceFailure("validation");
+      const normalizedName = string(name).trim();
+      if (!normalizedName || normalizedName.length > 80)
+        throw new FinanceFailure("validation");
+      const result = await get(
+        `/api/v1/households/${encodeURIComponent(householdId)}/ledger/categories`,
+        signal,
+        {
+          body: {
+            id: key,
+            name: normalizedName,
+            flow: normalizedFlow,
+            parentId: parentId ? string(parentId) : null,
+          },
+          key,
+        },
+      );
+      if (!result || typeof result.id !== "string")
+        throw new FinanceFailure("invalid");
+      return {
+        id: string(result.id),
+        name: string(result.name),
+        flow: string(result.flow).toLowerCase(),
+        parentId: result.parentId ? string(result.parentId) : null,
+      };
+    },
+    async createIncomeSource(householdId, { name }, id, signal) {
+      const normalizedName = string(name).trim();
+      if (!normalizedName || normalizedName.length > 80)
+        throw new FinanceFailure("validation");
+      const sourceId = id || crypto.randomUUID();
+      const result = await get(
+        `/api/v1/households/${encodeURIComponent(householdId)}/ledger/income-sources`,
+        signal,
+        {
+          body: {
+            id: sourceId,
+            name: normalizedName,
+          },
+          key: sourceId,
+        },
+      );
+      if (!result || typeof result.id !== "string")
+        throw new FinanceFailure("invalid");
+      return {
+        id: string(result.id),
+        name: string(result.name),
       };
     },
     async postRecord(householdId, kind, body, key, signal) {
@@ -1810,8 +1864,9 @@ export function prepareRecord(kind, fields, options) {
       ...common,
     };
   }
+  const effectiveCategoryId = fields.subcategoryId || fields.categoryId;
   const category = options.categories.find(
-    (row) => row.id === fields.categoryId && row.flow === kind,
+    (row) => row.id === effectiveCategoryId && row.flow === kind,
   );
   if (
     !category ||
@@ -2073,6 +2128,7 @@ function createWriteStore(
         return;
       const fields = { ...state.fields, [field]: value };
       if (field === "accountId") fields.destinationId = "";
+      if (field === "categoryId") fields.subcategoryId = "";
       publish({ fields, notice: "" });
     },
     submit,
@@ -2108,6 +2164,7 @@ function restoreRecord(body) {
     accountId: body.accountId ?? body.sourceAccountId ?? "",
     destinationId: body.destinationAccountId ?? "",
     categoryId: body.categoryId ?? "",
+    subcategoryId: "",
     sourceId: body.incomeSourceId ?? "",
     amount: `${cents / 100n},${String(cents % 100n).padStart(2, "0")}`,
     date: body.occurredOn,
@@ -2120,6 +2177,7 @@ const recordWriteSpec = {
     accountId: "",
     destinationId: "",
     categoryId: "",
+    subcategoryId: "",
     sourceId: "",
     amount: "",
     date: localRecordDate(today),

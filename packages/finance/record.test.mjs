@@ -355,7 +355,6 @@ test("definitive validation errors allow correction, while an expired pending re
   assert.equal(writes, 0);
   cleanup();
 });
-
 test("account shortcut selects the requested available account", async () => {
   const repo = mockRepository(async () => ({ transactionId: key }));
   const store = createRecordStore(repo, "home", "expense", "BRL", {
@@ -367,4 +366,83 @@ test("account shortcut selects the requested available account", async () => {
   await tick();
   assert.equal(store.getSnapshot().fields.accountId, "cash");
   stop();
+});
+
+test("subcategories refine the category during record preparation and reset on category change", () => {
+  const optionsWithSub = {
+    ...options,
+    categories: [
+      { id: "food", name: "Alimentação", flow: "expense", parentId: null },
+      { id: "market", name: "Mercado", flow: "expense", parentId: "food" },
+    ],
+  };
+  const expenseWithSub = prepareRecord(
+    "expense",
+    { ...fields, categoryId: "food", subcategoryId: "market" },
+    optionsWithSub,
+  );
+  assert.equal(expenseWithSub.categoryId, "market");
+
+  const expenseRoot = prepareRecord(
+    "expense",
+    { ...fields, categoryId: "food", subcategoryId: "" },
+    optionsWithSub,
+  );
+  assert.equal(expenseRoot.categoryId, "food");
+});
+test("createCategory and createIncomeSource send exact contracts", async () => {
+  const calls = [];
+  const repo = createFinanceRepository({
+    baseUrl: "https://api.example",
+    getToken: async () => "jwt",
+    fetcher: async (url, init) => {
+      calls.push({ url, init });
+      if (url.endsWith("/categories")) {
+        const body = JSON.parse(init.body);
+        return new Response(
+          JSON.stringify({
+            id: body.id,
+            name: body.name,
+            flow: body.flow,
+            parentId: body.parentId,
+            archivedAt: null,
+          }),
+          { status: 201 },
+        );
+      }
+      if (url.endsWith("/income-sources")) {
+        const body = JSON.parse(init.body);
+        return new Response(
+          JSON.stringify({
+            id: body.id,
+            name: body.name,
+            archivedAt: null,
+          }),
+          { status: 201 },
+        );
+      }
+      return new Response("[]", { status: 200 });
+    },
+  });
+
+  const cat = await repo.createCategory(
+    "h1",
+    { name: "Alimentação", flow: "expense", parentId: null },
+    key,
+  );
+  assert.equal(cat.id, key);
+  assert.equal(cat.name, "Alimentação");
+  assert.equal(cat.flow, "expense");
+  assert.equal(calls[0].init.headers["Idempotency-Key"], key);
+
+  const sub = await repo.createCategory(
+    "h1",
+    { name: "Mercado", flow: "expense", parentId: key },
+    "b5b553bf-5fbc-4b82-b588-e009f13512ee",
+  );
+  assert.equal(sub.parentId, key);
+
+  const source = await repo.createIncomeSource("h1", { name: "Empresa" }, key);
+  assert.equal(source.name, "Empresa");
+  assert.equal(source.id, key);
 });

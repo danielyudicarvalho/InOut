@@ -227,6 +227,18 @@ export interface FinanceRepository {
     householdId: string,
     signal?: AbortSignal,
   ): Promise<RecordOptions>;
+  createCategory(
+    householdId: string,
+    body: { name: string; flow: "income" | "expense"; parentId?: string | null },
+    key: string,
+    signal?: AbortSignal,
+  ): Promise<{ id: string; name: string; flow: string; parentId: string | null }>;
+  createIncomeSource(
+    householdId: string,
+    body: { name: string },
+    id?: string,
+    signal?: AbortSignal,
+  ): Promise<{ id: string; name: string }>;
   postRecord(
     householdId: string,
     kind: RecordKind,
@@ -632,18 +644,19 @@ export type RecordFields = {
   accountId: string;
   destinationId: string;
   categoryId: string;
+  subcategoryId?: string;
   sourceId: string;
   amount: string;
   date: string;
   description: string;
 };
 export type RecordOptions = {
-  accounts: { id: string; name: string; currency: string; kind?: string }[];
+  accounts: { id: string; name: string; currency: string; kind?: string | null }[];
   categories: {
     id: string;
     name: string;
     flow: "income" | "expense";
-    parentId?: string;
+    parentId?: string | null;
   }[];
   sources: { id: string; name: string }[];
 };

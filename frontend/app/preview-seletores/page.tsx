@@ -77,11 +77,21 @@ export default function PreviewSeletoresPage() {
   const [amount, setAmount] = useState("0,00");
   const [description, setDescription] = useState("");
 
-  const [categoryModalOpen, setCategoryModalOpen] = useState(false);
-  const [subcategoryModalOpen, setSubcategoryModalOpen] = useState(false);
-  const [accountModalOpen, setAccountModalOpen] = useState(false);
-  const [sourceModalOpen, setSourceModalOpen] = useState(false);
-  const [dateModalOpen, setDateModalOpen] = useState(false);
+  const [categoryModalOpen, setCategoryModalOpen] = useState(
+    () => typeof window !== "undefined" && new URLSearchParams(window.location.search).get("modal") === "category",
+  );
+  const [subcategoryModalOpen, setSubcategoryModalOpen] = useState(
+    () => typeof window !== "undefined" && new URLSearchParams(window.location.search).get("modal") === "subcategory",
+  );
+  const [accountModalOpen, setAccountModalOpen] = useState(
+    () => typeof window !== "undefined" && new URLSearchParams(window.location.search).get("modal") === "account",
+  );
+  const [sourceModalOpen, setSourceModalOpen] = useState(
+    () => typeof window !== "undefined" && new URLSearchParams(window.location.search).get("modal") === "source",
+  );
+  const [dateModalOpen, setDateModalOpen] = useState(
+    () => typeof window !== "undefined" && new URLSearchParams(window.location.search).get("modal") === "date",
+  );
 
   const selectedCategory = categories.find((c) => c.id === categoryId) ?? null;
   const selectedSubcategory = categories.find((c) => c.id === subcategoryId);
