@@ -16,7 +16,8 @@ public sealed record DashboardPosting(
     Guid EntryId = default,
     DateOnly OccurredOn = default,
     string? Description = null,
-    Guid? ReversalOf = null);
+    Guid? ReversalOf = null,
+    EntryDirection? Direction = null);
 
 public sealed record DashboardAccountActivity(
     Guid AccountId,
@@ -96,6 +97,12 @@ public static class FinancialDashboardCalculator
                 var accEffects = effects.Where(e => e.AccountId == account.AccountId).ToArray();
                 var inflow = accEffects.Where(e => e.Kind == FinancialTransactionKind.Income).Sum(e => e.SignedAmountCents);
                 var outflow = accEffects.Where(e => e.Kind == FinancialTransactionKind.Expense).Sum(e => e.SignedAmountCents);
+                var accountPostings = postings.Where(p => p.AccountId == account.AccountId).ToArray();
+                if (accountPostings.All(p => p.Direction is not null))
+                {
+                    inflow = accountPostings.Where(p => p.Direction == EntryDirection.Credit).Sum(p => p.AmountCents);
+                    outflow = accountPostings.Where(p => p.Direction == EntryDirection.Debit).Sum(p => p.AmountCents);
+                }
                 return new DashboardAccountActivity(account.AccountId, inflow, outflow, inflow - outflow);
             })
             .ToArray();

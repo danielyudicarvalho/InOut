@@ -173,6 +173,17 @@ function DashboardView({
       });
       return;
     }
+    if (label === "Análises") {
+      router.push({
+        pathname: "/analises",
+        params: {
+          household: state.householdId,
+          period: state.period,
+          currency,
+        },
+      });
+      return;
+    }
     if (label === "Contas") {
       router.push({
         pathname: "/contas",
@@ -567,7 +578,7 @@ function DashboardView({
           { name: "Lançamentos", icon: "receipt-text-outline" },
           { name: "Novo", icon: "plus-circle" },
           { name: "Contas", icon: "wallet-outline" },
-          { name: "Mais", icon: "dots-horizontal" },
+          { name: "Análises", icon: "chart-bar" },
         ].map((item, index) => (
           <Pressable
             accessibilityRole="button"
@@ -589,7 +600,7 @@ function DashboardView({
                   | "plus-circle"
                   | "wallet-outline"
                   | "receipt-text-outline"
-                  | "dots-horizontal"
+                  | "chart-bar"
               }
               size={24}
               color={index === 0 ? "#365738" : t.muted}

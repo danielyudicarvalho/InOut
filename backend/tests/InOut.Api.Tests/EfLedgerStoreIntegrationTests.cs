@@ -1,6 +1,7 @@
 using InOut.Application.Financial;
 using InOut.Application.Financial.Dashboard;
 using InOut.Application.Idempotency;
+using InOut.Application.Households;
 using InOut.Domain.Financial;
 using InOut.Domain.Households;
 using InOut.Infrastructure.Financial;
@@ -103,7 +104,10 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
         await Assert.ThrowsAsync<HouseholdRuleException>(() => service.GetContextAsync(actorUserId, householdId, CancellationToken.None));
         var remaining = await service.GetContextAsync(secondUser, householdId, CancellationToken.None);
         Assert.Equal(HouseholdRole.Owner, Assert.Single(remaining.Members).Role);
-        Assert.True(await context.FinancialTransactions.AsNoTracking().AnyAsync(t => t.Id == transaction.TransactionId && t.CreatedBy == actorUserId));
+        var historical = await CreateStore(context).GetHistoryAsync(secondUser, householdId, 50,
+            new LedgerHistoryFilter(TransactionId: transaction.TransactionId), CancellationToken.None);
+        Assert.NotEmpty(historical);
+        Assert.All(historical, row => Assert.Equal(actorUserId, row.CreatedBy));
     }
 
     [Fact]

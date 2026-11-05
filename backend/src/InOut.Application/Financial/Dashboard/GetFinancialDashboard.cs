@@ -44,7 +44,7 @@ public sealed class GetFinancialDashboard(
                 "The user is not a member of this household.");
         }
 
-        var source = await dashboardReader.ReadAsync(
+        var source = await dashboardReader.ReadIncomeHistoryAsync(
             query.ActorUserId,
             query.HouseholdId,
             period,

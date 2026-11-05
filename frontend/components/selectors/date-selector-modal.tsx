@@ -127,7 +127,9 @@ export function DateSelectorModal({
         <header className="ninho-selector-header">
           <div>
             <h2 id="date-selector-title">Selecionar data</h2>
-            <p className="ninho-selector-subtitle">Escolha a data que melhor se encaixa.</p>
+            <p className="ninho-selector-subtitle">
+              Escolha a data que melhor se encaixa.
+            </p>
           </div>
           <button
             type="button"
@@ -161,10 +163,18 @@ export function DateSelectorModal({
           </button>
         </div>
 
-        <div className="ninho-calendar-grid" role="grid" aria-label="Calendário de dias">
+        <div
+          className="ninho-calendar-grid"
+          role="grid"
+          aria-label="Calendário de dias"
+        >
           <div className="ninho-calendar-weekdays" role="row">
             {WEEKDAY_NAMES.map((name) => (
-              <span key={name} role="columnheader" className="ninho-calendar-weekday">
+              <span
+                key={name}
+                role="columnheader"
+                className="ninho-calendar-weekday"
+              >
                 {name}
               </span>
             ))}
@@ -172,7 +182,11 @@ export function DateSelectorModal({
 
           <div className="ninho-calendar-days">
             {Array.from({ length: offset }).map((_, i) => (
-              <span key={`blank-${i}`} className="ninho-calendar-blank" aria-hidden="true" />
+              <span
+                key={`blank-${i}`}
+                className="ninho-calendar-blank"
+                aria-hidden="true"
+              />
             ))}
             {days.map(({ day, dateString }) => {
               const isSelected = dateString === selectedDate;

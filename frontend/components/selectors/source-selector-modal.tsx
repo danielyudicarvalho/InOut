@@ -16,16 +16,33 @@ import {
 
 export function getSourceIcon(name: string) {
   const lower = name.toLowerCase();
-  if (lower.includes("freelance") || lower.includes("freela") || lower.includes("computador") || lower.includes("site")) {
+  if (
+    lower.includes("freelance") ||
+    lower.includes("freela") ||
+    lower.includes("computador") ||
+    lower.includes("site")
+  ) {
     return Laptop;
   }
-  if (lower.includes("empresa") || lower.includes("firma") || lower.includes("corporação")) {
+  if (
+    lower.includes("empresa") ||
+    lower.includes("firma") ||
+    lower.includes("corporação")
+  ) {
     return Buildings;
   }
-  if (lower.includes("invest") || lower.includes("dividendo") || lower.includes("rendimento")) {
+  if (
+    lower.includes("invest") ||
+    lower.includes("dividendo") ||
+    lower.includes("rendimento")
+  ) {
     return CurrencyCircleDollar;
   }
-  if (lower.includes("bônus") || lower.includes("comissão") || lower.includes("presente")) {
+  if (
+    lower.includes("bônus") ||
+    lower.includes("comissão") ||
+    lower.includes("presente")
+  ) {
     return HandCoins;
   }
   return Briefcase;
@@ -89,7 +106,9 @@ export function SourceSelectorModal({
       onSelect(created.id);
       onClose();
     } catch {
-      setErrorNotice("Não foi possível criar a fonte de renda. Tente novamente.");
+      setErrorNotice(
+        "Não foi possível criar a fonte de renda. Tente novamente.",
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -132,7 +151,11 @@ export function SourceSelectorModal({
         </header>
 
         <div className="ninho-selector-search-box">
-          <MagnifyingGlass size={18} className="ninho-search-icon" aria-hidden="true" />
+          <MagnifyingGlass
+            size={18}
+            className="ninho-search-icon"
+            aria-hidden="true"
+          />
           <input
             type="search"
             aria-label="Buscar fonte"
@@ -149,7 +172,11 @@ export function SourceSelectorModal({
           </p>
         ) : null}
 
-        <div className="ninho-selector-list" role="listbox" aria-label="Fontes de renda">
+        <div
+          className="ninho-selector-list"
+          role="listbox"
+          aria-label="Fontes de renda"
+        >
           <button
             type="button"
             role="option"

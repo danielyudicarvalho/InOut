@@ -374,6 +374,11 @@ public static class LedgerEndpoints
                 cancellationToken)))
             .WithName(ApiContract.EndpointNames.GetExpenseBreakdown);
 
+        ledger.MapGet("/analysis", async (Guid householdId, string currency, DateOnly from, DateOnly to,
+            ClaimsPrincipal principal, GetFinancialAnalysis useCase, CancellationToken ct) =>
+            Results.Ok(await useCase.ExecuteAsync(UserId(principal), householdId, currency, from, to, ct)))
+            .WithName("GetFinancialAnalysis");
+
         ledger.MapGet(ApiContract.Routes.CompareDashboard, async (
             Guid householdId,
             int? year,

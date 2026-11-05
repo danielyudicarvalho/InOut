@@ -17,10 +17,18 @@ import { accountKindLabel } from "@inout/finance";
 
 export function getAccountIcon(kind: string | null | undefined, name: string) {
   const lower = name.toLowerCase();
-  if (lower.includes("carteira") || lower.includes("dinheiro") || kind === "cash") {
+  if (
+    lower.includes("carteira") ||
+    lower.includes("dinheiro") ||
+    kind === "cash"
+  ) {
     return Wallet;
   }
-  if (lower.includes("reserva") || lower.includes("poupança") || kind === "savings") {
+  if (
+    lower.includes("reserva") ||
+    lower.includes("poupança") ||
+    kind === "savings"
+  ) {
     return PiggyBank;
   }
   if (lower.includes("invest") || kind === "investment") {
@@ -119,7 +127,11 @@ export function AccountSelectorModal({
         </header>
 
         <div className="ninho-selector-search-box">
-          <MagnifyingGlass size={18} className="ninho-search-icon" aria-hidden="true" />
+          <MagnifyingGlass
+            size={18}
+            className="ninho-search-icon"
+            aria-hidden="true"
+          />
           <input
             type="search"
             aria-label="Buscar conta"
@@ -130,7 +142,11 @@ export function AccountSelectorModal({
           />
         </div>
 
-        <div className="ninho-selector-list" role="listbox" aria-label="Contas financeiras">
+        <div
+          className="ninho-selector-list"
+          role="listbox"
+          aria-label="Contas financeiras"
+        >
           {filtered.length === 0 ? (
             <p className="ninho-selector-empty">Nenhuma conta encontrada.</p>
           ) : (
@@ -153,7 +169,9 @@ export function AccountSelectorModal({
                     <AccountIcon kind={acc.kind} name={acc.name} size={20} />
                   </span>
                   <div className="ninho-selector-item-text">
-                    <span className="ninho-selector-item-label">{acc.name}</span>
+                    <span className="ninho-selector-item-label">
+                      {acc.name}
+                    </span>
                     <span className="ninho-selector-item-subtitle">
                       {kindLabel} • {acc.currency}
                     </span>

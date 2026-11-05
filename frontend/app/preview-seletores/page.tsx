@@ -134,12 +134,18 @@ export default function PreviewSeletoresPage() {
             </div>
           </div>
 
-          <form className="ninho-record-form" onSubmit={(e) => e.preventDefault()}>
+          <form
+            className="ninho-record-form"
+            onSubmit={(e) => e.preventDefault()}
+          >
             <fieldset className="ninho-form-fields">
               {/* Row 1: Valor & Data */}
               <div className="ninho-form-grid-2">
                 <div className="ninho-field-group">
-                  <label htmlFor="preview-valor-input" className="ninho-field-label">
+                  <label
+                    htmlFor="preview-valor-input"
+                    className="ninho-field-label"
+                  >
                     Valor
                   </label>
                   <input
@@ -155,7 +161,10 @@ export default function PreviewSeletoresPage() {
                 </div>
 
                 <div className="ninho-field-group">
-                  <label htmlFor="preview-date-input" className="ninho-field-label">
+                  <label
+                    htmlFor="preview-date-input"
+                    className="ninho-field-label"
+                  >
                     Data
                   </label>
                   <div className="ninho-date-picker-wrap">
@@ -176,7 +185,9 @@ export default function PreviewSeletoresPage() {
                       <CalendarBlank size={20} weight="bold" />
                     </button>
                   </div>
-                  <span className="ninho-field-hint">Clique para abrir o calendário</span>
+                  <span className="ninho-field-hint">
+                    Clique para abrir o calendário
+                  </span>
                 </div>
               </div>
 
@@ -204,7 +215,10 @@ export default function PreviewSeletoresPage() {
                   placeholder="Selecionar subcategoria"
                   icon={
                     selectedSubcategory ? (
-                      <SubcategoryIcon name={selectedSubcategory.name} size={18} />
+                      <SubcategoryIcon
+                        name={selectedSubcategory.name}
+                        size={18}
+                      />
                     ) : (
                       <Tag size={18} weight="duotone" />
                     )
@@ -222,7 +236,11 @@ export default function PreviewSeletoresPage() {
                   placeholder="Selecionar conta"
                   icon={
                     selectedAccount ? (
-                      <AccountIcon name={selectedAccount.name} kind={selectedAccount.kind} size={18} />
+                      <AccountIcon
+                        name={selectedAccount.name}
+                        kind={selectedAccount.kind}
+                        size={18}
+                      />
                     ) : (
                       <Wallet size={18} weight="duotone" />
                     )
@@ -248,7 +266,10 @@ export default function PreviewSeletoresPage() {
 
               {/* Row 4: Descrição */}
               <div className="ninho-field-group">
-                <label htmlFor="preview-description-input" className="ninho-field-label">
+                <label
+                  htmlFor="preview-description-input"
+                  className="ninho-field-label"
+                >
                   Descrição
                 </label>
                 <input
@@ -285,7 +306,9 @@ export default function PreviewSeletoresPage() {
         {/* Right Column: Pipo peaceful future */}
         <aside className="ninho-stage-art ninho-stage-art-right">
           <div className="ninho-art-bubble-right">
-            <span className="ninho-tiny-badge">Pequenas escolhas, grandes conquistas.</span>
+            <span className="ninho-tiny-badge">
+              Pequenas escolhas, grandes conquistas.
+            </span>
             <p>Organizar hoje, um Ninho mais tranquilo amanhã.</p>
           </div>
           <Image
@@ -305,7 +328,9 @@ export default function PreviewSeletoresPage() {
           {/* 1. Subcategory Selector Card */}
           <div className="ninho-showcase-column">
             <div className="ninho-showcase-header">
-              <span className="ninho-showcase-tag-icon"><Tag size={20} weight="fill" /></span>
+              <span className="ninho-showcase-tag-icon">
+                <Tag size={20} weight="fill" />
+              </span>
               <div>
                 <h3>Selecionador de subcategoria</h3>
                 <p>Detalhe seus gastos com mais precisão.</p>
@@ -317,7 +342,9 @@ export default function PreviewSeletoresPage() {
                 <span className="ninho-selector-close">✕</span>
               </div>
               <div className="ninho-selector-parent-pill">
-                <span className="ninho-parent-pill-icon"><ForkKnife size={14} weight="duotone" /></span>
+                <span className="ninho-parent-pill-icon">
+                  <ForkKnife size={14} weight="duotone" />
+                </span>
                 <span>Alimentação</span>
               </div>
               <div className="ninho-selector-search-box">
@@ -326,16 +353,24 @@ export default function PreviewSeletoresPage() {
               </div>
               <div className="ninho-selector-list">
                 <div className="ninho-selector-item selected">
-                  <div className="ninho-selector-item-icon"><ShoppingCart size={18} weight="duotone" /></div>
+                  <div className="ninho-selector-item-icon">
+                    <ShoppingCart size={18} weight="duotone" />
+                  </div>
                   <div className="ninho-selector-item-text">
                     <span className="ninho-selector-item-label">Mercado</span>
                   </div>
-                  <span className="ninho-selector-check"><Check size={14} weight="bold" /></span>
+                  <span className="ninho-selector-check">
+                    <Check size={14} weight="bold" />
+                  </span>
                 </div>
                 <div className="ninho-selector-item">
-                  <div className="ninho-selector-item-icon"><ForkKnife size={18} weight="duotone" /></div>
+                  <div className="ninho-selector-item-icon">
+                    <ForkKnife size={18} weight="duotone" />
+                  </div>
                   <div className="ninho-selector-item-text">
-                    <span className="ninho-selector-item-label">Restaurante</span>
+                    <span className="ninho-selector-item-label">
+                      Restaurante
+                    </span>
                   </div>
                 </div>
               </div>
@@ -348,7 +383,9 @@ export default function PreviewSeletoresPage() {
           {/* 2. Source Selector Card */}
           <div className="ninho-showcase-column">
             <div className="ninho-showcase-header">
-              <span className="ninho-showcase-source-icon"><TrendUp size={20} weight="bold" /></span>
+              <span className="ninho-showcase-source-icon">
+                <TrendUp size={20} weight="bold" />
+              </span>
               <div>
                 <h3>Selecionador de fonte de renda</h3>
                 <p>Para entradas.</p>
@@ -365,20 +402,28 @@ export default function PreviewSeletoresPage() {
               </div>
               <div className="ninho-selector-list">
                 <div className="ninho-selector-item">
-                  <div className="ninho-selector-item-icon"><Prohibit size={18} /></div>
+                  <div className="ninho-selector-item-icon">
+                    <Prohibit size={18} />
+                  </div>
                   <div className="ninho-selector-item-text">
                     <span className="ninho-selector-item-label">Sem fonte</span>
                   </div>
                 </div>
                 <div className="ninho-selector-item selected">
-                  <div className="ninho-selector-item-icon"><Briefcase size={18} weight="duotone" /></div>
+                  <div className="ninho-selector-item-icon">
+                    <Briefcase size={18} weight="duotone" />
+                  </div>
                   <div className="ninho-selector-item-text">
                     <span className="ninho-selector-item-label">Empresa</span>
                   </div>
-                  <span className="ninho-selector-check"><Check size={14} weight="bold" /></span>
+                  <span className="ninho-selector-check">
+                    <Check size={14} weight="bold" />
+                  </span>
                 </div>
                 <div className="ninho-selector-item">
-                  <div className="ninho-selector-item-icon"><Laptop size={18} weight="duotone" /></div>
+                  <div className="ninho-selector-item-icon">
+                    <Laptop size={18} weight="duotone" />
+                  </div>
                   <div className="ninho-selector-item-text">
                     <span className="ninho-selector-item-label">Freelance</span>
                   </div>
@@ -393,7 +438,9 @@ export default function PreviewSeletoresPage() {
           {/* 3. Date Selector Card */}
           <div className="ninho-showcase-column">
             <div className="ninho-showcase-header">
-              <span className="ninho-showcase-calendar-icon"><CalendarBlank size={20} weight="bold" /></span>
+              <span className="ninho-showcase-calendar-icon">
+                <CalendarBlank size={20} weight="bold" />
+              </span>
               <div>
                 <h3>Selecionador de data</h3>
                 <p>Escolha a data que melhor se encaixa.</p>
@@ -405,9 +452,13 @@ export default function PreviewSeletoresPage() {
                 <span className="ninho-selector-close">✕</span>
               </div>
               <div className="ninho-calendar-nav">
-                <button type="button" className="ninho-calendar-nav-btn"><CaretLeft size={18} /></button>
+                <button type="button" className="ninho-calendar-nav-btn">
+                  <CaretLeft size={18} />
+                </button>
                 <span className="ninho-calendar-title">Outubro de 2026</span>
-                <button type="button" className="ninho-calendar-nav-btn"><CaretRight size={18} /></button>
+                <button type="button" className="ninho-calendar-nav-btn">
+                  <CaretRight size={18} />
+                </button>
               </div>
               <div className="ninho-calendar-grid">
                 <div className="ninho-calendar-weekdays">
@@ -457,8 +508,12 @@ export default function PreviewSeletoresPage() {
                 </div>
               </div>
               <div className="ninho-calendar-footer">
-                <button type="button" className="ninho-selector-cancel-btn">Hoje</button>
-                <button type="button" className="ninho-selector-confirm-btn">Confirmar</button>
+                <button type="button" className="ninho-selector-cancel-btn">
+                  Hoje
+                </button>
+                <button type="button" className="ninho-selector-confirm-btn">
+                  Confirmar
+                </button>
               </div>
             </div>
           </div>

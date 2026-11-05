@@ -322,6 +322,75 @@ export function createFinanceRepository({
     };
   }
   return {
+    async analysis(householdId, period, code, signal) {
+      const bounds = parsePeriod(period);
+      const query = new URLSearchParams({
+        from: bounds.from,
+        to: bounds.to,
+        currency: currency(code),
+      });
+      const raw = await get(
+        `/api/v1/households/${encodeURIComponent(householdId)}/ledger/analysis?${query}`,
+        signal,
+      );
+      if (
+        !raw ||
+        raw.from !== bounds.from ||
+        raw.to !== bounds.to ||
+        raw.currency !== code ||
+        typeof raw.isReconciled !== "boolean"
+      )
+        throw new FinanceFailure("invalid");
+      const facts = (row) => ({
+        incomeCents: integer(row.incomeCents),
+        expenseCents: integer(row.expenseCents),
+        resultCents: integer(row.resultCents),
+      });
+      const changes = array(raw.changes).map((row) => {
+        if (
+          row.percentageChange !== null &&
+          (typeof row.percentageChange !== "number" ||
+            !Number.isFinite(row.percentageChange))
+        )
+          throw new FinanceFailure("invalid");
+        return {
+          ...row,
+          kind: string(row.kind),
+          name: string(row.name),
+          currentCents: integer(row.currentCents),
+          previousCents: integer(row.previousCents),
+          deltaCents: integer(row.deltaCents),
+        };
+      });
+      return {
+        ...raw,
+        previousFrom: date(raw.previousFrom),
+        previousTo: date(raw.previousTo),
+        current: facts(raw.current),
+        previous: facts(raw.previous),
+        changes,
+        series: array(raw.series).map((row) => ({
+          ...facts(row),
+          from: date(row.from),
+          to: date(row.to),
+        })),
+        accounts: array(raw.accounts).map((row) => ({
+          id: string(row.id),
+          name: string(row.name),
+          ...Object.fromEntries(
+            [
+              "incomeCents",
+              "expenseCents",
+              "transferInCents",
+              "transferOutCents",
+              "inflowCents",
+              "outflowCents",
+              "changeCents",
+            ].map((key) => [key, integer(row[key])]),
+          ),
+        })),
+      };
+    },
     async ledgerHistory(householdId, period, filters = {}, offset = 0, signal) {
       const homes = await this.households(signal);
       if (!homes.some((h) => h.id === householdId))

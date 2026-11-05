@@ -32,7 +32,9 @@ export function HouseholdAccessGuard({ children }: { children: ReactNode }) {
   const path = usePathname(),
     p = useLocalSearchParams(),
     id = typeof p.household === "string" ? p.household : "";
-  return paths.has(path) ? (
+  return paths.has(path) ||
+    path === "/analises" ||
+    path.startsWith("/analises/") ? (
     <LiveGuard key={`${path}:${id}`} household={id}>
       {children}
     </LiveGuard>

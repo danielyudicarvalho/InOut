@@ -47,13 +47,13 @@ public sealed class CompareFinancialPeriods(
 
         var previousPeriod = currentPeriod.GetPreviousPeriod();
 
-        var currentSource = await dashboardReader.ReadAsync(
+        var currentSource = await dashboardReader.ReadIncomeHistoryAsync(
             query.ActorUserId,
             query.HouseholdId,
             currentPeriod,
             cancellationToken);
 
-        var previousSource = await dashboardReader.ReadAsync(
+        var previousSource = await dashboardReader.ReadIncomeHistoryAsync(
             query.ActorUserId,
             query.HouseholdId,
             previousPeriod,

@@ -37,9 +37,8 @@ public sealed class GetIncomeBreakdown(
             : query.Year is not null && query.Month is not null
                 ? FinancialPeriod.Monthly(query.Year.Value, query.Month.Value)
                 : FinancialPeriod.Monthly(DateTime.UtcNow.Year, DateTime.UtcNow.Month);
-        var source = query.IncludeArchivedAccounts
-            ? await dashboardReader.ReadIncomeHistoryAsync(query.ActorUserId, query.HouseholdId, period, cancellationToken)
-            : await dashboardReader.ReadAsync(query.ActorUserId, query.HouseholdId, period, cancellationToken);
+        // Archiving an account must never erase its historical income.
+        var source = await dashboardReader.ReadIncomeHistoryAsync(query.ActorUserId, query.HouseholdId, period, cancellationToken);
         var accounts = source.Accounts.Where(account => account.Currency == currency).ToDictionary(account => account.Id);
         var categories = source.Categories.ToDictionary(category => category.Id, category => category.Name);
         var incomeSources = source.IncomeSources.ToDictionary(item => item.Id, item => item.Name);

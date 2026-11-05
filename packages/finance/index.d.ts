@@ -120,7 +120,51 @@ export type HistoryFilters = {
   accountId?: string;
 };
 export function historyKind(item: Pick<HistoryItem, "kind">): string;
+export type AnalysisFacts = {
+  incomeCents: number;
+  expenseCents: number;
+  resultCents: number;
+};
+export type AnalysisChange = {
+  kind: string;
+  id: string | null;
+  name: string;
+  currentCents: number;
+  previousCents: number;
+  deltaCents: number;
+  percentageChange: number | null;
+};
+export type AnalysisAccount = {
+  id: string;
+  name: string;
+  incomeCents: number;
+  expenseCents: number;
+  transferInCents: number;
+  transferOutCents: number;
+  inflowCents: number;
+  outflowCents: number;
+  changeCents: number;
+};
+export type FinancialAnalysis = {
+  from: string;
+  to: string;
+  previousFrom: string;
+  previousTo: string;
+  currency: string;
+  isReconciled: boolean;
+  current: AnalysisFacts;
+  previous: AnalysisFacts;
+  changes: AnalysisChange[];
+  series: (AnalysisFacts & { from: string; to: string })[];
+  accounts: AnalysisAccount[];
+};
 export interface FinanceRepository {
+  analysis(
+    householdId: string,
+    period: string,
+    currency: string,
+    signal?: AbortSignal,
+  ): Promise<FinancialAnalysis>;
   createCategory(
     household: string,
     body: {

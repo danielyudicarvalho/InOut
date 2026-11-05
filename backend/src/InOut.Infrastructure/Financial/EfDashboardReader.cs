@@ -140,7 +140,8 @@ public sealed class EfDashboardReader(InOutDbContext dbContext) : IDashboardRead
                     entry.Id,
                     transaction.OccurredOn,
                     transaction.Description,
-                    transaction.ReversalOf)))
+                    transaction.ReversalOf,
+                    entry.Direction)))
             .ToArray();
     }
 

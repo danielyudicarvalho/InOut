@@ -21,31 +21,67 @@ import { CategoryIcon, type CategoryItem } from "./category-selector-modal";
 
 export function getSubcategoryIcon(name: string) {
   const lower = name.toLowerCase();
-  if (lower.includes("mercado") || lower.includes("feira") || lower.includes("supermercado")) {
+  if (
+    lower.includes("mercado") ||
+    lower.includes("feira") ||
+    lower.includes("supermercado")
+  ) {
     return ShoppingCart;
   }
-  if (lower.includes("restaurante") || lower.includes("almoço") || lower.includes("jantar")) {
+  if (
+    lower.includes("restaurante") ||
+    lower.includes("almoço") ||
+    lower.includes("jantar")
+  ) {
     return ForkKnife;
   }
-  if (lower.includes("café") || lower.includes("lanche") || lower.includes("padaria")) {
+  if (
+    lower.includes("café") ||
+    lower.includes("lanche") ||
+    lower.includes("padaria")
+  ) {
     return Coffee;
   }
-  if (lower.includes("combust") || lower.includes("gasolina") || lower.includes("etanol")) {
+  if (
+    lower.includes("combust") ||
+    lower.includes("gasolina") ||
+    lower.includes("etanol")
+  ) {
     return GasPump;
   }
-  if (lower.includes("ônibus") || lower.includes("metro") || lower.includes("passagem")) {
+  if (
+    lower.includes("ônibus") ||
+    lower.includes("metro") ||
+    lower.includes("passagem")
+  ) {
     return Bus;
   }
-  if (lower.includes("farm") || lower.includes("remédio") || lower.includes("medic")) {
+  if (
+    lower.includes("farm") ||
+    lower.includes("remédio") ||
+    lower.includes("medic")
+  ) {
     return Pill;
   }
-  if (lower.includes("consulta") || lower.includes("exame") || lower.includes("dentista")) {
+  if (
+    lower.includes("consulta") ||
+    lower.includes("exame") ||
+    lower.includes("dentista")
+  ) {
     return FirstAid;
   }
-  if (lower.includes("cinema") || lower.includes("streaming") || lower.includes("show")) {
+  if (
+    lower.includes("cinema") ||
+    lower.includes("streaming") ||
+    lower.includes("show")
+  ) {
     return FilmStrip;
   }
-  if (lower.includes("livro") || lower.includes("material") || lower.includes("escola")) {
+  if (
+    lower.includes("livro") ||
+    lower.includes("material") ||
+    lower.includes("escola")
+  ) {
     return Books;
   }
   return Tag;
@@ -147,7 +183,9 @@ export function SubcategorySelectorModal({
         <header className="ninho-selector-header">
           <div>
             <h2 id="subcategory-selector-title">Selecionar subcategoria</h2>
-            <p className="ninho-selector-subtitle">Detalhe seus gastos com mais precisão.</p>
+            <p className="ninho-selector-subtitle">
+              Detalhe seus gastos com mais precisão.
+            </p>
           </div>
           <button
             type="button"
@@ -164,12 +202,18 @@ export function SubcategorySelectorModal({
             <span className="ninho-parent-pill-icon">
               <CategoryIcon name={parentCategory.name} size={16} />
             </span>
-            <span className="ninho-parent-pill-text">{parentCategory.name}</span>
+            <span className="ninho-parent-pill-text">
+              {parentCategory.name}
+            </span>
           </div>
         ) : null}
 
         <div className="ninho-selector-search-box">
-          <MagnifyingGlass size={18} className="ninho-search-icon" aria-hidden="true" />
+          <MagnifyingGlass
+            size={18}
+            className="ninho-search-icon"
+            aria-hidden="true"
+          />
           <input
             type="search"
             aria-label="Buscar subcategoria"
@@ -186,11 +230,18 @@ export function SubcategorySelectorModal({
           </p>
         ) : null}
 
-        <div className="ninho-selector-list" role="listbox" aria-label="Subcategorias">
+        <div
+          className="ninho-selector-list"
+          role="listbox"
+          aria-label="Subcategorias"
+        >
           {filtered.length === 0 ? (
             <div className="ninho-selector-empty">
               <p>Nenhuma subcategoria para esta categoria.</p>
-              <small>Você pode criar uma subcategoria abaixo para refinar seus gastos.</small>
+              <small>
+                Você pode criar uma subcategoria abaixo para refinar seus
+                gastos.
+              </small>
             </div>
           ) : (
             filtered.map((sub) => {

@@ -21,34 +21,77 @@ import {
 
 export function getCategoryIcon(name: string) {
   const lower = name.toLowerCase();
-  if (lower.includes("aliment") || lower.includes("comida") || lower.includes("restaurante")) {
+  if (
+    lower.includes("aliment") ||
+    lower.includes("comida") ||
+    lower.includes("restaurante")
+  ) {
     return ForkKnife;
   }
-  if (lower.includes("morad") || lower.includes("casa") || lower.includes("aluguel")) {
+  if (
+    lower.includes("morad") ||
+    lower.includes("casa") ||
+    lower.includes("aluguel")
+  ) {
     return House;
   }
-  if (lower.includes("transp") || lower.includes("carro") || lower.includes("uber") || lower.includes("combust")) {
+  if (
+    lower.includes("transp") ||
+    lower.includes("carro") ||
+    lower.includes("uber") ||
+    lower.includes("combust")
+  ) {
     return Car;
   }
-  if (lower.includes("saúd") || lower.includes("saud") || lower.includes("farm") || lower.includes("médic")) {
+  if (
+    lower.includes("saúd") ||
+    lower.includes("saud") ||
+    lower.includes("farm") ||
+    lower.includes("médic")
+  ) {
     return Heart;
   }
-  if (lower.includes("lazer") || lower.includes("jog") || lower.includes("divers")) {
+  if (
+    lower.includes("lazer") ||
+    lower.includes("jog") ||
+    lower.includes("divers")
+  ) {
     return GameController;
   }
-  if (lower.includes("educa") || lower.includes("estud") || lower.includes("curso") || lower.includes("livro")) {
+  if (
+    lower.includes("educa") ||
+    lower.includes("estud") ||
+    lower.includes("curso") ||
+    lower.includes("livro")
+  ) {
     return GraduationCap;
   }
-  if (lower.includes("viagem") || lower.includes("voo") || lower.includes("ferias")) {
+  if (
+    lower.includes("viagem") ||
+    lower.includes("voo") ||
+    lower.includes("ferias")
+  ) {
     return Airplane;
   }
-  if (lower.includes("compra") || lower.includes("mercado") || lower.includes("loja")) {
+  if (
+    lower.includes("compra") ||
+    lower.includes("mercado") ||
+    lower.includes("loja")
+  ) {
     return Bag;
   }
-  if (lower.includes("conta") || lower.includes("boleto") || lower.includes("imposto")) {
+  if (
+    lower.includes("conta") ||
+    lower.includes("boleto") ||
+    lower.includes("imposto")
+  ) {
     return Receipt;
   }
-  if (lower.includes("salário") || lower.includes("renda") || lower.includes("invest")) {
+  if (
+    lower.includes("salário") ||
+    lower.includes("renda") ||
+    lower.includes("invest")
+  ) {
     return Coins;
   }
   return Sparkle;
@@ -84,7 +127,10 @@ export function CategorySelectorModal({
   flow: "income" | "expense";
   onSelect: (categoryId: string) => void;
   onClose: () => void;
-  onCreateCategory?: (name: string, flow: "income" | "expense") => Promise<CategoryItem>;
+  onCreateCategory?: (
+    name: string,
+    flow: "income" | "expense",
+  ) => Promise<CategoryItem>;
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [search, setSearch] = useState("");
@@ -101,7 +147,9 @@ export function CategorySelectorModal({
     return () => dialog?.close();
   }, []);
 
-  const rootCategories = categories.filter((c) => !c.parentId && c.flow === flow);
+  const rootCategories = categories.filter(
+    (c) => !c.parentId && c.flow === flow,
+  );
   const filtered = rootCategories.filter((c) =>
     c.name.toLowerCase().includes(search.toLowerCase().trim()),
   );
@@ -157,7 +205,11 @@ export function CategorySelectorModal({
         </header>
 
         <div className="ninho-selector-search-box">
-          <MagnifyingGlass size={18} className="ninho-search-icon" aria-hidden="true" />
+          <MagnifyingGlass
+            size={18}
+            className="ninho-search-icon"
+            aria-hidden="true"
+          />
           <input
             type="search"
             aria-label="Buscar categoria"
@@ -174,9 +226,15 @@ export function CategorySelectorModal({
           </p>
         ) : null}
 
-        <div className="ninho-selector-list" role="listbox" aria-label="Categorias">
+        <div
+          className="ninho-selector-list"
+          role="listbox"
+          aria-label="Categorias"
+        >
           {filtered.length === 0 ? (
-            <p className="ninho-selector-empty">Nenhuma categoria encontrada.</p>
+            <p className="ninho-selector-empty">
+              Nenhuma categoria encontrada.
+            </p>
           ) : (
             filtered.map((cat) => {
               const isSelected = cat.id === selectedId;
