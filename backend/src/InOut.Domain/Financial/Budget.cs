@@ -6,15 +6,18 @@ public sealed record Budget(
     Guid CategoryId,
     DateOnly PeriodStart,
     DateOnly PeriodEnd,
-    long LimitCents)
+    long LimitCents,
+    string Currency)
 {
+    public string Currency { get; } = new Money(0, Currency).Currency;
     public static Budget Create(
         Guid id,
         Guid householdId,
         Guid categoryId,
         DateOnly periodStart,
         DateOnly periodEnd,
-        long limitCents)
+        long limitCents,
+        string currency)
     {
         if (id == Guid.Empty || householdId == Guid.Empty || categoryId == Guid.Empty)
         {
@@ -37,7 +40,7 @@ public sealed record Budget(
                 "Budget period start cannot be after period end.");
         }
 
-        return new Budget(id, householdId, categoryId, periodStart, periodEnd, limitCents);
+        return new Budget(id, householdId, categoryId, periodStart, periodEnd, limitCents, currency);
     }
 
     public Budget UpdateLimit(long newLimitCents)

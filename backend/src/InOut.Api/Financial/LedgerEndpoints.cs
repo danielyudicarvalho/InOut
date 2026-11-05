@@ -312,7 +312,8 @@ public static class LedgerEndpoints
                     request.PeriodStart,
                     request.PeriodEnd,
                     request.LimitCents,
-                    idempotencyKey),
+                    idempotencyKey,
+                    request.Currency),
                 cancellationToken);
 
             return result.Replayed

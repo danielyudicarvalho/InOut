@@ -56,5 +56,6 @@ public sealed record SetBudgetRequest(
     Guid CategoryId,
     DateOnly PeriodStart,
     DateOnly PeriodEnd,
-    long LimitCents);
+    long LimitCents,
+    string Currency);
 

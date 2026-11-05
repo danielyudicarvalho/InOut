@@ -155,7 +155,8 @@ public sealed class EfDashboardReader(InOutDbContext dbContext) : IDashboardRead
             .Select(budget => new DashboardBudgetSource(
                 budget.Id,
                 budget.CategoryId,
-                budget.LimitCents))
+                budget.LimitCents,
+                budget.Currency))
             .ToArrayAsync(cancellationToken);
 
     private async Task<IReadOnlyList<DashboardGoalSource>> ReadGoalsAsync(
@@ -169,7 +170,8 @@ public sealed class EfDashboardReader(InOutDbContext dbContext) : IDashboardRead
                 goal.Name,
                 goal.TargetCents,
                 goal.AllocatedCents,
-                goal.TargetDate))
+                goal.TargetDate,
+                goal.Currency))
             .ToArrayAsync(cancellationToken);
 
     private async Task<ReconciliationCounts> ReadReconciliationAsync(

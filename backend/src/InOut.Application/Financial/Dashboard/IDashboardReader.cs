@@ -41,11 +41,12 @@ public sealed record DashboardCategorySource(Guid Id, string Name, Guid? ParentI
 
 public sealed record DashboardIncomeSourceSource(Guid Id, string Name);
 
-public sealed record DashboardBudgetSource(Guid Id, Guid CategoryId, long LimitCents);
+public sealed record DashboardBudgetSource(Guid Id, Guid CategoryId, long LimitCents, string? Currency);
 
 public sealed record DashboardGoalSource(
     Guid Id,
     string Name,
     long TargetCents,
     long AllocatedCents,
-    DateOnly? TargetDate);
+    DateOnly? TargetDate,
+    string? Currency);

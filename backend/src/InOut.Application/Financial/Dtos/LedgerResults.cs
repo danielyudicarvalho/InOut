@@ -86,10 +86,16 @@ public sealed record DashboardCategoryExpense(
     Guid CategoryId, string CategoryName, Guid? ParentId, string Currency, long AmountCents);
 
 public sealed record DashboardBudgetProgress(
-    Guid BudgetId, Guid CategoryId, string CategoryName, long LimitCents, long SpentCents);
+    Guid BudgetId, Guid CategoryId, string CategoryName, long LimitCents, long? SpentCents, string? Currency)
+{
+    public bool RequiresCurrencySelection => Currency is null;
+}
 
 public sealed record DashboardGoalProgress(
-    Guid GoalId, string Name, long TargetCents, long AllocatedCents, DateOnly? TargetDate);
+    Guid GoalId, string Name, long TargetCents, long AllocatedCents, DateOnly? TargetDate, string? Currency)
+{
+    public bool RequiresCurrencySelection => Currency is null;
+}
 
 public sealed record FinancialDashboard(
     DateOnly PeriodStart,
@@ -110,5 +116,6 @@ public sealed record BudgetResult(
     DateOnly PeriodStart,
     DateOnly PeriodEnd,
     long LimitCents,
-    bool Replayed);
+    bool Replayed,
+    string Currency);
 

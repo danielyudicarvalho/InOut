@@ -37,6 +37,11 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
         await using var command = connection.CreateCommand();
         command.CommandText = Schema;
         await command.ExecuteNonQueryAsync();
+        var root = new DirectoryInfo(AppContext.BaseDirectory);
+        while (root is not null && !Directory.Exists(Path.Combine(root.FullName, "supabase", "migrations"))) root = root.Parent;
+        var migration = Directory.GetFiles(Path.Combine(root!.FullName, "supabase", "migrations"), "*_planning_currencies.sql").Single();
+        command.CommandText = await File.ReadAllTextAsync(migration);
+        await command.ExecuteNonQueryAsync();
 
         await using var seed = connection.CreateCommand();
         seed.CommandText = """
@@ -53,14 +58,14 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
             insert into public.categories (id, household_id, name, flow, created_by)
             values (@expense_category_id, @household_id, 'Food', 'expense', @actor_user_id);
             insert into public.budgets (
-              id, household_id, category_id, period_start, period_end, limit_cents, created_by)
+              id, household_id, category_id, period_start, period_end, limit_cents, created_by, currency)
             values (
               gen_random_uuid(), @household_id, @expense_category_id,
-              '2026-09-01', '2026-09-30', 500, @actor_user_id);
+              '2026-09-01', '2026-09-30', 500, @actor_user_id, 'BRL');
             insert into public.goals (
-              id, household_id, name, target_cents, allocated_cents, target_date)
+              id, household_id, name, target_cents, allocated_cents, target_date, currency)
             values (
-              gen_random_uuid(), @household_id, 'Emergency fund', 10000, 2500, '2026-12-31');
+              gen_random_uuid(), @household_id, 'Emergency fund', 10000, 2500, '2026-12-31', 'BRL');
             """;
         seed.Parameters.AddWithValue("household_id", householdId);
         seed.Parameters.AddWithValue("actor_user_id", actorUserId);
@@ -950,7 +955,7 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
             var service = new LedgerService(CreateStore(context));
             var result = await service.SetBudgetAsync(
                 actorUserId,
-                new SetBudgetCommand(null, householdId, expenseCategoryId, periodStart, periodEnd, initialLimit, Guid.NewGuid()),
+                new SetBudgetCommand(null, householdId, expenseCategoryId, periodStart, periodEnd, initialLimit, Guid.NewGuid(), "BRL"),
                 CancellationToken.None);
 
             Assert.Equal(expenseCategoryId, result.CategoryId);
@@ -985,7 +990,7 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
             var service = new LedgerService(CreateStore(context));
             var updatedResult = await service.SetBudgetAsync(
                 actorUserId,
-                new SetBudgetCommand(null, householdId, expenseCategoryId, periodStart, periodEnd, updatedLimit, Guid.NewGuid()),
+                new SetBudgetCommand(null, householdId, expenseCategoryId, periodStart, periodEnd, updatedLimit, Guid.NewGuid(), "BRL"),
                 CancellationToken.None);
 
             Assert.Equal(updatedLimit, updatedResult.LimitCents);
@@ -1004,6 +1009,33 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task BudgetsInDifferentCurrenciesCoexistAndCannotReplayOrReinterpretAnotherCurrency()
+    {
+        await using var context = CreateContext();
+        var service = new LedgerService(CreateStore(context));
+        var usdAccount = Guid.NewGuid();
+        await service.CreateAccountAsync(actorUserId, new CreateAccountCommand(usdAccount, householdId,
+            "Dollar account", AccountKind.Checking, "USD", 1000, new DateOnly(2026, 9, 1), Guid.NewGuid()), CancellationToken.None);
+        await service.PostExpenseAsync(actorUserId, new PostExpenseCommand(householdId, usdAccount,
+            expenseCategoryId, 200, "USD", new DateOnly(2026, 9, 2), Guid.NewGuid(), null), CancellationToken.None);
+        var command = new SetBudgetCommand(null, householdId, expenseCategoryId, new DateOnly(2026, 9, 1),
+            new DateOnly(2026, 9, 30), 500, Guid.NewGuid(), "USD");
+        var usd = await service.SetBudgetAsync(actorUserId, command, CancellationToken.None);
+        Assert.Equal("USD", usd.Currency);
+        var replay = await service.SetBudgetAsync(actorUserId, command with { Currency = "usd" }, CancellationToken.None);
+        Assert.True(replay.Replayed);
+        var conflict = await Assert.ThrowsAsync<IdempotencyException>(() => service.SetBudgetAsync(actorUserId,
+            command with { Currency = "BRL" }, CancellationToken.None));
+        Assert.Equal(IdempotencyErrorCodes.Conflict, conflict.Code);
+        await Assert.ThrowsAsync<FinancialRuleException>(() => service.SetBudgetAsync(actorUserId,
+            command with { Id = usd.Id, Currency = "BRL", IdempotencyKey = Guid.NewGuid() }, CancellationToken.None));
+        var dashboard = await CreateDashboardUseCase(context).ExecuteAsync(
+            new GetFinancialDashboardQuery(actorUserId, householdId, 2026, 9), CancellationToken.None);
+        Assert.Equal(0L, dashboard.Budgets.Single(b => b.Currency == "BRL").SpentCents);
+        Assert.Equal(200L, dashboard.Budgets.Single(b => b.Currency == "USD").SpentCents);
+    }
+
+    [Fact]
     public async Task SetBudgetRejectsNonExpenseCategory()
     {
         var periodStart = new DateOnly(2026, 9, 1);
@@ -1015,7 +1047,7 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
         var ex = await Assert.ThrowsAsync<FinancialRuleException>(() =>
             service.SetBudgetAsync(
                 actorUserId,
-                new SetBudgetCommand(null, householdId, categoryId, periodStart, periodEnd, 100_000, Guid.NewGuid()),
+                new SetBudgetCommand(null, householdId, categoryId, periodStart, periodEnd, 100_000, Guid.NewGuid(), "BRL"),
                 CancellationToken.None));
 
         Assert.Equal(FinancialErrorCodes.InvalidCategory, ex.Code);

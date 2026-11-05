@@ -57,5 +57,6 @@ public sealed record SetBudgetCommand(
     DateOnly PeriodStart,
     DateOnly PeriodEnd,
     long LimitCents,
-    Guid IdempotencyKey);
+    Guid IdempotencyKey,
+    string Currency);
 

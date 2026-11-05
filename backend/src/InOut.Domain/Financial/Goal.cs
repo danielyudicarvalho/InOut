@@ -12,8 +12,11 @@ public sealed record Goal(
     Guid CreatedBy,
     DateTimeOffset CreatedAt,
     DateTimeOffset? ArchivedAt,
+    string Currency,
     GoalStatus Status = GoalStatus.Active)
 {
+    public string Currency { get; } = new Money(0, Currency).Currency;
+
     public GoalStatus Status { get; init; } = Status != GoalStatus.Active
         ? Status
         : (ArchivedAt is not null ? GoalStatus.Archived : (AllocatedCents >= TargetCents && TargetCents > 0 ? GoalStatus.Completed : GoalStatus.Active));
@@ -59,7 +62,8 @@ public sealed record Goal(
         long targetCents,
         long initialAllocatedCents,
         DateOnly? targetDate,
-        Guid createdBy)
+        Guid createdBy,
+        string currency)
     {
         if (id == Guid.Empty || householdId == Guid.Empty || createdBy == Guid.Empty)
         {
@@ -95,6 +99,7 @@ public sealed record Goal(
             createdBy,
             DateTimeOffset.UtcNow,
             null,
+            currency,
             initialStatus);
     }
 
@@ -111,8 +116,10 @@ public sealed record Goal(
         return normalized;
     }
 
-    public Goal UpdateAllocated(long newAllocatedCents)
+    public Goal UpdateAllocated(long newAllocatedCents, string currency)
     {
+        if (new Money(0, currency).Currency != Currency)
+            throw new FinancialRuleException(FinancialErrorCodes.CurrencyMismatch, "Allocation currency must match the goal currency.");
         EnsureCanAllocate();
         if (newAllocatedCents < 0)
         {

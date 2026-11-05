@@ -233,22 +233,15 @@ public sealed class LedgerService(ILedgerStore store)
         store.ReconcileAsync(actorUserId, householdId, cancellationToken);
 
     public Task<BudgetResult> SetBudgetAsync(
-        Guid actorUserId,
-        SetBudgetCommand command,
-        CancellationToken cancellationToken) =>
-        store.SetBudgetAsync(
-            actorUserId,
-            command,
-            IdempotencyRequest.Create(
-                command.HouseholdId,
-                actorUserId,
-                IdempotencyOperation.SetBudget,
-                command.IdempotencyKey,
-                command.CategoryId,
-                command.PeriodStart,
-                command.PeriodEnd,
-                command.LimitCents),
-            cancellationToken);
+        Guid actorUserId, SetBudgetCommand command, CancellationToken cancellationToken)
+    {
+        command = command with { Currency = new Money(0, command.Currency).Currency };
+        return store.SetBudgetAsync(actorUserId, command,
+            IdempotencyRequest.Create(command.HouseholdId, actorUserId, IdempotencyOperation.SetBudget,
+                command.IdempotencyKey, command.Id, command.CategoryId, command.PeriodStart,
+                command.PeriodEnd, command.LimitCents, command.Currency), cancellationToken);
+    }
+
 
 
     private Task<LedgerWriteResult> PostAsync(

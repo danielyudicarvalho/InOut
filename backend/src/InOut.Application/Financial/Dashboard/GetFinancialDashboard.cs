@@ -114,15 +114,18 @@ public sealed class GetFinancialDashboard(
                     budget.CategoryId,
                     categories[budget.CategoryId].Name,
                     budget.LimitCents,
-                    categoryExpenses.Where(expense => expense.CategoryId == budget.CategoryId)
-                        .Sum(expense => expense.AmountCents)))
+                    budget.Currency is null ? null : categoryExpenses
+                        .Where(expense => expense.CategoryId == budget.CategoryId && expense.Currency == budget.Currency)
+                        .Sum(expense => expense.AmountCents),
+                    budget.Currency))
                 .ToArray(),
             source.Goals.Select(goal => new DashboardGoalProgress(
                 goal.Id,
                 goal.Name,
                 goal.TargetCents,
                 goal.AllocatedCents,
-                goal.TargetDate)).ToArray(),
+                goal.TargetDate,
+                goal.Currency)).ToArray(),
             source.HasFinancialActivity);
     }
 }

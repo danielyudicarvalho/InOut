@@ -135,6 +135,9 @@ public sealed partial class InOutDbContext
             entity.Property(item => item.PeriodStart).HasColumnName("period_start");
             entity.Property(item => item.PeriodEnd).HasColumnName("period_end");
             entity.Property(item => item.LimitCents).HasColumnName("limit_cents");
+            entity.Property(item => item.Currency).HasColumnName("currency");
+            entity.HasIndex(item => new { item.HouseholdId, item.CategoryId, item.PeriodStart, item.PeriodEnd, item.Currency })
+                .IsUnique().HasDatabaseName("budgets_household_category_period_currency_key");
             entity.Property(item => item.CreatedBy).HasColumnName("created_by");
         });
 
@@ -145,6 +148,7 @@ public sealed partial class InOutDbContext
             entity.Property(item => item.Id).HasColumnName("id");
             entity.Property(item => item.HouseholdId).HasColumnName("household_id");
             entity.Property(item => item.Name).HasColumnName("name");
+            entity.Property(item => item.Currency).HasColumnName("currency");
             entity.Property(item => item.TargetCents).HasColumnName("target_cents");
             entity.Property(item => item.AllocatedCents).HasColumnName("allocated_cents");
             entity.Property(item => item.TargetDate).HasColumnName("target_date");
@@ -295,6 +299,8 @@ internal sealed class BudgetRecord
     public DateOnly PeriodStart { get; set; }
     public DateOnly PeriodEnd { get; set; }
     public long LimitCents { get; set; }
+    // NULL is reserved for legacy planning amounts awaiting explicit confirmation.
+    public string? Currency { get; set; }
     public Guid CreatedBy { get; set; }
 }
 
@@ -303,6 +309,8 @@ internal sealed class GoalRecord
     public Guid Id { get; set; }
     public Guid HouseholdId { get; set; }
     public string Name { get; set; } = string.Empty;
+    // NULL is reserved for legacy planning amounts awaiting explicit confirmation.
+    public string? Currency { get; set; }
     public long TargetCents { get; set; }
     public long AllocatedCents { get; set; }
     public DateOnly? TargetDate { get; set; }

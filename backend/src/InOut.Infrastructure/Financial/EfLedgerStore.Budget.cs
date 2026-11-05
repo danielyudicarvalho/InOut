@@ -36,13 +36,15 @@ public sealed partial class EfLedgerStore
                 "Budget limit requires an active expense category in this household.");
         }
 
-        var existing = await dbContext.Budgets
-            .SingleOrDefaultAsync(
-                item => item.HouseholdId == command.HouseholdId &&
-                        item.CategoryId == command.CategoryId &&
-                        item.PeriodStart == command.PeriodStart &&
-                        item.PeriodEnd == command.PeriodEnd,
-                cancellationToken);
+        var currency = new Money(0, command.Currency).Currency;
+        var existing = command.Id is { } id
+            ? await dbContext.Budgets.SingleOrDefaultAsync(item => item.HouseholdId == command.HouseholdId && item.Id == id, cancellationToken)
+            : await dbContext.Budgets.SingleOrDefaultAsync(item => item.HouseholdId == command.HouseholdId &&
+                item.CategoryId == command.CategoryId && item.PeriodStart == command.PeriodStart &&
+                item.PeriodEnd == command.PeriodEnd && item.Currency == currency, cancellationToken);
+        if (existing is not null && (existing.CategoryId != command.CategoryId || existing.PeriodStart != command.PeriodStart ||
+            existing.PeriodEnd != command.PeriodEnd || (existing.Currency is not null && existing.Currency != currency)))
+            throw new FinancialRuleException(FinancialErrorCodes.CurrencyMismatch, "An existing budget's category, period and assigned currency cannot change.");
 
         Guid budgetId = command.Id ?? Guid.NewGuid();
         Budget budget;
@@ -55,9 +57,11 @@ public sealed partial class EfLedgerStore
                 existing.CategoryId,
                 existing.PeriodStart,
                 existing.PeriodEnd,
-                existing.LimitCents).UpdateLimit(command.LimitCents);
+                existing.LimitCents,
+                currency).UpdateLimit(command.LimitCents);
 
             existing.LimitCents = domainBudget.LimitCents;
+            existing.Currency = domainBudget.Currency;
             budget = domainBudget;
         }
         else
@@ -68,7 +72,8 @@ public sealed partial class EfLedgerStore
                 command.CategoryId,
                 command.PeriodStart,
                 command.PeriodEnd,
-                command.LimitCents);
+                command.LimitCents,
+                currency);
 
             var record = new BudgetRecord
             {
@@ -78,6 +83,7 @@ public sealed partial class EfLedgerStore
                 PeriodStart = budget.PeriodStart,
                 PeriodEnd = budget.PeriodEnd,
                 LimitCents = budget.LimitCents,
+                Currency = budget.Currency,
                 CreatedBy = actorUserId,
             };
             dbContext.Budgets.Add(record);
@@ -101,7 +107,7 @@ public sealed partial class EfLedgerStore
             budgetId,
             maxVersion + 1,
             PersistenceVocabulary.AuditActions.BudgetSet,
-            new { BudgetId = budgetId, command.CategoryId, command.PeriodStart, command.PeriodEnd, command.LimitCents });
+            new { BudgetId = budgetId, command.CategoryId, command.PeriodStart, command.PeriodEnd, command.LimitCents, Currency = currency });
 
         var result = new BudgetResult(
             budgetId,
@@ -110,7 +116,8 @@ public sealed partial class EfLedgerStore
             command.PeriodStart,
             command.PeriodEnd,
             command.LimitCents,
-            false);
+            false,
+            currency);
 
         idempotency.Complete(
             acquisition.Record,
