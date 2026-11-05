@@ -240,6 +240,7 @@ public sealed partial class InOutDbContext
             entity.Property(item => item.Months).HasColumnName("months");
             entity.Property(item => item.OpeningBalanceCents).HasColumnName("opening_balance_cents");
             entity.Property(item => item.Points).HasColumnName("points").HasColumnType("jsonb");
+            entity.Property(item => item.Assumptions).HasColumnName("assumptions").HasColumnType("jsonb");
             entity.Property(item => item.CalculatedAt).HasColumnName("calculated_at");
             entity.Property(item => item.CreatedBy).HasColumnName("created_by");
         });
@@ -424,6 +425,7 @@ internal sealed class ForecastRecord
     public int Months { get; set; }
     public long OpeningBalanceCents { get; set; }
     public string Points { get; set; } = "[]";
+    public string Assumptions { get; set; } = "[]";
     public DateTimeOffset CalculatedAt { get; set; }
     public Guid CreatedBy { get; set; }
 }

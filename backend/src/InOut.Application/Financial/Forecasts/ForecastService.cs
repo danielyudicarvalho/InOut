@@ -7,7 +7,10 @@ public sealed record ForecastSummary(
     Guid Id, Guid HouseholdId, Guid AccountId, string Currency,
     DateOnly AsOf, int Months, long OpeningBalanceCents,
     IReadOnlyList<ForecastPoint> Points, DateTimeOffset CalculatedAt,
-    bool Replayed = false);
+    bool Replayed = false)
+{
+    public IReadOnlyList<ForecastPlanSnapshot> Assumptions { get; init; } = [];
+}
 
 public interface IForecastStore
 {

@@ -1242,6 +1242,42 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
         Assert.Equal(4_100L, await ScalarAsync<long>(
             "select opening_balance_cents from public.forecasts where id = @forecast_id",
             ("forecast_id", forecast.Id)));
+        Assert.Empty(forecast.Assumptions);
+    }
+
+    [Fact]
+    public async Task SavedForecastKeepsPlanTermsAfterThePlanChanges()
+    {
+        await using var context = CreateContext();
+        var plans = new RecurringPlanService(new EfRecurringPlanStore(context, new IdempotencyPolicy(), TimeProvider.System));
+        var plan = await plans.CreateAsync(actorUserId, new CreateRecurringPlanCommand(
+            Guid.NewGuid(), householdId, "Rent", FinancialFlow.Expense, accountId, expenseCategoryId,
+            null, 18_000, "BRL", 5, new DateOnly(2026, 1, 1), null, Guid.NewGuid()), CancellationToken.None);
+        var asOf = new DateOnly(2026, 11, 1);
+        var created = await new ForecastService(new EfForecastStore(context, new IdempotencyPolicy(), TimeProvider.System))
+            .CreateAsync(householdId, accountId, asOf, 1, actorUserId, Guid.NewGuid(), CancellationToken.None);
+
+        await ExecuteAsync(
+            "update public.recurring_plans set name = 'Changed', amount_cents = 1, day_of_month = 1, currency = 'USD' where id = @plan_id",
+            ("plan_id", plan.Id));
+        var forecast = await new ForecastService(new EfForecastStore(context, new IdempotencyPolicy(), TimeProvider.System))
+            .GetAsync(householdId, created.Id, actorUserId, CancellationToken.None);
+
+        var assumption = Assert.Single(forecast.Assumptions);
+        var contribution = Assert.Single(forecast.Points.Single().Contributions);
+        Assert.Equal(plan.Id, assumption.PlanId);
+        Assert.Equal("Rent", assumption.Name);
+        Assert.Equal(18_000, assumption.AmountCents);
+        Assert.Equal("BRL", assumption.Currency);
+        Assert.Equal(5, assumption.DayOfMonth);
+        Assert.Equal(accountId, assumption.AccountId);
+        Assert.Equal(expenseCategoryId, assumption.CategoryId);
+        Assert.Equal(RecurringPlanStatus.Active, assumption.Status);
+        Assert.Equal(new DateOnly(2026, 11, 5), contribution.ScheduledOn);
+        Assert.Equal(18_000, contribution.AmountCents);
+        Assert.Equal(18_000, forecast.Points.Single().ExpectedExpenseCents);
+        Assert.Equal("Changed", await ScalarAsync<string>(
+            "select name from public.recurring_plans where id = @plan_id", ("plan_id", plan.Id)));
     }
 
     [Fact]
@@ -1851,6 +1887,7 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
           months int not null,
           opening_balance_cents bigint not null,
           points jsonb not null,
+          assumptions jsonb not null default '[]'::jsonb,
           calculated_at timestamptz not null,
           created_by uuid not null
         );

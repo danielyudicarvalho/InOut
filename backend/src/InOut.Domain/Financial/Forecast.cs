@@ -1,8 +1,25 @@
 namespace InOut.Domain.Financial;
 
+public sealed record ForecastPlanSnapshot(
+    Guid PlanId, string Name, FinancialFlow Flow, Guid AccountId, Guid CategoryId,
+    Guid? IncomeSourceId, long AmountCents, string Currency, int DayOfMonth,
+    DateOnly StartsOn, DateOnly? EndsOn, RecurringPlanStatus Status)
+{
+    public static ForecastPlanSnapshot Capture(RecurringPlan plan) => new(
+        plan.Id, plan.Name, plan.Flow, plan.AccountId, plan.CategoryId, plan.IncomeSourceId,
+        plan.Amount.Cents, plan.Amount.Currency, plan.DayOfMonth, plan.StartsOn, plan.EndsOn, plan.Status);
+}
+
+public sealed record ForecastContribution(
+    Guid PlanId, DateOnly ScheduledOn, FinancialFlow Flow, long AmountCents, string Currency);
+
 public sealed record ForecastPoint(
     DateOnly Month, long ExpectedIncomeCents, long ExpectedExpenseCents,
-    long ProjectedBalanceCents, IReadOnlyList<Guid> RecurringPlanIds);
+    long ProjectedBalanceCents, IReadOnlyList<Guid> RecurringPlanIds,
+    IReadOnlyList<ForecastContribution> Contributions);
+
+public sealed record ForecastProjection(
+    IReadOnlyList<ForecastPoint> Points, IReadOnlyList<ForecastPlanSnapshot> Assumptions);
 
 public readonly record struct ForecastMovement(DateOnly OccurredOn, EntryDirection Direction, long AmountCents);
 
@@ -22,7 +39,7 @@ public static class Forecast
         return balance;
     }
 
-    public static IReadOnlyList<ForecastPoint> Project(
+    public static ForecastProjection Project(
         DateOnly asOf, int months, long openingBalanceCents,
         IEnumerable<RecurringPlan> recurringPlans)
     {
@@ -32,6 +49,7 @@ public static class Forecast
 
         var plans = recurringPlans.ToArray();
         var points = new List<ForecastPoint>(months);
+        var assumptions = new List<ForecastPlanSnapshot>();
         var balance = openingBalanceCents;
         var month = new DateOnly(asOf.Year, asOf.Month, 1);
         for (var index = 0; index < months; index++)
@@ -40,22 +58,29 @@ public static class Forecast
             var from = index == 0 ? asOf : month;
             long income = 0;
             long expense = 0;
-            var contributing = new List<Guid>();
+            var contributions = new List<ForecastContribution>();
             foreach (var plan in plans)
             {
                 if (plan.Status != RecurringPlanStatus.Active) continue;
                 var dates = plan.NextDates(from, 1);
                 if (dates.Count == 0 || dates[0] >= nextMonth) continue;
+                if (assumptions.All(item => item.PlanId != plan.Id))
+                    assumptions.Add(ForecastPlanSnapshot.Capture(plan));
+                var contribution = new ForecastContribution(
+                    plan.Id, dates[0], plan.Flow, plan.Amount.Cents, plan.Amount.Currency);
+                contributions.Add(contribution);
                 if (plan.Flow == FinancialFlow.Income)
-                    income = checked(income + plan.Amount.Cents);
+                    income = checked(income + contribution.AmountCents);
                 else
-                    expense = checked(expense + plan.Amount.Cents);
-                contributing.Add(plan.Id);
+                    expense = checked(expense + contribution.AmountCents);
             }
             balance = checked(checked(balance + income) - expense);
-            points.Add(new ForecastPoint(month, income, expense, balance, contributing));
+            points.Add(new ForecastPoint(
+                month, income, expense, balance,
+                contributions.Select(item => item.PlanId).ToArray(),
+                contributions));
             month = nextMonth;
         }
-        return points;
+        return new ForecastProjection(points, assumptions);
     }
 }

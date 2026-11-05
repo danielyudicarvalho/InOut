@@ -39,6 +39,8 @@ Uma recorrência calcula datas previstas. Calcular uma data não lança moviment
 
 O saldo inicial de uma previsão é o saldo da conta na data de referência. Entram os lançamentos dessa conta com data até `AsOf`, inclusive. Um movimento posterior, mesmo um estorno, não entra numa previsão histórica.
 
+Uma previsão também guarda uma cópia das condições dos planos que participaram: nome, fluxo, conta, categoria, fonte, valor, moeda, dia, início, fim e estado. Cada mês registra a data prevista e o valor aplicados. Alterar o plano depois não reescreve essa cópia. Previsões gravadas antes dela permanecem apenas com os identificadores dos planos.
+
 ## Modelo mínimo sugerido
 
 - `households`
