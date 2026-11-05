@@ -4,8 +4,24 @@ public sealed record ForecastPoint(
     DateOnly Month, long ExpectedIncomeCents, long ExpectedExpenseCents,
     long ProjectedBalanceCents, IReadOnlyList<Guid> RecurringPlanIds);
 
+public readonly record struct ForecastMovement(DateOnly OccurredOn, EntryDirection Direction, long AmountCents);
+
 public static class Forecast
 {
+    public static long OpeningBalance(DateOnly asOf, IEnumerable<ForecastMovement> movements)
+    {
+        long balance = 0;
+        foreach (var movement in movements)
+        {
+            if (movement.OccurredOn > asOf)
+                continue;
+            balance = checked(balance + (movement.Direction == EntryDirection.Credit
+                ? movement.AmountCents
+                : -movement.AmountCents));
+        }
+        return balance;
+    }
+
     public static IReadOnlyList<ForecastPoint> Project(
         DateOnly asOf, int months, long openingBalanceCents,
         IEnumerable<RecurringPlan> recurringPlans)

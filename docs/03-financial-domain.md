@@ -37,6 +37,8 @@ O progresso de uma meta não é um saldo editável. Cada aporte é uma alocaçã
 
 Uma recorrência calcula datas previstas. Calcular uma data não lança movimento nem cria ocorrência. Realizar uma data contabiliza uma receita ou despesa com as condições atuais do plano e registra uma ocorrência imutável, que identifica essa data e o lançamento. A mesma data de um plano só pode ser realizada uma vez, e um lançamento só realiza uma ocorrência. Um plano pausado ou arquivado não pode ser realizado. Estornar o lançamento depois não apaga a ocorrência nem libera a data.
 
+O saldo inicial de uma previsão é o saldo da conta na data de referência. Entram os lançamentos dessa conta com data até `AsOf`, inclusive. Um movimento posterior, mesmo um estorno, não entra numa previsão histórica.
+
 ## Modelo mínimo sugerido
 
 - `households`
@@ -97,6 +99,7 @@ Exemplo: despesa de R$ 150 registrada como R$ 510.
 - **Transferências internas** não alteram resultado nem patrimônio consolidado.
 - **Uso do orçamento** = despesas válidas da categoria / limite do período.
 - **Progresso da meta** = (contribuições − estornos) / valor-alvo.
+- **Saldo inicial da previsão** = soma das entradas da conta cuja data do lançamento é menor ou igual a `AsOf`.
 
 ## Projeção mensal do painel
 

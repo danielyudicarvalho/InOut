@@ -26,6 +26,22 @@ public sealed class ForecastTests
     }
 
     [Fact]
+    public void OpeningBalanceStopsAtTheReferenceDate()
+    {
+        var asOf = new DateOnly(2026, 2, 15);
+        var balance = Forecast.OpeningBalance(asOf, [
+            new ForecastMovement(new DateOnly(2026, 1, 10), EntryDirection.Credit, 5_000),
+            new ForecastMovement(new DateOnly(2026, 1, 20), EntryDirection.Debit, 1_000),
+            new ForecastMovement(asOf, EntryDirection.Credit, 100),
+            new ForecastMovement(new DateOnly(2026, 3, 1), EntryDirection.Debit, 500),
+            new ForecastMovement(new DateOnly(2026, 3, 2), EntryDirection.Credit, 1_000),
+        ]);
+
+        Assert.Equal(4_100, balance);
+        Assert.Equal(0, Forecast.OpeningBalance(asOf, []));
+    }
+
+    [Fact]
     public void EmptyPlansCarryOpeningBalanceAndRejectLongHorizons()
     {
         Assert.Equal(42, Forecast.Project(new DateOnly(2026, 2, 1), 1, 42, [])

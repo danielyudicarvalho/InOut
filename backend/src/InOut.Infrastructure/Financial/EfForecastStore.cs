@@ -35,10 +35,17 @@ public sealed class EfForecastStore(
             throw new FinancialRuleException(FinancialErrorCodes.InvalidForecast,
                 "Forecast account must be active and belong to this household.");
 
-        var opening = await dbContext.Entries.AsNoTracking()
-            .Where(item => item.HouseholdId == householdId && item.AccountId == accountId)
-            .SumAsync(item => (long?)(item.Direction == EntryDirection.Credit
-                ? item.AmountCents : -item.AmountCents), cancellationToken) ?? 0;
+        var movements = await (
+            from entry in dbContext.Entries.AsNoTracking()
+            join posted in dbContext.FinancialTransactions.AsNoTracking()
+                on new { entry.HouseholdId, Id = entry.TransactionId }
+                equals new { posted.HouseholdId, posted.Id }
+            where entry.HouseholdId == householdId && entry.AccountId == accountId &&
+                posted.OccurredOn <= asOf
+            select new { posted.OccurredOn, entry.Direction, entry.AmountCents })
+            .ToListAsync(cancellationToken);
+        var opening = Forecast.OpeningBalance(asOf, movements.Select(movement =>
+            new ForecastMovement(movement.OccurredOn, movement.Direction, movement.AmountCents)));
         var rows = await dbContext.RecurringPlans.AsNoTracking()
             .Where(item => item.HouseholdId == householdId && item.AccountId == accountId &&
                 item.Status == RecurringPlanStatus.Active && item.StartsOn <= asOf.AddMonths(months) &&

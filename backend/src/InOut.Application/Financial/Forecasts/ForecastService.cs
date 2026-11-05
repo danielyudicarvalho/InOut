@@ -20,16 +20,15 @@ public interface IForecastStore
         CancellationToken cancellationToken);
 }
 
-public sealed class ForecastService(IForecastStore store, TimeProvider timeProvider)
+public sealed class ForecastService(IForecastStore store)
 {
     public Task<ForecastSummary> CreateAsync(Guid householdId, Guid accountId,
         DateOnly asOf, int months, Guid actorUserId, Guid idempotencyKey,
         CancellationToken cancellationToken)
     {
-        if (householdId == Guid.Empty || accountId == Guid.Empty || months is < 1 or > 12 ||
-            asOf < DateOnly.FromDateTime(timeProvider.GetUtcNow().UtcDateTime) || asOf.Year > 9998)
+        if (householdId == Guid.Empty || accountId == Guid.Empty || months is < 1 or > 12 || asOf.Year > 9998)
             throw new FinancialRuleException(FinancialErrorCodes.InvalidForecast,
-                "Choose an account, a date from today onward, and one to twelve months.");
+                "Choose an account, a reference date, and one to twelve months.");
         var identity = IdempotencyRequest.Create(householdId, actorUserId,
             IdempotencyOperation.CreateForecast, idempotencyKey, accountId, asOf, months);
         return store.CreateAsync(householdId, accountId, asOf, months, identity, cancellationToken);
