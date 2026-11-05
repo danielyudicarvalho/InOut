@@ -25,6 +25,7 @@ public static class FinancialErrorCodes
     public const string ForecastNotFound = "forecast_not_found";
     public const string RecurringPlanNotFound = "recurring_plan_not_found";
     public const string RecurringPlanConflict = "recurring_plan_conflict";
+    public const string RecurringOccurrenceAlreadyRealized = "recurring_occurrence_already_realized";
     public const string IncomeSourceNotFound = "income_source_not_found";
     public const string IncomeSourceConflict = "income_source_conflict";
     public const string InvalidCategory = "invalid_category";

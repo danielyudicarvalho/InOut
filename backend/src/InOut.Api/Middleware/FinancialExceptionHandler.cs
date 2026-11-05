@@ -39,6 +39,7 @@ public sealed class FinancialExceptionHandler : IExceptionHandler
             FinancialErrorCodes.CategoryConflict or
             FinancialErrorCodes.IncomeSourceConflict or
             FinancialErrorCodes.RecurringPlanConflict or
+            FinancialErrorCodes.RecurringOccurrenceAlreadyRealized or
             FinancialErrorCodes.CategoryHasActiveChildren => StatusCodes.Status409Conflict,
             _ => StatusCodes.Status400BadRequest
         };

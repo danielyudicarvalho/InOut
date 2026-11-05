@@ -25,6 +25,7 @@ internal static class PersistenceVocabulary
         internal const string BudgetSet = "financial.budget.set";
         internal const string GoalAllocationRecorded = "financial.goal.allocation_recorded";
         internal const string GoalAllocationReversed = "financial.goal.allocation_reversed";
+        internal const string RecurringOccurrenceRealized = "financial.recurring_occurrence.realized";
     }
 
     internal static class EntityTypes
@@ -32,6 +33,7 @@ internal static class PersistenceVocabulary
         internal const string Account = "account";
         internal const string Budget = "budget";
         internal const string GoalAllocation = "goal_allocation";
+        internal const string RecurringOccurrence = "recurring_occurrence";
         internal const string Category = "category";
         internal const string Household = "household";
         internal const string HouseholdInvitation = "household_invitation";
@@ -66,6 +68,7 @@ internal static class PersistenceVocabulary
         internal const string SetBudget = "set_budget";
         internal const string AllocateGoal = "allocate_goal";
         internal const string ReverseGoalAllocation = "reverse_goal_allocation";
+        internal const string RealizeRecurringOccurrence = "realize_recurring_occurrence";
         internal const string CorrectClassification = "correct_classification";
     }
 

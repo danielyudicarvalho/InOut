@@ -1,4 +1,5 @@
 using InOut.Application.Financial;
+using InOut.Application.Financial.RecurringPlans;
 using InOut.Application.Financial.Dashboard;
 using InOut.Application.Idempotency;
 using InOut.Application.Households;
@@ -1152,6 +1153,64 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task RealizingARecurringDatePostsOneTransactionAndRejectsASecond()
+    {
+        await using var context = CreateContext();
+        var service = new RecurringPlanService(
+            new EfRecurringPlanStore(context, new IdempotencyPolicy(), TimeProvider.System));
+        var plan = await service.CreateAsync(actorUserId, new CreateRecurringPlanCommand(
+            Guid.NewGuid(), householdId, "Rent", FinancialFlow.Expense, accountId, expenseCategoryId,
+            null, 18_000, "BRL", 31, new DateOnly(2026, 1, 1), null, Guid.NewGuid()), CancellationToken.None);
+        var scheduled = new DateOnly(2026, 2, 28);
+        var command = new RealizeRecurringOccurrenceCommand(householdId, plan.Id, scheduled, Guid.NewGuid());
+
+        var first = await service.RealizeAsync(actorUserId, command, CancellationToken.None);
+        Assert.Equal(scheduled, first.ScheduledOn);
+        Assert.Equal(18_000, first.AmountCents);
+        Assert.Equal("BRL", first.Currency);
+        Assert.Equal(FinancialFlow.Expense, first.Flow);
+        Assert.Equal(plan.Id, first.PlanId);
+        Assert.False(first.Replayed);
+
+        var replay = await service.RealizeAsync(actorUserId, command, CancellationToken.None);
+        Assert.True(replay.Replayed);
+        Assert.Equal(first.Id, replay.Id);
+        Assert.Equal(first.TransactionId, replay.TransactionId);
+        Assert.Equal(1L, await CountAsync("public.recurring_occurrences", "plan_id", plan.Id));
+        Assert.Equal(1L, await CountAsync("public.transactions", "id", first.TransactionId));
+        Assert.Equal("Rent", await ScalarAsync<string>(
+            "select description from public.transactions where id = @transaction_id",
+            ("transaction_id", first.TransactionId)));
+
+        var duplicate = await Assert.ThrowsAsync<FinancialRuleException>(() =>
+            service.RealizeAsync(actorUserId, command with { IdempotencyKey = Guid.NewGuid() }, CancellationToken.None));
+        Assert.Equal(FinancialErrorCodes.RecurringOccurrenceAlreadyRealized, duplicate.Code);
+        var conflict = await Assert.ThrowsAsync<IdempotencyException>(() =>
+            service.RealizeAsync(actorUserId, command with { ScheduledOn = new DateOnly(2026, 3, 31) }, CancellationToken.None));
+        Assert.Equal(IdempotencyErrorCodes.Conflict, conflict.Code);
+        var offSchedule = await Assert.ThrowsAsync<FinancialRuleException>(() =>
+            service.RealizeAsync(actorUserId, new RealizeRecurringOccurrenceCommand(
+                householdId, plan.Id, new DateOnly(2026, 2, 27), Guid.NewGuid()), CancellationToken.None));
+        Assert.Equal(FinancialErrorCodes.InvalidRecurringPlan, offSchedule.Code);
+
+        var march = await service.RealizeAsync(actorUserId, new RealizeRecurringOccurrenceCommand(
+            householdId, plan.Id, new DateOnly(2026, 3, 31), Guid.NewGuid()), CancellationToken.None);
+        Assert.NotEqual(first.TransactionId, march.TransactionId);
+
+        await service.ChangeStatusAsync(
+            householdId, plan.Id, RecurringPlanStatus.Paused, actorUserId, CancellationToken.None);
+        var paused = await Assert.ThrowsAsync<FinancialRuleException>(() =>
+            service.RealizeAsync(actorUserId, new RealizeRecurringOccurrenceCommand(
+                householdId, plan.Id, new DateOnly(2026, 4, 30), Guid.NewGuid()), CancellationToken.None));
+        Assert.Equal(FinancialErrorCodes.InvalidRecurringPlan, paused.Code);
+
+        var listed = await service.ListOccurrencesAsync(householdId, plan.Id, actorUserId, CancellationToken.None);
+        Assert.Equal(2, listed.Count);
+        Assert.Contains(listed, item => item.Id == first.Id && item.TransactionId == first.TransactionId);
+        Assert.Equal(2L, await CountAsync("public.transactions", "description", "Rent"));
+    }
+
+    [Fact]
     public async Task DashboardRejectsAnActorOutsideTheHousehold()
     {
         await using var context = CreateContext();
@@ -1714,6 +1773,41 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
         create unique index goal_allocations_one_reversal_per_original_uidx
           on public.goal_allocations (household_id, reversal_of)
           where kind = 'reversal';
+        create table public.recurring_plans (
+          id uuid primary key,
+          household_id uuid not null references public.households(id),
+          name text not null,
+          flow text not null,
+          account_id uuid not null,
+          category_id uuid not null,
+          income_source_id uuid,
+          amount_cents bigint not null,
+          currency text not null,
+          day_of_month int not null,
+          starts_on date not null,
+          ends_on date,
+          status_id int not null default 13 references public.status_values(id),
+          created_by uuid not null,
+          created_at timestamptz not null default now(),
+          updated_at timestamptz not null default now(),
+          unique (household_id, id)
+        );
+        create table public.recurring_occurrences (
+          id uuid primary key,
+          household_id uuid not null references public.households(id),
+          plan_id uuid not null,
+          scheduled_on date not null,
+          transaction_id uuid not null,
+          flow text not null,
+          amount_cents bigint not null,
+          currency text not null,
+          created_by uuid not null,
+          created_at timestamptz not null default now(),
+          constraint recurring_occurrences_plan_date_uidx unique (household_id, plan_id, scheduled_on),
+          constraint recurring_occurrences_transaction_uidx unique (transaction_id),
+          foreign key (household_id, plan_id) references public.recurring_plans (household_id, id),
+          foreign key (household_id, transaction_id) references public.transactions (household_id, id)
+        );
         create table public.audit_events (
           id bigint generated by default as identity primary key,
           household_id uuid not null references public.households(id),

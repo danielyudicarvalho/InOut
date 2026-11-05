@@ -35,6 +35,8 @@ Mantêm planejamento, sem reescrever fatos do ledger. Indicadores são derivados
 
 O progresso de uma meta não é um saldo editável. Cada aporte é uma alocação imutável, com valor, moeda da meta, data, autor e origem. O valor acumulado é a soma das contribuições menos os estornos. Desfazer um aporte cria outra alocação, do tipo estorno, ligada à original; a original permanece no histórico. Um estorno não estorna outro estorno, e cada contribuição só pode ser estornada uma vez. Uma meta pausada não recebe aportes novos, mas ainda pode desfazer um aporte já registrado. Uma meta arquivada não muda o progresso.
 
+Uma recorrência calcula datas previstas. Calcular uma data não lança movimento nem cria ocorrência. Realizar uma data contabiliza uma receita ou despesa com as condições atuais do plano e registra uma ocorrência imutável, que identifica essa data e o lançamento. A mesma data de um plano só pode ser realizada uma vez, e um lançamento só realiza uma ocorrência. Um plano pausado ou arquivado não pode ser realizado. Estornar o lançamento depois não apaga a ocorrência nem libera a data.
+
 ## Modelo mínimo sugerido
 
 - `households`
@@ -46,6 +48,8 @@ O progresso de uma meta não é um saldo editável. Cada aporte é uma alocaçã
 - `budgets`
 - `goals`
 - `goal_allocations`
+- `recurring_plans`
+- `recurring_occurrences`
 - `audit_events`
 
 Uma transação contém entradas contábeis. Para receita ou despesa, o MVP pode usar uma conta de contrapartida lógica. Para transferência, duas entradas opostas garantem soma zero.
@@ -64,6 +68,7 @@ Uma transação contém entradas contábeis. Para receita ou despesa, o MVP pode
 10. Subcategoria pertence à categoria informada.
 11. Contas ou categorias referenciadas não são apagadas; são arquivadas.
 12. Datas, autor e instante de criação são armazenados de forma inequívoca.
+13. Cada data prevista de uma recorrência é realizada por no máximo um lançamento contabilizado, e esse vínculo é imutável.
 
 ## Estados da transação
 

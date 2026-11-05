@@ -21,6 +21,7 @@ public sealed class IdempotencyPolicy : IIdempotencyPolicy
         IdempotencyOperation.CorrectClassification => FinancialCommand(),
         IdempotencyOperation.AllocateGoal => FinancialCommand(),
         IdempotencyOperation.ReverseGoalAllocation => FinancialCommand(),
+        IdempotencyOperation.RealizeRecurringOccurrence => FinancialCommand(),
         _ => throw new ArgumentOutOfRangeException(nameof(operation), operation, null),
     };
 

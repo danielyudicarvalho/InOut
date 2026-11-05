@@ -14,4 +14,5 @@ public enum IdempotencyOperation
     CorrectClassification,
     AllocateGoal,
     ReverseGoalAllocation,
+    RealizeRecurringOccurrence,
 }

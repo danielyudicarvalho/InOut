@@ -62,6 +62,35 @@ public sealed record RecurringPlan(
                 "Plan references must be active and belong to the same household.");
     }
 
+    public bool Produces(DateOnly date)
+    {
+        if (date < StartsOn || (EndsOn is not null && date > EndsOn.Value))
+            return false;
+        return date.Day == Math.Min(DayOfMonth, DateTime.DaysInMonth(date.Year, date.Month));
+    }
+
+    public RecurringRealization Realize(
+        DateOnly scheduledOn,
+        Guid occurrenceId,
+        Guid actorUserId,
+        DateTimeOffset realizedAt,
+        IReadOnlyCollection<RecurringOccurrence> existing)
+    {
+        var transaction = Flow switch
+        {
+            FinancialFlow.Income => FinancialTransaction.Income(
+                HouseholdId, AccountId, CategoryId, Amount, scheduledOn, actorUserId, Name, IncomeSourceId),
+            FinancialFlow.Expense => FinancialTransaction.Expense(
+                HouseholdId, AccountId, CategoryId, Amount, scheduledOn, actorUserId, Name),
+            _ => throw new FinancialRuleException(
+                FinancialErrorCodes.InvalidRecurringPlan, "Only an income or expense plan can be realized."),
+        };
+        return new RecurringRealization(
+            RecurringOccurrence.Link(
+                occurrenceId, this, scheduledOn, transaction, actorUserId, realizedAt, existing),
+            transaction);
+    }
+
     public IReadOnlyList<DateOnly> NextDates(DateOnly from, int count)
     {
         if (count is < 1 or > 24)

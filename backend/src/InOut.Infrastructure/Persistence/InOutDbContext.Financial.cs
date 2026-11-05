@@ -14,6 +14,7 @@ public sealed partial class InOutDbContext
     internal DbSet<GoalRecord> Goals => Set<GoalRecord>();
     internal DbSet<GoalAllocationRecord> GoalAllocations => Set<GoalAllocationRecord>();
     internal DbSet<RecurringPlanRecord> RecurringPlans => Set<RecurringPlanRecord>();
+    internal DbSet<RecurringOccurrenceRecord> RecurringOccurrences => Set<RecurringOccurrenceRecord>();
     internal DbSet<ForecastRecord> Forecasts => Set<ForecastRecord>();
     internal DbSet<StatusTypeRecord> StatusTypes => Set<StatusTypeRecord>();
     internal DbSet<StatusValueRecord> StatusValues => Set<StatusValueRecord>();
@@ -209,6 +210,24 @@ public sealed partial class InOutDbContext
             entity.Property(item => item.UpdatedAt).HasColumnName("updated_at").HasDefaultValueSql("now()");
         });
 
+        modelBuilder.Entity<RecurringOccurrenceRecord>(entity =>
+        {
+            entity.ToTable("recurring_occurrences", "public");
+            entity.HasKey(item => item.Id);
+            entity.Property(item => item.Id).HasColumnName("id");
+            entity.Property(item => item.HouseholdId).HasColumnName("household_id");
+            entity.Property(item => item.PlanId).HasColumnName("plan_id");
+            entity.Property(item => item.ScheduledOn).HasColumnName("scheduled_on");
+            entity.Property(item => item.TransactionId).HasColumnName("transaction_id");
+            entity.Property(item => item.Flow).HasColumnName("flow").HasConversion(
+                value => DomainTypeStorage.FinancialFlowToString(value),
+                value => DomainTypeStorage.FinancialFlowFromString(value));
+            entity.Property(item => item.AmountCents).HasColumnName("amount_cents");
+            entity.Property(item => item.Currency).HasColumnName("currency");
+            entity.Property(item => item.CreatedBy).HasColumnName("created_by");
+            entity.Property(item => item.CreatedAt).HasColumnName("created_at");
+        });
+
         modelBuilder.Entity<ForecastRecord>(entity =>
         {
             entity.ToTable("forecasts", "public");
@@ -379,6 +398,20 @@ internal sealed class RecurringPlanRecord
     public Guid CreatedBy { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
+}
+
+internal sealed class RecurringOccurrenceRecord
+{
+    public Guid Id { get; set; }
+    public Guid HouseholdId { get; set; }
+    public Guid PlanId { get; set; }
+    public DateOnly ScheduledOn { get; set; }
+    public Guid TransactionId { get; set; }
+    public FinancialFlow Flow { get; set; }
+    public long AmountCents { get; set; }
+    public string Currency { get; set; } = string.Empty;
+    public Guid CreatedBy { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
 }
 
 internal sealed class ForecastRecord

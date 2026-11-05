@@ -9,6 +9,19 @@ public sealed record CreateRecurringPlanCommand(
     long AmountCents, string Currency, int DayOfMonth,
     DateOnly StartsOn, DateOnly? EndsOn, Guid IdempotencyKey);
 
+public sealed record RealizeRecurringOccurrenceCommand(
+    Guid HouseholdId, Guid PlanId, DateOnly ScheduledOn, Guid IdempotencyKey);
+
+public sealed record RecurringOccurrenceItem(
+    Guid Id, Guid PlanId, Guid HouseholdId, DateOnly ScheduledOn, Guid TransactionId,
+    FinancialFlow Flow, long AmountCents, string Currency,
+    Guid RealizedBy, DateTimeOffset RealizedAt);
+
+public sealed record RecurringOccurrenceResult(
+    Guid Id, Guid PlanId, Guid HouseholdId, DateOnly ScheduledOn, Guid TransactionId,
+    FinancialFlow Flow, long AmountCents, string Currency,
+    Guid RealizedBy, DateTimeOffset RealizedAt, bool Replayed = false);
+
 public sealed record RecurringPlanSummary(
     Guid Id, Guid HouseholdId, string Name, FinancialFlow Flow,
     Guid AccountId, Guid CategoryId, Guid? IncomeSourceId,
@@ -26,6 +39,11 @@ public interface IRecurringPlanStore
         CancellationToken cancellationToken);
     Task<RecurringPlanSummary> ChangeStatusAsync(Guid householdId, Guid id,
         RecurringPlanStatus status, Guid actorUserId, CancellationToken cancellationToken);
+    Task<RecurringOccurrenceResult> RealizeAsync(Guid actorUserId,
+        RealizeRecurringOccurrenceCommand command, IdempotencyRequest identity,
+        CancellationToken cancellationToken);
+    Task<IReadOnlyList<RecurringOccurrenceItem>> ListOccurrencesAsync(
+        Guid householdId, Guid planId, Guid actorUserId, CancellationToken cancellationToken);
 }
 
 public sealed class RecurringPlanService(IRecurringPlanStore store)
@@ -57,6 +75,19 @@ public sealed class RecurringPlanService(IRecurringPlanStore store)
         Guid householdId, Guid id, RecurringPlanStatus status,
         Guid actorUserId, CancellationToken cancellationToken) =>
         store.ChangeStatusAsync(householdId, id, status, actorUserId, cancellationToken);
+
+    public Task<RecurringOccurrenceResult> RealizeAsync(
+        Guid actorUserId, RealizeRecurringOccurrenceCommand command, CancellationToken cancellationToken)
+    {
+        var identity = IdempotencyRequest.Create(
+            command.HouseholdId, actorUserId, IdempotencyOperation.RealizeRecurringOccurrence,
+            command.IdempotencyKey, command.PlanId, command.ScheduledOn);
+        return store.RealizeAsync(actorUserId, command, identity, cancellationToken);
+    }
+
+    public Task<IReadOnlyList<RecurringOccurrenceItem>> ListOccurrencesAsync(
+        Guid householdId, Guid planId, Guid actorUserId, CancellationToken cancellationToken) =>
+        store.ListOccurrencesAsync(householdId, planId, actorUserId, cancellationToken);
 
     public static IReadOnlyList<DateOnly> Preview(RecurringPlanSummary summary,
         DateOnly from, int count) =>
