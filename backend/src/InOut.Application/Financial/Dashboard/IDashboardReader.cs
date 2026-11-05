@@ -4,6 +4,14 @@ namespace InOut.Application.Financial.Dashboard;
 
 public interface IDashboardReader
 {
+    // Historical income must keep accounts that were subsequently archived.
+    Task<DashboardSourceData> ReadIncomeHistoryAsync(
+        Guid actorUserId,
+        Guid householdId,
+        FinancialPeriod period,
+        CancellationToken cancellationToken) =>
+        ReadAsync(actorUserId, householdId, period, cancellationToken);
+
     Task<DashboardSourceData> ReadAsync(
         Guid actorUserId,
         Guid householdId,

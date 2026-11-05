@@ -157,6 +157,24 @@ function DashboardView({
   const rows = data.transactions.slice(0, 4);
   const household = state.households.find((h) => h.id === state.householdId)!;
   function unavailable(label: string) {
+    if (label === "Configurações") {
+      router.push(
+        `/residencia?${new URLSearchParams({ household: state.householdId })}`,
+      );
+      return;
+    }
+    if (label === "Categorias") {
+      router.push(
+        `/categorias?${new URLSearchParams({ household: state.householdId, period: state.period })}`,
+      );
+      return;
+    }
+    if (label === "Contas") {
+      router.push(
+        `/contas?${new URLSearchParams({ household: state.householdId, period: state.period })}`,
+      );
+      return;
+    }
     if (label === "Lançamentos") {
       router.push(
         `/lancamentos?${new URLSearchParams({ household: state.householdId, period: state.period, currency: chosenCurrency })}`,

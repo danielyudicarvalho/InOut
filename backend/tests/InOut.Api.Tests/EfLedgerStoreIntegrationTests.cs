@@ -84,6 +84,41 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task CollaborationProtectsLastOwnerAndPreservesHistoricalAuthorshipAfterLeave()
+    {
+        var transaction = await PostIncomeAsync(Guid.NewGuid());
+        await using var context = CreateContext();
+        var store = new EfHouseholdStore(context, NullLogger<EfHouseholdStore>.Instance);
+        var service = new HouseholdService(store, TimeProvider.System);
+        await Assert.ThrowsAsync<HouseholdRuleException>(() => service.RemoveMemberAsync(actorUserId, householdId, actorUserId, CancellationToken.None));
+        await Assert.ThrowsAsync<HouseholdRuleException>(() => service.CreateInvitationAsync(Guid.NewGuid(), householdId, CancellationToken.None));
+        var invite = await service.CreateInvitationAsync(actorUserId, householdId, CancellationToken.None);
+        var secondUser = Guid.NewGuid();
+        await service.AcceptInvitationAsync(secondUser, invite.Code, CancellationToken.None);
+        var replay = await service.AcceptInvitationAsync(secondUser, invite.Code, CancellationToken.None);
+        Assert.Equal(householdId, replay.Id);
+        await Assert.ThrowsAsync<HouseholdRuleException>(() => service.ChangeRoleAsync(secondUser, householdId, secondUser, HouseholdRole.Owner, CancellationToken.None));
+        await service.ChangeRoleAsync(actorUserId, householdId, secondUser, HouseholdRole.Owner, CancellationToken.None);
+        await service.RemoveMemberAsync(actorUserId, householdId, actorUserId, CancellationToken.None);
+        await Assert.ThrowsAsync<HouseholdRuleException>(() => service.GetContextAsync(actorUserId, householdId, CancellationToken.None));
+        var remaining = await service.GetContextAsync(secondUser, householdId, CancellationToken.None);
+        Assert.Equal(HouseholdRole.Owner, Assert.Single(remaining.Members).Role);
+        Assert.True(await context.FinancialTransactions.AsNoTracking().AnyAsync(t => t.Id == transaction.TransactionId && t.CreatedBy == actorUserId));
+    }
+
+    [Fact]
+    public async Task RevokedInvitationCannotBeAcceptedAndItsHashIsNotListed()
+    {
+        await using var context = CreateContext();
+        var service = new HouseholdService(new EfHouseholdStore(context, NullLogger<EfHouseholdStore>.Instance), TimeProvider.System);
+        var invite = await service.CreateInvitationAsync(actorUserId, householdId, CancellationToken.None);
+        var row = Assert.Single(await service.ListInvitationsAsync(actorUserId, householdId, CancellationToken.None));
+        await service.RevokeInvitationAsync(actorUserId, householdId, row.Id, CancellationToken.None);
+        await Assert.ThrowsAsync<HouseholdRuleException>(() => service.AcceptInvitationAsync(Guid.NewGuid(), invite.Code, CancellationToken.None));
+        Assert.NotNull(Assert.Single(await service.ListInvitationsAsync(actorUserId, householdId, CancellationToken.None)).RevokedAt);
+    }
+
+    [Fact]
     public async Task ConcurrentRetriesWithSameKeyCreateOneTransaction()
     {
         var idempotencyKey = Guid.NewGuid();
@@ -1248,6 +1283,32 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
         Assert.Equal(0, balances.Single(balance => balance.AccountId == accountId).BalanceCents);
     }
 
+    [Fact]
+    public async Task ArchivedAccountAndSourceRemainInHistoricalIncomeAndFilteredHistory()
+    {
+        await using var context = CreateContext();
+        var store = CreateStore(context);
+        var sourceId = Guid.NewGuid();
+        await store.CreateIncomeSourceAsync(IncomeSource.Create(sourceId, householdId, "Historical salary"), actorUserId, CancellationToken.None);
+        var service = new LedgerService(store);
+        var created = await service.PostIncomeAsync(actorUserId,
+            new PostIncomeCommand(householdId, accountId, categoryId, 12345, "BRL", new DateOnly(2026, 9, 15), Guid.NewGuid(), "Salary", sourceId), CancellationToken.None);
+        await service.ArchiveAccountAsync(householdId, accountId, actorUserId, CancellationToken.None);
+        await store.ArchiveIncomeSourceAsync(householdId, sourceId, actorUserId, CancellationToken.None);
+
+        var reader = new EfDashboardReader(context);
+        var active = await reader.ReadAsync(actorUserId, householdId, FinancialPeriod.Monthly(2026, 9), CancellationToken.None);
+        Assert.DoesNotContain(active.Accounts, item => item.Id == accountId);
+        var breakdown = await new GetIncomeBreakdown(new EfHouseholdMembershipReader(context), reader).ExecuteAsync(
+            new GetIncomeBreakdownQuery(actorUserId, householdId, "BRL", 2026, 9, IncludeArchivedAccounts: true), CancellationToken.None);
+        var source = Assert.Single(breakdown.Sources, item => item.IncomeSourceId == sourceId);
+        Assert.Equal(12345L, source.AmountCents);
+        Assert.Equal("Historical salary", source.IncomeSourceName);
+        var history = await store.GetHistoryAsync(actorUserId, householdId, 50,
+            new LedgerHistoryFilter(IncomeSourceId: sourceId), CancellationToken.None);
+        Assert.Contains(history, item => item.TransactionId == created.TransactionId);
+    }
+
     private async Task<LedgerWriteResult> PostIncomeAsync(
         Guid idempotencyKey,
         long amountCents = 1_000,
@@ -1534,7 +1595,8 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
           created_at timestamptz not null default now(),
           expires_at timestamptz not null,
           accepted_by uuid,
-          accepted_at timestamptz
+          accepted_at timestamptz,
+          revoked_at timestamptz
         );
         """;
 }

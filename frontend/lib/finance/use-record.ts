@@ -11,6 +11,7 @@ export function useRecord(
   household: string,
   kind: RecordKind,
   currency: string,
+  preferredAccountId = "",
 ) {
   const [bundle] = useState(() => {
     let actorId = "",
@@ -25,6 +26,7 @@ export function useRecord(
       },
     });
     const store = createRecordStore(repository, household, kind, currency, {
+      preferredAccountId,
       randomId: () => window.crypto.randomUUID(),
       storage: {
         load: async () => {

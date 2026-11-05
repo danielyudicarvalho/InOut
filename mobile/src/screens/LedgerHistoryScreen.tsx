@@ -28,7 +28,12 @@ export function LedgerHistoryScreen() {
     initialHouseholdId: typeof p.household === "string" ? p.household : "",
     initialPeriod: typeof p.period === "string" ? p.period : "",
   });
-  const [filters, setFilters] = useState<HistoryFilters>({}),
+  const [filters, setFilters] = useState<HistoryFilters>({
+      accountId: typeof p.accountId === "string" ? p.accountId : "",
+      categoryId: typeof p.categoryId === "string" ? p.categoryId : "",
+      incomeSourceId:
+        typeof p.incomeSourceId === "string" ? p.incomeSourceId : "",
+    }),
     [search, setSearch] = useState(""),
     [offset, setOffset] = useState(0),
     [picker, setPicker] = useState(false),
@@ -66,6 +71,14 @@ export function LedgerHistoryScreen() {
             style={s.image}
           />
         </View>
+        {filters.categoryId || filters.incomeSourceId ? (
+          <View>
+            <Text>Exibindo registros do cadastro selecionado.</Text>
+            <Pressable accessibilityRole="button" onPress={() => change({})}>
+              <Text style={s.link}>Limpar filtro do cadastro</Text>
+            </Pressable>
+          </View>
+        ) : null}
         <TextInput
           style={s.input}
           accessibilityLabel="Buscar pela descrição"

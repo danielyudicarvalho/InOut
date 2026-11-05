@@ -8,7 +8,7 @@ using Npgsql;
 
 namespace InOut.Infrastructure.Households;
 
-public sealed class EfHouseholdStore(InOutDbContext dbContext, ILogger<EfHouseholdStore> logger) : IHouseholdStore
+public sealed partial class EfHouseholdStore(InOutDbContext dbContext, ILogger<EfHouseholdStore> logger) : IHouseholdStore
 {
     private static readonly Action<ILogger, string, string, Exception?> LogListFailure =
         LoggerMessage.Define<string, string>(LogLevel.Error,
@@ -102,7 +102,7 @@ public sealed class EfHouseholdStore(InOutDbContext dbContext, ILogger<EfHouseho
 
         var role = await dbContext.HouseholdMembers
             .Where(member => member.HouseholdId == householdId && member.UserId == userId)
-            .Select(member => member.Role)
+            .Select(member => (HouseholdRole?)member.Role)
             .SingleOrDefaultAsync(cancellationToken);
         if (role != HouseholdRole.Owner)
         {
@@ -121,8 +121,8 @@ public sealed class EfHouseholdStore(InOutDbContext dbContext, ILogger<EfHouseho
         }
 
         await dbContext.HouseholdInvitations
-            .Where(invitation => invitation.HouseholdId == householdId && invitation.AcceptedAt == null)
-            .ExecuteDeleteAsync(cancellationToken);
+            .Where(invitation => invitation.HouseholdId == householdId && invitation.AcceptedAt == null && invitation.RevokedAt == null)
+            .ExecuteUpdateAsync(setters => setters.SetProperty(item => item.RevokedAt, DateTimeOffset.UtcNow), cancellationToken);
 
         var invitation = new HouseholdInvitationRecord
         {
@@ -149,12 +149,29 @@ public sealed class EfHouseholdStore(InOutDbContext dbContext, ILogger<EfHouseho
         CancellationToken cancellationToken)
     {
         await using var transaction = await dbContext.BeginUserTransactionAsync(userId, cancellationToken);
+        var accepted = await dbContext.HouseholdInvitations.AsNoTracking()
+            .Where(item => item.TokenHash == tokenHash && item.AcceptedBy == userId && item.AcceptedAt != null)
+            .Select(item => (Guid?)item.HouseholdId).SingleOrDefaultAsync(cancellationToken);
+        if (accepted is { } acceptedHousehold && await dbContext.HouseholdMembers.AnyAsync(m => m.HouseholdId == acceptedHousehold && m.UserId == userId, cancellationToken))
+        {
+            var existing = await dbContext.Households.AsNoTracking().SingleAsync(h => h.Id == acceptedHousehold, cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+            return new Household(existing.Id, existing.Name);
+        }
+        var invitationHousehold = await dbContext.HouseholdInvitations.AsNoTracking()
+            .Where(item => item.TokenHash == tokenHash && item.AcceptedAt == null && item.RevokedAt == null && item.ExpiresAt > DateTimeOffset.UtcNow)
+            .Select(item => (Guid?)item.HouseholdId).SingleOrDefaultAsync(cancellationToken);
+        if (invitationHousehold is null)
+            throw new HouseholdRuleException(HouseholdErrorCodes.InvalidInvite, "Invalid or expired invitation.");
+        // Serialize acceptance with invitation issuance, revocation and membership changes.
+        await LockHouseholdAsync(invitationHousehold.Value, cancellationToken);
         var invitation = await dbContext.HouseholdInvitations
             .FromSqlInterpolated($$"""
                 select *
                 from private.household_invitations
                 where token_hash = {{tokenHash}}
                   and accepted_at is null
+                  and revoked_at is null
                   and expires_at > now()
                 for update
                 """)
@@ -219,7 +236,7 @@ public sealed class EfHouseholdStore(InOutDbContext dbContext, ILogger<EfHouseho
 
     private Task<int> LockHouseholdAsync(Guid householdId, CancellationToken cancellationToken) =>
         dbContext.Database.ExecuteSqlInterpolatedAsync(
-            $"select id from public.households where id = {householdId} for update",
+            $"select pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended({householdId.ToString()}, 0))",
             cancellationToken);
 
     private void AddAudit(

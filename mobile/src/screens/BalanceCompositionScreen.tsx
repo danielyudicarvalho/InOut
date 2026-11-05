@@ -17,6 +17,7 @@ import {
   periodLabel,
 } from "@inout/finance";
 import { useFinancialHome } from "../finance/use-financial-home";
+import { AccountActivity } from "../components/AccountActivity";
 import { theme as t } from "../theme";
 export function BalanceCompositionScreen() {
   const p = useLocalSearchParams();
@@ -25,26 +26,29 @@ export function BalanceCompositionScreen() {
     currency = typeof p.currency === "string" ? p.currency : "";
   return (
     <BalanceView
-      key={`${household}:${period}:${currency}`}
+      key={`${household}:${period}:${currency}:${p.accountId}`}
       initialHouseholdId={household}
       initialPeriod={period}
       initialCurrency={currency}
+      initialAccountId={typeof p.accountId === "string" ? p.accountId : ""}
     />
   );
 }
 function BalanceView({
   initialCurrency,
+  initialAccountId,
   ...options
 }: {
   initialHouseholdId: string;
   initialPeriod: string;
   initialCurrency: string;
+  initialAccountId: string;
 }) {
   const state = useFinancialHome(options);
   const scroll = useRef<ComponentRef<typeof ScrollView>>(null);
   const [chosen, setCurrency] = useState(initialCurrency),
     [hidden, setHidden] = useState(false),
-    [accountId, setAccount] = useState<string | null>(null);
+    [accountId, setAccount] = useState<string | null>(initialAccountId || null);
   const back = () =>
     router.replace({
       pathname: "/inicio",
@@ -196,6 +200,15 @@ function BalanceView({
               Créditos e débitos podem incluir transferências e ajustes; não
               equivalem às receitas e despesas da residência.
             </Text>
+            <AccountActivity
+              key={`${state.householdId}:${account.id}:${state.period}`}
+              household={state.householdId}
+              period={state.period}
+              accountId={account.id}
+              currency={account.currency}
+              hidden={hidden}
+              onPeriod={state.selectPeriod}
+            />
           </View>
         ) : (
           <>

@@ -90,6 +90,11 @@ function IncomeSourcesView({
         </nav>
       </aside>
       <div className="dashboard-body">
+        <Link
+          href={`/gerenciar-fontes?${new URLSearchParams({ household: state.householdId, period: state.period })}`}
+        >
+          Gerenciar cadastros →
+        </Link>
         <header className="dashboard-topbar">
           <label>
             Residência

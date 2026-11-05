@@ -7,6 +7,18 @@
     ".": {
       "types": "./index.d.ts",
       "default": "./index.mjs"
+    },
+    "./accounts": {
+      "types": "./accounts.d.ts",
+      "default": "./accounts.mjs"
+    },
+    "./catalog": {
+      "types": "./catalog.d.ts",
+      "default": "./catalog.mjs"
+    },
+    "./collaboration": {
+      "types": "./collaboration.d.ts",
+      "default": "./collaboration.mjs"
     }
   },
   "scripts": {

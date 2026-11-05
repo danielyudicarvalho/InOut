@@ -17,6 +17,8 @@ import {
   money,
   periodLabel,
 } from "@inout/finance";
+import { AccountActivity } from "./account-activity";
+import "./account-activity.css";
 import { useFinancialHome } from "../lib/finance/use-financial-home";
 export function BalanceCompositionScreen() {
   const params = useSearchParams();
@@ -25,26 +27,29 @@ export function BalanceCompositionScreen() {
     currency = params.get("currency") ?? "";
   return (
     <BalanceView
-      key={`${household}:${period}:${currency}`}
+      key={`${household}:${period}:${currency}:${params.get("accountId")}`}
       initialHouseholdId={household}
       initialPeriod={period}
       initialCurrency={currency}
+      initialAccountId={params.get("accountId") ?? ""}
     />
   );
 }
 function BalanceView({
   initialCurrency,
+  initialAccountId,
   ...options
 }: {
   initialHouseholdId: string;
   initialPeriod: string;
   initialCurrency: string;
+  initialAccountId: string;
 }) {
   const state = useFinancialHome(options);
   const heading = useRef<HTMLHeadingElement>(null);
   const [chosen, setCurrency] = useState(initialCurrency),
     [hidden, setHidden] = useState(false),
-    [accountId, setAccount] = useState<string | null>(null);
+    [accountId, setAccount] = useState<string | null>(initialAccountId || null);
   useEffect(() => {
     heading.current?.focus();
   }, [accountId]);
@@ -93,7 +98,7 @@ function BalanceView({
             Início
           </Link>
           <Link
-            href={`/composicao-saldo?${new URLSearchParams({ household: household.id, period: state.period, currency })}`}
+            href={`/contas?${new URLSearchParams({ household: household.id, period: state.period, currency })}`}
             aria-current="page"
           >
             <Wallet size={20} />
@@ -210,6 +215,15 @@ function BalanceView({
               Créditos e débitos da conta podem incluir transferências e
               ajustes; não equivalem às receitas e despesas da residência.
             </p>
+            <AccountActivity
+              key={`${household.id}:${account.id}:${state.period}`}
+              household={household.id}
+              period={state.period}
+              accountId={account.id}
+              currency={account.currency}
+              hidden={hidden}
+              onPeriod={state.selectPeriod}
+            />
           </section>
         ) : (
           <>

@@ -355,3 +355,16 @@ test("definitive validation errors allow correction, while an expired pending re
   assert.equal(writes, 0);
   cleanup();
 });
+
+test("account shortcut selects the requested available account", async () => {
+  const repo = mockRepository(async () => ({ transactionId: key }));
+  const store = createRecordStore(repo, "home", "expense", "BRL", {
+    storage: storage(),
+    randomId: () => key,
+    preferredAccountId: "cash",
+  });
+  const stop = await ready(store);
+  await tick();
+  assert.equal(store.getSnapshot().fields.accountId, "cash");
+  stop();
+});

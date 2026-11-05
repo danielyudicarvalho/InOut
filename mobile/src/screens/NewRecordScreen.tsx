@@ -43,7 +43,7 @@ export function NewRecordScreen() {
     );
   return (
     <RecordView
-      key={`${kind}:${household}:${period}:${currency}`}
+      key={`${kind}:${household}:${period}:${currency}:${p.accountId}`}
       kind={kind as RecordKind}
       household={household}
       period={period}
@@ -121,7 +121,13 @@ function RecordForm({
   kind: RecordKind;
   householdName: string;
 }) {
-  const state = useRecord(household, kind, currency),
+  const params = useLocalSearchParams();
+  const state = useRecord(
+      household,
+      kind,
+      currency,
+      typeof params.accountId === "string" ? params.accountId : "",
+    ),
     [picker, setPicker] = useState<keyof RecordFields | null>(null);
   const back = () =>
     router.replace({

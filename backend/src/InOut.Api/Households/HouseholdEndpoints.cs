@@ -54,6 +54,33 @@ public static class HouseholdEndpoints
             .WithTags(ApiContract.Tags.Households)
             .WithName(ApiContract.EndpointNames.AcceptHouseholdInvitation);
 
+        households.MapGet("/{householdId:guid}/context", async (Guid householdId, ClaimsPrincipal principal, HouseholdService service, CancellationToken ct) =>
+            Results.Ok(await service.GetContextAsync(UserId(principal), householdId, ct)));
+        households.MapGet("/{householdId:guid}/invitations", async (Guid householdId, ClaimsPrincipal principal, HouseholdService service, CancellationToken ct) =>
+            Results.Ok(await service.ListInvitationsAsync(UserId(principal), householdId, ct)));
+        households.MapPut("/{householdId:guid}/members/{memberId:guid}/role", async Task<IResult> (Guid householdId, Guid memberId, ChangeHouseholdRoleRequest request, ClaimsPrincipal principal, HouseholdService service, CancellationToken ct) =>
+        {
+            if (request.Role is not { } role) return Results.BadRequest(new { code = "invalid_household_role" });
+            await service.ChangeRoleAsync(UserId(principal), householdId, memberId, role, ct);
+            return Results.NoContent();
+        });
+        households.MapDelete("/{householdId:guid}/members/{memberId:guid}", async Task<IResult> (Guid householdId, Guid memberId, ClaimsPrincipal principal, HouseholdService service, CancellationToken ct) =>
+        {
+            if (memberId == UserId(principal)) return Results.BadRequest();
+            await service.RemoveMemberAsync(UserId(principal), householdId, memberId, ct);
+            return Results.NoContent();
+        });
+        households.MapPost("/{householdId:guid}/leave", async (Guid householdId, ClaimsPrincipal principal, HouseholdService service, CancellationToken ct) =>
+        {
+            await service.RemoveMemberAsync(UserId(principal), householdId, UserId(principal), ct);
+            return Results.NoContent();
+        });
+        households.MapDelete("/{householdId:guid}/invitations/{invitationId:guid}", async (Guid householdId, Guid invitationId, ClaimsPrincipal principal, HouseholdService service, CancellationToken ct) =>
+        {
+            await service.RevokeInvitationAsync(UserId(principal), householdId, invitationId, ct);
+            return Results.NoContent();
+        });
+
         return endpoints;
     }
 

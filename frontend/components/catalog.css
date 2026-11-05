@@ -1,0 +1,115 @@
+.catalog-eyebrow {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #62774d;
+}
+.catalog-layout {
+  display: grid;
+  grid-template-columns: minmax(240px, 1fr) minmax(300px, 1.2fr);
+  gap: 24px;
+  align-items: start;
+}
+.catalog-list {
+  display: grid;
+  gap: 12px;
+}
+.catalog-list .account-card {
+  padding: 12px;
+}
+.catalog-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  text-align: left;
+  border: 0 !important;
+  background: transparent !important;
+}
+.catalog-row > span:nth-child(2) {
+  flex: 1;
+}
+.catalog-row strong,
+.catalog-row small {
+  display: block;
+  overflow-wrap: anywhere;
+}
+.catalog-row small {
+  color: #61705b;
+  margin-top: 7px;
+}
+.catalog-badge {
+  font-size: 24px;
+  background: #edf0da;
+  padding: 12px;
+  border-radius: 16px;
+}
+.catalog-child {
+  margin-left: 24px;
+  border-left: 3px solid #9aac83;
+}
+.catalog-detail h2 {
+  font-family: var(--font-lora), serif;
+  font-size: 28px;
+  overflow-wrap: anywhere;
+}
+.catalog-detail p {
+  line-height: 1.65;
+}
+.catalog-detail button {
+  margin-bottom: 8px;
+}
+.catalog-share {
+  padding: 18px;
+  background: #eef0de;
+  border-radius: 18px;
+  margin: 16px 0;
+}
+.catalog-share > strong {
+  font-size: 26px;
+}
+.catalog-history {
+  list-style: none;
+  padding: 0;
+}
+.catalog-history li {
+  border-bottom: 1px solid #e4dbc5;
+  padding: 12px 0;
+}
+.catalog-history a {
+  display: grid;
+  gap: 6px;
+}
+.catalog-history small {
+  color: #61705b;
+}
+.accounts-dialog button {
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid #ded7bf;
+  background: #edf0df;
+  color: #244735;
+  min-height: 44px;
+}
+.accounts-dialog .primary {
+  background: #355d41;
+  color: white;
+}
+.accounts-dialog label {
+  color: #244735;
+}
+.accounts-dialog :focus-visible {
+  outline: 3px solid #8d6530;
+  outline-offset: 3px;
+}
+@media (max-width: 850px) {
+  .catalog-layout {
+    grid-template-columns: 1fr;
+  }
+  .catalog-detail {
+    margin-top: 12px;
+  }
+  .catalog-child {
+    margin-left: 16px;
+  }
+}

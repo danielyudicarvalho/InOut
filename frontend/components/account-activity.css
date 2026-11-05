@@ -1,0 +1,62 @@
+.account-activity {
+  margin-top: 28px;
+  border-top: 1px solid #e4dbc5;
+  padding-top: 24px;
+}
+.account-quick-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 24px;
+}
+.account-quick-actions a {
+  background: #e8eddc;
+  color: #355d41;
+  padding: 13px 18px;
+  border-radius: 14px;
+  min-height: 44px;
+}
+.account-activity button {
+  min-height: 44px;
+  padding: 10px;
+  border: 1px solid #d9cfb9;
+  border-radius: 12px;
+  background: #fffdf5;
+}
+.account-activity-list {
+  list-style: none;
+  padding: 0;
+  margin: 16px 0;
+}
+.account-activity-list li {
+  border-bottom: 1px solid #e4dbc5;
+}
+.account-activity-list a {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 0;
+}
+.account-activity-list small {
+  display: block;
+  color: #615d4e;
+  margin-top: 5px;
+}
+.account-activity-list strong {
+  overflow-wrap: anywhere;
+}
+.account-activity :focus-visible {
+  outline: 3px solid #8d6530;
+  outline-offset: 3px;
+}
+@media (max-width: 600px) {
+  .account-activity-list a {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .account-activity .dashboard-section-heading {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+}

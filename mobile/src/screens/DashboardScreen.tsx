@@ -159,6 +159,27 @@ function DashboardView({
   const rows = data.transactions.slice(0, 4);
   const household = state.households.find((h) => h.id === state.householdId)!;
   function unavailable(label: string) {
+    if (label === "Mais") {
+      router.push({
+        pathname: "/residencia",
+        params: { household: state.householdId },
+      });
+      return;
+    }
+    if (label === "Categorias") {
+      router.push({
+        pathname: "/categorias",
+        params: { household: state.householdId, period: state.period },
+      });
+      return;
+    }
+    if (label === "Contas") {
+      router.push({
+        pathname: "/contas",
+        params: { household: state.householdId, period: state.period },
+      });
+      return;
+    }
     if (label === "Lançamentos") {
       router.push({
         pathname: "/lancamentos",

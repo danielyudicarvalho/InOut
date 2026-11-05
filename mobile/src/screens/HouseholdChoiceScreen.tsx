@@ -138,6 +138,12 @@ export function HouseholdChoiceScreen() {
             </Pressable>
           </View>
         ))}
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => router.push("/selecionar-residencia")}
+        >
+          <Text>Abrir minhas residências</Text>
+        </Pressable>
         <View style={s.footer}>
           <MaterialCommunityIcons name="sprout" size={25} color={t.green} />
           <Text style={s.footerText}>

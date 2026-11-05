@@ -5,6 +5,11 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
+  createCollaborationRepository,
+  collaborationMessage,
+} from "@inout/finance/collaboration";
+import { getAuthClient } from "../lib/auth/composition";
+import {
   Plant,
   ArrowLeft,
   ShieldCheck,
@@ -17,6 +22,8 @@ export function InvitationScreen() {
   const [step, setStep] = useState<"code" | "review">("code");
   const [code, setCode] = useState("");
   const [notice, setNotice] = useState("");
+  const [busy, setBusy] = useState(false);
+  const lock = useRef(false);
   const heading = useRef<HTMLHeadingElement>(null);
   const input = useRef<HTMLInputElement>(null);
   const previousStep = useRef(step);
@@ -28,32 +35,38 @@ export function InvitationScreen() {
   }, [step]);
   function verify(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const demoCode = code.trim().toUpperCase();
-    if (!demoCode) {
-      setNotice("Informe o código do convite.");
-      input.current?.focus();
-      return;
-    }
-    if (demoCode === "NINHO-EXPIRADO") {
-      router.push("/convite-expirado");
-      return;
-    }
-    if (demoCode === "NINHO-INVALIDO") {
-      router.push("/convite-invalido");
-      return;
-    }
-    if (demoCode === "NINHO-USADO") {
-      router.push("/convite-utilizado");
-      return;
-    }
-    if (demoCode !== "NINHO-7K2M") {
+    if (!/^[a-fA-F0-9]{48}$/.test(code.trim())) {
       setNotice(
-        "Nesta prévia, use o código de demonstração NINHO-7K2M. Nenhum convite real foi consultado.",
+        "Cole o código completo de 48 caracteres enviado pelo responsável.",
       );
       return;
     }
     setNotice("");
     setStep("review");
+  }
+  async function accept() {
+    if (lock.current) return;
+    lock.current = true;
+    setBusy(true);
+    setNotice("");
+    try {
+      const repository = createCollaborationRepository({
+        baseUrl: process.env.NEXT_PUBLIC_API_BASE_URL,
+        getToken: async () => {
+          const { data } = await getAuthClient().auth.getSession();
+          return data.session?.access_token ?? null;
+        },
+      });
+      const home = await repository.accept(code);
+      router.replace(
+        `/residencia?${new URLSearchParams({ household: home.id })}`,
+      );
+    } catch (error) {
+      setNotice(collaborationMessage(error));
+    } finally {
+      lock.current = false;
+      setBusy(false);
+    }
   }
   function back() {
     setStep("code");
@@ -125,7 +138,7 @@ export function InvitationScreen() {
           <p className="household-subtitle">
             {step === "code"
               ? "Informe o código que você recebeu para encontrar sua residência."
-              : "Revise as informações abaixo antes de confirmar sua participação."}
+              : "Confira o acesso que será concedido. A validade será verificada ao confirmar."}
           </p>
           {step === "code" ? (
             <form onSubmit={verify}>
@@ -139,7 +152,7 @@ export function InvitationScreen() {
                     setCode(event.target.value);
                     setNotice("");
                   }}
-                  placeholder="NINHO-7K2M"
+                  placeholder="Cole o código do convite"
                   autoComplete="off"
                   autoCapitalize="characters"
                   spellCheck={false}
@@ -160,7 +173,7 @@ export function InvitationScreen() {
                 className="primary signin-submit recovery-submit"
                 type="submit"
               >
-                Verificar convite
+                Revisar participação
               </button>
               <aside className="register-info">
                 <ShieldCheck size={28} aria-hidden="true" />
@@ -174,14 +187,14 @@ export function InvitationScreen() {
                   <House size={30} aria-hidden="true" />
                   <div>
                     <dt>Residência</dt>
-                    <dd>Ninho da Família</dd>
+                    <dd>Residência vinculada ao código</dd>
                   </div>
                 </div>
                 <div>
                   <User size={30} aria-hidden="true" />
                   <div>
                     <dt>Convite de</dt>
-                    <dd>Ana</dd>
+                    <dd>Responsável que compartilhou o código</dd>
                   </div>
                 </div>
               </dl>
@@ -197,9 +210,10 @@ export function InvitationScreen() {
               </aside>
               <button
                 className="primary signin-submit"
-                onClick={() => router.push("/convite-aceito")}
+                disabled={busy}
+                onClick={accept}
               >
-                Confirmar participação
+                {busy ? "Confirmando…" : "Confirmar participação"}
               </button>
               <Link href="/comecar" className="signin-back">
                 Agora não
@@ -209,15 +223,6 @@ export function InvitationScreen() {
           <p id="invitation-notice" role="status" className="signin-notice">
             {notice}
           </p>
-          <details className="household-preview invitation-preview">
-            <summary>Demonstração com dados fictícios</summary>
-            <p>
-              Use NINHO-7K2M para revisar o exemplo. Outros estados:
-              NINHO-EXPIRADO, NINHO-INVALIDO e NINHO-USADO. A confirmação abre
-              apenas uma prévia de resultado; nenhum convite é consultado ou
-              aceito no servidor.
-            </p>
-          </details>
         </section>
       </div>
     </main>

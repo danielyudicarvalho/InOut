@@ -9,7 +9,7 @@ namespace InOut.Application.Financial.Dashboard;
 public sealed record GetIncomeBreakdownQuery(
     Guid ActorUserId, Guid HouseholdId, string Currency,
     int? Year = null, int? Month = null, DateOnly? From = null, DateOnly? To = null,
-    int Offset = 0, int Limit = 50);
+    int Offset = 0, int Limit = 50, bool IncludeArchivedAccounts = false);
 
 public sealed record IncomeBreakdownItem(
     Guid TransactionId, Guid EntryId, Guid AccountId, string AccountName,
@@ -37,7 +37,9 @@ public sealed class GetIncomeBreakdown(
             : query.Year is not null && query.Month is not null
                 ? FinancialPeriod.Monthly(query.Year.Value, query.Month.Value)
                 : FinancialPeriod.Monthly(DateTime.UtcNow.Year, DateTime.UtcNow.Month);
-        var source = await dashboardReader.ReadAsync(query.ActorUserId, query.HouseholdId, period, cancellationToken);
+        var source = query.IncludeArchivedAccounts
+            ? await dashboardReader.ReadIncomeHistoryAsync(query.ActorUserId, query.HouseholdId, period, cancellationToken)
+            : await dashboardReader.ReadAsync(query.ActorUserId, query.HouseholdId, period, cancellationToken);
         var accounts = source.Accounts.Where(account => account.Currency == currency).ToDictionary(account => account.Id);
         var categories = source.Categories.ToDictionary(category => category.Id, category => category.Name);
         var incomeSources = source.IncomeSources.ToDictionary(item => item.Id, item => item.Name);

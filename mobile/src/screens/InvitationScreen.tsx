@@ -9,19 +9,50 @@ import {
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
-  Keyboard,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
+import {
+  createCollaborationRepository,
+  collaborationMessage,
+} from "@inout/finance/collaboration";
+import { getAuthClient } from "../auth/composition";
 import { theme as t } from "../theme";
 
 export function InvitationScreen() {
   const [step, setStep] = useState<"code" | "review">("code");
   const [code, setCode] = useState("");
   const [notice, setNotice] = useState("");
+  const [busy, setBusy] = useState(false);
+  const lock = useRef(false);
   const scroll = useRef<ComponentRef<typeof ScrollView>>(null);
   const input = useRef<ComponentRef<typeof TextInput>>(null);
+  async function accept() {
+    if (lock.current) return;
+    lock.current = true;
+    setBusy(true);
+    setNotice("");
+    try {
+      const repository = createCollaborationRepository({
+        baseUrl: process.env.EXPO_PUBLIC_API_BASE_URL,
+        getToken: async () => {
+          const { data } = await getAuthClient().auth.getSession();
+          return data.session?.access_token ?? null;
+        },
+      });
+      const home = await repository.accept(code);
+      router.replace({
+        pathname: "/residencia",
+        params: { household: home.id },
+      });
+    } catch (error) {
+      setNotice(collaborationMessage(error));
+    } finally {
+      lock.current = false;
+      setBusy(false);
+    }
+  }
   function back() {
     if (step === "review") {
       setStep("code");
@@ -30,28 +61,9 @@ export function InvitationScreen() {
     } else router.replace("/comecar");
   }
   function verify() {
-    const demoCode = code.trim().toUpperCase();
-    if (!demoCode) {
-      setNotice("Informe o código do convite.");
-      input.current?.focus();
-      return;
-    }
-    Keyboard.dismiss();
-    if (demoCode === "NINHO-EXPIRADO") {
-      router.push("/convite-expirado");
-      return;
-    }
-    if (demoCode === "NINHO-INVALIDO") {
-      router.push("/convite-invalido");
-      return;
-    }
-    if (demoCode === "NINHO-USADO") {
-      router.push("/convite-utilizado");
-      return;
-    }
-    if (demoCode !== "NINHO-7K2M") {
+    if (!/^[a-fA-F0-9]{48}$/.test(code.trim())) {
       setNotice(
-        "Nesta prévia, use o código de demonstração NINHO-7K2M. Nenhum convite real foi consultado.",
+        "Cole o código completo de 48 caracteres enviado pelo responsável.",
       );
       return;
     }
@@ -106,7 +118,7 @@ export function InvitationScreen() {
           <Text style={s.subtitle}>
             {step === "code"
               ? "Informe o código que você recebeu para encontrar sua residência."
-              : "Revise as informações abaixo antes de confirmar sua participação."}
+              : "Confira o acesso que será concedido. A validade será verificada ao confirmar."}
           </Text>
           {step === "code" ? (
             <>
@@ -119,7 +131,7 @@ export function InvitationScreen() {
                   setCode(value);
                   setNotice("");
                 }}
-                placeholder="NINHO-7K2M"
+                placeholder="Cole o código do convite"
                 placeholderTextColor={t.muted}
                 autoCapitalize="characters"
                 autoCorrect={false}
@@ -137,7 +149,7 @@ export function InvitationScreen() {
                 style={s.primary}
                 onPress={verify}
               >
-                <Text style={s.primaryText}>Verificar convite</Text>
+                <Text style={s.primaryText}>Revisar participação</Text>
               </Pressable>
               <View style={s.info}>
                 <MaterialCommunityIcons
@@ -158,12 +170,12 @@ export function InvitationScreen() {
                     {
                       icon: "home-outline",
                       label: "Residência",
-                      value: "Ninho da Família",
+                      value: "Residência vinculada ao código",
                     },
                     {
                       icon: "account-outline",
                       label: "Convite de",
-                      value: "Ana",
+                      value: "Responsável que compartilhou o código",
                     },
                   ] as const
                 ).map((item) => (
@@ -197,9 +209,12 @@ export function InvitationScreen() {
               <Pressable
                 accessibilityRole="button"
                 style={s.primary}
-                onPress={() => router.push("/convite-aceito")}
+                disabled={busy}
+                onPress={accept}
               >
-                <Text style={s.primaryText}>Confirmar participação</Text>
+                <Text style={s.primaryText}>
+                  {busy ? "Confirmando…" : "Confirmar participação"}
+                </Text>
               </Pressable>
               <Pressable
                 accessibilityRole="button"
@@ -212,12 +227,6 @@ export function InvitationScreen() {
           )}
           <Text accessibilityLiveRegion="polite" style={s.notice}>
             {notice}
-          </Text>
-          <Text style={s.preview}>
-            Prévia com dados fictícios. Use NINHO-7K2M para revisar o exemplo.
-            Outros estados: NINHO-EXPIRADO, NINHO-INVALIDO e NINHO-USADO. Nenhum
-            convite é consultado ou aceito no servidor. Confirmar abre uma
-            prévia de resultado.
           </Text>
         </ScrollView>
       </KeyboardAvoidingView>

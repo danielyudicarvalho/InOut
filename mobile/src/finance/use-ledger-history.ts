@@ -20,7 +20,7 @@ export function useLedgerHistory(
     loading: boolean;
     error: string;
   }>({ items: [], hasMore: false, loading: true, error: "" });
-  const { search, kind, accountId } = filters;
+  const { search, kind, accountId, categoryId, incomeSourceId } = filters;
   useEffect(() => {
     const controller = new AbortController();
     const repository = createFinanceRepository({
@@ -35,7 +35,7 @@ export function useLedgerHistory(
       .ledgerHistory(
         household,
         period,
-        { search, kind, accountId },
+        { search, kind, accountId, categoryId, incomeSourceId },
         offset,
         controller.signal,
       )
@@ -53,6 +53,16 @@ export function useLedgerHistory(
           });
       });
     return () => controller.abort();
-  }, [household, period, search, kind, accountId, offset, revision]);
+  }, [
+    household,
+    period,
+    search,
+    kind,
+    accountId,
+    categoryId,
+    incomeSourceId,
+    offset,
+    revision,
+  ]);
   return { ...state, retry: () => setRevision((v) => v + 1) };
 }

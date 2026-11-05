@@ -6,6 +6,8 @@ export class FinanceFailure extends Error {
 }
 export function financeMessage(error) {
   const messages = {
+    catalog_conflict:
+      "Já existe um cadastro ativo com esse nome. Escolha outro nome.",
     not_found: "Lançamento não encontrado nesta residência.",
     stale:
       "Este lançamento foi atualizado. Recarregue os dados para continuar.",
@@ -189,6 +191,12 @@ export function createFinanceRepository({
         } catch {
           /* Remain uncertain. */
         }
+        if (
+          ["category_conflict", "income_source_conflict"].includes(
+            problem?.code,
+          )
+        )
+          throw new FinanceFailure("catalog_conflict");
         if (problem?.code === "transaction_changed")
           throw new FinanceFailure("stale");
       }
@@ -212,13 +220,21 @@ export function createFinanceRepository({
       throw new FinanceFailure("invalid");
     }
   }
-  async function breakdown(kind, householdId, period, code, offset, signal) {
+  async function breakdown(
+    kind,
+    householdId,
+    period,
+    code,
+    offset,
+    signal,
+    includeArchivedAccounts = false,
+  ) {
     const bounds = parsePeriod(period);
     const query = bounds.custom
       ? `from=${bounds.from}&to=${bounds.to}`
       : `year=${period.slice(0, 4)}&month=${Number(period.slice(5))}`;
     const raw = await get(
-      `/api/v1/households/${encodeURIComponent(householdId)}/ledger/dashboard/${kind}?currency=${encodeURIComponent(currency(code))}&${query}&offset=${integer(offset)}&limit=50`,
+      `/api/v1/households/${encodeURIComponent(householdId)}/ledger/dashboard/${kind}?currency=${encodeURIComponent(currency(code))}&${query}&offset=${integer(offset)}&limit=50${includeArchivedAccounts ? "&includeArchivedAccounts=true" : ""}`,
       signal,
     );
     if (
@@ -319,7 +335,13 @@ export function createFinanceRepository({
         limit: "51",
         offset: String(offset),
       });
-      for (const key of ["search", "kind", "accountId"])
+      for (const key of [
+        "search",
+        "kind",
+        "accountId",
+        "categoryId",
+        "incomeSourceId",
+      ])
         if (filters[key]) query.set(key, filters[key]);
       const rows = array(
         await get(
@@ -560,8 +582,23 @@ export function createFinanceRepository({
         name: string(row.name),
       }));
     },
-    income(householdId, period, code, offset, signal) {
-      return breakdown("income", householdId, period, code, offset, signal);
+    income(
+      householdId,
+      period,
+      code,
+      offset,
+      signal,
+      includeArchivedAccounts = false,
+    ) {
+      return breakdown(
+        "income",
+        householdId,
+        period,
+        code,
+        offset,
+        signal,
+        includeArchivedAccounts,
+      );
     },
     expense(householdId, period, code, offset, signal) {
       return breakdown("expense", householdId, period, code, offset, signal);
@@ -594,11 +631,11 @@ export function createFinanceRepository({
         replayed: result.replayed,
       };
     },
-    async createCategory(household, body, key) {
+    async createCategory(household, body, key, signal) {
       if (!validOperationKey(key)) throw new FinanceFailure("validation");
       const result = await get(
         `/api/v1/households/${encodeURIComponent(household)}/ledger/categories`,
-        undefined,
+        signal,
         {
           key,
           body: {
@@ -618,11 +655,11 @@ export function createFinanceRepository({
         ...(result.parentId ? { parentId: string(result.parentId) } : {}),
       };
     },
-    async createIncomeSource(household, body, id) {
+    async createIncomeSource(household, body, id, signal) {
       if (!validOperationKey(id)) throw new FinanceFailure("validation");
       const result = await get(
         `/api/v1/households/${encodeURIComponent(household)}/ledger/income-sources`,
-        undefined,
+        signal,
         { key: id, body: { id, name: body.name } },
       );
       if (result?.id?.toLowerCase() !== id.toLowerCase())
@@ -1648,7 +1685,16 @@ const recordWriteSpec = {
 export function createRecordStore(repository, household, kind, code, options) {
   return createWriteStore(repository, household, kind, code, {
     ...options,
-    spec: recordWriteSpec,
+    spec: {
+      ...recordWriteSpec,
+      initialize: (fields, catalogs, currency) => {
+        const initial = recordWriteSpec.initialize(fields, catalogs, currency);
+        const preferred = catalogs.accounts.find(
+          (account) => account.id === options.preferredAccountId,
+        );
+        return preferred ? { ...initial, accountId: preferred.id } : initial;
+      },
+    },
   });
 }
 export function initialAccountAmount(value) {

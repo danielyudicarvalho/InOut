@@ -113,6 +113,8 @@ export type HistoryItem = {
   reversalOf: string | null;
 };
 export type HistoryFilters = {
+  categoryId?: string;
+  incomeSourceId?: string;
   search?: string;
   kind?: string;
   accountId?: string;
@@ -127,11 +129,13 @@ export interface FinanceRepository {
       parentId?: string | null;
     },
     key: string,
+    signal?: AbortSignal,
   ): Promise<{ id: string; name: string; flow: string; parentId?: string }>;
   createIncomeSource(
     household: string,
     body: { name: string },
     id: string,
+    signal?: AbortSignal,
   ): Promise<{ id: string; name: string }>;
 
   correctClassification(
@@ -205,6 +209,7 @@ export interface FinanceRepository {
     currency: string,
     offset: number,
     signal?: AbortSignal,
+    includeArchivedAccounts?: boolean,
   ): Promise<IncomePage>;
   households(signal?: AbortSignal): Promise<Household[]>;
   home(id: string, period: string, signal?: AbortSignal): Promise<Home>;
@@ -344,6 +349,7 @@ export function createRecordStore(
       save: (value: string) => Promise<void>;
       remove: (key: string) => Promise<void>;
     };
+    preferredAccountId?: string;
     randomId: () => string;
     now?: () => Date;
     timeoutMs?: number;

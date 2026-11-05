@@ -107,6 +107,9 @@ export function HouseholdChoiceScreen() {
             </article>
           ))}
         </div>
+        <Link href="/selecionar-residencia" className="household-secondary">
+          Abrir minhas residências
+        </Link>
         <p className="household-footer">
           <Plant size={26} weight="duotone" aria-hidden="true" />
           Residência é o espaço das suas finanças no Ninho.

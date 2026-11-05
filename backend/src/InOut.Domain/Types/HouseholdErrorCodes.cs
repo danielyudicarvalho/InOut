@@ -2,6 +2,9 @@ namespace InOut.Domain.Households;
 
 public static class HouseholdErrorCodes
 {
+    public const string LastOwner = "last_household_owner";
+    public const string InvalidRole = "invalid_household_role";
+    public const string MemberNotFound = "household_member_not_found";
     public const string AlreadyMember = "already_member";
     public const string HouseholdFull = "household_full";
     public const string InvalidHouseholdName = "invalid_household_name";

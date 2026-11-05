@@ -346,12 +346,13 @@ public static class LedgerEndpoints
             DateOnly? to,
             int? offset,
             int? limit,
+            bool? includeArchivedAccounts,
             ClaimsPrincipal principal,
             GetIncomeBreakdown useCase,
             CancellationToken cancellationToken) =>
             Results.Ok(await useCase.ExecuteAsync(
                 new GetIncomeBreakdownQuery(UserId(principal), householdId, currency,
-                    year, month, from, to, offset ?? 0, limit ?? 50),
+                    year, month, from, to, offset ?? 0, limit ?? 50, includeArchivedAccounts ?? false),
                 cancellationToken)))
             .WithName(ApiContract.EndpointNames.GetIncomeBreakdown);
 

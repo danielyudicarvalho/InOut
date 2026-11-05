@@ -73,7 +73,7 @@ export function NewRecordScreen() {
 
   return (
     <RecordView
-      key={`${kind}:${household}:${period}:${currency}`}
+      key={`${kind}:${household}:${period}:${currency}:${p.get("accountId")}`}
       kind={kind as RecordKind}
       household={household}
       period={period}
@@ -142,7 +142,13 @@ function RecordForm({
   currency: string;
   householdName: string;
 }) {
-  const state = useRecord(household, kind, currency);
+  const params = useSearchParams();
+  const state = useRecord(
+    household,
+    kind,
+    currency,
+    params.get("accountId") ?? "",
+  );
   const back = `/inicio?${new URLSearchParams({ household, period, currency })}`;
 
   const [categoryModalOpen, setCategoryModalOpen] = useState(false);
