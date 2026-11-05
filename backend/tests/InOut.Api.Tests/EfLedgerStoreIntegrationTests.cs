@@ -63,9 +63,9 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
               gen_random_uuid(), @household_id, @expense_category_id,
               '2026-09-01', '2026-09-30', 500, @actor_user_id, 'BRL');
             insert into public.goals (
-              id, household_id, name, target_cents, allocated_cents, target_date, currency)
+              id, household_id, name, target_cents, allocated_cents, target_date, currency, created_by)
             values (
-              gen_random_uuid(), @household_id, 'Emergency fund', 10000, 2500, '2026-12-31', 'BRL');
+              gen_random_uuid(), @household_id, 'Emergency fund', 10000, 2500, '2026-12-31', 'BRL', @actor_user_id);
             """;
         seed.Parameters.AddWithValue("household_id", householdId);
         seed.Parameters.AddWithValue("actor_user_id", actorUserId);
@@ -1054,6 +1054,104 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task GoalAllocationHistoryExplainsProgressAndReversalKeepsTheOriginal()
+    {
+        var goalId = Guid.NewGuid();
+        await ExecuteAsync("""
+            insert into public.goals (
+              id, household_id, name, target_cents, allocated_cents, currency, created_by)
+            values (@goal_id, @household_id, 'Trip', 10000, 0, 'BRL', @actor_user_id)
+            """, ("goal_id", goalId));
+        try
+        {
+            await using var context = CreateContext();
+            var service = new LedgerService(CreateStore(context));
+            var unexplainedId = await ScalarAsync<Guid>("""
+                select id from public.goals
+                where household_id = @household_id and name = 'Emergency fund'
+                """);
+            var unexplained = await Assert.ThrowsAsync<FinancialRuleException>(() =>
+                service.AllocateToGoalAsync(actorUserId, new AllocateGoalCommand(
+                    householdId, unexplainedId, 100, "BRL", new DateOnly(2026, 11, 5), null, Guid.NewGuid()),
+                    CancellationToken.None));
+            Assert.Equal(FinancialErrorCodes.GoalProgressUnexplained, unexplained.Code);
+
+            var key = Guid.NewGuid();
+            var command = new AllocateGoalCommand(
+                householdId, goalId, 4_000, "BRL", new DateOnly(2026, 11, 1), " reserva ", key);
+            var first = await service.AllocateToGoalAsync(actorUserId, command, CancellationToken.None);
+            Assert.Equal(4_000, first.AllocatedCents);
+            Assert.Equal(GoalAllocationKind.Contribution, first.Kind);
+            Assert.Equal("reserva", first.Note);
+            Assert.False(first.Replayed);
+            var replay = await service.AllocateToGoalAsync(
+                actorUserId, command with { Currency = "brl", Note = "reserva" }, CancellationToken.None);
+            Assert.True(replay.Replayed);
+            Assert.Equal(first.Id, replay.Id);
+            Assert.Equal(1L, await CountAsync("public.goal_allocations", "goal_id", goalId));
+            var conflict = await Assert.ThrowsAsync<IdempotencyException>(() =>
+                service.AllocateToGoalAsync(actorUserId, command with { AmountCents = 100 }, CancellationToken.None));
+            Assert.Equal(IdempotencyErrorCodes.Conflict, conflict.Code);
+            var mismatch = await Assert.ThrowsAsync<FinancialRuleException>(() =>
+                service.AllocateToGoalAsync(actorUserId, command with
+                {
+                    AmountCents = 100,
+                    Currency = "USD",
+                    IdempotencyKey = Guid.NewGuid(),
+                }, CancellationToken.None));
+            Assert.Equal(FinancialErrorCodes.CurrencyMismatch, mismatch.Code);
+
+            var second = await service.AllocateToGoalAsync(actorUserId, new AllocateGoalCommand(
+                householdId, goalId, 6_000, "BRL", new DateOnly(2026, 11, 2), null, Guid.NewGuid()),
+                CancellationToken.None);
+            Assert.Equal(GoalStatus.Completed, second.GoalStatus);
+            Assert.Equal(10_000, second.AllocatedCents);
+            var blocked = await Assert.ThrowsAsync<FinancialRuleException>(() =>
+                service.AllocateToGoalAsync(actorUserId, new AllocateGoalCommand(
+                    householdId, goalId, 1, "BRL", new DateOnly(2026, 11, 2), null, Guid.NewGuid()),
+                    CancellationToken.None));
+            Assert.Equal(FinancialErrorCodes.InvalidGoalName, blocked.Code);
+
+            var reversal = await service.ReverseGoalAllocationAsync(actorUserId, new ReverseGoalAllocationCommand(
+                householdId, goalId, first.Id, new DateOnly(2026, 11, 3), "desfeito", Guid.NewGuid()),
+                CancellationToken.None);
+            Assert.Equal(first.Id, reversal.ReversalOf);
+            Assert.Equal(6_000, reversal.AllocatedCents);
+            Assert.Equal(GoalStatus.Active, reversal.GoalStatus);
+            Assert.Equal(GoalAllocationKind.Reversal, reversal.Kind);
+            var duplicate = await Assert.ThrowsAsync<FinancialRuleException>(() =>
+                service.ReverseGoalAllocationAsync(actorUserId, new ReverseGoalAllocationCommand(
+                    householdId, goalId, first.Id, new DateOnly(2026, 11, 4), null, Guid.NewGuid()),
+                    CancellationToken.None));
+            Assert.Equal(FinancialErrorCodes.GoalAllocationNotReversible, duplicate.Code);
+            var reversalOfReversal = await Assert.ThrowsAsync<FinancialRuleException>(() =>
+                service.ReverseGoalAllocationAsync(actorUserId, new ReverseGoalAllocationCommand(
+                    householdId, goalId, reversal.Id, new DateOnly(2026, 11, 4), null, Guid.NewGuid()),
+                    CancellationToken.None));
+            Assert.Equal(FinancialErrorCodes.ReversalOfReversal, reversalOfReversal.Code);
+
+            var history = await service.ListGoalAllocationsAsync(
+                actorUserId, householdId, goalId, CancellationToken.None);
+            Assert.Equal(3, history.Allocations.Count);
+            Assert.True(history.ProgressIsExplained);
+            Assert.Equal(6_000, history.AllocatedCents);
+            Assert.Contains(history.Allocations, item => item.Id == first.Id && item.Kind == GoalAllocationKind.Contribution);
+            Assert.Equal(6_000L, await ScalarAsync<long>(
+                "select allocated_cents from public.goals where id = @goal_id", ("goal_id", goalId)));
+            Assert.Equal(2L, await ScalarAsync<long>("""
+                select count(*) from public.goal_allocations
+                where goal_id = @goal_id and kind = 'contribution'
+                """, ("goal_id", goalId)));
+        }
+        finally
+        {
+            await ExecuteAsync(
+                "update public.goals set archived_at = now(), status_id = 12 where id = @goal_id",
+                ("goal_id", goalId));
+        }
+    }
+
+    [Fact]
     public async Task DashboardRejectsAnActorOutsideTheHousehold()
     {
         await using var context = CreateContext();
@@ -1393,6 +1491,36 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
     private static GetFinancialDashboard CreateDashboardUseCase(InOutDbContext context) =>
         new(new EfHouseholdMembershipReader(context), new EfDashboardReader(context));
 
+    private async Task ExecuteAsync(string sql, params (string Name, object Value)[] parameters)
+    {
+        await using var connection = new NpgsqlConnection(postgres.GetConnectionString());
+        await connection.OpenAsync();
+        await using var command = connection.CreateCommand();
+        command.CommandText = sql;
+        Bind(command, parameters);
+        await command.ExecuteNonQueryAsync();
+    }
+
+    private async Task<T> ScalarAsync<T>(string sql, params (string Name, object Value)[] parameters)
+    {
+        await using var connection = new NpgsqlConnection(postgres.GetConnectionString());
+        await connection.OpenAsync();
+        await using var command = connection.CreateCommand();
+        command.CommandText = sql;
+        Bind(command, parameters);
+        return (T)(await command.ExecuteScalarAsync())!;
+    }
+
+    private void Bind(NpgsqlCommand command, params (string Name, object Value)[] parameters)
+    {
+        command.Parameters.AddWithValue("household_id", householdId);
+        command.Parameters.AddWithValue("actor_user_id", actorUserId);
+        foreach (var (name, value) in parameters)
+        {
+            command.Parameters.AddWithValue(name, value);
+        }
+    }
+
     private async Task<long> CountAsync(string qualifiedTable)
     {
         await using var connection = new NpgsqlConnection(postgres.GetConnectionString());
@@ -1565,8 +1693,27 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
           allocated_cents bigint not null,
           target_date date,
           status_id int not null default 9 references public.status_values(id),
+          created_by uuid not null,
+          created_at timestamptz not null default now(),
           archived_at timestamptz
         );
+        create table public.goal_allocations (
+          id uuid primary key,
+          household_id uuid not null references public.households(id),
+          goal_id uuid not null references public.goals(id),
+          amount_cents bigint not null,
+          currency text not null,
+          kind text not null,
+          origin text not null,
+          reversal_of uuid,
+          occurred_on date not null,
+          note text,
+          created_by uuid not null,
+          created_at timestamptz not null default now()
+        );
+        create unique index goal_allocations_one_reversal_per_original_uidx
+          on public.goal_allocations (household_id, reversal_of)
+          where kind = 'reversal';
         create table public.audit_events (
           id bigint generated by default as identity primary key,
           household_id uuid not null references public.households(id),

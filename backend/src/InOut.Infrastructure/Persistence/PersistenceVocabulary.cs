@@ -23,12 +23,15 @@ internal static class PersistenceVocabulary
         internal const string TransactionPosted = "financial.transaction.posted";
         internal const string TransactionReversed = "financial.transaction.reversed";
         internal const string BudgetSet = "financial.budget.set";
+        internal const string GoalAllocationRecorded = "financial.goal.allocation_recorded";
+        internal const string GoalAllocationReversed = "financial.goal.allocation_reversed";
     }
 
     internal static class EntityTypes
     {
         internal const string Account = "account";
         internal const string Budget = "budget";
+        internal const string GoalAllocation = "goal_allocation";
         internal const string Category = "category";
         internal const string Household = "household";
         internal const string HouseholdInvitation = "household_invitation";
@@ -61,6 +64,8 @@ internal static class PersistenceVocabulary
         internal const string PostTransfer = "post_transfer";
         internal const string ReverseTransaction = "reverse_transaction";
         internal const string SetBudget = "set_budget";
+        internal const string AllocateGoal = "allocate_goal";
+        internal const string ReverseGoalAllocation = "reverse_goal_allocation";
         internal const string CorrectClassification = "correct_classification";
     }
 

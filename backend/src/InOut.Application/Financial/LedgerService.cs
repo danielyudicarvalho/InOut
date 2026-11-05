@@ -242,6 +242,36 @@ public sealed class LedgerService(ILedgerStore store)
                 command.PeriodEnd, command.LimitCents, command.Currency), cancellationToken);
     }
 
+    public Task<GoalAllocationResult> AllocateToGoalAsync(
+        Guid actorUserId, AllocateGoalCommand command, CancellationToken cancellationToken)
+    {
+        var amount = Money.Positive(command.AmountCents, command.Currency);
+        command = command with
+        {
+            AmountCents = amount.Cents,
+            Currency = amount.Currency,
+            Note = GoalAllocation.NormalizeNote(command.Note),
+        };
+        return store.AllocateToGoalAsync(actorUserId, command,
+            IdempotencyRequest.Create(command.HouseholdId, actorUserId, IdempotencyOperation.AllocateGoal,
+                command.IdempotencyKey, command.GoalId, command.AmountCents, command.Currency,
+                command.OccurredOn, command.Note), cancellationToken);
+    }
+
+    public Task<GoalAllocationResult> ReverseGoalAllocationAsync(
+        Guid actorUserId, ReverseGoalAllocationCommand command, CancellationToken cancellationToken)
+    {
+        command = command with { Note = GoalAllocation.NormalizeNote(command.Note) };
+        return store.ReverseGoalAllocationAsync(actorUserId, command,
+            IdempotencyRequest.Create(command.HouseholdId, actorUserId, IdempotencyOperation.ReverseGoalAllocation,
+                command.IdempotencyKey, command.GoalId, command.AllocationId, command.OccurredOn, command.Note),
+            cancellationToken);
+    }
+
+    public Task<GoalAllocationHistory> ListGoalAllocationsAsync(
+        Guid actorUserId, Guid householdId, Guid goalId, CancellationToken cancellationToken) =>
+        store.ListGoalAllocationsAsync(actorUserId, householdId, goalId, cancellationToken);
+
 
 
     private Task<LedgerWriteResult> PostAsync(

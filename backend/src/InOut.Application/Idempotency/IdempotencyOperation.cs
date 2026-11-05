@@ -12,4 +12,6 @@ public enum IdempotencyOperation
     ReverseTransaction,
     SetBudget,
     CorrectClassification,
+    AllocateGoal,
+    ReverseGoalAllocation,
 }

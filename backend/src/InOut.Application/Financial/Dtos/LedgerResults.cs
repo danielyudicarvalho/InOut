@@ -119,3 +119,41 @@ public sealed record BudgetResult(
     bool Replayed,
     string Currency);
 
+public sealed record GoalAllocationItem(
+    Guid Id,
+    long AmountCents,
+    string Currency,
+    GoalAllocationKind Kind,
+    GoalAllocationOrigin Origin,
+    Guid? ReversalOf,
+    DateOnly OccurredOn,
+    string? Note,
+    Guid CreatedBy,
+    DateTimeOffset CreatedAt);
+
+public sealed record GoalAllocationHistory(
+    Guid GoalId,
+    string? Currency,
+    long TargetCents,
+    long AllocatedCents,
+    GoalStatus Status,
+    bool ProgressIsExplained,
+    IReadOnlyList<GoalAllocationItem> Allocations);
+
+public sealed record GoalAllocationResult(
+    Guid Id,
+    Guid HouseholdId,
+    Guid GoalId,
+    long AmountCents,
+    string Currency,
+    GoalAllocationKind Kind,
+    GoalAllocationOrigin Origin,
+    Guid? ReversalOf,
+    DateOnly OccurredOn,
+    string? Note,
+    Guid CreatedBy,
+    DateTimeOffset CreatedAt,
+    long AllocatedCents,
+    GoalStatus GoalStatus,
+    bool Replayed = false);
+

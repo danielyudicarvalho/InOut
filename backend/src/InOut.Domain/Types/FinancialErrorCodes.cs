@@ -13,6 +13,11 @@ public static class FinancialErrorCodes
     public const string InvalidAccountId = "invalid_account_id";
     public const string InvalidAccountName = "invalid_account_name";
     public const string InvalidGoalName = "invalid_goal_name";
+    public const string InvalidGoalAllocation = "invalid_goal_allocation";
+    public const string GoalNotFound = "goal_not_found";
+    public const string GoalAllocationNotFound = "goal_allocation_not_found";
+    public const string GoalAllocationNotReversible = "goal_allocation_not_reversible";
+    public const string GoalProgressUnexplained = "goal_progress_unexplained";
     public const string InvalidAmount = "invalid_amount";
     public const string InvalidIncomeSource = "invalid_income_source";
     public const string InvalidRecurringPlan = "invalid_recurring_plan";

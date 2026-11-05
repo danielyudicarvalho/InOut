@@ -323,6 +323,70 @@ public static class LedgerEndpoints
                     result);
         }).WithName(ApiContract.EndpointNames.SetBudget);
 
+        ledger.MapPost(ApiContract.Routes.GoalAllocations, async (
+            Guid householdId,
+            Guid goalId,
+            AllocateGoalRequest request,
+            [FromHeader(Name = ApiContract.Headers.IdempotencyKey)] Guid idempotencyKey,
+            ClaimsPrincipal principal,
+            LedgerService service,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await service.AllocateToGoalAsync(
+                UserId(principal),
+                new AllocateGoalCommand(
+                    householdId,
+                    goalId,
+                    request.AmountCents,
+                    request.Currency,
+                    request.OccurredOn,
+                    request.Note,
+                    idempotencyKey),
+                cancellationToken);
+            return result.Replayed
+                ? Results.Ok(result)
+                : Results.Created(
+                    ApiContract.Routes.GoalAllocationResource(householdId, goalId, result.Id),
+                    result);
+        }).WithName(ApiContract.EndpointNames.AllocateGoal);
+
+        ledger.MapPost(ApiContract.Routes.GoalAllocationReversals, async (
+            Guid householdId,
+            Guid goalId,
+            Guid allocationId,
+            ReverseGoalAllocationRequest request,
+            [FromHeader(Name = ApiContract.Headers.IdempotencyKey)] Guid idempotencyKey,
+            ClaimsPrincipal principal,
+            LedgerService service,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await service.ReverseGoalAllocationAsync(
+                UserId(principal),
+                new ReverseGoalAllocationCommand(
+                    householdId,
+                    goalId,
+                    allocationId,
+                    request.OccurredOn,
+                    request.Note,
+                    idempotencyKey),
+                cancellationToken);
+            return result.Replayed
+                ? Results.Ok(result)
+                : Results.Created(
+                    ApiContract.Routes.GoalAllocationResource(householdId, goalId, result.Id),
+                    result);
+        }).WithName(ApiContract.EndpointNames.ReverseGoalAllocation);
+
+        ledger.MapGet(ApiContract.Routes.GoalAllocations, async (
+            Guid householdId,
+            Guid goalId,
+            ClaimsPrincipal principal,
+            LedgerService service,
+            CancellationToken cancellationToken) =>
+            Results.Ok(await service.ListGoalAllocationsAsync(
+                UserId(principal), householdId, goalId, cancellationToken)))
+            .WithName(ApiContract.EndpointNames.GetGoalAllocations);
+
 
         ledger.MapGet(ApiContract.Routes.Dashboard, async (
             Guid householdId,

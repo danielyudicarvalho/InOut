@@ -76,6 +76,18 @@ public enum GoalStatus
     Archived = 12,
 }
 
+public enum GoalAllocationKind
+{
+    Contribution,
+    Reversal,
+}
+
+public enum GoalAllocationOrigin
+{
+    Recorded,
+    Opening,
+}
+
 public enum RecurringPlanStatus
 {
     Active = 13,

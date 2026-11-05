@@ -33,6 +33,8 @@ Representa saldo inicial, receita, despesa, transferência ou estorno. É a raiz
 
 Mantêm planejamento, sem reescrever fatos do ledger. Indicadores são derivados dos movimentos válidos do período.
 
+O progresso de uma meta não é um saldo editável. Cada aporte é uma alocação imutável, com valor, moeda da meta, data, autor e origem. O valor acumulado é a soma das contribuições menos os estornos. Desfazer um aporte cria outra alocação, do tipo estorno, ligada à original; a original permanece no histórico. Um estorno não estorna outro estorno, e cada contribuição só pode ser estornada uma vez. Uma meta pausada não recebe aportes novos, mas ainda pode desfazer um aporte já registrado. Uma meta arquivada não muda o progresso.
+
 ## Modelo mínimo sugerido
 
 - `households`
@@ -43,6 +45,7 @@ Mantêm planejamento, sem reescrever fatos do ledger. Indicadores são derivados
 - `entries`
 - `budgets`
 - `goals`
+- `goal_allocations`
 - `audit_events`
 
 Uma transação contém entradas contábeis. Para receita ou despesa, o MVP pode usar uma conta de contrapartida lógica. Para transferência, duas entradas opostas garantem soma zero.
@@ -88,7 +91,7 @@ Exemplo: despesa de R$ 150 registrada como R$ 510.
 - **Resultado do período** = receitas externas - despesas externas.
 - **Transferências internas** não alteram resultado nem patrimônio consolidado.
 - **Uso do orçamento** = despesas válidas da categoria / limite do período.
-- **Progresso da meta** = valor alocado / valor-alvo.
+- **Progresso da meta** = (contribuições − estornos) / valor-alvo.
 
 ## Projeção mensal do painel
 

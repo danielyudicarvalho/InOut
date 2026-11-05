@@ -100,5 +100,23 @@ public interface ILedgerStore
         SetBudgetCommand command,
         IdempotencyRequest idempotencyRequest,
         CancellationToken cancellationToken);
+
+    Task<GoalAllocationResult> AllocateToGoalAsync(
+        Guid actorUserId,
+        AllocateGoalCommand command,
+        IdempotencyRequest idempotencyRequest,
+        CancellationToken cancellationToken);
+
+    Task<GoalAllocationResult> ReverseGoalAllocationAsync(
+        Guid actorUserId,
+        ReverseGoalAllocationCommand command,
+        IdempotencyRequest idempotencyRequest,
+        CancellationToken cancellationToken);
+
+    Task<GoalAllocationHistory> ListGoalAllocationsAsync(
+        Guid actorUserId,
+        Guid householdId,
+        Guid goalId,
+        CancellationToken cancellationToken);
 }
 

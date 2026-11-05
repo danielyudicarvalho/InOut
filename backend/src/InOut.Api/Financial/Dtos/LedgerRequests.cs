@@ -59,3 +59,13 @@ public sealed record SetBudgetRequest(
     long LimitCents,
     string Currency);
 
+public sealed record AllocateGoalRequest(
+    long AmountCents,
+    string Currency,
+    DateOnly OccurredOn,
+    string? Note);
+
+public sealed record ReverseGoalAllocationRequest(
+    DateOnly OccurredOn,
+    string? Note);
+

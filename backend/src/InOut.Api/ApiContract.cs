@@ -34,6 +34,9 @@ internal static class ApiContract
         internal const string ReverseTransaction = "ReverseTransaction";
         internal const string CorrectTransactionClassification = "CorrectTransactionClassification";
         internal const string SetBudget = "SetBudget";
+        internal const string AllocateGoal = "AllocateGoal";
+        internal const string ReverseGoalAllocation = "ReverseGoalAllocation";
+        internal const string GetGoalAllocations = "GetGoalAllocations";
     }
 
     internal static class Claims
@@ -77,6 +80,8 @@ internal static class ApiContract
         internal const string AccountById = "/accounts/{accountId:guid}";
         internal const string Balances = "/balances";
         internal const string Budgets = "/budgets";
+        internal const string GoalAllocations = "/goals/{goalId:guid}/allocations";
+        internal const string GoalAllocationReversals = "/goals/{goalId:guid}/allocations/{allocationId:guid}/reversals";
         internal const string Categories = "/categories";
         internal const string CategoryById = "/categories/{categoryId:guid}";
         internal const string Expenses = "/expenses";
@@ -116,6 +121,9 @@ internal static class ApiContract
 
         internal static string TransactionResource(Guid householdId, Guid transactionId) =>
             $"/api/v1/households/{householdId}/ledger/transactions/{transactionId}";
+
+        internal static string GoalAllocationResource(Guid householdId, Guid goalId, Guid allocationId) =>
+            $"/api/v1/households/{householdId}/ledger/goals/{goalId}/allocations/{allocationId}";
     }
 
     internal static class ResponseValues

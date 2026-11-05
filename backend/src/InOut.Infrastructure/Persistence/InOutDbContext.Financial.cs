@@ -12,6 +12,7 @@ public sealed partial class InOutDbContext
     internal DbSet<EntryRecord> Entries => Set<EntryRecord>();
     internal DbSet<BudgetRecord> Budgets => Set<BudgetRecord>();
     internal DbSet<GoalRecord> Goals => Set<GoalRecord>();
+    internal DbSet<GoalAllocationRecord> GoalAllocations => Set<GoalAllocationRecord>();
     internal DbSet<RecurringPlanRecord> RecurringPlans => Set<RecurringPlanRecord>();
     internal DbSet<ForecastRecord> Forecasts => Set<ForecastRecord>();
     internal DbSet<StatusTypeRecord> StatusTypes => Set<StatusTypeRecord>();
@@ -155,7 +156,31 @@ public sealed partial class InOutDbContext
             entity.Property(item => item.Status)
                 .HasColumnName("status_id")
                 .HasConversion<int>();
+            entity.Property(item => item.CreatedBy).HasColumnName("created_by");
+            entity.Property(item => item.CreatedAt).HasColumnName("created_at");
             entity.Property(item => item.ArchivedAt).HasColumnName("archived_at");
+        });
+
+        modelBuilder.Entity<GoalAllocationRecord>(entity =>
+        {
+            entity.ToTable("goal_allocations", "public");
+            entity.HasKey(item => item.Id);
+            entity.Property(item => item.Id).HasColumnName("id");
+            entity.Property(item => item.HouseholdId).HasColumnName("household_id");
+            entity.Property(item => item.GoalId).HasColumnName("goal_id");
+            entity.Property(item => item.AmountCents).HasColumnName("amount_cents");
+            entity.Property(item => item.Currency).HasColumnName("currency");
+            entity.Property(item => item.Kind).HasColumnName("kind").HasConversion(
+                value => DomainTypeStorage.GoalAllocationKindToString(value),
+                value => DomainTypeStorage.GoalAllocationKindFromString(value));
+            entity.Property(item => item.Origin).HasColumnName("origin").HasConversion(
+                value => DomainTypeStorage.GoalAllocationOriginToString(value),
+                value => DomainTypeStorage.GoalAllocationOriginFromString(value));
+            entity.Property(item => item.ReversalOf).HasColumnName("reversal_of");
+            entity.Property(item => item.OccurredOn).HasColumnName("occurred_on");
+            entity.Property(item => item.Note).HasColumnName("note");
+            entity.Property(item => item.CreatedBy).HasColumnName("created_by");
+            entity.Property(item => item.CreatedAt).HasColumnName("created_at");
         });
 
         modelBuilder.Entity<RecurringPlanRecord>(entity =>
@@ -315,7 +340,25 @@ internal sealed class GoalRecord
     public long AllocatedCents { get; set; }
     public DateOnly? TargetDate { get; set; }
     public GoalStatus Status { get; set; } = GoalStatus.Active;
+    public Guid CreatedBy { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset? ArchivedAt { get; set; }
+}
+
+internal sealed class GoalAllocationRecord
+{
+    public Guid Id { get; set; }
+    public Guid HouseholdId { get; set; }
+    public Guid GoalId { get; set; }
+    public long AmountCents { get; set; }
+    public string Currency { get; set; } = string.Empty;
+    public GoalAllocationKind Kind { get; set; }
+    public GoalAllocationOrigin Origin { get; set; }
+    public Guid? ReversalOf { get; set; }
+    public DateOnly OccurredOn { get; set; }
+    public string? Note { get; set; }
+    public Guid CreatedBy { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
 }
 
 internal sealed class RecurringPlanRecord
