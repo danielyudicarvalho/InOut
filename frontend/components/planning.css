@@ -1,0 +1,85 @@
+.planning-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+}
+.planning-card,
+.planning-panel {
+  background: #fffaf1;
+  border: 1px solid #e9dec7;
+  border-radius: 18px;
+  padding: 18px;
+}
+.planning-card {
+  display: grid;
+  gap: 8px;
+  color: inherit;
+  text-decoration: none;
+}
+.planning-card img,
+.planning-hero img {
+  width: 100%;
+  height: auto;
+}
+.planning-card strong,
+.planning-panel h2 {
+  font-family: Georgia, serif;
+}
+.planning-list {
+  display: grid;
+  gap: 12px;
+}
+.planning-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+}
+.planning-form {
+  display: grid;
+  gap: 12px;
+  margin-top: 12px;
+}
+.planning-form label {
+  display: grid;
+  gap: 4px;
+  font-size: 14px;
+}
+.planning-form input,
+.planning-form select,
+.planning-form textarea {
+  border: 1px solid #e9dec7;
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: white;
+  color: inherit;
+}
+.planning-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.planning-actions button,
+.planning-form button {
+  border: 0;
+  border-radius: 999px;
+  padding: 10px 14px;
+  background: #365e48;
+  color: white;
+  cursor: pointer;
+}
+.planning-muted {
+  color: #756650;
+}
+.planning-in {
+  color: #2458a6;
+}
+.planning-out {
+  color: #a33b32;
+}
+@media (max-width: 800px) {
+  .planning-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

@@ -23,6 +23,10 @@ public static class FinancialErrorCodes
     public const string InvalidRecurringPlan = "invalid_recurring_plan";
     public const string InvalidForecast = "invalid_forecast";
     public const string ForecastNotFound = "forecast_not_found";
+    public const string BudgetNotFound = "budget_not_found";
+    public const string InvalidProject = "invalid_project";
+    public const string ProjectNotFound = "project_not_found";
+    public const string ProjectClosed = "project_closed";
     public const string RecurringPlanNotFound = "recurring_plan_not_found";
     public const string RecurringPlanConflict = "recurring_plan_conflict";
     public const string RecurringOccurrenceAlreadyRealized = "recurring_occurrence_already_realized";

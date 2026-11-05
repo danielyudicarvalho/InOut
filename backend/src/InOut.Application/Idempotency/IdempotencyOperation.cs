@@ -15,4 +15,12 @@ public enum IdempotencyOperation
     AllocateGoal,
     ReverseGoalAllocation,
     RealizeRecurringOccurrence,
+    CreateGoal,
+    UpdateGoal,
+    ChangeGoalStatus,
+    CreateProject,
+    UpdateProject,
+    CloseProject,
+    LinkProjectMovement,
+    UnlinkProjectMovement,
 }

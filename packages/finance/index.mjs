@@ -110,6 +110,17 @@ export function periodLabel(period) {
   }).format(new Date(y, m - 1, 1));
 }
 
+export function parseMoneyInput(value) {
+  if (typeof value !== "string") throw new FinanceFailure("validation");
+  const cleaned = value.trim().replace(/\s/g, "");
+  if (!/^\d{1,12}([.,]\d{1,2})?$/.test(cleaned))
+    throw new FinanceFailure("validation");
+  const [whole, fraction = ""] = cleaned.replace(",", ".").split(".");
+  const cents = Number(whole) * 100 + Number(fraction.padEnd(2, "0"));
+  if (!Number.isSafeInteger(cents) || cents <= 0)
+    throw new FinanceFailure("validation");
+  return cents;
+}
 export function money(cents, code) {
   const value = BigInt(integer(cents));
   const absolute = value < 0n ? -value : value;
@@ -320,6 +331,17 @@ export function createFinanceRepository({
       isReconciled: raw.isReconciled,
       items,
     };
+  }
+  function planningList(path, signal, map) {
+    return get(path, signal).then((rows) => array(rows).map(map));
+  }
+  function planningWrite(path, key, body, signal, map, method = "POST") {
+    if (!validOperationKey(key)) throw new FinanceFailure("validation");
+    return get(path, signal, {
+      key,
+      method,
+      ...(body == null ? {} : { body }),
+    }).then((row) => (map ? map(row) : row));
   }
   return {
     async analysis(householdId, period, code, signal) {
@@ -920,6 +942,373 @@ export function createFinanceRepository({
         isReconciled: dashboards.every((d) => d.isReconciled),
       };
     },
+    budgets(household, from, to, signal) {
+      return planningList(
+        `/api/v1/households/${id(household)}/ledger/budgets?from=${date(from)}&to=${date(to)}`,
+        signal,
+        budgetView,
+      );
+    },
+    async budget(household, budgetId, signal) {
+      const row = await get(
+        `/api/v1/households/${id(household)}/ledger/budgets/${id(budgetId)}`,
+        signal,
+      );
+      return {
+        budget: budgetView(row.budget),
+        revisions: array(row.revisions).map((item) => ({
+          id: string(item.id),
+          previousLimitCents:
+            item.previousLimitCents == null
+              ? null
+              : integer(item.previousLimitCents),
+          limitCents: integer(item.limitCents),
+          currency: currency(item.currency),
+          createdAt: string(item.createdAt),
+        })),
+        expenses: array(row.expenses).map((item) => ({
+          transactionId: string(item.transactionId),
+          occurredOn: date(item.occurredOn),
+          description: item.description == null ? null : string(item.description),
+          accountName: string(item.accountName),
+          amountCents: integer(item.amountCents),
+        })),
+      };
+    },
+    setBudget(household, body, key, signal) {
+      return planningWrite(
+        `/api/v1/households/${id(household)}/ledger/budgets`,
+        key,
+        body,
+        signal,
+      );
+    },
+    goals(household, signal) {
+      return planningList(
+        `/api/v1/households/${id(household)}/ledger/goals`,
+        signal,
+        goalView,
+      );
+    },
+    async goal(household, goalId, signal) {
+      const row = await get(
+        `/api/v1/households/${id(household)}/ledger/goals/${id(goalId)}`,
+        signal,
+      );
+      return {
+        goal: goalView(row.goal),
+        allocations: array(row.allocations).map((item) => ({
+          id: string(item.id),
+          amountCents: integer(item.amountCents),
+          currency: currency(item.currency),
+          kind: string(item.kind).toLowerCase(),
+          reversalOf: item.reversalOf == null ? null : string(item.reversalOf),
+          occurredOn: date(item.occurredOn),
+          note: item.note == null ? null : string(item.note),
+        })),
+      };
+    },
+    createGoal(household, body, key, signal) {
+      return planningWrite(
+        `/api/v1/households/${id(household)}/ledger/goals`,
+        key,
+        { ...body, id: key },
+        signal,
+        goalView,
+      );
+    },
+    updateGoal(household, goalId, body, key, signal) {
+      return planningWrite(
+        `/api/v1/households/${id(household)}/ledger/goals/${id(goalId)}`,
+        key,
+        body,
+        signal,
+        goalView,
+        "PUT",
+      );
+    },
+    changeGoalStatus(household, goalId, status, key, signal) {
+      return planningWrite(
+        `/api/v1/households/${id(household)}/ledger/goals/${id(goalId)}/status`,
+        key,
+        { status },
+        signal,
+        goalView,
+      );
+    },
+    allocateGoal(household, goalId, body, key, signal) {
+      return planningWrite(
+        `/api/v1/households/${id(household)}/ledger/goals/${id(goalId)}/allocations`,
+        key,
+        body,
+        signal,
+      );
+    },
+    reverseAllocation(household, goalId, allocationId, body, key, signal) {
+      return planningWrite(
+        `/api/v1/households/${id(household)}/ledger/goals/${id(goalId)}/allocations/${id(allocationId)}/reversals`,
+        key,
+        body,
+        signal,
+      );
+    },
+    projects(household, signal) {
+      return planningList(
+        `/api/v1/households/${id(household)}/projects`,
+        signal,
+        projectView,
+      );
+    },
+    project(household, projectId, signal) {
+      return get(
+        `/api/v1/households/${id(household)}/projects/${id(projectId)}`,
+        signal,
+      ).then(projectView);
+    },
+    createProject(household, body, key, signal) {
+      return planningWrite(
+        `/api/v1/households/${id(household)}/projects`,
+        key,
+        { ...body, id: key },
+        signal,
+        projectView,
+      );
+    },
+    updateProject(household, projectId, body, key, signal) {
+      return planningWrite(
+        `/api/v1/households/${id(household)}/projects/${id(projectId)}`,
+        key,
+        body,
+        signal,
+        projectView,
+        "PUT",
+      );
+    },
+    closeProject(household, projectId, key, signal) {
+      return planningWrite(
+        `/api/v1/households/${id(household)}/projects/${id(projectId)}/close`,
+        key,
+        {},
+        signal,
+        projectView,
+      );
+    },
+    linkProjectMovement(household, projectId, transactionId, key, signal) {
+      return planningWrite(
+        `/api/v1/households/${id(household)}/projects/${id(projectId)}/movements`,
+        key,
+        { transactionId },
+        signal,
+        projectView,
+      );
+    },
+    unlinkProjectMovement(household, projectId, transactionId, key, signal) {
+      return planningWrite(
+        `/api/v1/households/${id(household)}/projects/${id(projectId)}/movements/${id(transactionId)}`,
+        key,
+        null,
+        signal,
+        projectView,
+        "DELETE",
+      );
+    },
+    recurringPlans(household, signal) {
+      return planningList(
+        `/api/v1/households/${id(household)}/recurring-plans`,
+        signal,
+        planView,
+      );
+    },
+    recurringPreview(household, planId, from, signal) {
+      return planningList(
+        `/api/v1/households/${id(household)}/recurring-plans/${id(planId)}/preview?from=${date(from)}&count=6`,
+        signal,
+        (item) => date(item),
+      );
+    },
+    createRecurringPlan(household, body, key, signal) {
+      return planningWrite(
+        `/api/v1/households/${id(household)}/recurring-plans`,
+        key,
+        { ...body, id: key },
+        signal,
+        planView,
+      );
+    },
+    changeRecurringStatus(household, planId, status, signal) {
+      return planningWrite(
+        `/api/v1/households/${id(household)}/recurring-plans/${id(planId)}/status`,
+        crypto.randomUUID(),
+        { status },
+        signal,
+        planView,
+        "PATCH",
+      );
+    },
+    realizeOccurrence(household, planId, scheduledOn, key, signal) {
+      return planningWrite(
+        `/api/v1/households/${id(household)}/recurring-plans/${id(planId)}/occurrences`,
+        key,
+        { scheduledOn },
+        signal,
+      );
+    },
+    agenda(household, from, to, signal) {
+      return planningList(
+        `/api/v1/households/${id(household)}/agenda?from=${date(from)}&to=${date(to)}`,
+        signal,
+        agendaItem,
+      );
+    },
+    forecasts(household, signal) {
+      return planningList(
+        `/api/v1/households/${id(household)}/forecasts`,
+        signal,
+        forecastView,
+      );
+    },
+    createForecast(household, body, key, signal) {
+      return planningWrite(
+        `/api/v1/households/${id(household)}/forecasts`,
+        key,
+        body,
+        signal,
+        forecastView,
+      );
+    },
+    compareForecast(household, forecastId, signal) {
+      return planningList(
+        `/api/v1/households/${id(household)}/forecasts/${id(forecastId)}/comparison`,
+        signal,
+        (item) => ({
+          month: date(item.month),
+          expectedIncomeCents: integer(item.expectedIncomeCents),
+          expectedExpenseCents: integer(item.expectedExpenseCents),
+          projectedBalanceCents: integer(item.projectedBalanceCents),
+          actualIncomeCents: integer(item.actualIncomeCents),
+          actualExpenseCents: integer(item.actualExpenseCents),
+        }),
+      );
+    },
+  };
+}
+function id(value) {
+  return encodeURIComponent(string(value));
+}
+function nullableCurrency(value) {
+  return value == null ? null : currency(value);
+}
+function budgetView(row) {
+  return {
+    id: string(row.id),
+    categoryId: string(row.categoryId),
+    categoryName: string(row.categoryName),
+    periodStart: date(row.periodStart),
+    periodEnd: date(row.periodEnd),
+    limitCents: integer(row.limitCents),
+    spentCents: row.spentCents == null ? null : integer(row.spentCents),
+    remainingCents:
+      row.remainingCents == null ? null : integer(row.remainingCents),
+    currency: nullableCurrency(row.currency),
+  };
+}
+function goalView(row) {
+  return {
+    id: string(row.id),
+    name: string(row.name),
+    targetCents: integer(row.targetCents),
+    allocatedCents: integer(row.allocatedCents),
+    targetDate: row.targetDate == null ? null : date(row.targetDate),
+    currency: nullableCurrency(row.currency),
+    status: string(row.status).toLowerCase(),
+    archivedAt: row.archivedAt ?? null,
+  };
+}
+function projectView(row) {
+  return {
+    id: string(row.id),
+    name: string(row.name),
+    currency: currency(row.currency),
+    plannedCents: integer(row.plannedCents),
+    startsOn: date(row.startsOn),
+    endsOn: row.endsOn == null ? null : date(row.endsOn),
+    notes: row.notes == null ? null : string(row.notes),
+    status: string(row.status).toLowerCase(),
+    lines: array(row.lines).map((line) => ({
+      id: string(line.id),
+      name: string(line.name),
+      flow: string(line.flow).toLowerCase(),
+      amountCents: integer(line.amountCents),
+    })),
+    movements: array(row.movements).map((item) => ({
+      transactionId: string(item.transactionId),
+      occurredOn: date(item.occurredOn),
+      description: item.description == null ? null : string(item.description),
+    })),
+    comparison: {
+      plannedIncomeCents: integer(row.comparison.plannedIncomeCents),
+      plannedExpenseCents: integer(row.comparison.plannedExpenseCents),
+      actualIncomeCents: integer(row.comparison.actualIncomeCents),
+      actualExpenseCents: integer(row.comparison.actualExpenseCents),
+    },
+  };
+}
+function planView(row) {
+  return {
+    id: string(row.id),
+    name: string(row.name),
+    flow: string(row.flow).toLowerCase(),
+    accountId: string(row.accountId),
+    categoryId: string(row.categoryId),
+    amountCents: integer(row.amountCents),
+    currency: currency(row.currency),
+    dayOfMonth: integer(row.dayOfMonth),
+    startsOn: date(row.startsOn),
+    endsOn: row.endsOn == null ? null : date(row.endsOn),
+    status: string(row.status).toLowerCase(),
+  };
+}
+function agendaItem(row) {
+  return {
+    planId: string(row.planId),
+    planName: string(row.planName),
+    scheduledOn: date(row.scheduledOn),
+    flow: string(row.flow).toLowerCase(),
+    amountCents: integer(row.amountCents),
+    currency: currency(row.currency),
+    state: string(row.state).toLowerCase(),
+    transactionId: row.transactionId == null ? null : string(row.transactionId),
+  };
+}
+function forecastView(row) {
+  return {
+    id: string(row.id),
+    accountId: string(row.accountId),
+    currency: currency(row.currency),
+    asOf: date(row.asOf),
+    months: integer(row.months),
+    openingBalanceCents: integer(row.openingBalanceCents),
+    points: array(row.points).map((point) => ({
+      month: date(point.month),
+      expectedIncomeCents: integer(point.expectedIncomeCents),
+      expectedExpenseCents: integer(point.expectedExpenseCents),
+      projectedBalanceCents: integer(point.projectedBalanceCents),
+      contributions: array(point.contributions ?? []).map((item) => ({
+        planId: string(item.planId),
+        scheduledOn: date(item.scheduledOn),
+        flow: string(item.flow).toLowerCase(),
+        amountCents: integer(item.amountCents),
+        currency: currency(item.currency),
+      })),
+    })),
+    assumptions: array(row.assumptions ?? []).map((item) => ({
+      planId: string(item.planId),
+      name: string(item.name),
+      amountCents: integer(item.amountCents),
+      currency: currency(item.currency),
+      dayOfMonth: integer(item.dayOfMonth),
+      status: string(item.status).toLowerCase(),
+    })),
   };
 }
 export function createFinancialHomeStore(

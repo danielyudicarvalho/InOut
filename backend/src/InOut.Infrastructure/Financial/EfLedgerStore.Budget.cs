@@ -48,6 +48,8 @@ public sealed partial class EfLedgerStore
 
         Guid budgetId = command.Id ?? Guid.NewGuid();
         Budget budget;
+        long? previousLimit = existing?.LimitCents;
+        var previousCurrency = existing?.Currency;
         if (existing is not null)
         {
             budgetId = existing.Id;
@@ -87,6 +89,22 @@ public sealed partial class EfLedgerStore
                 CreatedBy = actorUserId,
             };
             dbContext.Budgets.Add(record);
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+
+        if (existing is null || previousLimit != budget.LimitCents || previousCurrency != budget.Currency)
+        {
+            dbContext.BudgetRevisions.Add(new BudgetRevisionRecord
+            {
+                Id = Guid.NewGuid(),
+                HouseholdId = command.HouseholdId,
+                BudgetId = budgetId,
+                PreviousLimitCents = existing is null ? null : previousLimit,
+                LimitCents = budget.LimitCents,
+                Currency = budget.Currency,
+                CreatedBy = actorUserId,
+                CreatedAt = timeProvider.GetUtcNow(),
+            });
         }
 
         AddAudit(

@@ -34,7 +34,9 @@ export function HouseholdAccessGuard({ children }: { children: ReactNode }) {
     id = typeof p.household === "string" ? p.household : "";
   return paths.has(path) ||
     path === "/analises" ||
-    path.startsWith("/analises/") ? (
+    path.startsWith("/analises/") ||
+    path === "/planejamento" ||
+    path.startsWith("/planejamento/") ? (
     <LiveGuard key={`${path}:${id}`} household={id}>
       {children}
     </LiveGuard>

@@ -498,6 +498,22 @@ function DashboardView({
               ))
             : null}
         </View>
+        <Pressable
+          accessibilityRole="button"
+          onPress={() =>
+            router.push({
+              pathname: "/planejamento",
+              params: {
+                household: state.householdId,
+                period: state.period,
+                currency,
+              },
+            })
+          }
+          style={s.textButton}
+        >
+          <Text style={s.link}>Planejamento da casa</Text>
+        </Pressable>
         <View style={s.panel}>
           <View style={s.sectionHeading}>
             <Text accessibilityRole="header" style={s.heading}>

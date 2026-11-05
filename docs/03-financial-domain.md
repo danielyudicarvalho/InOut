@@ -39,7 +39,9 @@ Uma recorrência calcula datas previstas. Calcular uma data não lança moviment
 
 O saldo inicial de uma previsão é o saldo da conta na data de referência. Entram os lançamentos dessa conta com data até `AsOf`, inclusive. Um movimento posterior, mesmo um estorno, não entra numa previsão histórica.
 
-Uma previsão também guarda uma cópia das condições dos planos que participaram: nome, fluxo, conta, categoria, fonte, valor, moeda, dia, início, fim e estado. Cada mês registra a data prevista e o valor aplicados. Alterar o plano depois não reescreve essa cópia. Previsões gravadas antes dela permanecem apenas com os identificadores dos planos.
+Uma previsão também guarda uma cópia das condições dos planos que participaram: nome, fluxo, conta, categoria, fonte, valor, moeda, dia, início, fim e estado. Cada mês registra a data prevista e o valor aplicados. Alterar o plano depois não reescreve essa cópia. Previsões gravadas antes dela permanecem apenas com os identificadores dos planos. A comparação com o realizado soma, em cada mês da previsão, as receitas e despesas da conta; não recalcula o previsto a partir dos planos atuais.
+
+Cada alteração de limite de orçamento registra o valor anterior e o novo. O gasto continua derivado das despesas da categoria, moeda e período. Uma meta pode ser criada, renomeada, pausada, concluída ou arquivada; o progresso continua vindo só das alocações. Um projeto financeiro guarda o plano e pode apontar para lançamentos já contabilizados. Esse vínculo não altera o lançamento. A agenda mostra as datas que os planos produzem e, quando uma data foi realizada, o lançamento correspondente. O valor, o dia e o nome de uma recorrência permanecem os da criação; a situação pode mudar.
 
 ## Modelo mínimo sugerido
 

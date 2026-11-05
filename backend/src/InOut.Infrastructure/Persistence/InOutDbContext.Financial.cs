@@ -16,6 +16,10 @@ public sealed partial class InOutDbContext
     internal DbSet<RecurringPlanRecord> RecurringPlans => Set<RecurringPlanRecord>();
     internal DbSet<RecurringOccurrenceRecord> RecurringOccurrences => Set<RecurringOccurrenceRecord>();
     internal DbSet<ForecastRecord> Forecasts => Set<ForecastRecord>();
+    internal DbSet<BudgetRevisionRecord> BudgetRevisions => Set<BudgetRevisionRecord>();
+    internal DbSet<FinancialProjectRecord> FinancialProjects => Set<FinancialProjectRecord>();
+    internal DbSet<ProjectLineRecord> ProjectLines => Set<ProjectLineRecord>();
+    internal DbSet<ProjectMovementRecord> ProjectMovements => Set<ProjectMovementRecord>();
     internal DbSet<StatusTypeRecord> StatusTypes => Set<StatusTypeRecord>();
     internal DbSet<StatusValueRecord> StatusValues => Set<StatusValueRecord>();
 
@@ -266,6 +270,67 @@ public sealed partial class InOutDbContext
             entity.Property(item => item.Description).HasColumnName("description");
             entity.Property(item => item.CreatedAt).HasColumnName("created_at");
         });
+
+        modelBuilder.Entity<BudgetRevisionRecord>(entity =>
+        {
+            entity.ToTable("budget_revisions", "public");
+            entity.HasKey(item => item.Id);
+            entity.Property(item => item.Id).HasColumnName("id");
+            entity.Property(item => item.HouseholdId).HasColumnName("household_id");
+            entity.Property(item => item.BudgetId).HasColumnName("budget_id");
+            entity.Property(item => item.PreviousLimitCents).HasColumnName("previous_limit_cents");
+            entity.Property(item => item.LimitCents).HasColumnName("limit_cents");
+            entity.Property(item => item.Currency).HasColumnName("currency");
+            entity.Property(item => item.CreatedBy).HasColumnName("created_by");
+            entity.Property(item => item.CreatedAt).HasColumnName("created_at");
+        });
+
+        modelBuilder.Entity<FinancialProjectRecord>(entity =>
+        {
+            entity.ToTable("financial_projects", "public");
+            entity.HasKey(item => item.Id);
+            entity.Property(item => item.Id).HasColumnName("id");
+            entity.Property(item => item.HouseholdId).HasColumnName("household_id");
+            entity.Property(item => item.Name).HasColumnName("name");
+            entity.Property(item => item.Currency).HasColumnName("currency");
+            entity.Property(item => item.PlannedCents).HasColumnName("planned_cents");
+            entity.Property(item => item.StartsOn).HasColumnName("starts_on");
+            entity.Property(item => item.EndsOn).HasColumnName("ends_on");
+            entity.Property(item => item.Notes).HasColumnName("notes");
+            entity.Property(item => item.Status).HasColumnName("status_id").HasConversion<int>();
+            entity.Property(item => item.CreatedBy).HasColumnName("created_by");
+            entity.Property(item => item.CreatedAt).HasColumnName("created_at");
+            entity.Property(item => item.ClosedAt).HasColumnName("closed_at");
+            entity.HasAlternateKey(item => new { item.HouseholdId, item.Id });
+            entity.HasMany(item => item.Lines).WithOne()
+                .HasForeignKey(item => new { item.HouseholdId, item.ProjectId })
+                .HasPrincipalKey(item => new { item.HouseholdId, item.Id });
+        });
+
+        modelBuilder.Entity<ProjectLineRecord>(entity =>
+        {
+            entity.ToTable("financial_project_lines", "public");
+            entity.HasKey(item => item.Id);
+            entity.Property(item => item.Id).HasColumnName("id");
+            entity.Property(item => item.HouseholdId).HasColumnName("household_id");
+            entity.Property(item => item.ProjectId).HasColumnName("project_id");
+            entity.Property(item => item.Name).HasColumnName("name");
+            entity.Property(item => item.Flow).HasColumnName("flow").HasConversion(
+                value => DomainTypeStorage.FinancialFlowToString(value),
+                value => DomainTypeStorage.FinancialFlowFromString(value));
+            entity.Property(item => item.AmountCents).HasColumnName("amount_cents");
+        });
+
+        modelBuilder.Entity<ProjectMovementRecord>(entity =>
+        {
+            entity.ToTable("financial_project_movements", "public");
+            entity.HasKey(item => new { item.HouseholdId, item.ProjectId, item.TransactionId });
+            entity.Property(item => item.HouseholdId).HasColumnName("household_id");
+            entity.Property(item => item.ProjectId).HasColumnName("project_id");
+            entity.Property(item => item.TransactionId).HasColumnName("transaction_id");
+            entity.Property(item => item.LinkedBy).HasColumnName("linked_by");
+            entity.Property(item => item.LinkedAt).HasColumnName("linked_at");
+        });
     }
 }
 
@@ -428,6 +493,54 @@ internal sealed class ForecastRecord
     public string Assumptions { get; set; } = "[]";
     public DateTimeOffset CalculatedAt { get; set; }
     public Guid CreatedBy { get; set; }
+}
+
+internal sealed class BudgetRevisionRecord
+{
+    public Guid Id { get; set; }
+    public Guid HouseholdId { get; set; }
+    public Guid BudgetId { get; set; }
+    public long? PreviousLimitCents { get; set; }
+    public long LimitCents { get; set; }
+    public string Currency { get; set; } = string.Empty;
+    public Guid CreatedBy { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
+}
+
+internal sealed class FinancialProjectRecord
+{
+    public Guid Id { get; set; }
+    public Guid HouseholdId { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string Currency { get; set; } = string.Empty;
+    public long PlannedCents { get; set; }
+    public DateOnly StartsOn { get; set; }
+    public DateOnly? EndsOn { get; set; }
+    public string? Notes { get; set; }
+    public FinancialProjectStatus Status { get; set; } = FinancialProjectStatus.Active;
+    public Guid CreatedBy { get; set; }
+    public DateTimeOffset CreatedAt { get; set; }
+    public DateTimeOffset? ClosedAt { get; set; }
+    public List<ProjectLineRecord> Lines { get; set; } = [];
+}
+
+internal sealed class ProjectLineRecord
+{
+    public Guid Id { get; set; }
+    public Guid HouseholdId { get; set; }
+    public Guid ProjectId { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public FinancialFlow Flow { get; set; }
+    public long AmountCents { get; set; }
+}
+
+internal sealed class ProjectMovementRecord
+{
+    public Guid HouseholdId { get; set; }
+    public Guid ProjectId { get; set; }
+    public Guid TransactionId { get; set; }
+    public Guid LinkedBy { get; set; }
+    public DateTimeOffset LinkedAt { get; set; }
 }
 
 internal sealed class StatusTypeRecord

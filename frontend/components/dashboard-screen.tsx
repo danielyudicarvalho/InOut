@@ -57,7 +57,7 @@ function DashboardView({
     "Contas",
     "Categorias",
     "Análises",
-    "Metas",
+    "Planejamento",
     "Configurações",
   ];
   const setup = state.data ? dashboardSetupState(state.data) : "active";
@@ -179,6 +179,12 @@ function DashboardView({
     if (label === "Contas") {
       router.push(
         `/contas?${new URLSearchParams({ household: state.householdId, period: state.period })}`,
+      );
+      return;
+    }
+    if (label === "Planejamento") {
+      router.push(
+        `/planejamento?${new URLSearchParams({ household: state.householdId, period: state.period, currency })}`,
       );
       return;
     }

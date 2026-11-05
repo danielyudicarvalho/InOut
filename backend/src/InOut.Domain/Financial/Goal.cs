@@ -45,7 +45,50 @@ public sealed record Goal(
     {
         if (Status != GoalStatus.Paused)
             return this;
-        return this with { Status = GoalStatus.Active };
+        return this with
+        {
+            Status = AllocatedCents >= TargetCents ? GoalStatus.Completed : GoalStatus.Active,
+        };
+    }
+
+    public Goal UpdateDetails(string? name, long targetCents, DateOnly? targetDate)
+    {
+        if (Status == GoalStatus.Archived)
+        {
+            throw new FinancialRuleException(
+                FinancialErrorCodes.InvalidGoalName,
+                "An archived goal cannot be edited.");
+        }
+
+        if (targetCents <= 0)
+        {
+            throw new FinancialRuleException(
+                FinancialErrorCodes.InvalidAmount,
+                "Goal target amount must be positive.");
+        }
+
+        var status = Status == GoalStatus.Paused
+            ? GoalStatus.Paused
+            : AllocatedCents >= targetCents ? GoalStatus.Completed : GoalStatus.Active;
+        return this with
+        {
+            Name = NormalizeName(name),
+            TargetCents = targetCents,
+            TargetDate = targetDate,
+            Status = status,
+        };
+    }
+
+    public Goal Complete()
+    {
+        if (Status == GoalStatus.Archived)
+        {
+            throw new FinancialRuleException(
+                FinancialErrorCodes.InvalidGoalName,
+                "An archived goal cannot be completed.");
+        }
+
+        return this with { Status = GoalStatus.Completed };
     }
 
     public static Goal Create(

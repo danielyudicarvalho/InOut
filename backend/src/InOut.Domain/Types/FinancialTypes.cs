@@ -94,3 +94,16 @@ public enum RecurringPlanStatus
     Paused = 14,
     Archived = 15,
 }
+
+public enum FinancialProjectStatus
+{
+    Active = 16,
+    Closed = 17,
+}
+
+public enum AgendaState
+{
+    Expected,
+    Realized,
+    Overdue,
+}

@@ -1,5 +1,6 @@
 using InOut.Application.Financial;
 using InOut.Application.Financial.Forecasts;
+using InOut.Application.Financial.Planning;
 using InOut.Application.Financial.RecurringPlans;
 using InOut.Application.Financial.Dashboard;
 using InOut.Application.Idempotency;
@@ -1281,6 +1282,77 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task PlanningScreensExplainBudgetsGoalsProjectsAgendaAndForecasts()
+    {
+        Guid expenseId;
+        await using (var context = CreateContext())
+        {
+            var ledger = new LedgerService(CreateStore(context));
+            await ledger.SetBudgetAsync(actorUserId, new SetBudgetCommand(
+                null, householdId, expenseCategoryId, new DateOnly(2026, 11, 1), new DateOnly(2026, 11, 30),
+                100_000, Guid.NewGuid(), "BRL"), CancellationToken.None);
+            expenseId = (await ledger.PostExpenseAsync(actorUserId, new PostExpenseCommand(
+                householdId, accountId, expenseCategoryId, 20_000, "BRL", new DateOnly(2026, 11, 15),
+                Guid.NewGuid(), "Mercado"), CancellationToken.None)).TransactionId;
+            await ledger.SetBudgetAsync(actorUserId, new SetBudgetCommand(
+                null, householdId, expenseCategoryId, new DateOnly(2026, 11, 1), new DateOnly(2026, 11, 30),
+                80_000, Guid.NewGuid(), "BRL"), CancellationToken.None);
+        }
+
+        await using var read = CreateContext();
+        var planning = new PlanningService(new EfPlanningStore(read, new IdempotencyPolicy(), TimeProvider.System));
+        var budget = Assert.Single(await planning.ListBudgetsAsync(
+            actorUserId, householdId, new DateOnly(2026, 11, 1), new DateOnly(2026, 11, 30), CancellationToken.None),
+            item => item.CategoryId == expenseCategoryId && item.PeriodStart == new DateOnly(2026, 11, 1));
+        Assert.Equal(80_000, budget.LimitCents);
+        Assert.Equal(20_000, budget.SpentCents);
+        Assert.Equal(60_000, budget.RemainingCents);
+        var detail = await planning.GetBudgetAsync(actorUserId, householdId, budget.Id, CancellationToken.None);
+        Assert.Equal(2, detail.Revisions.Count);
+        Assert.Null(detail.Revisions[0].PreviousLimitCents);
+        Assert.Equal(100_000, detail.Revisions[1].PreviousLimitCents);
+        Assert.Equal(20_000, Assert.Single(detail.Expenses).AmountCents);
+
+        var goal = await planning.CreateGoalAsync(actorUserId, new CreateGoalCommand(
+            Guid.NewGuid(), householdId, "Viagem", 50_000, "BRL", new DateOnly(2026, 12, 1), Guid.NewGuid()),
+            CancellationToken.None);
+        var renamed = await planning.UpdateGoalAsync(actorUserId, new UpdateGoalCommand(
+            householdId, goal.Id, "Viagem de inverno", 50_000, goal.TargetDate, Guid.NewGuid()), CancellationToken.None);
+        var completed = await planning.ChangeGoalStatusAsync(actorUserId, new ChangeGoalStatusCommand(
+            householdId, goal.Id, "completed", Guid.NewGuid()), CancellationToken.None);
+        Assert.Equal("Viagem de inverno", renamed.Name);
+        Assert.Equal(0, completed.AllocatedCents);
+        Assert.Equal(GoalStatus.Completed, completed.Status);
+
+        var lineId = Guid.NewGuid();
+        var project = await planning.CreateProjectAsync(actorUserId, new CreateProjectCommand(
+            Guid.NewGuid(), householdId, "Férias", "BRL", 30_000, new DateOnly(2026, 11, 1), null, "praia",
+            [new ProjectLine(lineId, "Mercado", FinancialFlow.Expense, 30_000)], Guid.NewGuid()), CancellationToken.None);
+        var linked = await planning.LinkMovementAsync(actorUserId, new LinkProjectMovementCommand(
+            householdId, project.Id, expenseId, Guid.NewGuid()), CancellationToken.None);
+        Assert.Equal(30_000, linked.Comparison.PlannedExpenseCents);
+        Assert.Equal(20_000, linked.Comparison.ActualExpenseCents);
+        Assert.Equal(expenseId, Assert.Single(linked.Movements).TransactionId);
+
+        await new RecurringPlanService(new EfRecurringPlanStore(read, new IdempotencyPolicy(), TimeProvider.System))
+            .CreateAsync(actorUserId, new CreateRecurringPlanCommand(
+                Guid.NewGuid(), householdId, "Aluguel", FinancialFlow.Expense, accountId, expenseCategoryId,
+                null, 18_000, "BRL", 5, new DateOnly(2026, 1, 1), null, Guid.NewGuid()), CancellationToken.None);
+        var agenda = await planning.AgendaAsync(actorUserId, householdId,
+            new DateOnly(2026, 11, 1), new DateOnly(2026, 11, 30), new DateOnly(2026, 11, 1), CancellationToken.None);
+        var rent = Assert.Single(agenda, item => item.PlanName == "Aluguel");
+        Assert.Equal(new DateOnly(2026, 11, 5), rent.ScheduledOn);
+        Assert.Equal(AgendaState.Expected, rent.State);
+
+        var forecast = await new ForecastService(new EfForecastStore(read, new IdempotencyPolicy(), TimeProvider.System))
+            .CreateAsync(householdId, accountId, new DateOnly(2026, 11, 1), 1, actorUserId, Guid.NewGuid(), CancellationToken.None);
+        var compared = Assert.Single(await planning.CompareForecastAsync(
+            actorUserId, householdId, forecast.Id, CancellationToken.None));
+        Assert.Equal(18_000, compared.ExpectedExpenseCents);
+        Assert.Equal(20_000, compared.ActualExpenseCents);
+    }
+
+    [Fact]
     public async Task DashboardRejectsAnActorOutsideTheHousehold()
     {
         await using var context = CreateContext();
@@ -1718,7 +1790,8 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
           ('category_status', 'Category Status'),
           ('income_source_status', 'Income Source Status'),
           ('goal_status', 'Goal Status'),
-          ('recurring_plan_status', 'Recurring Plan Status');
+          ('recurring_plan_status', 'Recurring Plan Status'),
+          ('financial_project_status', 'Financial Project Status');
         insert into public.status_values (id, type_code, code, name) values
           (1, 'account_status', 'active', 'Active'),
           (2, 'account_status', 'frozen', 'Frozen'),
@@ -1734,7 +1807,9 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
           (12, 'goal_status', 'archived', 'Archived'),
           (13, 'recurring_plan_status', 'active', 'Active'),
           (14, 'recurring_plan_status', 'paused', 'Paused'),
-          (15, 'recurring_plan_status', 'archived', 'Archived');
+          (15, 'recurring_plan_status', 'archived', 'Archived'),
+          (16, 'financial_project_status', 'active', 'Active'),
+          (17, 'financial_project_status', 'closed', 'Closed');
         create table public.accounts (
           id uuid primary key,
           household_id uuid not null references public.households(id),
@@ -1890,6 +1965,49 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
           assumptions jsonb not null default '[]'::jsonb,
           calculated_at timestamptz not null,
           created_by uuid not null
+        );
+        create table public.budget_revisions (
+          id uuid primary key,
+          household_id uuid not null references public.households(id),
+          budget_id uuid not null references public.budgets(id),
+          previous_limit_cents bigint,
+          limit_cents bigint not null,
+          currency text not null,
+          created_by uuid not null,
+          created_at timestamptz not null default now()
+        );
+        create table public.financial_projects (
+          id uuid primary key,
+          household_id uuid not null references public.households(id),
+          name text not null,
+          currency text not null,
+          planned_cents bigint not null,
+          starts_on date not null,
+          ends_on date,
+          notes text,
+          status_id int not null references public.status_values(id),
+          created_by uuid not null,
+          created_at timestamptz not null default now(),
+          closed_at timestamptz,
+          unique (household_id, id)
+        );
+        create table public.financial_project_lines (
+          id uuid primary key,
+          household_id uuid not null,
+          project_id uuid not null,
+          name text not null,
+          flow text not null,
+          amount_cents bigint not null,
+          foreign key (household_id, project_id)
+            references public.financial_projects (household_id, id)
+        );
+        create table public.financial_project_movements (
+          household_id uuid not null,
+          project_id uuid not null,
+          transaction_id uuid not null,
+          linked_by uuid not null,
+          linked_at timestamptz not null default now(),
+          primary key (household_id, project_id, transaction_id)
         );
         create table public.audit_events (
           id bigint generated by default as identity primary key,
