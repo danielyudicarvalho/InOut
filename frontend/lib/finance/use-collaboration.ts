@@ -4,12 +4,12 @@ import {
   createCollaborationRepository,
   createCollaborationStore,
 } from "@inout/finance/collaboration";
-import { getAuthClient } from "../auth/composition";
+import { browserApiBase, getAuthClient } from "../auth/composition";
 export function useCollaboration(household: string) {
   const [store] = useState(() =>
     createCollaborationStore(
       createCollaborationRepository({
-        baseUrl: process.env.NEXT_PUBLIC_API_BASE_URL,
+        baseUrl: browserApiBase(),
         getToken: async () => {
           const { data, error } = await getAuthClient().auth.getSession();
           return error ? null : (data.session?.access_token ?? null);

@@ -41,8 +41,8 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
         command.CommandText = Schema;
         await command.ExecuteNonQueryAsync();
         var root = new DirectoryInfo(AppContext.BaseDirectory);
-        while (root is not null && !Directory.Exists(Path.Combine(root.FullName, "supabase", "migrations"))) root = root.Parent;
-        var migration = Directory.GetFiles(Path.Combine(root!.FullName, "supabase", "migrations"), "*_planning_currencies.sql").Single();
+        while (root is not null && !Directory.Exists(Path.Combine(root.FullName, "db", "fly", "migrations"))) root = root.Parent;
+        var migration = Directory.GetFiles(Path.Combine(root!.FullName, "db", "fly", "migrations"), "*_planning_currencies.sql").Single();
         command.CommandText = await File.ReadAllTextAsync(migration);
         await command.ExecuteNonQueryAsync();
 

@@ -2,7 +2,6 @@ import { useRef, useState } from "react";
 import {
   View,
   Text,
-  TextInput,
   Image,
   ScrollView,
   Pressable,
@@ -14,12 +13,9 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { authMessage } from "@inout/identity";
-import { getAuth, rememberEmail } from "../auth/composition";
+import { getAuth } from "../auth/composition";
 import { theme as t } from "../theme";
 export function LoginScreen() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [visible, setVisible] = useState(false);
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
   const running = useRef(false);
@@ -29,12 +25,9 @@ export function LoginScreen() {
     setBusy(true);
     setNotice("");
     try {
-      await getAuth().signIn({ email, password });
-      rememberEmail(email);
-      setPassword("");
+      await getAuth().beginBrowserSignIn();
       router.replace("/preparando");
     } catch (error) {
-      rememberEmail(email);
       setNotice(authMessage(error));
     } finally {
       running.current = false;
@@ -70,60 +63,9 @@ export function LoginScreen() {
           <Text style={s.title} accessibilityRole="header">
             Bom ter{"\n"}você de volta.
           </Text>
-          <Text style={s.subtitle}>Entre no seu Ninho.</Text>
-          <Text style={s.label}>E-mail</Text>
-          <View style={s.field}>
-            <MaterialCommunityIcons
-              name="email-outline"
-              size={21}
-              color={t.ink}
-            />
-            <TextInput
-              accessibilityLabel="E-mail"
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoCorrect={false}
-              autoComplete="email"
-              placeholder="voce@exemplo.com"
-              placeholderTextColor={t.muted}
-              style={s.input}
-            />
-          </View>
-          <Text style={s.label}>Senha</Text>
-          <View style={s.field}>
-            <MaterialCommunityIcons
-              name="lock-outline"
-              size={21}
-              color={t.ink}
-            />
-            <TextInput
-              accessibilityLabel="Senha"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry={!visible}
-              autoCapitalize="none"
-              autoCorrect={false}
-              autoComplete="current-password"
-              style={s.input}
-              returnKeyType="go"
-              onSubmitEditing={submit}
-            />
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={visible ? "Ocultar senha" : "Mostrar senha"}
-              accessibilityState={{ selected: visible }}
-              onPress={() => setVisible(!visible)}
-              style={s.eye}
-            >
-              <MaterialCommunityIcons
-                name={visible ? "eye-off-outline" : "eye-outline"}
-                size={21}
-                color={t.ink}
-              />
-            </Pressable>
-          </View>
+          <Text style={s.subtitle}>
+            A senha fica no navegador do sistema. O aplicativo não a recebe.
+          </Text>
           <Pressable
             accessibilityRole="button"
             onPress={() => router.push("/esqueci-senha")}

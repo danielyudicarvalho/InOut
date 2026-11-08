@@ -99,28 +99,14 @@ test("provider messages never leak technical details or credentials", () => {
   );
 });
 
-test("public composition refuses privileged keys and non-local plaintext endpoints", async () => {
-  const { requirePublicConfig } = await import("./index.mjs");
+test("issuer composition accepts only https or local http and never a secret", async () => {
+  const { requireIssuer } = await import("./index.mjs");
+  assert.equal(requireIssuer("https://auth.example.com/path"), "https://auth.example.com");
+  assert.equal(requireIssuer("http://localhost:8080"), "http://localhost:8080");
+  assert.throws(() => requireIssuer("http://example.com"), AuthFailure);
   assert.throws(
-    () => requirePublicConfig("https://example.com", "sb_secret_private"),
+    () => requireIssuer("https://user:secret@auth.example.com"),
     AuthFailure,
   );
-  assert.throws(
-    () => requirePublicConfig("http://example.com", "sb_publishable_public"),
-    AuthFailure,
-  );
-  assert.deepEqual(
-    requirePublicConfig("http://localhost:54321", "sb_publishable_public"),
-    { url: "http://localhost:54321", key: "sb_publishable_public" },
-  );
-  const jwt =
-    "a." +
-    Buffer.from(JSON.stringify({ role: "service_role" })).toString(
-      "base64url",
-    ) +
-    ".b";
-  assert.throws(
-    () => requirePublicConfig("https://example.com", jwt),
-    AuthFailure,
-  );
+  assert.throws(() => requireIssuer(undefined), AuthFailure);
 });

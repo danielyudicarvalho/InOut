@@ -1,4 +1,4 @@
-> **Atualização arquitetural — 2026-09-09:** o backend dedicado ASP.NET Core passa a ser a única porta para casos de uso de negócio. Supabase permanece como PostgreSQL gerenciado, Auth e defesa em profundidade por RLS/constraints. Consulte [ADR-005](adr/ADR-005-dedicated-aspnet-backend.md).
+> **Atualização — 2026-11-08:** identidade e protocolo ficam no monólito ASP.NET Core 10 (Identity e OpenIddict). O Postgres é Fly Managed Postgres, com RLS preservada. O registro completo está em [fly-identity-migration.md](fly-identity-migration.md). O texto abaixo que ainda descreve o provedor anterior é histórico.
 
 # Arquitetura e decisões
 
@@ -24,9 +24,9 @@ API -> application -> domain
 - **api**: endpoints, contratos HTTP, autenticação e mapeamento de erros.
 - **presentation (Next.js / Expo)**: telas, estado de UI, validação de formato e navegação.
 
-Os clientes obtêm sessão no Supabase Auth e enviam o JWT à API. A API valida o token, resolve usuário e residência, executa o caso de uso C# e persiste via EF Core/Npgsql.
+Os clientes obtêm sessão no previous hosted provider Auth e enviam o JWT à API. A API valida o token, resolve usuário e residência, executa o caso de uso C# e persiste via EF Core/Npgsql.
 
-Domain e Application não importam ASP.NET, EF Core, Supabase SDK, bibliotecas de UI ou detalhes HTTP.
+Domain e Application não importam ASP.NET, EF Core, previous hosted provider SDK, bibliotecas de UI ou detalhes HTTP.
 
 ## Módulos do monólito
 
@@ -118,10 +118,10 @@ A estrutura final pode seguir as convenções do framework escolhido, desde que 
 
 ## Política de RPCs e acesso direto
 
-- Novos casos de uso de negócio não serão implementados como RPC Supabase.
+- Novos casos de uso de negócio não serão implementados como RPC previous hosted provider.
 - As RPCs legadas de residência permanecem instaladas por uma janela curta de
   rollback, porém sem `EXECUTE` para papéis públicos.
-- O Flutter usa o SDK Supabase somente para Auth e não possui privilégios de
+- O Flutter usa o SDK previous hosted provider somente para Auth e não possui privilégios de
   leitura ou escrita nas tabelas de negócio.
 - A API usa `inout_api_runtime`, menor privilégio e RLS por residência.
 - RLS e constraints permanecem como defesa em profundidade.

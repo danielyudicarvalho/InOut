@@ -5,12 +5,12 @@ import {
   type ManagedAccount,
 } from "@inout/finance/accounts";
 import { financeMessage } from "@inout/finance";
-import { getAuthClient } from "../auth/composition";
+import { browserApiBase, getAuthClient } from "../auth/composition";
 export function useAccounts(household: string) {
   const repository = useMemo(
     () =>
       createAccountsRepository({
-        baseUrl: process.env.NEXT_PUBLIC_API_BASE_URL,
+        baseUrl: browserApiBase(),
         getToken: async () => {
           const { data } = await getAuthClient().auth.getSession();
           return data.session?.access_token ?? null;

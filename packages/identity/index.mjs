@@ -8,7 +8,14 @@ export class AuthFailure extends Error {
 }
 const messages = {
   configuration:
-    "Autenticação não configurada. Confira a URL e a chave publicável do Supabase.",
+    "Autenticação não configurada. Confira o endereço público do serviço.",
+  browser_sign_in_required:
+    "A entrada acontece no navegador do sistema. O aplicativo não recebe a senha.",
+  account_unavailable: "Esta conta não pode entrar agora.",
+  password_reset_required:
+    "Defina uma nova senha antes de entrar. A senha anterior não pode ser reutilizada.",
+  mfa_reenrollment_required:
+    "Confirme o autenticador antes de entrar. A senha sozinha não abre a conta.",
   invalid_email: "Informe um e-mail válido.",
   invalid_name: "Informe seu nome (até 100 caracteres).",
   weak_password: "Use uma senha com pelo menos 8 caracteres.",
@@ -91,11 +98,30 @@ export function createAuthService(repository) {
     },
     signOut: () => repository.signOut(),
     subscribe: (listener) => repository.subscribe(listener),
+    async beginBrowserSignIn() {
+      if (typeof repository.beginBrowserSignIn !== "function")
+        throw new AuthFailure("configuration");
+      await repository.beginBrowserSignIn();
+    },
+    async openHostedAccount(path) {
+      if (typeof repository.openHostedAccount !== "function")
+        throw new AuthFailure("configuration");
+      await repository.openHostedAccount(path);
+    },
   };
 }
 
-/** Reject privileged keys before sending any authentication request. */
-export function requirePublicConfig(url, key) {
+const hostedAccountPaths = new Set([
+  "/account/login",
+  "/account/register",
+  "/account/confirm",
+  "/account/forgot",
+  "/account/reset",
+  "/account/mfa",
+]);
+
+/** Public issuer only. No client secret, userinfo, or privileged key is accepted. */
+export function requireIssuer(url) {
   try {
     const parsed = new URL(url);
     if (
@@ -106,18 +132,15 @@ export function requirePublicConfig(url, key) {
       )
     )
       throw new Error();
-    if (parsed.username || parsed.password || !key) throw new Error();
-    if (!key.startsWith("sb_publishable_")) {
-      const body = key.split(".")[1];
-      if (
-        !body ||
-        JSON.parse(atob(body.replace(/-/g, "+").replace(/_/g, "/"))).role !==
-          "anon"
-      )
-        throw new Error();
-    }
-    return { url, key };
+    if (parsed.username || parsed.password || parsed.search || parsed.hash)
+      throw new Error();
+    return parsed.origin;
   } catch {
     throw new AuthFailure("configuration");
   }
+}
+
+export function hostedAccountPath(path) {
+  if (!hostedAccountPaths.has(path)) throw new AuthFailure("configuration");
+  return path;
 }

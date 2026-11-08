@@ -19,7 +19,7 @@ import {
   type PlanningGoalDetail,
   type PlanningProject,
 } from "@inout/finance";
-import { getAuthClient } from "../lib/auth/composition";
+import { browserApiBase, getAuthClient } from "../lib/auth/composition";
 import { useFinancialHome } from "../lib/finance/use-financial-home";
 import "./analysis.css";
 import "./planning.css";
@@ -110,7 +110,7 @@ const cards = [
 
 function repository() {
   return createFinanceRepository({
-    baseUrl: process.env.NEXT_PUBLIC_API_BASE_URL,
+    baseUrl: browserApiBase(),
     getToken: async () => {
       const { data } = await getAuthClient().auth.getSession();
       return data.session?.access_token ?? null;

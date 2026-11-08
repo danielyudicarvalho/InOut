@@ -5,10 +5,12 @@ services:
       dockerfile: backend/Dockerfile
     environment:
       ASPNETCORE_ENVIRONMENT: Development
-      ConnectionStrings__InOut: ${INOUT_CLOUD_DATABASE_URL:?Set INOUT_CLOUD_DATABASE_URL in .env.cloud}
-      Supabase__Jwt__Issuer: ${SUPABASE_URL:?Set SUPABASE_URL in .env.cloud}/auth/v1
-      Supabase__Jwt__Audience: authenticated
-      Supabase__Jwt__Secret: ${SUPABASE_JWT_SECRET:-}
+      ConnectionStrings__InOut: ${INOUT_CLOUD_DATABASE_URL:?Set the runtime connection in .env.cloud}
+      ConnectionStrings__InOutDirect: ${INOUT_CLOUD_DIRECT_URL:?Set the direct connection in .env.cloud}
+      Auth__Issuer: ${AUTH_ISSUER:?Set the public issuer}
+      Auth__PublicOrigin: ${AUTH_PUBLIC_ORIGIN:?Set the web origin}
+      Auth__WebClientSecret: ${AUTH_WEB_CLIENT_SECRET:?Set the web client secret}
+      Database__PoolMode: session
       Cors__AllowedOrigins__0: http://localhost:3000
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
       OTEL_SERVICE_NAME: inout-api
@@ -21,14 +23,10 @@ services:
     build:
       context: .
       dockerfile: frontend/Dockerfile
-      args:
-        NEXT_PUBLIC_SUPABASE_URL: ${SUPABASE_URL:?Set SUPABASE_URL in .env.cloud}
-        NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${SUPABASE_PUBLISHABLE_KEY:?Set SUPABASE_PUBLISHABLE_KEY in .env.cloud}
-        NEXT_PUBLIC_API_URL: http://localhost:8080
     environment:
-      NEXT_PUBLIC_SUPABASE_URL: ${SUPABASE_URL:?Set SUPABASE_URL in .env.cloud}
-      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${SUPABASE_PUBLISHABLE_KEY:?Set SUPABASE_PUBLISHABLE_KEY in .env.cloud}
-      NEXT_PUBLIC_API_URL: http://localhost:8080
+      API_BASE_URL: http://api:8080
+      AUTH_WEB_CLIENT_SECRET: ${AUTH_WEB_CLIENT_SECRET:?Set the web client secret}
+      BFF_SESSION_KEY: ${BFF_SESSION_KEY:?Set a 32-byte base64 key}
       PORT: 3000
     ports:
       - 127.0.0.1:3000:3000

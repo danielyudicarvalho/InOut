@@ -28,34 +28,37 @@ jobs:
       - name: Check logging privacy
         run: bash ./tool/check_logging_privacy.sh
 
+      - name: Check for hosted-auth runtime references
+        run: bash ./tool/check_no_hosted_auth_runtime.sh
+
   database:
     name: Database migrations and RLS
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: inout
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Set up Supabase CLI
-        uses: supabase/setup-cli@45a513f8c64c0bc8e0e3dfe572b5c95be85f6359 # v3.0.1
+      - name: Set up .NET
+        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
         with:
-          version: 2.117.0
+          global-json-file: backend/global.json
 
-      - name: Start local Supabase
-        run: supabase start
-
-      - name: Rebuild database from migrations
-        run: supabase db reset
-
-      - name: Lint database functions
-        run: supabase db lint --schema public,private --level warning --fail-on error
-
-      - name: Test schema and RLS policies
-        run: supabase test db
-
-      - name: Exercise encrypted backup and data restoration locally
-        run: bash tool/backup_restore_drill.sh
-
-      - name: Stop local Supabase
-        if: always()
-        run: supabase stop --no-backup
+      - name: Apply Fly schema to disposable Postgres
+        working-directory: backend
+        env:
+          ConnectionStrings__InOutDirect: Host=localhost;Port=5432;Database=inout;Username=postgres;Password=postgres
+        run: dotnet run --project src/InOut.Api -- migrate

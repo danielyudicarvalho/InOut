@@ -15,6 +15,8 @@ export interface AuthRepository {
   resetPassword(password: string): Promise<"signedOut" | "signOutRequired">;
   signOut(): Promise<void>;
   subscribe(listener: () => void): () => void;
+  beginBrowserSignIn?(): Promise<void>;
+  openHostedAccount?(path: string): Promise<void>;
 }
 export class AuthFailure extends Error {
   readonly code: string;
@@ -37,9 +39,9 @@ export function createAuthService(repository: AuthRepository): {
   }): Promise<"signedOut" | "signOutRequired">;
   signOut(): Promise<void>;
   subscribe(listener: () => void): () => void;
+  beginBrowserSignIn(): Promise<void>;
+  openHostedAccount(path: string): Promise<void>;
 };
 
-export function requirePublicConfig(
-  url: string | undefined,
-  key: string | undefined,
-): { url: string; key: string };
+export function requireIssuer(url: string | undefined): string;
+export function hostedAccountPath(path: string): string;

@@ -4,6 +4,7 @@
 #
 
 app = 'inout-api'
+# gru is an unapproved candidate. Production startup refuses until Deployment:RegionApproved is true.
 primary_region = 'gru'
 
 [build]

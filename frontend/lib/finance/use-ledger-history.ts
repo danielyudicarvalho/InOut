@@ -7,7 +7,7 @@ import {
   type HistoryItem,
   type HistoryFilters,
 } from "@inout/finance";
-import { getAuthClient } from "../auth/composition";
+import { browserApiBase, getAuthClient } from "../auth/composition";
 export function useLedgerHistory(
   household: string,
   period: string,
@@ -25,7 +25,7 @@ export function useLedgerHistory(
   useEffect(() => {
     const controller = new AbortController();
     const repository = createFinanceRepository({
-      baseUrl: process.env.NEXT_PUBLIC_API_BASE_URL,
+      baseUrl: browserApiBase(),
       getToken: async () => {
         const { data, error } = await getAuthClient().auth.getSession();
         if (error) throw new FinanceFailure("unauthorized");

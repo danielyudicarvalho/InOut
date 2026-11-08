@@ -5,10 +5,12 @@ services:
       dockerfile: backend/Dockerfile
     environment:
       ASPNETCORE_ENVIRONMENT: Development
-      ConnectionStrings__InOut: Host=host.docker.internal;Port=54322;Database=postgres;Username=inout_api_runtime;Password=${INOUT_DB_PASSWORD:?Run ./tool/local-up.sh}
-      Supabase__Jwt__Issuer: http://127.0.0.1:54321/auth/v1
-      Supabase__Jwt__Audience: authenticated
-      Supabase__Jwt__LocalSecret: ${SUPABASE_JWT_SECRET:?Run ./tool/local-up.sh}
+      ConnectionStrings__InOut: Host=host.docker.internal;Port=5432;Database=inout;Username=inout_api_runtime;Password=${INOUT_DB_PASSWORD:?Set the runtime role password}
+      ConnectionStrings__InOutDirect: Host=host.docker.internal;Port=5432;Database=inout;Username=postgres;Password=${INOUT_DIRECT_PASSWORD:?Set the migration password}
+      Auth__Issuer: http://localhost:8080/
+      Auth__PublicOrigin: http://localhost:3000
+      Auth__Email__Delivery: capture
+      Database__PoolMode: session
       Cors__AllowedOrigins__0: http://localhost:3000
     extra_hosts:
       - host.docker.internal:host-gateway
@@ -21,14 +23,10 @@ services:
     build:
       context: .
       dockerfile: frontend/Dockerfile
-      args:
-        NEXT_PUBLIC_SUPABASE_URL: http://localhost:54321
-        NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${SUPABASE_ANON_KEY:?Run ./tool/local-up.sh}
-        NEXT_PUBLIC_API_URL: http://localhost:8080
     environment:
-      NEXT_PUBLIC_SUPABASE_URL: http://localhost:54321
-      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${SUPABASE_ANON_KEY:?Run ./tool/local-up.sh}
-      NEXT_PUBLIC_API_URL: http://localhost:8080
+      API_BASE_URL: http://api:8080
+      AUTH_WEB_CLIENT_SECRET: ${AUTH_WEB_CLIENT_SECRET:-dev-only-web-client-secret}
+      BFF_SESSION_KEY: ${BFF_SESSION_KEY:-}
       PORT: 3000
     ports:
       - 127.0.0.1:3000:3000

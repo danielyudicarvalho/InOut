@@ -5,13 +5,13 @@ import {
   createClassificationStore,
   FinanceFailure,
 } from "@inout/finance";
-import { getAuthClient } from "../auth/composition";
+import { browserApiBase, getAuthClient } from "../auth/composition";
 export function useClassification(household: string, transactionId: string) {
   const [store] = useState(() => {
     let actorId = "",
       storageKey = "";
     const repository = createFinanceRepository({
-      baseUrl: process.env.NEXT_PUBLIC_API_BASE_URL,
+      baseUrl: browserApiBase(),
       getToken: async () => {
         const { data, error } = await getAuthClient().auth.getSession();
         if (error || !data.session || data.session.user.id !== actorId)

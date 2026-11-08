@@ -5,7 +5,7 @@ import {
   financeMessage,
   type FinancialAnalysis,
 } from "@inout/finance";
-import { getAuthClient } from "../auth/composition";
+import { browserApiBase, getAuthClient } from "../auth/composition";
 export function useAnalysis(
   household: string,
   period: string,
@@ -32,7 +32,7 @@ export function useAnalysis(
         });
     }, 20000);
     const repository = createFinanceRepository({
-      baseUrl: process.env.NEXT_PUBLIC_API_BASE_URL,
+      baseUrl: browserApiBase(),
       getToken: async () => {
         const { data } = await getAuthClient().auth.getSession();
         return data.session?.access_token ?? null;

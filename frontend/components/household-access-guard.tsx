@@ -10,7 +10,7 @@ import {
   createHouseholdAccessStore,
   createCollaborationRepository,
 } from "@inout/finance/collaboration";
-import { getAuthClient } from "../lib/auth/composition";
+import { browserApiBase, getAuthClient } from "../lib/auth/composition";
 import { AccessRemoved } from "./household-management-screen";
 const paths = new Set([
   "/inicio",
@@ -54,7 +54,7 @@ function LiveGuard({
   const [store] = useState(() =>
     createHouseholdAccessStore(
       createCollaborationRepository({
-        baseUrl: process.env.NEXT_PUBLIC_API_BASE_URL,
+        baseUrl: browserApiBase(),
         getToken: async () => {
           const { data } = await getAuthClient().auth.getSession();
           return data.session?.access_token ?? null;
