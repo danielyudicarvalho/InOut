@@ -4,8 +4,8 @@ WORKDIR /app
 # Ensure Node resolves IPv4 first to avoid IPv6 lookup timeouts on Docker networks
 ENV NODE_OPTIONS="--dns-result-order=ipv4first"
 
-# Copy identity package and frontend package manifests
-COPY packages/identity/ ./packages/identity/
+# Copy workspace packages and frontend package manifests
+COPY packages/ ./packages/
 COPY frontend/package.json frontend/package-lock.json* frontend/.npmrc* ./frontend/
 
 WORKDIR /app/frontend

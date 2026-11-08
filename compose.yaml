@@ -1,41 +1,109 @@
 services:
+  db:
+    image: postgres:16-alpine
+    container_name: inout-db
+    environment:
+      POSTGRES_DB: inout
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${INOUT_DIRECT_PASSWORD:-postgres}
+      INOUT_DB_PASSWORD: ${INOUT_DB_PASSWORD:-inout_runtime_pass}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/db:/docker-entrypoint-initdb.d:ro
+    ports:
+      - "127.0.0.1:5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d inout"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+      start_period: 3s
+    restart: unless-stopped
+
+  migrator:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: inout-migrator
+    entrypoint: ["dotnet", "InOut.Api.dll", "migrate"]
+    environment:
+      ConnectionStrings__InOutDirect: "Host=db;Port=5432;Database=inout;Username=postgres;Password=${INOUT_DIRECT_PASSWORD:-postgres}"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
   api:
     build:
       context: .
       dockerfile: backend/Dockerfile
+    container_name: inout-api
     environment:
       ASPNETCORE_ENVIRONMENT: Development
-      ConnectionStrings__InOut: Host=host.docker.internal;Port=5432;Database=inout;Username=inout_api_runtime;Password=${INOUT_DB_PASSWORD:?Set the runtime role password}
-      ConnectionStrings__InOutDirect: Host=host.docker.internal;Port=5432;Database=inout;Username=postgres;Password=${INOUT_DIRECT_PASSWORD:?Set the migration password}
+      ConnectionStrings__InOut: "Host=db;Port=5432;Database=inout;Username=inout_api_runtime;Password=${INOUT_DB_PASSWORD:-inout_runtime_pass}"
+      ConnectionStrings__InOutDirect: "Host=db;Port=5432;Database=inout;Username=postgres;Password=${INOUT_DIRECT_PASSWORD:-postgres}"
       Auth__Issuer: http://localhost:8080/
       Auth__PublicOrigin: http://localhost:3000
       Auth__Email__Delivery: capture
       Database__PoolMode: session
       Cors__AllowedOrigins__0: http://localhost:3000
-    extra_hosts:
-      - host.docker.internal:host-gateway
+      Cors__AllowedOrigins__1: http://localhost:8081
+      Auth__MobileRedirectUris__0: inout://auth/callback
+      Auth__MobileRedirectUris__1: inout://auth/recuperar
+      Auth__MobileRedirectUris__2: http://localhost:8081/auth/callback
     ports:
-      - 127.0.0.1:8080:8080
+      - "127.0.0.1:8080:8080"
+    depends_on:
+      migrator:
+        condition: service_completed_successfully
     volumes:
       - api_logs:/var/log/inout
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/health/live || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
     restart: unless-stopped
+
   web:
     build:
       context: .
       dockerfile: frontend/Dockerfile
+    container_name: inout-web
     environment:
       API_BASE_URL: http://api:8080
       AUTH_WEB_CLIENT_SECRET: ${AUTH_WEB_CLIENT_SECRET:-dev-only-web-client-secret}
       BFF_SESSION_KEY: ${BFF_SESSION_KEY:-}
       PORT: 3000
     ports:
-      - 127.0.0.1:3000:3000
+      - "127.0.0.1:3000:3000"
     depends_on:
-      - api
+      api:
+        condition: service_healthy
     volumes:
       - web_logs:/var/log/inout
     restart: unless-stopped
 
+  mobile:
+    build:
+      context: .
+      dockerfile: mobile/Dockerfile
+    container_name: inout-mobile
+    environment:
+      EXPO_PUBLIC_AUTH_ISSUER: http://localhost:8080
+      EXPO_PUBLIC_API_BASE_URL: http://localhost:8080
+    ports:
+      - "127.0.0.1:8081:8081"
+    depends_on:
+      api:
+        condition: service_healthy
+    volumes:
+      - mobile_logs:/var/log/inout
+    restart: unless-stopped
+
 volumes:
+  postgres_data:
   api_logs:
   web_logs:
+  mobile_logs:
