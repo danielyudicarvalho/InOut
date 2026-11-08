@@ -27,6 +27,8 @@ public sealed class IdentityAccountService(
     private static readonly TimeSpan RecoveryTicketLifetime = TimeSpan.FromMinutes(15);
     private static readonly TimeSpan MfaTicketLifetime = TimeSpan.FromMinutes(15);
     private static readonly TimeSpan SendCooldown = TimeSpan.FromMinutes(1);
+    private static readonly InOutUser DummyUser = new();
+    private static readonly string DummyHash = new PasswordHasher<InOutUser>().HashPassword(DummyUser, "InOutDummyPassword123!");
 
     public async Task<IdentityCommandResult> RegisterAsync(
         string email,
@@ -125,9 +127,15 @@ public sealed class IdentityAccountService(
         CancellationToken cancellationToken)
     {
         var user = await RequireUserAsync(email);
-        if (user is null || await users.IsLockedOutAsync(user))
+        if (user is null)
         {
-            return Fail(user is null ? IdentityCodes.InvalidCredentials : IdentityCodes.AccountUnavailable);
+            users.PasswordHasher.VerifyHashedPassword(DummyUser, DummyHash, password);
+            return Fail(IdentityCodes.InvalidCredentials);
+        }
+
+        if (await users.IsLockedOutAsync(user))
+        {
+            return Fail(IdentityCodes.AccountUnavailable);
         }
 
         if (LegacyPasswordVerifier.Verify(user.PasswordHash, password) ==

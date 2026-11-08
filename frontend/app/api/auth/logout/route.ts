@@ -1,7 +1,14 @@
 import { NextResponse } from "next/server";
-import { clearSession, readSession } from "../../../../lib/auth/bff-server";
+import {
+  clearSession,
+  readSession,
+  verifySameOrigin,
+} from "../../../../lib/auth/bff-server";
 
-export async function POST() {
+export async function POST(request: Request) {
+  if (!verifySameOrigin(request)) {
+    return NextResponse.json({ code: "csrf_rejected" }, { status: 403 });
+  }
   const session = await readSession();
   const api = process.env.API_BASE_URL?.replace(/\/$/, "");
   if (session?.refreshToken && api && session.refreshToken !== "recovery") {

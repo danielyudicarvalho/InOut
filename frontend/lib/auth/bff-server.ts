@@ -172,7 +172,20 @@ export function commandResponse(status: number, payload: { code?: string }) {
   );
 }
 
+export { verifySameOrigin } from "./session-cookie";
+
 export async function proxyApi(request: Request, path: string[]) {
+  if (
+    path.some(
+      (segment) =>
+        segment === ".." ||
+        segment === "." ||
+        segment.includes("/") ||
+        segment.includes("\\"),
+    )
+  ) {
+    return NextResponse.json({ code: "invalid_path" }, { status: 400 });
+  }
   const session = await refreshedSession();
   const jar = await cookies();
   const csrf = jar.get(csrfCookie)?.value;

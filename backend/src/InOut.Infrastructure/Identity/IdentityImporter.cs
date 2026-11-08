@@ -76,8 +76,8 @@ public sealed class IdentityImporter(IdentityDbContext db, UserManager<InOutUser
                     TwoFactorEnabled = planned.MfaReenrollmentRequired,
                     LockoutEnabled = true,
                     PasswordHash = planned.PasswordHash,
-                    SecurityStamp = Stamp(planned.Id, "security"),
-                    ConcurrencyStamp = Stamp(planned.Id, "concurrency")
+                    SecurityStamp = Stamp(),
+                    ConcurrencyStamp = Stamp()
                 };
                 var created = await users.CreateAsync(user);
                 if (!created.Succeeded)
@@ -86,7 +86,7 @@ public sealed class IdentityImporter(IdentityDbContext db, UserManager<InOutUser
                 }
 
                 user.PasswordHash = planned.PasswordHash;
-                user.SecurityStamp = Stamp(planned.Id, "security");
+                user.SecurityStamp = Stamp();
                 await users.UpdateAsync(user);
             }
             else
@@ -138,6 +138,6 @@ public sealed class IdentityImporter(IdentityDbContext db, UserManager<InOutUser
         return Convert.ToHexString(hash).ToLowerInvariant();
     }
 
-    private static string Stamp(Guid id, string label) =>
-        Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(label + ":" + id.ToString("N"))));
+    private static string Stamp() =>
+        Guid.NewGuid().ToString("N");
 }

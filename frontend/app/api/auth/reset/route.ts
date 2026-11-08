@@ -3,9 +3,13 @@ import {
   clearSession,
   identityCommand,
   readSession,
+  verifySameOrigin,
 } from "../../../../lib/auth/bff-server";
 
 export async function POST(request: Request) {
+  if (!verifySameOrigin(request)) {
+    return NextResponse.json({ code: "csrf_rejected" }, { status: 403 });
+  }
   const session = await readSession();
   if (
     !session?.recoveryTicket ||

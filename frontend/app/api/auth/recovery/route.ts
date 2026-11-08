@@ -2,10 +2,14 @@ import { NextResponse } from "next/server";
 import {
   identityCommand,
   readSession,
+  verifySameOrigin,
   writeSession,
 } from "../../../../lib/auth/bff-server";
 
 export async function POST(request: Request) {
+  if (!verifySameOrigin(request)) {
+    return NextResponse.json({ code: "csrf_rejected" }, { status: 403 });
+  }
   const body = (await request.json()) as { email?: string; code?: string };
   const result = await identityCommand("/api/v1/identity/recovery/exchange", {
     email: body.email ?? "",

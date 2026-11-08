@@ -68,3 +68,24 @@ export function open(value: string, key: Buffer): BffSession | null {
 export function newCsrf(): string {
   return randomBytes(32).toString("base64url");
 }
+
+export function verifySameOrigin(request: Request): boolean {
+  const secFetchSite = request.headers.get("sec-fetch-site");
+  if (
+    secFetchSite &&
+    secFetchSite !== "same-origin" &&
+    secFetchSite !== "none"
+  ) {
+    return false;
+  }
+  const origin = request.headers.get("origin");
+  const host = request.headers.get("host");
+  if (origin && host) {
+    try {
+      if (new URL(origin).host !== host) return false;
+    } catch {
+      return false;
+    }
+  }
+  return true;
+}
