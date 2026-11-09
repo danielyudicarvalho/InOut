@@ -1,3 +1,4 @@
+import { reportWriteFailure } from "./telemetry.mjs";
 export class CollaborationFailure extends Error {
   constructor(code) {
     super(code);
@@ -57,6 +58,15 @@ export function createCollaborationRepository({
   fetcher = fetch,
 }) {
   async function request(path, method = "GET", body, signal) {
+    try {
+      return await send(path, method, body, signal);
+    } catch (error) {
+      if (method !== "GET" && error instanceof CollaborationFailure)
+        reportWriteFailure(path, method, error.code);
+      throw error;
+    }
+  }
+  async function send(path, method, body, signal) {
     let base;
     try {
       base = new URL(baseUrl);

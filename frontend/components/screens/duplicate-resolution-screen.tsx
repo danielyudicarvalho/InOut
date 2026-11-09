@@ -18,6 +18,7 @@ import {
 import { money, displayDate } from "@inout/finance";
 import { BrandLogo } from "../ui/brand-logo";
 import { useDuplicateResolution } from "../../lib/finance/use-duplicate-resolution";
+import { captureEvent } from "../../lib/analytics/posthog";
 
 export function DuplicateResolutionScreen() {
   const p = useSearchParams();
@@ -107,6 +108,7 @@ function DuplicateResolutionView({
     records.find((r) => r.id === selectedId) || comparison.second;
 
   const handleReviewReversal = () => {
+    captureEvent("duplicate_resolved", { resolution: "reverse_one" });
     router.push(
       `/lancamento?${new URLSearchParams({
         household,
@@ -309,7 +311,13 @@ function DuplicateResolutionView({
           </div>
 
           <div className="duplicate-confirmation-actions">
-            <Link className="duplicate-cancel-btn" href={backToHistory}>
+            <Link
+              className="duplicate-cancel-btn"
+              href={backToHistory}
+              onClick={() =>
+                captureEvent("duplicate_resolved", { resolution: "kept_both" })
+              }
+            >
               Cancelar
             </Link>
             <button

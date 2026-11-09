@@ -1,3 +1,8 @@
+import { reportWriteFailure } from "./telemetry.mjs";
+export {
+  createRecordFormTracker,
+  setFinanceTelemetry,
+} from "./telemetry.mjs";
 export class FinanceFailure extends Error {
   constructor(code) {
     super(code);
@@ -153,6 +158,15 @@ export function createFinanceRepository({
   fetcher = fetch,
 }) {
   async function get(path, signal, write) {
+    try {
+      return await request(path, signal, write);
+    } catch (error) {
+      if (write && error instanceof FinanceFailure)
+        reportWriteFailure(path, write.method ?? "POST", error.code);
+      throw error;
+    }
+  }
+  async function request(path, signal, write) {
     let base;
     try {
       base = new URL(baseUrl);

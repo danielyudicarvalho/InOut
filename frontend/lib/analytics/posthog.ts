@@ -1,5 +1,9 @@
 import posthog from "posthog-js";
+import { setFinanceTelemetry } from "@inout/finance";
 import { scrubProperties } from "./scrub";
+
+// Event Taxonomy §4: sent with every web event.
+const SCHEMA_VERSION = 1;
 
 let initialized = false;
 
@@ -34,7 +38,21 @@ export function initPostHog(): void {
     },
   });
 
+  posthog.register({
+    source: "web",
+    client: "web",
+    schema_version: SCHEMA_VERSION,
+    app_version: process.env.INOUT_APP_VERSION ?? "0.0.0",
+  });
+  setFinanceTelemetry((event, properties) => captureEvent(event, properties));
+
   initialized = true;
+}
+
+// Household-scoped events are grouped by household (opaque id only).
+export function setHousehold(householdId: string | null | undefined): void {
+  if (!initialized || !householdId) return;
+  posthog.group("household", householdId);
 }
 
 export function captureEvent(
@@ -56,4 +74,11 @@ export function resetUser(): void {
   if (!initialized) return;
   if (posthog.get_property("$user_state") !== "identified") return;
   posthog.reset();
+  // reset() clears super properties; restore the taxonomy ones.
+  posthog.register({
+    source: "web",
+    client: "web",
+    schema_version: SCHEMA_VERSION,
+    app_version: process.env.INOUT_APP_VERSION ?? "0.0.0",
+  });
 }

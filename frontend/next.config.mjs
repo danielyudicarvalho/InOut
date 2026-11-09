@@ -1,8 +1,15 @@
+import { readFileSync } from "node:fs";
 import { withSentryConfig } from "@sentry/nextjs/config";
+
+const { version } = JSON.parse(
+  readFileSync(new URL("./package.json", import.meta.url), "utf8"),
+);
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // Sent as app_version with analytics events.
+  env: { INOUT_APP_VERSION: version },
 };
 
 // Source maps are uploaded only when SENTRY_AUTH_TOKEN, SENTRY_ORG and

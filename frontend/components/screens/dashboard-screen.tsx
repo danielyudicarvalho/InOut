@@ -1,6 +1,6 @@
 "use client";
 import { BrandLogo } from "../ui/brand-logo";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
@@ -21,6 +21,7 @@ import { NewRecordPicker } from "../financial/records/new-record-picker";
 import { PeriodPicker } from "../financial/selectors/period-picker";
 import { DashboardSetupScreen } from "./dashboard-setup-screen";
 import { useFinancialHome } from "../../lib/finance/use-financial-home";
+import { captureEvent, setHousehold } from "../../lib/analytics/posthog";
 
 const icons = [House, Receipt, Wallet, ChartPie, ChartPie, Target, Gear];
 export function DashboardScreen() {
@@ -46,6 +47,10 @@ function DashboardView({
   initialCurrency: string;
 }) {
   const state = useFinancialHome(options);
+  useEffect(() => setHousehold(state.householdId), [state.householdId]);
+  // Event Taxonomy: a summary value opened to see what explains it.
+  const drilldown = (from: string) =>
+    captureEvent("summary_drilldown_opened", { from });
   const [periodOpen, setPeriodOpen] = useState(false);
   const [recordOpen, setRecordOpen] = useState(false);
   const router = useRouter();
@@ -326,6 +331,7 @@ function DashboardView({
                 <Wallet size={40} weight="duotone" aria-hidden="true" />
                 <Link
                   className="balance-card-link"
+                  onClick={() => drilldown("balance")}
                   href={`/composicao-saldo?${new URLSearchParams({ household: state.householdId, period: state.period, currency: code })}`}
                 >
                   Ver composição ›
@@ -394,6 +400,15 @@ function DashboardView({
                   item.label === "Resultado" ? (
                     <Link
                       className="income-card-link"
+                      onClick={() =>
+                        drilldown(
+                          item.label === "Receitas"
+                            ? "income"
+                            : item.label === "Despesas"
+                              ? "expense"
+                              : "result",
+                        )
+                      }
                       href={`/${item.label === "Receitas" ? "receitas" : item.label === "Despesas" ? "despesas" : "resultado"}?${new URLSearchParams({ household: state.householdId, period: state.period, currency })}`}
                     >
                       Ver {item.label.toLowerCase()} ›
@@ -402,6 +417,7 @@ function DashboardView({
                   {item.label === "Receitas" ? (
                     <Link
                       className="income-card-link"
+                      onClick={() => drilldown("income_source")}
                       href={`/fontes-renda?${new URLSearchParams({ household: state.householdId, period: state.period, currency })}`}
                     >
                       Ver por fonte de renda ›
@@ -410,6 +426,7 @@ function DashboardView({
                   {item.label === "Despesas" ? (
                     <Link
                       className="income-card-link"
+                      onClick={() => drilldown("category")}
                       href={`/resumo-categorias?${new URLSearchParams({ household: state.householdId, period: state.period, currency })}`}
                     >
                       Ver por categoria ›

@@ -12,6 +12,7 @@ import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { money, displayDate } from "@inout/finance";
 import { useDuplicateResolution } from "../finance/use-duplicate-resolution";
 import { theme as t } from "../theme";
+import { captureEvent } from "../analytics/posthog";
 
 export function DuplicateResolutionScreen() {
   const p = useLocalSearchParams();
@@ -122,6 +123,7 @@ function DuplicateResolutionView({
     records.find((r) => r.id === selectedId) || comparison.second;
 
   const handleReviewReversal = () => {
+    captureEvent("duplicate_resolved", { resolution: "reverse_one" });
     router.push({
       pathname: "/lancamento",
       params: {
@@ -349,7 +351,13 @@ function DuplicateResolutionView({
           </View>
 
           <View style={s.actionRow}>
-            <Pressable style={s.cancelBtn} onPress={back}>
+            <Pressable
+              style={s.cancelBtn}
+              onPress={() => {
+                captureEvent("duplicate_resolved", { resolution: "kept_both" });
+                back();
+              }}
+            >
               <Text style={s.cancelBtnText}>Cancelar</Text>
             </Pressable>
             <Pressable style={s.reviewBtn} onPress={handleReviewReversal}>

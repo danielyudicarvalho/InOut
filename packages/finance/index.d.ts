@@ -414,10 +414,19 @@ export interface FinanceRepository {
   ): Promise<RecordOptions>;
   createCategory(
     householdId: string,
-    body: { name: string; flow: "income" | "expense"; parentId?: string | null },
+    body: {
+      name: string;
+      flow: "income" | "expense";
+      parentId?: string | null;
+    },
     key: string,
     signal?: AbortSignal,
-  ): Promise<{ id: string; name: string; flow: string; parentId: string | null }>;
+  ): Promise<{
+    id: string;
+    name: string;
+    flow: string;
+    parentId: string | null;
+  }>;
   createIncomeSource(
     householdId: string,
     body: { name: string },
@@ -846,7 +855,12 @@ export function recordReview(
   options: RecordOptions,
 ): RecordReview;
 export type RecordOptions = {
-  accounts: { id: string; name: string; currency: string; kind?: string | null }[];
+  accounts: {
+    id: string;
+    name: string;
+    currency: string;
+    kind?: string | null;
+  }[];
   categories: {
     id: string;
     name: string;
@@ -1046,7 +1060,9 @@ export type DuplicateComparison = {
 };
 
 export function shortTransactionId(id: string): string;
-export function formatDuplicateRecord(detail: TransactionDetail): DuplicateRecord;
+export function formatDuplicateRecord(
+  detail: TransactionDetail,
+): DuplicateRecord;
 export function getDuplicateComparison(
   repository: FinanceRepository,
   household: string,
@@ -1071,4 +1087,27 @@ export function createDuplicateResolutionStore(
   start(): void;
   retry(): void;
   select(id: string): void;
+};
+
+export type FinanceTelemetrySink = (
+  event: "financial_command_failed",
+  properties: {
+    command: string;
+    error_code: string;
+    is_retryable: boolean;
+    outcome_known: boolean;
+  },
+) => void;
+export function setFinanceTelemetry(sink: FinanceTelemetrySink | null): void;
+export type RecordFormEvent =
+  "record_form_started" | "record_form_submitted" | "record_form_abandoned";
+export function createRecordFormTracker(options: {
+  kind: RecordKind;
+  emit: (event: RecordFormEvent, properties: Record<string, unknown>) => void;
+  now?: () => number;
+}): {
+  start(): void;
+  edit(field: string): void;
+  submit(): void;
+  close(): void;
 };

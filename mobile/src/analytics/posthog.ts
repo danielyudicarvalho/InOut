@@ -1,4 +1,17 @@
+import Constants from "expo-constants";
+import { Platform } from "react-native";
 import { PostHog } from "posthog-react-native";
+import { setFinanceTelemetry } from "@inout/finance";
+
+// Event Taxonomy §4: sent with every mobile event.
+function registerTaxonomyProperties(instance: PostHog): void {
+  void instance.register({
+    source: "mobile",
+    client: Platform.OS,
+    schema_version: 1,
+    app_version: Constants.expoConfig?.version ?? "0.0.0",
+  });
+}
 
 let posthogInstance: PostHog | null = null;
 
@@ -17,6 +30,8 @@ export function initPostHog(): PostHog | null {
       // Financial screens: no screen recording. Errors are Sentry's job.
       enableSessionReplay: false,
     });
+    registerTaxonomyProperties(posthogInstance);
+    setFinanceTelemetry((event, properties) => captureEvent(event, properties));
     return posthogInstance;
   } catch (error) {
     console.warn("Failed to initialize PostHog on mobile", error);
@@ -26,9 +41,18 @@ export function initPostHog(): PostHog | null {
 
 export function captureEvent(
   eventName: string,
-  properties?: Record<string, string | number | boolean | null>,
+  properties?: Record<string, unknown>,
 ): void {
-  posthogInstance?.capture(eventName, properties);
+  posthogInstance?.capture(
+    eventName,
+    properties as Record<string, string | number | boolean | null>,
+  );
+}
+
+// Household-scoped events are grouped by household (opaque id only).
+export function setHousehold(householdId: string | null | undefined): void {
+  if (!posthogInstance || !householdId) return;
+  void posthogInstance.group("household", householdId);
 }
 
 // Route path only (expo-router pathname has no query string).
@@ -47,4 +71,6 @@ export function resetUser(): void {
   if (posthogInstance.getDistinctId() === posthogInstance.getAnonymousId())
     return;
   posthogInstance.reset();
+  // reset() clears registered properties; restore the taxonomy ones.
+  registerTaxonomyProperties(posthogInstance);
 }
