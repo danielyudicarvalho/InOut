@@ -6,6 +6,12 @@ primary_region = 'gru'
 [build]
   dockerfile = 'frontend/Dockerfile'
 
+# Browser-side keys are inlined at build time (public by design). Fill in and redeploy.
+# [build.args]
+#   NEXT_PUBLIC_POSTHOG_KEY = 'phc_...'
+#   NEXT_PUBLIC_POSTHOG_HOST = 'https://us.i.posthog.com'
+#   NEXT_PUBLIC_SENTRY_DSN = 'https://...@....ingest.sentry.io/...'
+
 [env]
   PORT = '3000'
   NODE_ENV = 'production'

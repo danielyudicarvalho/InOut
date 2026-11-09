@@ -26,6 +26,18 @@ WORKDIR /app/frontend
 
 ENV NODE_ENV=production
 
+# NEXT_PUBLIC_* values are inlined into the browser bundle by `next build`, so
+# they must be present now; setting them only at runtime has no effect. They are
+# public by design (PostHog project token, Sentry DSN).
+ARG NEXT_PUBLIC_POSTHOG_KEY=""
+ARG NEXT_PUBLIC_POSTHOG_HOST="https://us.i.posthog.com"
+ARG NEXT_PUBLIC_SENTRY_DSN=""
+ARG NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE="0.1"
+ENV NEXT_PUBLIC_POSTHOG_KEY=$NEXT_PUBLIC_POSTHOG_KEY \
+    NEXT_PUBLIC_POSTHOG_HOST=$NEXT_PUBLIC_POSTHOG_HOST \
+    NEXT_PUBLIC_SENTRY_DSN=$NEXT_PUBLIC_SENTRY_DSN \
+    NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE=$NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE
+
 RUN npm run build
 
 # Step 3: Production runner
