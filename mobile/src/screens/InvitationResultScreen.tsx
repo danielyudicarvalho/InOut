@@ -1,8 +1,8 @@
+import { BrandLogo } from "../components/BrandLogo";
 import { useState } from "react";
 import { Text, Image, ScrollView, Pressable, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
-import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { theme as t } from "../theme";
 
 type InvitationResult = "accepted" | "expired" | "invalid" | "used";
@@ -57,8 +57,7 @@ export function InvitationResultScreen({
           onPress={() => router.replace("/")}
           style={s.brand}
         >
-          <MaterialCommunityIcons name="sprout" size={30} color={t.green} />
-          <Text style={s.brandText}>ninho</Text>
+          <BrandLogo />
         </Pressable>
         <Image
           source={current.image}

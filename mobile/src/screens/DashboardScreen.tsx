@@ -1,3 +1,4 @@
+import { BrandLogo } from "../components/BrandLogo";
 import { useState } from "react";
 import {
   View,
@@ -214,11 +215,7 @@ function DashboardView({
             onPress={() => setPicker("household")}
             style={s.house}
           >
-            <MaterialCommunityIcons
-              name="home-outline"
-              size={20}
-              color="#365738"
-            />
+            <BrandLogo compact />
             <Text style={s.small}>{household.name}</Text>
           </Pressable>
           <Pressable

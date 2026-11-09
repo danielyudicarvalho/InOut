@@ -1,0 +1,59 @@
+{
+  "rules": {
+    "color-no-hex": true,
+    "declaration-property-value-allowed-list": {
+      "font-size": [
+        "/^var\\(--text-/",
+        "inherit",
+        "/^calc\\(/",
+        "/em$/",
+        "/%$/"
+      ],
+      "border-radius": ["/^var\\(--radius-/", "0", "inherit", "/^0 /", "/ 0$/"]
+    },
+    "declaration-property-value-disallowed-list": {
+      "outline": ["none", "0"]
+    }
+  },
+  "overrides": [
+    {
+      "files": ["app/tokens.css"],
+      "rules": {
+        "color-no-hex": null,
+        "declaration-property-value-allowed-list": null
+      }
+    },
+    {
+      "files": ["app/styles/**/*.css"],
+      "rules": {
+        "color-no-hex": [
+          true,
+          {
+            "severity": "warning"
+          }
+        ],
+        "declaration-property-value-allowed-list": [
+          {
+            "font-size": [
+              "/^var\\(--text-/",
+              "inherit",
+              "/^calc\\(/",
+              "/em$/",
+              "/%$/"
+            ],
+            "border-radius": [
+              "/^var\\(--radius-/",
+              "0",
+              "inherit",
+              "/^0 /",
+              "/ 0$/"
+            ]
+          },
+          {
+            "severity": "warning"
+          }
+        ]
+      }
+    }
+  ]
+}

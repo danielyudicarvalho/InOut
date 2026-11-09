@@ -250,3 +250,63 @@ A página solicita 51 movimentos por vez, exibe 50 e usa o último apenas para h
 A paginação é por offset e reflete a consulta atual, sem snapshot: novos lançamentos podem deslocar registros entre páginas. A interface informa essa limitação e oferece Atualizar. Publicar backend e clientes juntos para habilitar offset; versões antigas do backend ignorariam o novo parâmetro.
 
 Os hooks cancelam a consulta ao desmontar e ignoram respostas tardias. Cada conjunto de residência, período, filtros e página monta uma consulta isolada. A lista de residências é validada antes de consultar dados financeiros; acesso negado não mantém a lista anterior visível. Os detalhes são somente leitura, e Novo registro abre o seletor existente com residência/período/moeda.
+
+## Painel de busca e filtros
+
+O histórico abre um drawer modal no web e uma folha modal no Expo. A edição usa um draft local, separado dos filtros da lista. Fechar descarta a edição; Aplicar valida o intervalo inclusive e reinicia a página. Limpar remove texto/tipo/conta/categoria/subcategoria/fonte do draft e restaura o período que estava aplicado. Pílulas removíveis mostram os filtros adicionais em edição.
+
+Os catálogos são carregados com autenticação e validação da residência antes das consultas, incluindo registros arquivados para encontrar classificações históricas. As categorias têm `parentId`; selecionar outra categoria limpa a subcategoria, e mudar tipo limpa categoria/subcategoria. A fonte só pode ser escolhida para Entrada e é removida ao aplicar outro tipo.
+
+`categoryId`, `incomeSourceId` e `includeSubcategories` são encaminhados ao GET de histórico. O novo `LedgerHistoryFilter.IncludeSubcategories` é falso por padrão, preservando filtros exatos antigos. Quando verdadeiro, a consulta EF inclui a categoria e seus filhos diretos, compatível com o limite de dois níveis do domínio. Os filtros seguem antes de Skip/Take e dentro da transação do usuário. Nenhuma migração é necessária. Publicar backend e clientes juntos para obter o filtro por família de categoria.
+
+## Seletores auxiliares nos formulários
+
+Conta, categoria, subcategoria e fonte usam componentes compartilhados com busca sem distinção de acentos, seleção atual marcada, estados vazios e fechamento sem alterar o campo. No web são dialogs modais com foco nativo, montados por portal fora do formulário; no Expo são painéis modais inferiores com retorno do sistema. Contas incompatíveis com uma transferência aparecem desabilitadas com o motivo. A subcategoria continua vinculada à categoria e a fonte permanece restrita a entradas.
+
+O calendário usa os helpers de período existentes, com semanas iniciadas na segunda-feira, navegação de meses, seleção temporária, Hoje e Confirmar. Fechar descarta a seleção temporária. O valor confirmado permanece ISO no contrato de gravação, com apresentação DD/MM/AAAA.
+
+A criação auxiliar é feita dentro do seletor para preservar o lançamento. Conta nova usa nome, moeda e tipo com saldo inicial zero (explicitamente informado); a moeda de uma nova conta de destino é fixa à moeda da origem. Categoria/subcategoria usa o fluxo atual e o pai da seleção; fonte usa o contrato de fonte existente. A ação Usar item criado só fica disponível após confirmação do backend e atualiza o catálogo sem apagar conta, valor, data ou descrição do lançamento.
+
+`createAuxiliaryStore` reutiliza o ciclo durável privado de escrita com namespace `inout:pending-auxiliary:v1:<ator>:<residência>:<tipo>:<fluxo>:<pai>`. Identificadores e chaves permanecem estáveis em retries. Contas e categorias usam as políticas existentes de idempotência do backend. Como fontes não têm cabeçalho idempotente no servidor, a recuperação consulta o mesmo UUID e confere nome e estado antes de repetir o POST; conflitos não são reportados como sucesso. Isso recupera respostas perdidas e não deduplica criações independentes com UUIDs diferentes. Nenhuma migração ou endpoint novo é necessário.
+
+## Revisão antes da confirmação
+
+Os formulários de entrada, saída e transferência agora passam por uma revisão local antes de gravar. `recordReview` usa a mesma validação/preparação do contrato de escrita e monta um resumo em centavos com dados dos catálogos autorizados. A descrição exibida é a descrição normalizada que será enviada. A revisão não gera chave, persiste tentativa ou chama POST; apenas Confirmar invoca o store de gravação existente.
+
+Editar dados e as ações por campo retornam ao formulário com os valores preservados. Após edição, é necessário revisar novamente. Web retorna o foco ao controle correspondente; mobile retorna ao formulário e reposiciona a rolagem. Categoria e subcategoria são exibidas separadamente quando o item escolhido é filho; fonte aparece apenas em entrada e destino apenas em transferência.
+
+Tentativas incertas restauradas entram na revisão com Confirmação pendente, sem afirmar que ainda não foram registradas. Editar permanece bloqueado nesse caso e Verificar tentativa pendente usa o payload e a chave duráveis existentes. Se uma opção tiver sido arquivada e impedir reconstruir o resumo, o painel informa a limitação e mantém a verificação da tentativa original disponível. Sucesso continua dependendo da confirmação do backend. Nenhum contrato ou schema .NET mudou.
+
+## Confirmação de lançamento registrado
+
+Após sucesso confirmado do store, os formulários mostram uma tela própria com ilustração, status Registrado e resumo real da entrada, saída ou transferência. Falha e confirmação incerta continuam na revisão e nunca exibem essa confirmação. Os valores e a classificação vêm do mesmo payload validado e dos catálogos da tentativa; o identificador usado em Ver lançamento é o retornado pelo backend.
+
+Ver lançamento abre o histórico com `transaction=<uuid>` na URL. O adaptador encaminha `transactionId` ao GET de histórico; o DTO de filtro e o leitor EF filtram o UUID dentro da residência/transação do usuário, antes da paginação, preservando as duas pernas da transferência. O cliente rejeita uma resposta que contenha outro UUID, inclusive em backend antigo que ignore o parâmetro. Publicar backend e clientes juntos. Nenhuma migração é necessária. O histórico oferece Ver histórico completo para remover o filtro e o mobile abre os detalhes do item encontrado.
+
+Novo registro abre o seletor de tipo existente com um parâmetro `draft` de sessão de UI para remontar o formulário, mesmo quando tipo/residência/moeda/período são iguais aos do registro concluído. Esse parâmetro não é usado como identificador financeiro nem chave idempotente. Uma eventual tentativa durável remanescente continua sendo recuperada pelas regras existentes. Voltar ao histórico preserva residência, moeda e mês da data registrada.
+
+## Detalhe e estorno de lançamento
+
+A rota autenticada `/lancamento?household=<id>&transaction=<uuid>` no web/Expo consulta o UUID exato no GET de histórico, sem restrição de período. O adaptador valida a residência antes de ler os dados e rejeita linhas de outro UUID, valores/direções inválidos e pares de transferência inconsistentes. Categorias arquivadas são consultadas para separar categoria e subcategoria. Transferências exibem ambas as contas e o valor transferido, sem somá-lo como receita/despesa.
+
+Os campos de auditoria vêm de `CreatedBy`, `PostedAt` e `TransactionId`. A API atual fornece o ID do usuário, sem nome de exibição auditável; a interface mostra esse ID, sem inventar nomes. O horário é rotulado Registrado em, apresentado no fuso do dispositivo, pois a origem é PostedAt e não uma data de criação de rascunho.
+
+A ação Estornar abre confirmação com data e descrição. Apenas a confirmação chama POST `/transactions/{uuid}/reversals` com Idempotency-Key, usando o contrato .NET existente. O original permanece no ledger, e a nova movimentação é uma compensação. O store usa o ciclo durável compartilhado e namespace `inout:pending-reversal:v1:<ator>:<residência>:<transação>`. O payload persistido também registra a transação alvo; o corpo enviado à API contém apenas occurredOn e description. Reabrir uma tentativa incerta mantém alvo, data e chave, mesmo quando o original já aparece estornado. Fechar a confirmação não descarta a tentativa.
+
+O botão fica indisponível para originais já estornados e transações do tipo Reversal, conforme as regras do domínio. A validação autoritativa continua no backend, inclusive para alterações concorrentes. Após sucesso confirmado, o detalhe marca o original como estornado e oferece o vínculo para a compensação retornada. Atualizar recarrega a situação real. Não há mudança de schema ou endpoint novo nesta tarefa.
+
+### Transfer detail
+
+The canonical transaction detail route uses the server kind to select the transfer presentation in both clients. The shared repository sorts signed postings and requires transfers to have two balanced legs on distinct accounts. Clients show source and destination together without representing the transfer as income or expense. Reversal reuses the transaction-scoped durable store and the existing atomic .NET reversal operation; there is no per-account reversal write. This keeps financial rules in the shared domain and backend while the two adapters own responsive rendering.
+
+### Opening balance detail
+
+The canonical transaction view renders opening balances as initial positions, preserving their signed posting and separating the account reference date from the audit posting timestamp. The shared repository requires one account posting and supplies neutral account/reference labels. Both UI adapters link to the existing authorized account composition detail by account ID, preserving household/currency/period. No new .NET use case is needed: the ledger already exposes exact transaction history and excludes opening balances from operating results. This follows the project's inward dependency rule: domain data and invariants stay in the shared/backend layers, while presentation and navigation stay in the clients.
+
+### Classification corrections
+
+The two detail adapters expose metadata correction via a dialog/sheet backed by the shared classification store. Identity-validated local persistence is scoped separately from financial creation/reversal operations. The repository issues a metadata-only PATCH with the durable key; classification rules and catalog validation stay in shared/domain layers. The backend uses the existing idempotency coordinator in the same database transaction as metadata and audit updates, and reuses its history query with an exact transaction filter to construct the stored response before commit. Nullable source clears the optional association. No account, amount, currency or occurrence-date update is part of this operation. This preserves the dependency direction described in the project's Clean Architecture reference.
+
+### Reversal confirmation
+
+Confirmation is rendered by separate web/native adapters over the existing reversal store. Shared `reversalEffects` negates each original posting for explanation; it never submits financial data. New submissions require a reason in the existing description field. Pending bodies bypass new-operation validation so older uncertain attempts replay unchanged. The existing idempotent .NET reversal remains the authoritative atomic operation for all involved accounts.

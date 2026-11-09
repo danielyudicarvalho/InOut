@@ -6,7 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { money, periodLabel, type FinancialAnalysis } from "@inout/finance";
 import { useFinancialHome } from "../lib/finance/use-financial-home";
 import { useAnalysis } from "../lib/finance/use-analysis";
-import { PeriodPicker } from "./period-picker";
+import { PeriodPicker } from "./financial/selectors/period-picker";
 import "./analysis.css";
 export type AnalysisView =
   "hub" | "overview" | "compare" | "accounts" | "evolution" | "review";

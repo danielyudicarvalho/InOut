@@ -58,6 +58,7 @@ public sealed partial class EfLedgerStore
                 equals new { category.HouseholdId, Id = (Guid?)category.Id } into categoryRows
             from category in categoryRows.DefaultIfEmpty()
             where filter.CategoryId == null || entry.CategoryId == filter.CategoryId
+                || (filter.IncludeSubcategories && category != null && category.ParentId == filter.CategoryId)
             join source in dbContext.IncomeSources.AsNoTracking()
                 on new { transaction.HouseholdId, Id = transaction.IncomeSourceId }
                 equals new { source.HouseholdId, Id = (Guid?)source.Id } into sourceRows
@@ -331,8 +332,8 @@ public sealed partial class EfLedgerStore
         await dbContext.SaveChangesAsync(cancellationToken);
         var historyList = await QueryHistoryAsync(
             householdId, 2, new LedgerHistoryFilter(TransactionId: transactionId), cancellationToken);
-        var historyItem = historyList.Count > 0 ? historyList[0]
-            : throw new InvalidOperationException("Failed to retrieve updated transaction history item.");
+        var historyItem = historyList.FirstOrDefault()
+            ?? throw new InvalidOperationException("Failed to retrieve updated transaction history item.");
         if (acquisition is not null)
         {
             idempotency.Complete(acquisition.Record, historyItem, (int)HttpStatusCode.OK,

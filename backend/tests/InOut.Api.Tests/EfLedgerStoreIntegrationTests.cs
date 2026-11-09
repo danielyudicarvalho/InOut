@@ -846,6 +846,14 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
                 new LedgerHistoryFilter(CategoryId: childId, Kind: FinancialTransactionKind.Expense),
                 CancellationToken.None);
             Assert.Equal("Cinema", Assert.Single(history).CategoryName);
+            var exactParent = await service.GetHistoryAsync(actorUserId, householdId, 100,
+                new LedgerHistoryFilter(CategoryId: rootId, Kind: FinancialTransactionKind.Expense),
+                CancellationToken.None);
+            Assert.Empty(exactParent);
+            var familyHistory = await service.GetHistoryAsync(actorUserId, householdId, 100,
+                new LedgerHistoryFilter(CategoryId: rootId, Kind: FinancialTransactionKind.Expense,
+                    IncludeSubcategories: true), CancellationToken.None);
+            Assert.Equal("Cinema", Assert.Single(familyHistory).CategoryName);
 
             // Re-archiving is a no-op
             await service.ArchiveCategoryAsync(householdId, childId, actorUserId, CancellationToken.None);
@@ -902,6 +910,13 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
                 new LedgerHistoryFilter(Kind: FinancialTransactionKind.Transfer), CancellationToken.None);
             Assert.Equal(2, transfer.Count);
             Assert.All(transfer, item => Assert.Null(item.CategoryId));
+            var byTransaction = await service.GetHistoryAsync(actorUserId, householdId, 10,
+                new LedgerHistoryFilter(TransactionId: transfer[0].TransactionId), CancellationToken.None);
+            Assert.Equal(2, byTransaction.Count);
+            Assert.All(byTransaction, item => Assert.Equal(transfer[0].TransactionId, item.TransactionId));
+            var missing = await service.GetHistoryAsync(actorUserId, householdId, 10,
+                new LedgerHistoryFilter(TransactionId: Guid.NewGuid()), CancellationToken.None);
+            Assert.Empty(missing);
             var secondLeg = await service.GetHistoryAsync(actorUserId, householdId, 1,
                 new LedgerHistoryFilter(Kind: FinancialTransactionKind.Transfer, Offset: 1), CancellationToken.None);
             Assert.Equal(transfer[1], Assert.Single(secondLeg));
@@ -1537,6 +1552,7 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
             IdempotencyRequest.Create(householdId, actorUserId, IdempotencyOperation.CreateCategory, Guid.NewGuid()),
             CancellationToken.None);
 
+        var correctionKey = Guid.NewGuid();
         var correctedItem = await service.CorrectClassificationAsync(
             householdId,
             result.TransactionId,
@@ -1544,10 +1560,19 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
             newCategory.Id,
             null,
             "Updated Expense Description",
-            CancellationToken.None);
+            CancellationToken.None, correctionKey);
 
         Assert.Equal(newCategory.Id, correctedItem.CategoryId);
         Assert.Equal("Updated Expense Description", correctedItem.Description);
+
+        await service.CorrectClassificationAsync(householdId, result.TransactionId, actorUserId,
+            newCategory.Id, null, "Later edit", CancellationToken.None, Guid.NewGuid());
+        var replay = await service.CorrectClassificationAsync(householdId, result.TransactionId, actorUserId,
+            newCategory.Id, null, "Updated Expense Description", CancellationToken.None, correctionKey);
+        Assert.Equal("Updated Expense Description", replay.Description);
+        var latest = await store.GetHistoryAsync(actorUserId, householdId, 2,
+            new LedgerHistoryFilter(TransactionId: result.TransactionId), CancellationToken.None);
+        Assert.Equal("Later edit", Assert.Single(latest).Description);
 
         var postCorrectionBalances = await store.GetBalancesAsync(actorUserId, householdId, CancellationToken.None);
         Assert.Equal(initialBalances.Single(b => b.AccountId == accountId).BalanceCents,

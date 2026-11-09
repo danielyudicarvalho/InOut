@@ -10,6 +10,24 @@ public sealed class FinancialTransactionTests
     private static readonly DateOnly OccurredOn = new(2026, 9, 14);
 
     [Fact]
+    public void ClassificationCorrectionCanRemoveSourceWithoutChangingFinancialEntries()
+    {
+        var source = IncomeSource.Create(Guid.NewGuid(), HouseholdId, "Employer");
+        var original = FinancialTransaction.Income(HouseholdId, Guid.NewGuid(), Guid.NewGuid(),
+            new Money(150_00), OccurredOn, ActorId, "Original", source.Id);
+        var corrected = original.CorrectClassification(null, null, "Corrected");
+        Assert.Null(corrected.IncomeSourceId);
+        Assert.Equal(source.Id, original.IncomeSourceId);
+        Assert.Equal(original.Id, corrected.Id);
+        Assert.Equal(original.OccurredOn, corrected.OccurredOn);
+        Assert.Equal(original.CreatedBy, corrected.CreatedBy);
+        Assert.Equal(original.Entries.Single().AccountId, corrected.Entries.Single().AccountId);
+        Assert.Equal(original.Entries.Single().Amount, corrected.Entries.Single().Amount);
+        Assert.Equal(original.Entries.Single().Direction, corrected.Entries.Single().Direction);
+        Assert.Equal(original.Entries.Single().CategoryId, corrected.Entries.Single().CategoryId);
+    }
+
+    [Fact]
     public void MoneyRejectsNegativeAmounts()
     {
         var exception = Assert.Throws<FinancialRuleException>(() => new Money(-1));
@@ -106,6 +124,34 @@ public sealed class FinancialTransactionTests
                 Assert.Equal(EntryDirection.Credit, credit.Direction);
             });
         Assert.Equal(transaction.Entries[0].Amount, transaction.Entries[1].Amount);
+    }
+
+    [Fact]
+    public void TransferReversalCompensatesBothAccountsInOneTransaction()
+    {
+        var source = Guid.NewGuid();
+        var destination = Guid.NewGuid();
+        var original = FinancialTransaction.Transfer(
+            HouseholdId, source, destination, new Money(500_00), OccurredOn, ActorId, "Reserve");
+        var reversal = FinancialTransaction.Reversal(original, ActorId, OccurredOn.AddDays(1));
+
+        Assert.Equal(original.Id, reversal.ReversalOf);
+        Assert.Equal(FinancialTransactionKind.Reversal, reversal.Kind);
+        Assert.Collection(reversal.Entries,
+            credit =>
+            {
+                Assert.Equal(source, credit.AccountId);
+                Assert.Equal(EntryDirection.Credit, credit.Direction);
+                Assert.Equal(original.Entries[0].Amount, credit.Amount);
+            },
+            debit =>
+            {
+                Assert.Equal(destination, debit.AccountId);
+                Assert.Equal(EntryDirection.Debit, debit.Direction);
+                Assert.Equal(original.Entries[1].Amount, debit.Amount);
+            });
+        Assert.Equal(EntryDirection.Debit, original.Entries[0].Direction);
+        Assert.Equal(EntryDirection.Credit, original.Entries[1].Direction);
     }
 
     [Fact]

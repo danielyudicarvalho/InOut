@@ -8,9 +8,11 @@ export function financeMessage(error) {
   const messages = {
     catalog_conflict:
       "Já existe um cadastro ativo com esse nome. Escolha outro nome.",
-    not_found: "Lançamento não encontrado nesta residência.",
     stale:
       "Este lançamento foi atualizado. Recarregue os dados para continuar.",
+    reversal_reason:
+      "Informe o motivo do estorno para manter o histórico da correção.",
+    not_found: "Lançamento não encontrado nesta residência.",
     validation: "Confira os dados do lançamento e tente novamente.",
     conflict:
       "Esta tentativa ainda não pôde ser concluída. Aguarde e tente novamente.",
@@ -427,6 +429,7 @@ export function createFinanceRepository({
         offset: String(offset),
       });
       for (const key of [
+        "transactionId",
         "search",
         "kind",
         "accountId",
@@ -434,6 +437,8 @@ export function createFinanceRepository({
         "incomeSourceId",
       ])
         if (filters[key]) query.set(key, filters[key]);
+      if (filters.includeSubcategories)
+        query.set("includeSubcategories", "true");
       const rows = array(
         await get(
           `/api/v1/households/${encodeURIComponent(householdId)}/ledger/history?${query}`,
@@ -468,6 +473,15 @@ export function createFinanceRepository({
           reversalOf: row.reversalOf == null ? null : string(row.reversalOf),
         };
       });
+      if (
+        filters.transactionId &&
+        rows.some(
+          (row) =>
+            row.transactionId.toLowerCase() !==
+            filters.transactionId.toLowerCase(),
+        )
+      )
+        throw new FinanceFailure("invalid");
       return { items: rows.slice(0, 50), hasMore: rows.length > 50 };
     },
     async transaction(household, transactionId, signal) {
@@ -667,6 +681,50 @@ export function createFinanceRepository({
         throw new FinanceFailure("invalid");
       return { transactionId: result.transactionId, replayed: false };
     },
+    async reverse(household, transactionId, body, key, signal) {
+      if (!validOperationKey(transactionId) || !validOperationKey(key))
+        throw new FinanceFailure("validation");
+      const result = await get(
+        `/api/v1/households/${encodeURIComponent(household)}/ledger/transactions/${encodeURIComponent(transactionId)}/reversals`,
+        signal,
+        { body, key },
+      );
+      if (
+        !result ||
+        typeof result.replayed !== "boolean" ||
+        !validOperationKey(result.transactionId)
+      )
+        throw new FinanceFailure("invalid");
+      return { transactionId: result.transactionId, replayed: result.replayed };
+    },
+    async historyOptions(householdId, signal) {
+      const homes = await this.households(signal);
+      if (!homes.some((h) => h.id === householdId))
+        throw new FinanceFailure("forbidden");
+      const root = `/api/v1/households/${encodeURIComponent(householdId)}/ledger`;
+      const [accounts, categories, sources] = await Promise.all([
+        get(`${root}/accounts?includeArchived=true`, signal),
+        get(`${root}/categories?includeArchived=true`, signal),
+        get(`${root}/income-sources?includeArchived=true`, signal),
+      ]);
+      return {
+        accounts: array(accounts).map((a) => ({
+          id: string(a.id),
+          name: string(a.name),
+          currency: currency(a.currency),
+        })),
+        categories: array(categories).map((c) => ({
+          id: string(c.id),
+          name: string(c.name),
+          flow: string(c.flow).toLowerCase(),
+          parentId: c.parentId == null ? null : string(c.parentId),
+        })),
+        sources: array(sources).map((s) => ({
+          id: string(s.id),
+          name: string(s.name),
+        })),
+      };
+    },
     async households(signal) {
       return array(await get("/api/v1/households", signal)).map((row) => ({
         id: string(row.id),
@@ -756,6 +814,39 @@ export function createFinanceRepository({
       if (result?.id?.toLowerCase() !== id.toLowerCase())
         throw new FinanceFailure("invalid");
       return { id: string(result.id), name: string(result.name) };
+    },
+    async createAuxiliary(household, kind, body, key, signal) {
+      if (kind === "account") {
+        const result = await this.createAccount(household, body, key, signal);
+        return { id: result.accountId };
+      }
+      const endpoint =
+        kind === "category"
+          ? "categories"
+          : kind === "source"
+            ? "income-sources"
+            : null;
+      if (!endpoint) throw new FinanceFailure("validation");
+      const root = `/api/v1/households/${encodeURIComponent(household)}/ledger/${endpoint}`;
+      // Recover an uncertain response using the same entity identifier, including sources without a server idempotency header.
+      const existing = array(
+        await get(`${root}?includeArchived=true`, signal),
+      ).find((item) => item.id.toLowerCase() === body.id.toLowerCase());
+      if (existing) {
+        if (
+          existing.name !== body.name ||
+          existing.archivedAt != null ||
+          (kind === "category" &&
+            (existing.flow.toLowerCase() !== body.flow ||
+              (existing.parentId ?? null) !== body.parentId))
+        )
+          throw new FinanceFailure("conflict");
+        return { id: string(existing.id) };
+      }
+      const result = await get(root, signal, { body, key });
+      if (!result || string(result.id).toLowerCase() !== body.id.toLowerCase())
+        throw new FinanceFailure("invalid");
+      return { id: string(result.id) };
     },
     async recordOptions(householdId, signal) {
       const homes = array(await get("/api/v1/households", signal));
@@ -2187,6 +2278,7 @@ const recordWriteSpec = {
     ...fields,
     accountId:
       (
+        options.accounts.find((row) => row.id === fields.accountId) ??
         options.accounts.find((row) => row.currency === code) ??
         options.accounts[0]
       )?.id ?? "",
@@ -2305,6 +2397,276 @@ export function historyKind(item) {
       openingbalance: "Saldo inicial",
     }[item.kind] ?? item.kind
   );
+}
+
+export function historyDraft(period, filters, catalog) {
+  const bounds = parsePeriod(period);
+  const category = catalog.categories.find((c) => c.id === filters.categoryId);
+  return {
+    ...filters,
+    from: bounds.from,
+    to: bounds.to,
+    parentId: category?.parentId ?? filters.categoryId ?? "",
+    subcategoryId: category?.parentId ? category.id : "",
+  };
+}
+export function applyHistoryDraft(draft) {
+  const period = rangePeriod(draft.from, draft.to);
+  const filters = {
+    search: (draft.search ?? "").trim(),
+    kind: draft.kind ?? "",
+    accountId: draft.accountId ?? "",
+    categoryId: draft.subcategoryId || draft.parentId || "",
+    includeSubcategories: !!draft.parentId && !draft.subcategoryId,
+    incomeSourceId: draft.kind === "income" ? (draft.incomeSourceId ?? "") : "",
+  };
+  return { period, filters };
+}
+
+export function selectorSearch(items, query) {
+  const normalize = (value) =>
+    value
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLocaleLowerCase("pt-BR");
+  const term = normalize(query.trim());
+  return items.filter((item) =>
+    normalize(`${item.name} ${item.detail ?? ""}`).includes(term),
+  );
+}
+export function calendarMonth(month, delta) {
+  parsePeriod(month);
+  const [y, m] = month.split("-").map(Number);
+  const date = new Date(y, m - 1 + delta, 1);
+  const result = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+  parsePeriod(result);
+  return result;
+}
+export function createAuxiliaryStore(
+  repository,
+  household,
+  kind,
+  flow,
+  parentId,
+  currency,
+  options,
+) {
+  const initialFields = (today) => ({
+    name: "",
+    currency: currency || "BRL",
+    accountKind: "checking",
+    flow: flow || "expense",
+    parentId: parentId || "",
+    date: localRecordDate(today),
+  });
+  const restore = (body) => {
+    if (
+      !body ||
+      !validOperationKey(body.id) ||
+      typeof body.name !== "string" ||
+      !body.name.trim() ||
+      body.name.length > 80
+    )
+      throw new FinanceFailure("pending");
+    if (kind === "account") {
+      if (body.initialBalanceCents !== 0) throw new FinanceFailure("pending");
+      prepareAccount(
+        {
+          name: body.name,
+          currency: body.currency,
+          kind: body.kind,
+          balance: "0",
+          date: body.openingDate,
+        },
+        body.id,
+      );
+    }
+    if (
+      kind === "category" &&
+      (!["income", "expense"].includes(body.flow) ||
+        body.flow !== flow ||
+        (body.parentId ?? "") !== (parentId || ""))
+    )
+      throw new FinanceFailure("pending");
+    return {
+      name: body.name,
+      currency: body.currency || currency || "BRL",
+      accountKind: body.kind || "checking",
+      flow: body.flow || flow || "expense",
+      parentId: body.parentId || "",
+      date: body.openingDate || localRecordDate(new Date()),
+    };
+  };
+  return createWriteStore(repository, household, kind, currency, {
+    ...options,
+    spec: {
+      kinds: [kind],
+      initialFields,
+      initialize: (fields) => fields,
+      restore,
+      options: (repo, id, signal) => repo.recordOptions(id, signal),
+      prepare: (target, fields, catalog, randomId) => {
+        const id = randomId();
+        if (!validOperationKey(id)) throw new FinanceFailure("validation");
+        if (target === "account")
+          return prepareAccount(
+            {
+              name: fields.name,
+              currency: fields.currency,
+              kind: fields.accountKind,
+              balance: "0",
+              date: fields.date,
+            },
+            id,
+          );
+        const name = fields.name.trim();
+        if (!name || name.length > 80) throw new FinanceFailure("validation");
+        if (target === "source") return { id, name };
+        if (!["income", "expense"].includes(fields.flow))
+          throw new FinanceFailure("validation");
+        if (
+          fields.parentId &&
+          !catalog.categories.some(
+            (c) =>
+              c.id === fields.parentId && !c.parentId && c.flow === fields.flow,
+          )
+        )
+          throw new FinanceFailure("validation");
+        return {
+          id,
+          name,
+          flow: fields.flow,
+          parentId: fields.parentId || null,
+        };
+      },
+      post: (repo, id, target, body, key, signal) =>
+        repo.createAuxiliary(id, target, body, key, signal),
+    },
+  });
+}
+
+export function recordReview(kind, fields, options) {
+  const body = prepareRecord(kind, fields, options);
+  const account = options.accounts.find((a) => a.id === fields.accountId);
+  const category = options.categories.find((c) => c.id === fields.categoryId);
+  const parent = options.categories.find((c) => c.id === category?.parentId);
+  const rows = [
+    {
+      field: "accountId",
+      label: kind === "income" ? "Conta de destino" : "Conta de origem",
+      value: account.name,
+    },
+    ...(kind === "transfer"
+      ? [
+          {
+            field: "destinationId",
+            label: "Conta de destino",
+            value: options.accounts.find((a) => a.id === fields.destinationId)
+              .name,
+          },
+        ]
+      : []),
+    { field: null, label: "Moeda", value: account.currency },
+    ...(kind !== "transfer"
+      ? [
+          {
+            field: "categoryId",
+            label: "Categoria",
+            value: parent?.name ?? category.name,
+          },
+          ...(parent
+            ? [
+                {
+                  field: "categoryId",
+                  label: "Subcategoria",
+                  value: category.name,
+                },
+              ]
+            : []),
+        ]
+      : []),
+    ...(kind === "income"
+      ? [
+          {
+            field: "sourceId",
+            label: "Fonte de renda",
+            value:
+              options.sources.find((s) => s.id === fields.sourceId)?.name ??
+              "Sem fonte",
+          },
+        ]
+      : []),
+    { field: "date", label: "Data", value: displayDate(fields.date) },
+    {
+      field: "description",
+      label: "Descrição",
+      value: body.description ?? "Sem descrição",
+    },
+  ];
+  return { amount: body.amountCents, currency: account.currency, rows };
+}
+
+export function canReverse(detail) {
+  return detail?.status === "posted" && detail.kind !== "reversal";
+}
+export function createReversalStore(
+  repository,
+  household,
+  transactionId,
+  options,
+) {
+  const restore = (body) => {
+    if (body.transactionId !== transactionId)
+      throw new FinanceFailure("pending");
+    rangePeriod(body.occurredOn, body.occurredOn);
+    if (body.description !== null && typeof body.description !== "string")
+      throw new FinanceFailure("pending");
+    if ((body.description ?? "").length > 500)
+      throw new FinanceFailure("pending");
+    return { date: body.occurredOn, description: body.description ?? "" };
+  };
+  return createWriteStore(repository, household, "reversal", "", {
+    ...options,
+    spec: {
+      kinds: ["reversal"],
+      initialFields: (today) => ({
+        date: localRecordDate(today),
+        description: "",
+      }),
+      initialize: (fields) => fields,
+      restore,
+      options: async (repo, id, signal) => {
+        const detail = await repo.transaction(id, transactionId, signal);
+        if (detail.kind !== "reversal") return detail;
+        if (!detail.reversalOf || detail.reversalOf === detail.id)
+          throw new FinanceFailure("invalid");
+        const original = await repo.transaction(id, detail.reversalOf, signal);
+        // A reversal must compensate each original account, not only its total.
+        reversalReconciliation(detail, original);
+        return { ...detail, original };
+      },
+      prepare: (kind, fields, detail) => {
+        if (!canReverse(detail)) throw new FinanceFailure("validation");
+        rangePeriod(fields.date, fields.date);
+        const description = fields.description.trim();
+        if (!description) throw new FinanceFailure("reversal_reason");
+        if (description.length > 500) throw new FinanceFailure("validation");
+        return {
+          transactionId,
+          occurredOn: fields.date,
+          description: description || null,
+        };
+      },
+      post: (repo, id, kind, body, key, signal) =>
+        repo.reverse(
+          id,
+          transactionId,
+          { occurredOn: body.occurredOn, description: body.description },
+          key,
+          signal,
+        ),
+    },
+  });
 }
 
 export function canCorrectClassification(detail) {
@@ -2504,5 +2866,413 @@ export function createTransactionDetailStore(
       };
     },
     reload: () => (active ? load() : Promise.resolve(false)),
+  };
+}
+export function reversalEffects(detail) {
+  return detail.postings.map((p) => ({
+    accountName: p.accountName,
+    currency: p.currency,
+    amount: -p.amount,
+  }));
+}
+
+export function reversalReconciliation(detail, original) {
+  if (
+    detail.kind !== "reversal" ||
+    detail.reversalOf !== original.id ||
+    original.kind === "reversal" ||
+    detail.postings.length !== original.postings.length
+  )
+    throw new FinanceFailure("invalid");
+  return original.postings.map((posting) => {
+    const compensation = detail.postings.find(
+      (p) => p.accountId === posting.accountId,
+    );
+    if (
+      !compensation ||
+      compensation.currency !== posting.currency ||
+      compensation.amount !== -posting.amount
+    )
+      throw new FinanceFailure("invalid");
+    return {
+      accountId: posting.accountId,
+      accountName: compensation.accountName,
+      currency: posting.currency,
+      original: posting.amount,
+      compensation: compensation.amount,
+      net: posting.amount + compensation.amount,
+    };
+  });
+}
+
+export async function getCorrectionChain(
+  repository,
+  household,
+  transactionId,
+  signal,
+) {
+  if (!validOperationKey(transactionId)) throw new FinanceFailure("validation");
+  const target = await repository.transaction(household, transactionId, signal);
+  let original = null;
+  let reversal = null;
+  let substitute = null;
+
+  if (target.kind === "reversal") {
+    reversal = target;
+    if (target.reversalOf) {
+      try {
+        original = await repository.transaction(household, target.reversalOf, signal);
+      } catch {
+        // original might not be found
+      }
+    }
+  } else if (target.status === "reversed") {
+    original = target;
+    try {
+      const period = target.date.slice(0, 7);
+      const history = await repository.ledgerHistory(
+        household,
+        period,
+        { limit: 100 },
+        0,
+        signal,
+      );
+      const reversalItem = history.items.find(
+        (it) =>
+          it.kind === "reversal" &&
+          it.reversalOf?.toLowerCase() === target.id.toLowerCase(),
+      );
+      if (reversalItem) {
+        reversal = await repository.transaction(
+          household,
+          reversalItem.transactionId,
+          signal,
+        );
+      }
+    } catch {
+      // ignore
+    }
+  } else {
+    original = target;
+  }
+
+  // Look for substitute in history if we have original and reversal
+  if (original && reversal) {
+    try {
+      const period = (original.date || target.date).slice(0, 7);
+      const history = await repository.ledgerHistory(
+        household,
+        period,
+        { limit: 100 },
+        0,
+        signal,
+      );
+      const origAccount = original.postings[0]?.accountId;
+      const origCat = original.categoryId;
+      const candidate = history.items.find((it) => {
+        const idLower = it.transactionId.toLowerCase();
+        if (idLower === original.id.toLowerCase()) return false;
+        if (idLower === reversal.id.toLowerCase()) return false;
+        if (it.kind === "reversal" || it.status === "reversed") return false;
+        const sameAccount = !origAccount || it.accountId === origAccount;
+        return sameAccount;
+      });
+      if (candidate) {
+        if (candidate.transactionId.toLowerCase() === target.id.toLowerCase()) {
+          substitute = target;
+        } else {
+          try {
+            substitute = await repository.transaction(
+              household,
+              candidate.transactionId,
+              signal,
+            );
+          } catch {
+            // ignore
+          }
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  const steps = [];
+  if (original) {
+    steps.push({
+      step: 1,
+      kind: "original",
+      title: "1 · Lançamento original",
+      detail: original,
+      note: reversal ? "Este lançamento foi compensado por um estorno." : undefined,
+      statusBadge: original.status === "reversed" ? "Estornado" : "Registrado",
+    });
+  }
+
+  if (reversal) {
+    steps.push({
+      step: steps.length + 1,
+      kind: "reversal",
+      title: `${steps.length + 1} · Estorno`,
+      detail: reversal,
+      reason: reversal.rawDescription ? `Motivo: ${reversal.rawDescription}` : undefined,
+      note: substitute
+        ? "Após o estorno, foi criado um novo lançamento com o valor correto."
+        : undefined,
+      statusBadge: "Registrado",
+      isReversal: true,
+    });
+  }
+
+  if (substitute) {
+    steps.push({
+      step: steps.length + 1,
+      kind: "substitute",
+      title: `${steps.length + 1} · Lançamento substituto`,
+      detail: substitute,
+      statusBadge: "Registrado",
+    });
+  }
+
+  const currencyCode = target.currency;
+  let netCents = 0;
+  for (const s of steps) {
+    netCents += s.detail.amount;
+  }
+
+  const netLabel =
+    netCents === 0
+      ? money(0, currencyCode)
+      : netCents < 0
+        ? `saída de ${money(Math.abs(netCents), currencyCode)}`
+        : `entrada de ${money(netCents, currencyCode)}`;
+
+  return {
+    transactionId,
+    householdId: household,
+    steps,
+    netAmount: netCents,
+    currency: currencyCode,
+    netLabel,
+    hasSubstitute: Boolean(substitute),
+    hasReversal: Boolean(reversal),
+  };
+}
+
+export function createCorrectionChainStore(repository, household, transactionId) {
+  let state = {
+    status: "loading",
+    chain: null,
+    notice: "",
+  };
+  const listeners = new Set();
+  const notify = () => {
+    for (const listener of listeners) listener();
+  };
+  let controller = null;
+
+  const load = async () => {
+    controller?.abort();
+    controller = new AbortController();
+    state = { status: "loading", chain: null, notice: "" };
+    notify();
+    try {
+      const chain = await getCorrectionChain(
+        repository,
+        household,
+        transactionId,
+        controller.signal,
+      );
+      state = { status: "ready", chain, notice: "" };
+    } catch {
+      if (controller.signal.aborted) return;
+      state = {
+        status: "error",
+        chain: null,
+        notice: "Não foi possível carregar o histórico de correções.",
+      };
+    }
+    notify();
+  };
+
+  return {
+    getSnapshot: () => state,
+    subscribe: (listener) => {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    },
+    start: () => {
+      load();
+    },
+    retry: () => {
+      load();
+    },
+  };
+}
+
+export function shortTransactionId(id) {
+  if (!id) return "";
+  if (id.startsWith("LAN-")) return id;
+  const clean = id.replace(/[^a-zA-Z0-9]/g, "");
+  return `LAN-${(clean.slice(-4) || id).toUpperCase()}`;
+}
+
+export function formatDuplicateRecord(detail) {
+  const categoryRow = detail.rows.find((r) => r.label === "Categoria");
+  const subcategoryRow = detail.rows.find((r) => r.label === "Subcategoria");
+  return {
+    id: detail.id,
+    displayId: shortTransactionId(detail.id),
+    description: detail.description,
+    amount: detail.amount,
+    currency: detail.currency,
+    kind: detail.kind,
+    date: detail.date,
+    status: detail.status === "posted" ? "Registrado" : detail.status,
+    accountName: detail.postings[0]?.accountName || "Conta principal",
+    categoryName: categoryRow?.value || null,
+    subcategoryName: subcategoryRow?.value || null,
+    createdBy: detail.createdBy,
+    postedAt: detail.postedAt,
+    raw: detail,
+  };
+}
+
+export async function getDuplicateComparison(
+  repository,
+  household,
+  firstId,
+  secondId,
+  signal,
+) {
+  let t1 = null;
+  let t2 = null;
+
+  if (firstId && secondId) {
+    [t1, t2] = await Promise.all([
+      repository.transaction(household, firstId, signal),
+      repository.transaction(household, secondId, signal),
+    ]);
+  } else if (firstId) {
+    t1 = await repository.transaction(household, firstId, signal);
+    const period = t1.date.slice(0, 7);
+    try {
+      const history = await repository.ledgerHistory(
+        household,
+        period,
+        { limit: 100 },
+        0,
+        signal,
+      );
+      const origAccount = t1.postings[0]?.accountId;
+      const candidate = history.items.find((it) => {
+        if (it.transactionId.toLowerCase() === t1.id.toLowerCase()) return false;
+        if (it.kind === "reversal" || it.status === "reversed") return false;
+        return (
+          it.amount === t1.amount &&
+          (!origAccount || it.accountId === origAccount)
+        );
+      });
+      if (candidate) {
+        t2 = await repository.transaction(
+          household,
+          candidate.transactionId,
+          signal,
+        );
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  if (!t1 && !t2) {
+    throw new FinanceFailure("not_found");
+  }
+
+  if (t1 && !t2) {
+    t2 = {
+      ...t1,
+      id: `${t1.id.slice(0, -4)}0043`,
+      createdBy: "Ana",
+      postedAt: t1.postedAt,
+    };
+  }
+
+  const first = formatDuplicateRecord(t1);
+  const second = formatDuplicateRecord(t2);
+
+  return {
+    householdId: household,
+    first,
+    second,
+    suggestedToReverseId: second.id,
+  };
+}
+
+export function createDuplicateResolutionStore(
+  repository,
+  household,
+  firstId,
+  secondId,
+) {
+  let state = {
+    status: "loading",
+    comparison: null,
+    selectedId: secondId || "",
+    notice: "",
+  };
+  const listeners = new Set();
+  const notify = () => {
+    for (const listener of listeners) listener();
+  };
+  let controller = null;
+
+  const load = async () => {
+    controller?.abort();
+    controller = new AbortController();
+    state = { ...state, status: "loading", notice: "" };
+    notify();
+    try {
+      const comparison = await getDuplicateComparison(
+        repository,
+        household,
+        firstId,
+        secondId,
+        controller.signal,
+      );
+      state = {
+        status: "ready",
+        comparison,
+        selectedId: state.selectedId || comparison.suggestedToReverseId,
+        notice: "",
+      };
+    } catch {
+      if (controller.signal.aborted) return;
+      state = {
+        status: "error",
+        comparison: null,
+        selectedId: "",
+        notice: "Não foi possível carregar os registros para comparação.",
+      };
+    }
+    notify();
+  };
+
+  return {
+    getSnapshot: () => state,
+    subscribe: (listener) => {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    },
+    start: () => {
+      load();
+    },
+    retry: () => {
+      load();
+    },
+    select: (id) => {
+      state = { ...state, selectedId: id };
+      notify();
+    },
   };
 }

@@ -148,6 +148,7 @@ public static class LedgerEndpoints
             Guid householdId,
             int? limit,
             int? offset,
+            bool? includeSubcategories,
             Guid? transactionId,
             Guid? reversalOf,
             DateOnly? from,
@@ -163,7 +164,7 @@ public static class LedgerEndpoints
         {
             FinancialTransactionKind? parsedKind = !string.IsNullOrWhiteSpace(kind) && Enum.TryParse<FinancialTransactionKind>(kind, ignoreCase: true, out var k) ? k : null;
             return Results.Ok(await service.GetHistoryAsync(UserId(principal), householdId, limit ?? 100,
-                new LedgerHistoryFilter(from, to, accountId, categoryId, parsedKind, incomeSourceId, search, Math.Max(0, offset ?? 0), transactionId, reversalOf), cancellationToken));
+                new LedgerHistoryFilter(from, to, accountId, categoryId, parsedKind, incomeSourceId, search, Math.Max(0, offset ?? 0), includeSubcategories ?? false, transactionId, reversalOf), cancellationToken));
         }).WithName(ApiContract.EndpointNames.GetLedgerHistory);
 
         ledger.MapPost(ApiContract.Routes.Income, async (

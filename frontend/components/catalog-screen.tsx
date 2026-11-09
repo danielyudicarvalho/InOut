@@ -15,7 +15,7 @@ import { useFinancialHome } from "../lib/finance/use-financial-home";
 import { useCatalog } from "../lib/finance/use-catalog";
 import { useLedgerHistory } from "../lib/finance/use-ledger-history";
 import { useSourceShare } from "../lib/finance/use-source-share";
-import { PeriodPicker } from "./period-picker";
+import { PeriodPicker } from "./financial/selectors/period-picker";
 import "./accounts.css";
 import "./catalog.css";
 export function CatalogScreen({ type }: { type: CatalogType }) {

@@ -608,3 +608,163 @@ Após a recarga, o estado estornado oculta a correção e oferece o vínculo rea
 com a compensação. Respostas incertas preservam a tentativa, sem afirmar que
 nada foi salvo. Ver contratos, prompt da arte e limites de validação em
 [transaction-conflict.md](features/transaction-conflict.md).
+
+
+## Logo Ninho — 2026-10-28
+
+Marca própria criada com imagegen integrado: casinha sobre ninho, folha discreta, telhado terracota e nome em verde profundo. Fonte PNG RGBA preservada em `frontend/public/images/ninho-logo.png` e `mobile/assets/ninho-logo.png`, idênticas entre plataformas.
+
+`BrandLogo` centraliza a marca nas duas plataformas. Versão completa nos cabeçalhos de acesso, onboarding e barras laterais financeiras; versão compacta no seletor de residência do dashboard mobile. O símbolo compacto é uma janela de apresentação sobre a mesma imagem, sem redesenhar ou regenerar a marca. Texto alternativo/nome acessível: Ninho. Links e contexto de navegação existentes preservados. Ícones decorativos de plantas fora da marca foram mantidos.
+
+Prompt: “Create the final primary logo for Ninho, a cozy household finance app. Transparent background, wide horizontal logo lockup. At left a simple warm terracotta pitched roof outlining a small cream house resting directly on a stylized nest of three broad curved brown strokes, tiny sage leaf accent. No bird, no coin, no heart, no detailed twigs. At right exact word 'Ninho' in beautiful highly legible dark forest green serif lettering. Flat clean brand illustration with subtle organic curves, crisp edges, minimal shapes, professional scalable appearance, no shadows, no gradients, no watercolor texture. House-nest symbol should read clearly at small app sizes. Generous clear transparent margin around logo. Only text is 'Ninho'. No tagline, no mockup.”
+
+Validação do logo: lint e tipagem web/mobile passaram; build de produção Next.js passou. Arte gerada inspecionada visualmente. Sem testes novos para a substituição visual; QA em dispositivo e builds nativos não executados.
+
+## Busca e filtros — 2026-10-28
+
+Painel de referência implementado no histórico web/mobile: texto por descrição, datas inclusivas, tipos, conta, categoria/subcategoria, fonte apenas para entradas, pílulas removíveis e botões Limpar/Aplicar. Fechar não aplica o draft. O web usa dialog modal com foco nativo e fechamento por Escape; o mobile usa Modal com botão Fechar e retorno do sistema. Datas no Expo usam campos DD/MM/AAAA com validação real do calendário.
+
+Testes financeiros adicionados cobrem restauração da hierarquia, imutabilidade do filtro aplicado, intervalo inválido, descarte de fonte incompatível, encaminhamento dos parâmetros e catálogos históricos após autorização. Teste EF de categorias arquivadas ampliado para distinguir categoria exata de categoria com filhos; não executado por ausência de SDK .NET e banco de integração. Lint, formatação, tipagem web/mobile e build Next.js passaram. Sem operações financeiras reais, QA de dispositivo ou exports nativos.
+
+Ilustração criada com imagegen integrado e inspecionada, salva em `frontend/public/images/pipo-filters.webp` e `mobile/assets/pipo-filters.webp`.
+
+Prompt final: “Transparent horizontal watercolor storybook hero for Ninho household finance search and filters panel. Pipo, a small fluffy golden-yellow bird with green leaf tuft, orange beak and rust-red scarf, holding a magnifying glass beside three neat blank index-card dividers and small sage leafy potted plants. Warm cream honey terracotta sage palette, airy gentle composition, full character, transparent margins. No words, letters, numbers, labels, logos or UI.”
+
+## Nova entrada — 2026-10-28
+
+Formulário existente ajustado à nova referência, com navegação para Lançamentos, logo compartilhado e barra lateral no desktop, cabeçalho ilustrado próprio, conta de destino obrigatória, moeda somente leitura derivada da conta, valor, categoria obrigatória, fonte opcional, data e descrição com contador de 500 caracteres. Web em duas colunas responsivas; mobile com cabeçalho compacto e data DD/MM/AAAA convertida ao formato ISO para o mesmo contrato do backend. Valores do exemplo não são preenchidos como dados reais.
+
+O POST de entrada e as proteções existentes de identidade, autorização, centavos inteiros, categoria de entrada, persistência da tentativa, chave idempotente e retry incerto foram mantidos. Cancelar apenas navega, sem POST; durante envio está bloqueado. Uma tentativa incerta continua persistida e a ação é apresentada como Voltar aos lançamentos. O sucesso só aparece após confirmação do backend.
+
+Validação: 90 testes web (incluindo os testes compartilhados financeiros e identidade), lint e tipagem nas duas plataformas passaram. Sem escrita financeira real, teste de integração .NET ou execução em dispositivo; builds nativos não executados.
+
+Arte criada com imagegen integrado, inspecionada e preparada em WebP com transparência para `frontend/public/images/pipo-income-form.webp` e `mobile/assets/pipo-income-form.webp`.
+
+Prompt final: “Transparent wide watercolor storybook hero for Ninho household finance NEW INCOME form. Pipo a fluffy golden yellow bird with green leaf tuft, orange beak and rust red scarf, smiling with closed eyes while gently dropping one golden coin into a small dark sage green purse with a leaf emblem. Blank notebook beside purse and small potted sage plant. Warm cream honey terracotta palette, cozy gentle light, whole character and objects, generous transparent margin. No letters, words, numbers, logos or UI.”
+
+Build de produção Next.js da atualização Nova entrada também passou.
+
+## Nova saída — 2026-10-28
+
+Referência de Nova saída aplicada no web e mobile, usando a estrutura compartilhada de movimentações: conta de origem, moeda vinculada à conta e somente leitura, valor com destaque terracota, categoria, subcategoria opcional, data, descrição com contador, Cancelar e Registrar saída. Layout desktop com barra lateral e duas colunas, e layout mobile em sequência. Ilustração exclusiva de compras; sem preencher os valores demonstrativos do mockup.
+
+O catálogo ativo de criação agora preserva `parentId` quando presente. A seleção da categoria mostra raízes; selecionar uma subcategoria envia seu ID no mesmo `categoryId` do contrato de despesa existente. Trocar categoria descarta a seleção anterior de subcategoria. Usar apenas a categoria continua permitido pelo backend. Fonte de renda não aparece para despesa. O POST autenticado de `/expenses`, validações de centavos e fluxo, proteção idempotente e recuperação de tentativa incerta foram mantidos.
+
+Validação: formatação, lint e tipagem de web/mobile passaram; suíte web com 90 testes e mobile com 83 passou antes da adição do novo teste de hierarquia. Os 11 testes de gravação, incluindo o novo teste que verifica hierarquia e ID da subcategoria no contrato de despesa, também passaram. Sem escrita financeira real, integração .NET, QA em dispositivo ou build nativo.
+
+Arte gerada com imagegen integrado, inspecionada e preparada com transparência em `frontend/public/images/pipo-expense-form.webp` e `mobile/assets/pipo-expense-form.webp`.
+
+Prompt final: “Transparent wide watercolor storybook hero for Ninho household finance NEW EXPENSE form. Pipo, fluffy golden yellow bird, green leaf tuft, orange beak and rust red scarf, carefully checking a blank shopping receipt beside a wicker basket of carrots, green vegetables and bread, small blank notebook on table. Cozy warm cream sage terracotta palette, whole character and objects with generous transparent margins. No letters numbers text logos or UI.”
+
+Build de produção Next.js da atualização Nova saída passou.
+
+## Nova transferência — 2026-10-28
+
+Referência implementada no formulário compartilhado de web e mobile: origem e destino distintos, moeda somente leitura, valor, data, descrição, lista de contas indisponíveis com razões explícitas (mesma origem ou moeda incompatível), aviso de exclusão do resultado e ação Registrar transferência. Desktop usa barra lateral e formulário em colunas; mobile apresenta a ilustração da ponte acima dos campos e uma seta entre as contas. Não há campos de categoria ou fonte em transferência.
+
+Mantido o contrato existente de POST `/transfers`, com autorização, centavos inteiros, mesma moeda, chave idempotente e tentativa durável. Mudar origem continua limpando o destino. A tela não apresenta conversão cambial e não oferece contas incompatíveis como destinos selecionáveis. Descrição mantém o limite de 500 caracteres aceito pelo contrato existente. Cancelar não envia operação, e fica bloqueado durante envio; pendências incertas permanecem recuperáveis.
+
+Validação: 91 testes web, 84 mobile, formatação, lint, tipagem de ambas plataformas e build de produção Next.js passaram. Sem transferência real durante testes, integração .NET, QA em dispositivo ou export nativo.
+
+Arte própria criada com imagegen integrado e inspecionada, preparada em `frontend/public/images/pipo-transfer-form.webp` e `mobile/assets/pipo-transfer-form.webp`.
+
+Prompt final: “Transparent wide watercolor storybook hero for Ninho household finance internal TRANSFER form. Pipo fluffy golden yellow bird with green leaf tuft orange beak rust red scarf, smiling while carrying one golden coin across a small wooden rope bridge between two dark sage green purses decorated with simple leaf emblems. Gentle leafy plants at both ends. Cozy cream honey terracotta sage palette, full bridge character and both purses, generous transparent margins. No text letters numbers logos or UI.”
+
+## Seletores auxiliares — 2026-10-28
+
+Implementados seletores com busca e item selecionado para conta, categoria, subcategoria e fonte nos formulários web/mobile. Subcategoria mostra o contexto da categoria, fonte inclui Sem fonte, e destinos incompatíveis de transferência ficam desabilitados. Calendário de data com Hoje/Confirmar e fechamento sem aplicar. Componentes próprios nas duas plataformas, usando os helpers de domínio compartilhados, sem dependências novas ou novas imagens.
+
+Criação inline de conta com saldo inicial zero, categoria, subcategoria e fonte pelos endpoints reais existentes. A tentativa é persistida antes do envio, com namespace próprio por ator/residência/tipo/contexto; confirmação explícita antes de usar o item. Fonte recupera uma resposta incerta por UUID e correspondência do item. Atualização do catálogo preserva os campos da movimentação e a conta selecionada.
+
+Validação: 97 testes web e 90 mobile passaram; formatação, lint e tipagem de ambas plataformas e build Next.js passaram. Os seis testes novos cobrem busca com acentos, calendário bissexto e virada de ano, tentativa durável com ID/chave estáveis, pai incompatível, saldo inicial zero, resposta perdida de fonte sem POST duplicado e preservação do lançamento ao atualizar opções. Sem criação real de registros na validação. Integração .NET/Postgres, QA visual no navegador/dispositivo e exports nativos não executados.
+
+## Revise seu lançamento — 2026-10-28
+
+Tela de revisão implementada nos formulários web e mobile, com valor real, resumo de conta/moeda/classificação/data/descrição, edição dos dados preservados, aviso antes de confirmar e ação de confirmação. Aplicável a saída, entrada e transferência; a saída usa o destaque terracota da referência. Antes de confirmar, o status é Ainda não registrado; em operação incerta é Confirmação pendente, com verificação pela mesma chave. Envio em andamento bloqueia confirmação duplicada. Sucesso só aparece após resposta confirmada do backend.
+
+Testes compartilhados novos: resumo de despesa com categoria/subcategoria e descrição normalizada; receita e transferência com seus campos próprios; rejeição de valores/categorias/contas inválidos; revisão e edição sem persistência nem POST; confirmação explícita com os valores revisados. A suíte web passou com 101 testes e o build Next.js passou. Sem lançamento financeiro real, integração .NET/Postgres ou QA visual em navegador/dispositivo. Exports nativos não executados.
+
+Arte própria criada com imagegen integrado e inspecionada, preparada com transparência em `frontend/public/images/pipo-review.webp` e `mobile/assets/pipo-review.webp`.
+
+Prompt final: “Transparent wide watercolor storybook hero for Ninho household finance REVIEW BEFORE CONFIRMATION screen. Pipo, fluffy golden-yellow bird with green leaf tuft, orange beak and rust-red scarf, carefully reviewing a blank notebook checklist with a pencil, beside a cream mug and small sage leafy plant. Warm cream honey terracotta sage palette, cozy attentive expression, whole character and objects, generous transparent margins. No words letters numbers logos or UI. A single simple green check mark on the notebook is allowed.”
+
+Validação mobile concluída: 94 testes, formatação, lint e tipagem passaram. As mesmas verificações de código também passaram no web.
+
+## Lançamento registrado — 2026-10-28
+
+Tela de sucesso web/mobile implementada após confirmação real do backend, com arte exclusiva, resumo dos dados e ações Ver lançamento, Novo registro e Voltar ao histórico. Atende entrada, saída e transferência; saída mantém destaque terracota. O sucesso não é exibido para tentativas incertas ou erros. Valores demonstrativos do mockup não são preenchidos como dados reais.
+
+Ver lançamento usa o UUID retornado pelo POST, com filtro de transação acrescentado ao endpoint/read model de histórico, dentro do escopo da residência autorizada. O cliente recusa resposta com UUID diferente. Transferências preservam ambas as movimentações; detalhes mobile incluem tipo, valor, data, classificação e situação. Novo registro abre uma instância nova do formulário mesmo ao escolher o mesmo tipo.
+
+Validação: suíte web com 103 testes passou, incluindo consulta exata de transação e rejeição de filtro ignorado; o build Next.js passou após limpeza de cache Turbopack inválido. Formatação, lint e tipagem web/mobile passaram. Teste EF existente ampliado para consultar os dois movimentos da mesma transferência por UUID e verificar UUID inexistente, mas não executado por ausência do SDK .NET/Postgres. Sem lançamento real, integração real, QA visual no navegador/dispositivo ou build nativo.
+
+Arte criada com imagegen integrado, inspecionada e preparada em `frontend/public/images/pipo-saved.webp` e `mobile/assets/pipo-saved.webp`.
+
+Prompt final: “Transparent wide watercolor storybook hero for Ninho household finance RECORD SAVED success screen. Pipo, fluffy golden-yellow bird with green leaf tuft, orange beak and rust-red scarf, smiling proudly while stamping an open blank notebook with one simple green checkmark. Gentle leafy branches frame both sides. Warm cream honey terracotta sage palette, cozy joyful mood, whole character and notebook, generous transparent margins. No text letters numbers logos or UI.”
+
+Validação mobile final: 96 testes, lint e tipagem passaram.
+
+## Detalhe do lançamento e estorno — 2026-10-28
+
+Implementada rota de detalhe autenticada no web/mobile, ligada aos itens do histórico e ao botão Ver lançamento da tela de sucesso. Consulta por UUID sem depender do período, com valor assinado, conta(s), moeda, categoria/subcategoria, fonte quando presente, data, descrição, situação e auditoria reais. Estornos têm vínculo para o original; após um estorno confirmado é possível abrir a compensação retornada.
+
+Confirmação explícita de estorno com data e descrição, pelo POST .NET existente. Nada é estornado ao abrir o detalhe, editar ou fechar o painel. Tentativa durável por ator/residência/transação, chave estável em retry e retomada, campos bloqueados enquanto o resultado é incerto, sucesso somente confirmado pelo backend. Ação bloqueada para registro já estornado e para estorno de estorno. O original nunca é excluído.
+
+A API expõe o UUID do autor, não um nome auditável; a interface informa o usuário pelo ID. O horário exibido é PostedAt, rotulado Registrado em com indicação do fuso do dispositivo. Sem nomes, IDs curtos ou horários demonstrativos do mockup.
+
+Validação: 109 testes web, 102 mobile, formatação, lint e tipagem das duas plataformas, além do build Next.js, passaram. Os seis testes novos verificam UUID/autorização e ausência de filtro de período; auditoria e classificação; transferências com ambas as contas; contrato e cabeçalho do POST; persistência da tentativa antes do POST, após a confirmação explícita, com replay da mesma chave, mesmo após o original aparecer estornado; bloqueio de estorno novo em operações inelegíveis. Nenhum estorno real foi realizado. SDK .NET/integração Postgres, QA visual no navegador/dispositivo e builds nativos não executados.
+
+Arte própria criada com imagegen integrado e inspecionada, preparada com transparência em `frontend/public/images/pipo-detail.webp` e `mobile/assets/pipo-detail.webp`.
+
+Prompt final: “Transparent wide watercolor storybook hero for Ninho household finance transaction DETAIL screen. Pipo fluffy golden-yellow bird with green leaf tuft orange beak rust-red scarf wearing small round reading glasses, thoughtfully examining a blank receipt beside an open notebook, a cream mug with tiny leaf motif and sage potted plant. Cozy warm cream honey sage terracotta palette. Full character and objects with generous transparent margins. No letters words numbers logos or UI.”
+
+## Transfer detail — 2026-10-28
+
+- The existing authenticated `/lancamento?household=…&transaction=…` route now renders a dedicated transfer layout in web and mobile, automatically selected from the real API kind. History and saved-transfer links already reach this route.
+- Origin and destination are taken from signed postings, not response order. Responsive account cards, currency, occurrence date, description, real status and audit identifiers follow the supplied reference. The API still provides the actor UUID rather than a display name; no invented name or friendly transaction ID is shown.
+- A transfer must contain exactly two opposite, balanced postings on different accounts; missing legs and duplicate accounts fail closed.
+- “Estornar transferência” uses the existing durable confirmation flow and one idempotent .NET transaction reversal call. The original remains visible. The existing EF store saves both inverse entries and original status in a single database transaction. No new financial endpoint or mock data was introduced.
+- Added shared regression coverage for reversed response order, missing/duplicate legs and duplicate confirmation producing one write. Added a .NET domain test for both inverse transfer entries; .NET execution is unavailable in this environment.
+- Art created with the built-in image-generation tool, inspected and prepared as transparent WebP in `frontend/public/images/pipo-transfer-detail.webp` and `mobile/assets/pipo-transfer-detail.webp`. Prompt: “Wide transparent watercolor hero for Ninho transfer detail. Pipo a fluffy golden-yellow small bird with green leaf tuft, orange beak and rust-red scarf walks across a tiny arched wooden bridge carrying one gold coin. Sage-green coin pouch with house emblem on the left, terracotta pouch with family emblem on the right, soft leafy plants. Cozy hand-painted storybook watercolor, honey gold, sage, terracotta, warm cream, delicate paper texture. Full subject, generous transparent margins. No text, UI or watermark.”
+- Browser/device visual acceptance and live .NET/database integration remain pending. No real financial operation was performed during verification.
+
+- Transfer-detail verification: web 112/112 tests, mobile 105/105 tests, formatting, lint and TypeScript passed; Next production build passed after clearing corrupt local Turbopack cache. The new .NET domain test was not executed because the SDK is unavailable.
+
+## Opening balance detail — 2026-10-28
+
+- The authenticated canonical `/lancamento` route selects the opening-balance presentation from the actual API transaction kind in both clients. It displays the signed original position, the financial account and currency, reference date, persisted description, actual status and audit identifiers.
+- The dedicated warning distinguishes the starting position from revenue, the period result and recurring transactions. Existing .NET dashboard rules already exclude opening balances from period results. No financial data is mocked or written by viewing the screen.
+- “Ver conta” links to `/composicao-saldo` with household, currency, period and the posting's actual account ID. Both clients initialize the existing real account detail from that ID and report when it is absent from the selected composition, rather than displaying another account as the requested one.
+- The reference has no new reversal action for an opening position, so this presentation exposes account/history navigation. An already persisted reversal attempt from an earlier UI remains recoverable with its original key and payload; pending operations are not discarded.
+- Shared repository validation requires one posting for an opening balance. Regression tests cover positive/negative signed positions, reference-date labels and audit data, plus rejection of multiple postings.
+- Audit remains the API user UUID and `PostedAt` labelled “Registrado em”, not an invented display name or creation timestamp. Device timezone is stated.
+- Built-in image-generation tool created the dedicated illustration, inspected and prepared as transparent WebP in `frontend/public/images/pipo-opening-detail.webp` and `mobile/assets/pipo-opening-detail.webp`. Prompt: “Transparent watercolor illustration for Ninho opening account balance detail. Pipo fluffy small golden-yellow bird, green leaf tuft, orange beak, rust-red scarf, gently putting a single gold coin next to an open cream notebook recording the starting point of a household account. Sage leafy plants behind and a tiny wooden pencil. Cozy delicate hand-painted storybook watercolor, warm honey, sage, terracotta and cream, soft paper texture. Entire bird, notebook and coin visible, generous transparent margins, landscape composition. No words, letters, numbers, logos, UI or watermark.”
+- Browser/device visual acceptance and live .NET/database integration remain pending. No financial write was performed during verification.
+
+- Opening-detail verification: web 114/114 tests, mobile 107/107 tests, formatting, lint and TypeScript passed; Next production build passed. No native build, browser/device acceptance or live .NET integration was executed.
+
+## Correct classification — 2026-10-28
+
+- Added “Corrigir classificação” to posted income/expense details in both clients. The web dialog and mobile keyboard-aware sheet follow the reference, use real category/source catalogs, preserve child category IDs and show the immutable amount/account/date summary. Transfers, opening balances and reversals have no correction entry point. Reversed income/expense allow consultation and recovery of an existing pending operation, not a fresh correction.
+- Prefills the actual category ID, optional source ID and nullable original description. Category choices match the transaction flow; child labels include their parent. Missing/archived current choices are marked unavailable without silently substituting another classification. Income source can be removed; it is never offered on expenses. Description is trimmed and limited to 500 characters.
+- Saving PATCHes only `categoryId`, `incomeSourceId` and `description` to the existing transaction endpoint. Amount, currency, account and occurrence date are not editable or sent. A successful response refreshes the real transaction detail and announces completion.
+- Reuses the durable write lifecycle with actor/household/transaction storage scope `inout:pending-classification:v1`. No writes on open, selection or cancel. Body/key persist before PATCH; duplicate taps are suppressed. Unknown outcomes retain the exact payload and key, lock edits, and may be closed without discarding. Reopening restores the attempt. Read authorization and late-response guards follow the existing adapters.
+- Backend PATCH accepts an optional `Idempotency-Key` for compatibility with existing callers; these clients always provide it. The new `CorrectClassification` operation uses the existing coordinator and 90-day server retention, before transaction mutation. Metadata update, audit and stored response commit together. Replaying an older completed key returns its stored response without overwriting a later correction. Independent new corrections still follow existing serialized last-write behavior, without optimistic version checks.
+- Fixed the domain's optional source removal (`null` clears it). Category `null` retains its existing meaning of preserving the category. Fixed updated-history lookup to filter the exact transaction inside the current database transaction rather than scanning the latest 200 postings after commit. No schema migration is required; deploy backend changes with these clients for the new retry/removal semantics.
+- Passed web 118/118 and mobile 111/111 tests, formatting, lint and type checks. Shared tests cover the PATCH contract, stable pending replay, duplicate confirmation, flow/state/source rejection, child choices and unavailable references. .NET domain/integration regressions were added for removal, financial invariants and replay after a later edit; the .NET SDK/database are unavailable here, so those tests have not run.
+- Dedicated art created with the built-in image tool, inspected and prepared in `frontend/public/images/pipo-classification.webp` and `mobile/assets/pipo-classification.webp`. Prompt: “Transparent watercolor storybook illustration for Ninho classification correction modal. Pipo small fluffy golden-yellow bird with green leaf tuft, orange beak and rust-red scarf holds a wooden pencil beside a cream receipt and three blank sage and honey label cards. Gentle sage plants. Cozy warm cream, honey, sage, terracotta palette, delicate watercolor paper texture. Compact landscape composition, all objects visible and generous transparent margins. No text, letters, numbers, logos or UI.”
+- Browser/device visual acceptance, native builds and live .NET/database integration remain pending. Verification performed no real financial or classification writes.
+
+- Classification verification: Next production build passed. After the final success-feedback change, web/mobile lint and TypeScript were rerun and passed. .NET build/tests and end-to-end acceptance remain unverified.
+
+## Reversal confirmation — 2026-10-28
+
+- Replaced the basic confirmation with dedicated web/native components matching the supplied reference: original description and signed amount, type, real account(s), category hierarchy, occurrence date, compensation explanation, bank-refund disclaimer, required reason and a red confirmation action.
+- A shared preview inverts each signed posting separately. An expense shows a credit, income shows a debit, and a transfer explains both account legs rather than presenting a zero-net compensation amount. The preview is computed from the actual authorized transaction detail; there are no sample financial values.
+- The reason is required, trimmed and limited to 500 characters for new UI reversal attempts and is persisted in the existing reversal description field. Empty/whitespace reasons do not save a pending operation or reach the API. The API remains compatible with older clients; no new endpoint/schema change is needed.
+- Existing pending attempts, including legacy null descriptions, still replay their exact saved payload/key. They are not blocked by the new reason rule or silently changed to new operations. Pending/saving fields are locked, duplicate confirms remain suppressed, and unknown outcomes can be closed without discarding the durable attempt.
+- The existing reversal date remains available under an expandable control; the original date is read-only. Cancel/Escape/native back make no financial write; closing is blocked during active submission. Native confirmation scrolls and avoids the keyboard. Amount, account and original date are never edited.
+- Dedicated art created with the built-in image tool, inspected and prepared as transparent WebP in `frontend/public/images/pipo-reversal.webp` and `mobile/assets/pipo-reversal.webp`. Prompt: “Transparent wide watercolor storybook illustration for Ninho reversal confirmation. Pipo small fluffy golden-yellow bird, green leaf tuft, orange beak, rust-red scarf, calmly stands next to a cream ledger receipt with blank pale green lines. A broad curved sage-green undo arrow arches above the receipt pointing back toward the bird, conveying correction of a record. Soft sage plants framing the composition. Cozy honey gold, sage, terracotta, cream watercolor, delicate paper texture, full objects visible, generous transparent margins. No words, letters, numbers, logos, money symbols or UI.”
+- Added shared regressions for compensation signs on expense/income/transfer, nonblank reason enforcement and exact replay of legacy attempts. Browser/device acceptance, native builds and live .NET/database integration remain pending. No real reversal was performed during verification.
+
+

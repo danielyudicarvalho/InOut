@@ -112,9 +112,36 @@ export type HistoryItem = {
   source: string | null;
   reversalOf: string | null;
 };
+export type HistoryOptions = {
+  accounts: { id: string; name: string; currency: string }[];
+  categories: {
+    id: string;
+    name: string;
+    flow: string;
+    parentId: string | null;
+  }[];
+  sources: { id: string; name: string }[];
+};
+export type HistoryDraft = HistoryFilters & {
+  from: string;
+  to: string;
+  parentId: string;
+  subcategoryId: string;
+};
+export function historyDraft(
+  period: string,
+  filters: HistoryFilters,
+  catalog: HistoryOptions,
+): HistoryDraft;
+export function applyHistoryDraft(draft: HistoryDraft): {
+  period: string;
+  filters: HistoryFilters;
+};
 export type HistoryFilters = {
+  transactionId?: string;
   categoryId?: string;
   incomeSourceId?: string;
+  includeSubcategories?: boolean;
   search?: string;
   kind?: string;
   accountId?: string;
@@ -158,6 +185,148 @@ export type FinancialAnalysis = {
   series: (AnalysisFacts & { from: string; to: string })[];
   accounts: AnalysisAccount[];
 };
+
+export type AuxiliaryKind = "account" | "category" | "source";
+export type AuxiliaryFields = {
+  name: string;
+  currency: string;
+  accountKind: string;
+  flow: string;
+  parentId: string;
+  date: string;
+};
+export function selectorSearch<T extends { name: string; detail?: string }>(
+  items: T[],
+  query: string,
+): T[];
+export function calendarMonth(month: string, delta: number): string;
+export function createAuxiliaryStore(
+  repository: FinanceRepository,
+  household: string,
+  kind: AuxiliaryKind,
+  flow: string,
+  parentId: string,
+  currency: string,
+  options: {
+    storage: {
+      load(): Promise<string | null>;
+      save(value: string): Promise<void>;
+      remove(key: string): Promise<void>;
+    };
+    randomId: () => string;
+    now?: () => Date;
+    timeoutMs?: number;
+  },
+): {
+  getSnapshot(): {
+    status: "loading" | "ready" | "saving" | "uncertain" | "success" | "error";
+    fields: AuxiliaryFields;
+    notice: string;
+    result: { id: string } | null;
+  };
+  subscribe(listener: () => void): () => void;
+  start(): () => void;
+  retry(): void;
+  edit(field: keyof AuxiliaryFields, value: string): void;
+  submit(): Promise<void>;
+};
+export type TransactionDetail = {
+  reversalId?: string | null;
+  original?: TransactionDetail;
+  categoryId: string | null;
+  sourceId: string | null;
+  rawDescription: string;
+  id: string;
+  kind: string;
+  status: string;
+  description: string;
+  date: string;
+  postedAt: string;
+  createdBy: string;
+  currency: string;
+  amount: number;
+  postings: {
+    accountId: string;
+    accountName: string;
+    currency: string;
+    amount: number;
+  }[];
+  rows: { label: string; value: string }[];
+  reversalOf: string | null;
+};
+export function reversalEffects(
+  detail: TransactionDetail,
+): { accountName: string; currency: string; amount: number }[];
+export function canReverse(detail: TransactionDetail | null): boolean;
+export function createReversalStore(
+  repository: FinanceRepository,
+  household: string,
+  transactionId: string,
+  options: {
+    storage: {
+      load(): Promise<string | null>;
+      save(value: string): Promise<void>;
+      remove(key: string): Promise<void>;
+    };
+    randomId: () => string;
+    now?: () => Date;
+    timeoutMs?: number;
+  },
+): {
+  getSnapshot(): {
+    status: "loading" | "ready" | "saving" | "uncertain" | "success" | "error";
+    fields: { date: string; description: string };
+    options: TransactionDetail | null;
+    notice: string;
+    result: RecordResult | null;
+  };
+  subscribe(listener: () => void): () => void;
+  start(): () => void;
+  retry(): void;
+  edit(field: "date" | "description", value: string): void;
+  submit(): Promise<void>;
+};
+export type ClassificationFields = {
+  categoryId: string;
+  sourceId: string;
+  description: string;
+};
+export type ClassificationOptions = RecordOptions & {
+  detail: TransactionDetail;
+};
+export function canCorrectClassification(
+  detail: TransactionDetail | null,
+): boolean;
+export function classificationChoices(options: ClassificationOptions): {
+  categories: { id: string; name: string; disabled?: boolean }[];
+  sources: { id: string; name: string; disabled?: boolean }[];
+};
+export function createClassificationStore(
+  repository: FinanceRepository,
+  household: string,
+  transactionId: string,
+  options: Parameters<typeof createReversalStore>[3],
+): {
+  getSnapshot(): {
+    status:
+      | "loading"
+      | "ready"
+      | "saving"
+      | "uncertain"
+      | "success"
+      | "error"
+      | "stale";
+    fields: ClassificationFields;
+    options: ClassificationOptions | null;
+    notice: string;
+    result: RecordResult | null;
+  };
+  subscribe(listener: () => void): () => void;
+  start(): () => void;
+  retry(): void;
+  edit(field: keyof ClassificationFields, value: string): void;
+  submit(): Promise<void>;
+};
 export interface FinanceRepository {
   analysis(
     householdId: string,
@@ -181,7 +350,6 @@ export interface FinanceRepository {
     id: string,
     signal?: AbortSignal,
   ): Promise<{ id: string; name: string }>;
-
   correctClassification(
     household: string,
     transactionId: string,
@@ -205,7 +373,24 @@ export interface FinanceRepository {
     transactionId: string,
     signal?: AbortSignal,
   ): Promise<TransactionDetail>;
-
+  reverse(
+    household: string,
+    transactionId: string,
+    body: { occurredOn: string; description: string | null },
+    key: string,
+    signal?: AbortSignal,
+  ): Promise<RecordResult>;
+  createAuxiliary(
+    household: string,
+    kind: AuxiliaryKind,
+    body: Record<string, unknown>,
+    key: string,
+    signal?: AbortSignal,
+  ): Promise<{ id: string }>;
+  historyOptions(
+    householdId: string,
+    signal?: AbortSignal,
+  ): Promise<HistoryOptions>;
   ledgerHistory(
     householdId: string,
     period: string,
@@ -650,6 +835,16 @@ export type RecordFields = {
   date: string;
   description: string;
 };
+export type RecordReview = {
+  amount: number;
+  currency: string;
+  rows: { field: keyof RecordFields | null; label: string; value: string }[];
+};
+export function recordReview(
+  kind: RecordKind,
+  fields: RecordFields,
+  options: RecordOptions,
+): RecordReview;
 export type RecordOptions = {
   accounts: { id: string; name: string; currency: string; kind?: string | null }[];
   categories: {
@@ -753,71 +948,6 @@ export function createAccountStore(
   submit: () => Promise<void>;
 };
 
-export type TransactionDetail = {
-  reversalId: string | null;
-  categoryId: string | null;
-  sourceId: string | null;
-  rawDescription: string;
-  id: string;
-  kind: string;
-  status: string;
-  description: string;
-  date: string;
-  postedAt: string;
-  createdBy: string;
-  currency: string;
-  amount: number;
-  postings: {
-    accountId: string;
-    accountName: string;
-    currency: string;
-    amount: number;
-  }[];
-  rows: { label: string; value: string }[];
-  reversalOf: string | null;
-};
-export type ClassificationFields = {
-  categoryId: string;
-  sourceId: string;
-  description: string;
-};
-export type ClassificationOptions = RecordOptions & {
-  detail: TransactionDetail;
-};
-export function canCorrectClassification(
-  detail: TransactionDetail | null,
-): boolean;
-export function classificationChoices(options: ClassificationOptions): {
-  categories: { id: string; name: string; disabled?: boolean }[];
-  sources: { id: string; name: string; disabled?: boolean }[];
-};
-export function createClassificationStore(
-  repository: FinanceRepository,
-  household: string,
-  transactionId: string,
-  options: Parameters<typeof createRecordStore>[4],
-): {
-  getSnapshot(): {
-    status:
-      | "loading"
-      | "ready"
-      | "saving"
-      | "uncertain"
-      | "success"
-      | "error"
-      | "stale";
-    fields: ClassificationFields;
-    options: ClassificationOptions | null;
-    notice: string;
-    result: RecordResult | null;
-  };
-  subscribe(listener: () => void): () => void;
-  start(): () => void;
-  retry(): void;
-  edit(field: keyof ClassificationFields, value: string): void;
-  submit(): Promise<void>;
-};
-
 export function createTransactionDetailStore(
   repository: FinanceRepository,
   household: string,
@@ -833,4 +963,112 @@ export function createTransactionDetailStore(
   subscribe(listener: () => void): () => void;
   start(): () => void;
   reload(): Promise<boolean>;
+};
+
+export function reversalReconciliation(
+  detail: TransactionDetail,
+  original: TransactionDetail,
+): {
+  accountId: string;
+  accountName: string;
+  currency: string;
+  original: number;
+  compensation: number;
+  net: number;
+}[];
+
+export type CorrectionChainStep = {
+  step: number;
+  kind: "original" | "reversal" | "substitute";
+  title: string;
+  detail: TransactionDetail;
+  reason?: string;
+  note?: string;
+  statusBadge: "Estornado" | "Registrado";
+  isReversal?: boolean;
+};
+
+export type CorrectionChain = {
+  transactionId: string;
+  householdId: string;
+  steps: CorrectionChainStep[];
+  netAmount: number;
+  currency: string;
+  netLabel: string;
+  hasSubstitute: boolean;
+  hasReversal: boolean;
+};
+
+export function getCorrectionChain(
+  repository: FinanceRepository,
+  household: string,
+  transactionId: string,
+  signal?: AbortSignal,
+): Promise<CorrectionChain>;
+
+export function createCorrectionChainStore(
+  repository: FinanceRepository,
+  household: string,
+  transactionId: string,
+): {
+  getSnapshot(): {
+    status: "loading" | "ready" | "error";
+    chain: CorrectionChain | null;
+    notice: string;
+  };
+  subscribe(listener: () => void): () => void;
+  start(): void;
+  retry(): void;
+};
+
+export type DuplicateRecord = {
+  id: string;
+  displayId: string;
+  description: string;
+  amount: number;
+  currency: string;
+  kind: string;
+  date: string;
+  status: string;
+  accountName: string;
+  categoryName: string | null;
+  subcategoryName: string | null;
+  createdBy: string;
+  postedAt: string;
+  raw: TransactionDetail;
+};
+
+export type DuplicateComparison = {
+  householdId: string;
+  first: DuplicateRecord;
+  second: DuplicateRecord;
+  suggestedToReverseId: string;
+};
+
+export function shortTransactionId(id: string): string;
+export function formatDuplicateRecord(detail: TransactionDetail): DuplicateRecord;
+export function getDuplicateComparison(
+  repository: FinanceRepository,
+  household: string,
+  firstId: string,
+  secondId?: string,
+  signal?: AbortSignal,
+): Promise<DuplicateComparison>;
+
+export function createDuplicateResolutionStore(
+  repository: FinanceRepository,
+  household: string,
+  firstId: string,
+  secondId?: string,
+): {
+  getSnapshot(): {
+    status: "loading" | "ready" | "error";
+    comparison: DuplicateComparison | null;
+    selectedId: string;
+    notice: string;
+  };
+  subscribe(listener: () => void): () => void;
+  start(): void;
+  retry(): void;
+  select(id: string): void;
 };

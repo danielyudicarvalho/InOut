@@ -1,6 +1,6 @@
 import { Suspense } from "react";
-import { AuthenticatedGate } from "../../components/authenticated-gate";
-import { IncomeScreen } from "../../components/income-screen";
+import { AuthenticatedGate } from "../../components/auth/authenticated-gate";
+import { IncomeScreen } from "../../components/screens/income-screen";
 export default function Page() {
   return (
     <AuthenticatedGate>

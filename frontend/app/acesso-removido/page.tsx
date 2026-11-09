@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { AuthenticatedGate } from "../../components/authenticated-gate";
+import { AuthenticatedGate } from "../../components/auth/authenticated-gate";
 import { AccessRemoved } from "../../components/household-management-screen";
 export default function Page() {
   return (

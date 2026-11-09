@@ -1,5 +1,5 @@
-import { AuthenticatedGate } from "../../components/authenticated-gate";
-import { HouseholdChoiceScreen } from "../../components/household-choice-screen";
+import { AuthenticatedGate } from "../../components/auth/authenticated-gate";
+import { HouseholdChoiceScreen } from "../../components/screens/household-choice-screen";
 
 export default function Page() {
   return (

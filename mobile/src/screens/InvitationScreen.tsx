@@ -1,3 +1,4 @@
+import { BrandLogo } from "../components/BrandLogo";
 import { useRef, useState, type ComponentRef } from "react";
 import {
   View,
@@ -83,8 +84,7 @@ export function InvitationScreen() {
           keyboardShouldPersistTaps="handled"
         >
           <View style={s.brand}>
-            <MaterialCommunityIcons name="sprout" size={30} color={t.green} />
-            <Text style={s.brandText}>ninho</Text>
+            <BrandLogo />
           </View>
           <Pressable accessibilityRole="button" style={s.back} onPress={back}>
             <MaterialCommunityIcons

@@ -7,6 +7,7 @@ import {
   type HistoryFilters,
 } from "@inout/finance";
 import { getAuthClient } from "../auth/composition";
+
 export function useLedgerHistory(
   household: string,
   period: string,
@@ -20,7 +21,15 @@ export function useLedgerHistory(
     loading: boolean;
     error: string;
   }>({ items: [], hasMore: false, loading: true, error: "" });
-  const { search, kind, accountId, categoryId, incomeSourceId } = filters;
+  const {
+    search,
+    kind,
+    accountId,
+    transactionId,
+    categoryId,
+    incomeSourceId,
+    includeSubcategories,
+  } = filters;
   useEffect(() => {
     const controller = new AbortController();
     const repository = createFinanceRepository({
@@ -35,7 +44,15 @@ export function useLedgerHistory(
       .ledgerHistory(
         household,
         period,
-        { search, kind, accountId, categoryId, incomeSourceId },
+        {
+          search,
+          kind,
+          accountId,
+          transactionId,
+          categoryId,
+          incomeSourceId,
+          includeSubcategories,
+        },
         offset,
         controller.signal,
       )
@@ -59,8 +76,10 @@ export function useLedgerHistory(
     search,
     kind,
     accountId,
+    transactionId,
     categoryId,
     incomeSourceId,
+    includeSubcategories,
     offset,
     revision,
   ]);

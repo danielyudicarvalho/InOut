@@ -1,5 +1,5 @@
-import { AuthenticatedGate } from "../components/authenticated-gate";
-import { WelcomeScreen } from "../components/welcome-screen";
+import { AuthenticatedGate } from "../components/auth/authenticated-gate";
+import { WelcomeScreen } from "../components/screens/welcome-screen";
 export default function Home() {
   return (
     <AuthenticatedGate allowAnonymous>

@@ -3,7 +3,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { displayDate, historyKind, money } from "@inout/finance";
 import { useLedgerHistory } from "../lib/finance/use-ledger-history";
-import { PeriodPicker } from "./period-picker";
+import { PeriodPicker } from "./financial/selectors/period-picker";
 export function AccountActivity({
   household,
   period,

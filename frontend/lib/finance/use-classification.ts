@@ -6,6 +6,7 @@ import {
   FinanceFailure,
 } from "@inout/finance";
 import { browserApiBase, getAuthClient } from "../auth/composition";
+
 export function useClassification(household: string, transactionId: string) {
   const [store] = useState(() => {
     let actorId = "",

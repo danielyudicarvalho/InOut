@@ -1,3 +1,4 @@
+import { BrandLogo } from "../components/BrandLogo";
 import { useState } from "react";
 import {
   View,
@@ -59,8 +60,7 @@ export function HouseholdChoiceScreen() {
             onPress={() => router.replace("/")}
             style={s.brand}
           >
-            <MaterialCommunityIcons name="sprout" size={29} color={t.green} />
-            <Text style={s.brandText}>ninho</Text>
+            <BrandLogo />
           </Pressable>
           <Pressable
             accessibilityRole="button"

@@ -1,3 +1,4 @@
+import { BrandLogo } from "../components/BrandLogo";
 import { useEffect } from "react";
 import {
   Text,
@@ -10,7 +11,6 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
-import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { useSessionRestoration } from "../auth/use-session-restoration";
 import { theme as t } from "../theme";
 export type SessionState = "loading" | "expired" | "error";
@@ -39,10 +39,12 @@ export function SessionView({
   state,
   notice = "",
   onRetry,
+  onLogin,
 }: {
   state: SessionState;
   notice?: string;
   onRetry?: () => void;
+  onLogin?: () => void;
 }) {
   const current = content[state];
   return (
@@ -54,8 +56,7 @@ export function SessionView({
           onPress={() => router.replace("/")}
           style={s.brand}
         >
-          <MaterialCommunityIcons name="sprout" size={32} color={t.green} />
-          <Text style={s.brandText}>ninho</Text>
+          <BrandLogo />
         </Pressable>
         <Image
           source={current.art}
@@ -91,7 +92,7 @@ export function SessionView({
           <Pressable
             accessibilityRole="button"
             style={state === "expired" ? s.primary : s.linkTarget}
-            onPress={() => router.replace("/entrar")}
+            onPress={onLogin ?? (() => router.replace("/entrar"))}
           >
             <Text style={state === "expired" ? s.primaryText : s.link}>
               Ir para entrar
