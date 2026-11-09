@@ -1,3 +1,4 @@
+using InOut.Api.Diagnostics;
 using System.Security.Claims;
 using InOut.Api.Security;
 using InOut.Application.Households;
@@ -29,7 +30,8 @@ public static class HouseholdEndpoints
                 UserId(principal), request.Name, cancellationToken);
             return Results.Created(ApiContract.Routes.HouseholdResource(household.Id), household);
         })
-            .WithName(ApiContract.EndpointNames.CreateHousehold);
+            .WithName(ApiContract.EndpointNames.CreateHousehold)
+            .TrackProductEvent("household_created");
 
         households.MapPost(ApiContract.Routes.HouseholdInvitations, async (
             Guid householdId,
@@ -41,7 +43,8 @@ public static class HouseholdEndpoints
                 await service.CreateInvitationAsync(
                     UserId(principal), householdId, cancellationToken)))
             .RequireAuthorization(HouseholdMemberRequirement.PolicyName)
-            .WithName(ApiContract.EndpointNames.CreateHouseholdInvitation);
+            .WithName(ApiContract.EndpointNames.CreateHouseholdInvitation)
+            .TrackProductEvent("household_invitation_created");
 
         endpoints.MapPost(ApiContract.Routes.AcceptInvitation, async (
             AcceptHouseholdInvitationRequest request,
@@ -52,7 +55,8 @@ public static class HouseholdEndpoints
                 UserId(principal), request.Code, cancellationToken)))
             .RequireAuthorization()
             .WithTags(ApiContract.Tags.Households)
-            .WithName(ApiContract.EndpointNames.AcceptHouseholdInvitation);
+            .WithName(ApiContract.EndpointNames.AcceptHouseholdInvitation)
+            .TrackProductEvent("household_invitation_accepted");
 
         households.MapGet("/{householdId:guid}/context", async (Guid householdId, ClaimsPrincipal principal, HouseholdService service, CancellationToken ct) =>
             Results.Ok(await service.GetContextAsync(UserId(principal), householdId, ct)));

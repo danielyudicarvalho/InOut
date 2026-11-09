@@ -1,3 +1,4 @@
+using InOut.Api.Diagnostics;
 using System.Security.Claims;
 using InOut.Api.Security;
 using InOut.Application.Financial;
@@ -189,7 +190,8 @@ public static class LedgerEndpoints
                     request.IncomeSourceId),
                 cancellationToken);
             return WriteResult(householdId, result);
-        }).WithName(ApiContract.EndpointNames.PostIncome);
+        }).WithName(ApiContract.EndpointNames.PostIncome)
+            .TrackProductEvent("income_recorded", createdOnly: true);
 
         ledger.MapPost(ApiContract.Routes.Expenses, async (
             Guid householdId,
@@ -212,7 +214,8 @@ public static class LedgerEndpoints
                     request.Description),
                 cancellationToken);
             return WriteResult(householdId, result);
-        }).WithName(ApiContract.EndpointNames.PostExpense);
+        }).WithName(ApiContract.EndpointNames.PostExpense)
+            .TrackProductEvent("expense_recorded", createdOnly: true);
 
         ledger.MapPost(ApiContract.Routes.Transfers, async (
             Guid householdId,
@@ -235,7 +238,8 @@ public static class LedgerEndpoints
                     request.Description),
                 cancellationToken);
             return WriteResult(householdId, result);
-        }).WithName(ApiContract.EndpointNames.PostTransfer);
+        }).WithName(ApiContract.EndpointNames.PostTransfer)
+            .TrackProductEvent("transfer_recorded", createdOnly: true);
 
         ledger.MapPost(ApiContract.Routes.Reversals, async (
             Guid householdId,
@@ -256,7 +260,8 @@ public static class LedgerEndpoints
                     request.Description),
                 cancellationToken);
             return WriteResult(householdId, result);
-        }).WithName(ApiContract.EndpointNames.ReverseTransaction);
+        }).WithName(ApiContract.EndpointNames.ReverseTransaction)
+            .TrackProductEvent("transaction_reversed", createdOnly: true);
 
         ledger.MapPatch(ApiContract.Routes.TransactionById, async (
             Guid householdId,
@@ -322,7 +327,8 @@ public static class LedgerEndpoints
                 : Results.Created(
                     $"/api/v1/households/{householdId}/ledger/budgets/{result.Id}",
                     result);
-        }).WithName(ApiContract.EndpointNames.SetBudget);
+        }).WithName(ApiContract.EndpointNames.SetBudget)
+            .TrackProductEvent("budget_set", createdOnly: true);
 
         ledger.MapPost(ApiContract.Routes.GoalAllocations, async (
             Guid householdId,
@@ -349,7 +355,8 @@ public static class LedgerEndpoints
                 : Results.Created(
                     ApiContract.Routes.GoalAllocationResource(householdId, goalId, result.Id),
                     result);
-        }).WithName(ApiContract.EndpointNames.AllocateGoal);
+        }).WithName(ApiContract.EndpointNames.AllocateGoal)
+            .TrackProductEvent("goal_allocation_recorded", createdOnly: true);
 
         ledger.MapPost(ApiContract.Routes.GoalAllocationReversals, async (
             Guid householdId,

@@ -38,10 +38,14 @@ if (!string.IsNullOrWhiteSpace(sentryDsn))
     builder.WebHost.UseSentry(options =>
     {
         options.Dsn = sentryDsn;
-        options.TracesSampleRate = builder.Configuration.GetValue("Sentry:TracesSampleRate", 1.0);
+        options.TracesSampleRate = builder.Configuration.GetValue("Sentry:TracesSampleRate", 0.1);
         options.Environment = builder.Environment.EnvironmentName;
         options.AttachStacktrace = true;
         options.SendDefaultPii = false;
+        // Expected business outcomes, already answered as 4xx problem details.
+        options.AddExceptionFilterForType<InOut.Domain.Households.HouseholdRuleException>();
+        options.AddExceptionFilterForType<InOut.Domain.Financial.FinancialRuleException>();
+        options.AddExceptionFilterForType<IdempotencyException>();
     });
 }
 

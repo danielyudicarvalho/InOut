@@ -36,6 +36,9 @@ public static class PostHogHosting
             return new PostHogAnalytics(client, apiKey, host, logger);
         });
 
+        services.AddSingleton<ProductEventBuffer>();
+        services.AddHostedService<ProductEventDispatcher>();
+
         return services;
     }
 }

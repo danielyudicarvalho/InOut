@@ -187,6 +187,13 @@ public static class IdentityHosting
             }
             if (string.IsNullOrWhiteSpace(from))
             {
+                // Resend's sandbox sender only delivers to the account owner.
+                if (production)
+                {
+                    throw new InvalidOperationException(
+                        "Auth:Email:From is required in production when Auth:Email:Delivery is resend. Use an address on a domain verified in Resend.");
+                }
+
                 from = "InOut <onboarding@resend.dev>";
             }
 
