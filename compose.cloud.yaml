@@ -18,6 +18,8 @@ services:
       Auth__Resend__ApiKey: ${RESEND_API_KEY:-}
       Auth__Email__From: ${AUTH_EMAIL_FROM:-InOut <noreply@inout.app>}
       Sentry__Dsn: ${SENTRY_DSN:-}
+      PostHog__ApiKey: ${POSTHOG_API_KEY:-}
+      PostHog__Host: ${POSTHOG_HOST:-https://us.i.posthog.com}
     ports:
       - 127.0.0.1:8080:8080
     volumes:

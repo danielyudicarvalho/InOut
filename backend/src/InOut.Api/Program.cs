@@ -51,6 +51,7 @@ builder.Services.ConfigureHttpJsonOptions(options =>
 
 builder.Services.AddProblemDetails();
 builder.Services.AddCustomObservability(builder.Configuration);
+builder.Services.AddInOutPostHog(builder.Configuration);
 builder.Services.AddExceptionHandler<HouseholdExceptionHandler>();
 builder.Services.AddExceptionHandler<FinancialExceptionHandler>();
 builder.Services.AddExceptionHandler<UnhandledExceptionHandler>();
