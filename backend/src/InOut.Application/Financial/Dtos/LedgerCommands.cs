@@ -57,5 +57,23 @@ public sealed record SetBudgetCommand(
     DateOnly PeriodStart,
     DateOnly PeriodEnd,
     long LimitCents,
+    Guid IdempotencyKey,
+    string Currency);
+
+public sealed record AllocateGoalCommand(
+    Guid HouseholdId,
+    Guid GoalId,
+    long AmountCents,
+    string Currency,
+    DateOnly OccurredOn,
+    string? Note,
+    Guid IdempotencyKey);
+
+public sealed record ReverseGoalAllocationCommand(
+    Guid HouseholdId,
+    Guid GoalId,
+    Guid AllocationId,
+    DateOnly OccurredOn,
+    string? Note,
     Guid IdempotencyKey);
 

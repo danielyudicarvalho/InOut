@@ -2,7 +2,7 @@
 set -euo pipefail
 umask 077
 
-# DATABASE_URL and BACKUP_PASSPHRASE are injected by the scheduler, never printed.
+# DATABASE_URL is the direct Postgres endpoint. BACKUP_PASSPHRASE is injected, never printed.
 if [[ -z "${DATABASE_URL:-}" || -z "${BACKUP_PASSPHRASE:-}" || $# -ne 1 ]]; then
   echo 'Usage: DATABASE_URL=... BACKUP_PASSPHRASE=... backup_database.sh OUTPUT.gpg' >&2
   exit 2
@@ -12,9 +12,9 @@ output="$1"
 workdir="$(mktemp -d)"
 trap 'rm -rf "$workdir"' EXIT
 
-supabase db dump --db-url "$DATABASE_URL" -f "$workdir/roles.sql" --role-only
-supabase db dump --db-url "$DATABASE_URL" -f "$workdir/schema.sql"
-supabase db dump --db-url "$DATABASE_URL" -f "$workdir/data.sql" --data-only --use-copy
+pg_dumpall --dbname="$DATABASE_URL" --roles-only --no-role-passwords > "$workdir/roles.sql"
+pg_dump --dbname="$DATABASE_URL" --schema-only --no-owner > "$workdir/schema.sql"
+pg_dump --dbname="$DATABASE_URL" --data-only --no-owner > "$workdir/data.sql"
 
 for file in roles.sql schema.sql data.sql; do
   [[ -s "$workdir/$file" ]] || { echo "Empty backup component: $file" >&2; exit 1; }

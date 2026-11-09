@@ -69,6 +69,20 @@ public sealed class FinancialDashboardCalculatorTests
     }
 
     [Fact]
+    public void AccountMovementIncludesTransfersAndReversalsWithoutChangingFinancialResult()
+    {
+        var totals = Calculate(
+            new DashboardPosting(accountId, null, FinancialTransactionKind.Transfer, null, 300, Direction: EntryDirection.Credit),
+            new DashboardPosting(accountId, null, FinancialTransactionKind.Reversal, FinancialTransactionKind.Transfer, 100, Direction: EntryDirection.Debit),
+            new DashboardPosting(accountId, null, FinancialTransactionKind.Income, null, 500, Direction: EntryDirection.Credit));
+        var movement = Assert.Single(totals.AccountActivities);
+        Assert.Equal(800, movement.InflowCents);
+        Assert.Equal(100, movement.OutflowCents);
+        Assert.Equal(700, movement.NetChangeCents);
+        Assert.Equal(500, Assert.Single(totals.Currencies).ResultCents);
+    }
+
+    [Fact]
     public void RejectsInvalidMonthlyPeriod()
     {
         var exception = Assert.Throws<FinancialRuleException>(() =>

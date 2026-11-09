@@ -1,8 +1,10 @@
 "use client";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, Suspense, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { useSessionRestoration } from "../../lib/auth/use-session-restoration";
+import { HouseholdAccessGuard } from "../household-access-guard";
 import { SessionView } from "../screens/session-screen";
+
 export function AuthenticatedGate({
   children,
   allowAnonymous = false,
@@ -20,8 +22,16 @@ export function AuthenticatedGate({
   if (
     (!allowAnonymous && status === "authenticated") ||
     (allowAnonymous && status === "expired")
-  )
-    return <>{children}</>;
+  ) {
+    return allowAnonymous ? (
+      <>{children}</>
+    ) : (
+      <Suspense fallback={<p>Verificando acesso…</p>}>
+        <HouseholdAccessGuard>{children}</HouseholdAccessGuard>
+      </Suspense>
+    );
+  }
+
   const currentPath =
     typeof window !== "undefined"
       ? `${window.location.pathname}${window.location.search}`

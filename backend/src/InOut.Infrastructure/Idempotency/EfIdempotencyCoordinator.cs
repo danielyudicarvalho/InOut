@@ -174,6 +174,17 @@ internal sealed class EfIdempotencyCoordinator(
         IdempotencyOperation.ReverseTransaction => PersistenceVocabulary.OperationNames.ReverseTransaction,
         IdempotencyOperation.SetBudget => PersistenceVocabulary.OperationNames.SetBudget,
         IdempotencyOperation.CorrectClassification => PersistenceVocabulary.OperationNames.CorrectClassification,
+        IdempotencyOperation.AllocateGoal => PersistenceVocabulary.OperationNames.AllocateGoal,
+        IdempotencyOperation.ReverseGoalAllocation => PersistenceVocabulary.OperationNames.ReverseGoalAllocation,
+        IdempotencyOperation.RealizeRecurringOccurrence => PersistenceVocabulary.OperationNames.RealizeRecurringOccurrence,
+        IdempotencyOperation.CreateGoal => PersistenceVocabulary.OperationNames.CreateGoal,
+        IdempotencyOperation.UpdateGoal => PersistenceVocabulary.OperationNames.UpdateGoal,
+        IdempotencyOperation.ChangeGoalStatus => PersistenceVocabulary.OperationNames.ChangeGoalStatus,
+        IdempotencyOperation.CreateProject => PersistenceVocabulary.OperationNames.CreateProject,
+        IdempotencyOperation.UpdateProject => PersistenceVocabulary.OperationNames.UpdateProject,
+        IdempotencyOperation.CloseProject => PersistenceVocabulary.OperationNames.CloseProject,
+        IdempotencyOperation.LinkProjectMovement => PersistenceVocabulary.OperationNames.LinkProjectMovement,
+        IdempotencyOperation.UnlinkProjectMovement => PersistenceVocabulary.OperationNames.UnlinkProjectMovement,
         _ => throw new ArgumentOutOfRangeException(nameof(operation), operation, null),
     };
 

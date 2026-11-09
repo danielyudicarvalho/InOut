@@ -39,6 +39,11 @@ function CategoryView({
     return (
       <main className="financial-state">
         <h1>Resumo por categoria</h1>
+        <Link
+          href={`/categorias?${new URLSearchParams({ household: state.householdId, period: state.period })}`}
+        >
+          Gerenciar categorias
+        </Link>
         <p role="status">
           {state.status === "loading"
             ? "Carregando categorias…"
@@ -85,6 +90,11 @@ function CategoryView({
         </nav>
       </aside>
       <div className="dashboard-body">
+        <Link
+          href={`/categorias?${new URLSearchParams({ household: state.householdId, period: state.period })}`}
+        >
+          Gerenciar cadastros →
+        </Link>
         <header className="dashboard-topbar">
           <label>
             Residência
@@ -108,6 +118,11 @@ function CategoryView({
               Início
             </Link>
             <h1>Resumo por categoria</h1>
+            <Link
+              href={`/categorias?${new URLSearchParams({ household: state.householdId, period: state.period })}`}
+            >
+              Gerenciar categorias
+            </Link>
             <p>Descubra como suas despesas se distribuem.</p>
           </div>
           <Image

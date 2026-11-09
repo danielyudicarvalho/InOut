@@ -30,3 +30,1099 @@ button {
 button:active {
   transform: translateY(1px);
 }
+
+/* ============================================================
+   SELETORES AUXILIARES & NOVO REGISTRO (NINHO DESIGN SYSTEM)
+   ============================================================ */
+
+.ninho-record-screen {
+  min-height: 100dvh;
+  background-color: #f7f4ea;
+  background-image: radial-gradient(#e7e1cf 0.75px, transparent 0.75px);
+  background-size: 20px 20px;
+  color: #173e2b;
+  padding: 32px 24px 64px;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+
+.ninho-record-page-header {
+  max-width: 1240px;
+  margin: 0 auto 28px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  border-bottom: 1.5px solid #e5decb;
+  padding-bottom: 20px;
+  gap: 16px;
+}
+
+.ninho-record-main-title {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 34px;
+  font-weight: 700;
+  color: #163c24;
+  margin: 0 0 6px;
+  letter-spacing: -0.02em;
+}
+
+.ninho-record-main-subtitle {
+  font-size: 16px;
+  color: #476850;
+  margin: 0;
+}
+
+.ninho-record-household-badge {
+  background: #e8f2e6;
+  border: 1px solid #cce3c9;
+  color: #1c572f;
+  padding: 6px 16px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.ninho-record-stage {
+  max-width: 1240px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 280px minmax(360px, 600px) 280px;
+  align-items: start;
+  justify-content: center;
+  gap: 28px;
+}
+
+.ninho-stage-art {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  position: sticky;
+  top: 24px;
+}
+
+.ninho-art-bubble {
+  background: #fffdf8;
+  border: 1px solid #e3dcce;
+  border-radius: 18px 18px 18px 4px;
+  padding: 12px 16px;
+  box-shadow: 0 4px 14px rgba(22, 60, 36, 0.05);
+  font-size: 13.5px;
+  color: #644422;
+  font-style: italic;
+  font-weight: 500;
+  max-width: 240px;
+  text-align: left;
+  line-height: 1.35;
+}
+
+.ninho-art-bubble-right {
+  background: #fffdf8;
+  border: 1px solid #e3dcce;
+  border-radius: 18px 18px 4px 18px;
+  padding: 12px 16px;
+  box-shadow: 0 4px 14px rgba(22, 60, 36, 0.05);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: 250px;
+  line-height: 1.35;
+}
+
+.ninho-art-bubble-right p {
+  margin: 0;
+  font-size: 13px;
+  color: #553b1e;
+  font-style: italic;
+}
+
+.ninho-tiny-badge {
+  font-size: 11px;
+  font-weight: 700;
+  color: #1e5932;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.ninho-pipo-mascot {
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 8px 20px rgba(45, 35, 20, 0.08));
+  border-radius: 20px;
+}
+
+/* Center Form Card */
+.ninho-form-card {
+  background: #ffffff;
+  border: 1.5px solid #e5decb;
+  border-radius: 24px;
+  box-shadow: 0 12px 36px rgba(22, 60, 36, 0.07);
+  padding: 32px 32px 36px;
+  box-sizing: border-box;
+}
+
+.ninho-form-card-top {
+  margin-bottom: 24px;
+}
+
+.ninho-back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #3b5f45;
+  text-decoration: none;
+  margin-bottom: 16px;
+  transition: color 0.15s ease;
+}
+
+.ninho-back-link:hover {
+  color: #184627;
+}
+
+.ninho-form-header-badge {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.ninho-kind-icon-circle {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.ninho-kind-icon-circle.expense {
+  background: #fed7aa;
+  color: #c2410c;
+}
+
+.ninho-kind-icon-circle.income {
+  background: #bbf7d0;
+  color: #15803d;
+}
+
+.ninho-kind-icon-circle.transfer {
+  background: #ddd6fe;
+  color: #6366f1;
+}
+
+.ninho-form-header-badge h2 {
+  font-family: Georgia, serif;
+  font-size: 26px;
+  font-weight: 700;
+  color: #163c24;
+  margin: 0 0 4px;
+}
+
+.ninho-form-header-badge p {
+  margin: 0;
+  font-size: 14px;
+  color: #5d7564;
+}
+
+/* Form Layout */
+.ninho-record-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.ninho-form-fields {
+  border: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.ninho-form-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.ninho-field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  text-align: left;
+}
+
+.ninho-field-label {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #1c3d28;
+}
+
+.ninho-field-hint {
+  font-size: 11.5px;
+  color: #7a8a7e;
+  margin-top: 2px;
+}
+
+.ninho-text-input {
+  width: 100%;
+  box-sizing: border-box;
+  height: 48px;
+  padding: 10px 14px;
+  font-size: 15px;
+  font-family: inherit;
+  color: #173e2b;
+  background: #fffdfa;
+  border: 1.5px solid #ded6c2;
+  border-radius: 12px;
+  outline: none;
+  transition: all 0.15s ease;
+}
+
+.ninho-text-input:focus {
+  border-color: #1f6436;
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(31, 100, 54, 0.12);
+}
+
+.ninho-amount-input {
+  font-weight: 700;
+  font-size: 17px;
+  letter-spacing: 0.02em;
+}
+
+/* Date Input Trigger */
+.ninho-date-picker-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.ninho-date-trigger-input {
+  cursor: pointer;
+  padding-right: 44px;
+}
+
+.ninho-date-calendar-btn {
+  position: absolute;
+  right: 10px;
+  background: transparent;
+  border: none;
+  color: #27643b;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease;
+}
+
+.ninho-date-calendar-btn:hover {
+  background: #eef5eb;
+}
+
+/* Selector Trigger Component */
+.ninho-selector-trigger {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  border: 1.5px solid #ded6c2;
+  border-radius: 12px;
+  background: #fffdfa;
+  cursor: pointer;
+  text-align: left;
+  outline: none;
+  transition: all 0.15s ease;
+}
+
+.ninho-selector-trigger:hover:not(:disabled) {
+  border-color: #1f6436;
+  background: #ffffff;
+  box-shadow: 0 2px 10px rgba(31, 100, 54, 0.08);
+}
+
+.ninho-selector-trigger:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  background: #f4f0e6;
+}
+
+.ninho-trigger-icon-wrap {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  background: #eef5eb;
+  color: #1f6436;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.ninho-trigger-text {
+  flex: 1;
+  font-size: 14.5px;
+  font-weight: 500;
+  color: #173e2b;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ninho-selector-trigger.is-placeholder .ninho-trigger-text {
+  color: #798d7f;
+  font-weight: 400;
+}
+
+.ninho-trigger-caret {
+  color: #6a7f71;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* Actions */
+.ninho-form-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.ninho-secondary-btn {
+  padding: 12px 22px;
+  border: 1.5px solid #ded6c2;
+  border-radius: 12px;
+  background: #fffdfa;
+  color: #4b6653;
+  font-weight: 600;
+  font-size: 14.5px;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ninho-secondary-btn:hover {
+  background: #f5eedf;
+  color: #1b3d27;
+}
+
+.ninho-primary-btn {
+  padding: 12px 28px;
+  border: none;
+  border-radius: 12px;
+  background: #174c2a;
+  color: #ffffff;
+  font-weight: 600;
+  font-size: 15px;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 14px rgba(23, 76, 42, 0.2);
+}
+
+.ninho-primary-btn:hover:not(:disabled) {
+  background: #113c20;
+  box-shadow: 0 6px 18px rgba(23, 76, 42, 0.28);
+}
+
+.ninho-primary-btn:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.ninho-record-notice {
+  background: #fff0eb;
+  border: 1px solid #f9cbbd;
+  color: #a32c1b;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 13.5px;
+  margin: 0;
+}
+
+.ninho-record-alert {
+  background: #fdf5e2;
+  border: 1px solid #fae1ad;
+  color: #8c5b0d;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 13.5px;
+  margin: 0;
+}
+
+.ninho-record-success-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 32px 16px;
+  gap: 12px;
+}
+
+.ninho-success-check-badge {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: #174c2a;
+  color: #ffffff;
+  font-size: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 6px;
+}
+
+/* ============================================================
+   AUXILIARY SELECTOR DIALOGS & MODAL SHEETS
+   ============================================================ */
+
+dialog.ninho-selector-dialog {
+  border: 1px solid #e3dcce;
+  border-radius: 24px;
+  padding: 0;
+  background: #ffffff;
+  box-shadow: 0 20px 56px rgba(18, 48, 29, 0.2);
+  width: min(440px, 94vw);
+  max-height: 85vh;
+  outline: none;
+  box-sizing: border-box;
+  overscroll-behavior: contain;
+}
+
+dialog.ninho-selector-dialog::backdrop {
+  background: rgba(18, 40, 26, 0.45);
+  backdrop-filter: blur(4px);
+}
+
+.ninho-selector-panel {
+  display: flex;
+  flex-direction: column;
+  max-height: 85vh;
+  background: #ffffff;
+  border-radius: 24px;
+  overflow: hidden;
+}
+
+.ninho-selector-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 22px 24px 14px;
+  border-bottom: 1px solid #f0ebe0;
+  gap: 12px;
+}
+
+.ninho-selector-header h2 {
+  font-family: Georgia, serif;
+  font-size: 20px;
+  font-weight: 700;
+  color: #163c24;
+  margin: 0;
+}
+
+.ninho-selector-subtitle {
+  font-size: 12.5px;
+  color: #5f7867;
+  margin: 4px 0 0;
+}
+
+.ninho-selector-close {
+  background: transparent;
+  border: none;
+  color: #697c70;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.ninho-selector-close:hover {
+  background: #f4efe4;
+  color: #173e27;
+}
+
+.ninho-selector-parent-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 12px 24px 0;
+  padding: 6px 14px;
+  background: #eef6ec;
+  border: 1px solid #cbe3c8;
+  border-radius: 20px;
+  color: #1a572c;
+  font-size: 13px;
+  font-weight: 600;
+  width: fit-content;
+}
+
+.ninho-parent-pill-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ninho-selector-search-box {
+  position: relative;
+  margin: 14px 24px;
+  display: flex;
+  align-items: center;
+}
+
+.ninho-search-icon {
+  position: absolute;
+  left: 14px;
+  color: #798f80;
+  pointer-events: none;
+}
+
+.ninho-selector-search-box input {
+  width: 100%;
+  box-sizing: border-box;
+  height: 44px;
+  padding: 8px 14px 8px 40px;
+  border-radius: 12px;
+  border: 1.5px solid #ded6c2;
+  background: #fffdfa;
+  font-size: 14px;
+  font-family: inherit;
+  color: #173e2b;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.ninho-selector-search-box input:focus {
+  border-color: #1f6436;
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(31, 100, 54, 0.1);
+}
+
+.ninho-selector-list {
+  padding: 6px 16px 14px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
+.ninho-selector-empty {
+  padding: 24px 16px;
+  text-align: center;
+  color: #6a7e71;
+  font-size: 13.5px;
+  margin: 0;
+}
+
+.ninho-selector-empty small {
+  display: block;
+  margin-top: 6px;
+  color: #8c9e92;
+}
+
+.ninho-selector-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 14px;
+  border: 1.5px solid transparent;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.12s ease;
+}
+
+.ninho-selector-item:hover {
+  background: #f6f2e8;
+  border-color: #e5decb;
+}
+
+.ninho-selector-item.selected {
+  background: #eef6ec;
+  border-color: #c0dec0;
+}
+
+.ninho-selector-item-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: #f0eadb;
+  color: #2b5c39;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+}
+
+.ninho-selector-item.selected .ninho-selector-item-icon {
+  background: #d8edd6;
+  color: #165627;
+}
+
+.ninho-selector-item-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  overflow: hidden;
+}
+
+.ninho-selector-item-label {
+  font-size: 14.5px;
+  font-weight: 600;
+  color: #173e2b;
+}
+
+.ninho-selector-item-subtitle {
+  font-size: 12px;
+  color: #63796a;
+}
+
+.ninho-selector-check {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #174c2a;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.ninho-selector-footer {
+  padding: 14px 24px;
+  border-top: 1px solid #f0ebe0;
+  background: #faf7f0;
+}
+
+.ninho-selector-add-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: transparent;
+  border: none;
+  color: #18502a;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: none;
+  padding: 6px 4px;
+  transition: color 0.15s ease;
+}
+
+.ninho-selector-add-btn:hover {
+  color: #0d3219;
+}
+
+.ninho-selector-create-form {
+  padding: 16px 24px;
+  border-top: 1px solid #f0ebe0;
+  background: #faf7f0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ninho-selector-create-form input {
+  width: 100%;
+  box-sizing: border-box;
+  height: 42px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1.5px solid #ded6c2;
+  background: #ffffff;
+  font-size: 14px;
+  font-family: inherit;
+}
+
+.ninho-selector-create-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.ninho-selector-cancel-btn {
+  padding: 8px 16px;
+  border-radius: 10px;
+  border: 1.5px solid #ded6c2;
+  background: #ffffff;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #4a6352;
+  cursor: pointer;
+}
+
+.ninho-selector-cancel-btn:hover {
+  background: #f5eedf;
+}
+
+.ninho-selector-save-btn {
+  padding: 8px 18px;
+  border-radius: 10px;
+  border: none;
+  background: #174c2a;
+  color: #ffffff;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ninho-selector-save-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.ninho-selector-notice {
+  margin: 0 24px 8px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: #fff0eb;
+  color: #a8291a;
+  font-size: 13px;
+}
+
+/* ============================================================
+   DATE PICKER CALENDAR STYLING
+   ============================================================ */
+
+.ninho-calendar-panel {
+  max-width: 380px;
+}
+
+.ninho-calendar-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 24px 8px;
+}
+
+.ninho-calendar-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #173e2b;
+}
+
+.ninho-calendar-nav-btn {
+  background: transparent;
+  border: none;
+  color: #27643b;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease;
+}
+
+.ninho-calendar-nav-btn:hover {
+  background: #eef6ec;
+}
+
+.ninho-calendar-grid {
+  padding: 6px 20px 14px;
+}
+
+.ninho-calendar-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  text-align: center;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #f0ebe0;
+  margin-bottom: 8px;
+}
+
+.ninho-calendar-weekday {
+  font-size: 12px;
+  font-weight: 700;
+  color: #798f80;
+  text-transform: capitalize;
+}
+
+.ninho-calendar-days {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+}
+
+.ninho-calendar-day {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  font-size: 14px;
+  font-weight: 500;
+  color: #193f2c;
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+
+.ninho-calendar-day:hover:not(.selected) {
+  background: #f3efe6;
+}
+
+.ninho-calendar-day.selected {
+  background: #174c2a !important;
+  color: #ffffff !important;
+  font-weight: 700;
+  box-shadow: 0 4px 10px rgba(23, 76, 42, 0.28);
+}
+
+.ninho-calendar-blank {
+  visibility: hidden;
+}
+
+.ninho-calendar-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 24px;
+  border-top: 1px solid #f0ebe0;
+  background: #faf7f0;
+}
+
+.ninho-selector-confirm-btn {
+  padding: 9px 20px;
+  border-radius: 10px;
+  border: none;
+  background: #174c2a;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.ninho-selector-confirm-btn:hover {
+  background: #10381e;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1080px) {
+  .ninho-record-stage {
+    grid-template-columns: 220px minmax(360px, 520px) 220px;
+    gap: 16px;
+  }
+  .ninho-art-bubble,
+  .ninho-art-bubble-right {
+    max-width: 200px;
+    font-size: 12.5px;
+  }
+}
+
+@media (max-width: 900px) {
+  .ninho-record-stage {
+    grid-template-columns: minmax(320px, 560px);
+    gap: 24px;
+  }
+  .ninho-stage-art {
+    display: none;
+  }
+  .ninho-form-card {
+    padding: 24px 20px;
+  }
+}
+
+@media (max-width: 640px) {
+  .ninho-record-screen {
+    padding: 16px 12px 48px;
+  }
+  header.ninho-record-page-header {
+    position: relative !important;
+    top: auto !important;
+    left: auto !important;
+    right: auto !important;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+    margin: 0 0 20px;
+    padding-bottom: 16px;
+  }
+  .ninho-record-main-title {
+    font-size: 26px;
+  }
+  .ninho-record-main-subtitle {
+    font-size: 14px;
+  }
+  .ninho-record-stage {
+    grid-template-columns: 1fr;
+    width: 100%;
+    margin: 0;
+  }
+  .ninho-form-card {
+    padding: 20px 16px 24px;
+    border-radius: 20px;
+  }
+  .ninho-form-header-badge h2 {
+    font-size: 22px;
+  }
+  .ninho-form-actions {
+    flex-direction: column-reverse;
+    gap: 10px;
+  }
+  .ninho-primary-btn,
+  .ninho-secondary-btn {
+    width: 100%;
+  }
+
+  /* Native Mobile Bottom Sheet for Selectors */
+  dialog.ninho-selector-dialog {
+    margin: auto auto 0 auto !important;
+    inset: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 100% !important;
+    box-sizing: border-box !important;
+    border-radius: 24px 24px 0 0 !important;
+    border-bottom: none !important;
+    border-left: none !important;
+    border-right: none !important;
+    max-height: 88svh !important;
+    animation: ninhoSheetSlideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .ninho-selector-panel {
+    max-height: 88svh !important;
+    border-radius: 24px 24px 0 0 !important;
+  }
+  .ninho-selector-header {
+    position: relative !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    padding: 26px 20px 14px !important;
+  }
+  .ninho-selector-header::before {
+    content: "";
+    display: block;
+    width: 44px;
+    height: 4.5px;
+    border-radius: 3px;
+    background: #d8d0c0;
+    position: absolute;
+    top: 9px;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+  .ninho-calendar-panel {
+    max-width: 100vw;
+  }
+}
+
+@keyframes ninhoSheetSlideUp {
+  from {
+    transform: translateY(100%);
+    opacity: 0.85;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* ============================================================
+   SHOWCASE SECTION (AUXILIARY SELECTORS EXHIBITION)
+   ============================================================ */
+
+.ninho-showcase-section {
+  max-width: 1240px;
+  margin: 56px auto 32px;
+  padding: 0 16px;
+}
+
+.ninho-showcase-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 28px;
+  align-items: start;
+}
+
+.ninho-showcase-column {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.ninho-showcase-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.ninho-showcase-header h3 {
+  font-family: Georgia, serif;
+  font-size: 18px;
+  font-weight: 700;
+  color: #173e2b;
+  margin: 0 0 2px;
+}
+
+.ninho-showcase-header p {
+  font-size: 13px;
+  color: #5d7564;
+  margin: 0;
+}
+
+.ninho-showcase-tag-icon,
+.ninho-showcase-source-icon,
+.ninho-showcase-calendar-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.ninho-showcase-tag-icon {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.ninho-showcase-source-icon {
+  background: #fef08a;
+  color: #854d0e;
+}
+
+.ninho-showcase-calendar-icon {
+  background: #e2e8f0;
+  color: #334155;
+}
+
+.ninho-showcase-panel {
+  border: 1.5px solid #ded6c2;
+  border-radius: 20px;
+  box-shadow: 0 8px 24px rgba(22, 60, 36, 0.06);
+  background: #ffffff;
+}

@@ -77,6 +77,36 @@ public sealed class GetFinancialDashboardTests
         Assert.Equal(0L, dashboard.Accounts.Single().BalanceCents);
     }
 
+    [Fact]
+    public async Task BudgetsOnlyConsumeTheirOwnCurrencyIncludingReversalsAndUnresolvedLegacyAmounts()
+    {
+        var category = Guid.NewGuid(); var brl = Guid.NewGuid(); var usd = Guid.NewGuid();
+        var reader = new RecordingDashboardReader
+        {
+            Data = new DashboardSourceData(
+            [new(brl, "BRL account", "BRL", 0), new(usd, "USD account", "USD", 0)],
+            [new(category, "Food", null)],
+            [new(brl, category, FinancialTransactionKind.Expense, null, 10000),
+             new(usd, category, FinancialTransactionKind.Expense, null, 500),
+             new(usd, category, FinancialTransactionKind.Reversal, FinancialTransactionKind.Expense, 100)],
+            [new(Guid.NewGuid(), category, 20000, "BRL"), new(Guid.NewGuid(), category, 1000, "USD"),
+             new(Guid.NewGuid(), category, 1000, "EUR"), new(Guid.NewGuid(), category, 1000, null)],
+            [new(Guid.NewGuid(), "Travel", 1000, 500, null, "USD"), new(Guid.NewGuid(), "Legacy", 1000, 500, null, null)],
+            [], 3, 3)
+        };
+        var dashboard = await new GetFinancialDashboard(new MembershipReader(true), reader).ExecuteAsync(
+            new GetFinancialDashboardQuery(Guid.NewGuid(), Guid.NewGuid(), 2026, 10), CancellationToken.None);
+        Assert.Equal(10000L, dashboard.Budgets.Single(b => b.Currency == "BRL").SpentCents);
+        Assert.Equal(400L, dashboard.Budgets.Single(b => b.Currency == "USD").SpentCents);
+        Assert.Equal(0L, dashboard.Budgets.Single(b => b.Currency == "EUR").SpentCents);
+        var legacy = dashboard.Budgets.Single(b => b.Currency is null);
+        Assert.Null(legacy.SpentCents);
+        Assert.True(legacy.RequiresCurrencySelection);
+        Assert.False(dashboard.Budgets.Single(b => b.Currency == "USD").RequiresCurrencySelection);
+        Assert.True(dashboard.Goals.Single(g => g.Name == "Legacy").RequiresCurrencySelection);
+        Assert.Equal("USD", dashboard.Goals.Single(g => g.Name == "Travel").Currency);
+    }
+
     private sealed class MembershipReader(bool isMember) : IHouseholdMembershipReader
     {
         public Task<bool> IsMemberAsync(

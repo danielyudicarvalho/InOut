@@ -68,6 +68,31 @@ public sealed class GetIncomeBreakdownTests
         Assert.Equal(20L, result.Sources.Single(group => group.IncomeSourceId is null).AmountCents);
     }
 
+    [Fact]
+    public async Task ReadsHistoricalAccountsInsteadOfOnlyActiveDashboardAccounts()
+    {
+        var reader = new HistoricalReader();
+        var result = await new GetIncomeBreakdown(new Member(true), reader).ExecuteAsync(
+            new GetIncomeBreakdownQuery(Guid.NewGuid(), Guid.NewGuid(), "USD", 2026, 10, IncludeArchivedAccounts: true), CancellationToken.None);
+        Assert.Equal(123L, result.TotalCents);
+        Assert.True(reader.HistoryCalled);
+    }
+
+    private sealed class HistoricalReader : IDashboardReader
+    {
+        public bool HistoryCalled { get; private set; }
+        public Task<DashboardSourceData> ReadAsync(Guid actorUserId, Guid householdId, FinancialPeriod period, CancellationToken cancellationToken) =>
+            throw new InvalidOperationException("Income must use the historical read model.");
+        public Task<DashboardSourceData> ReadIncomeHistoryAsync(Guid actorUserId, Guid householdId, FinancialPeriod period, CancellationToken cancellationToken)
+        {
+            HistoryCalled = true;
+            var account = Guid.NewGuid();
+            return Task.FromResult(new DashboardSourceData(
+                [new DashboardAccountSource(account, "Archived account", "USD", 123)], [],
+                [new DashboardPosting(account, null, FinancialTransactionKind.Income, null, 123)], [], [], [], 1, 1));
+        }
+    }
+
     private sealed class Member(bool allowed) : IHouseholdMembershipReader
     {
         public Task<bool> IsMemberAsync(Guid userId, Guid householdId, CancellationToken cancellationToken) => Task.FromResult(allowed);

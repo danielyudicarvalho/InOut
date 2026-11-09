@@ -17,19 +17,26 @@ import {
   periodLabel,
 } from "@inout/finance";
 import { useFinancialHome } from "../finance/use-financial-home";
+import { AccountActivity } from "../components/AccountActivity";
 import { theme as t } from "../theme";
 export function BalanceCompositionScreen() {
   const p = useLocalSearchParams();
-  const household = typeof p.household === "string" ? p.household : "",
-    period = typeof p.period === "string" ? p.period : "",
-    currency = typeof p.currency === "string" ? p.currency : "";
+  const household = typeof p.household === "string" ? p.household : "";
+  const period = typeof p.period === "string" ? p.period : "";
+  const currency = typeof p.currency === "string" ? p.currency : "";
+  const accountParam =
+    typeof p.accountId === "string"
+      ? p.accountId
+      : typeof p.account === "string"
+        ? p.account
+        : "";
   return (
     <BalanceView
-      key={`${household}:${period}:${currency}:${p.account ?? ""}`}
+      key={`${household}:${period}:${currency}:${accountParam}`}
       initialHouseholdId={household}
       initialPeriod={period}
       initialCurrency={currency}
-      initialAccountId={typeof p.account === "string" ? p.account : ""}
+      initialAccountId={accountParam}
     />
   );
 }
@@ -205,6 +212,15 @@ function BalanceView({
               Créditos e débitos podem incluir transferências e ajustes; não
               equivalem às receitas e despesas da residência.
             </Text>
+            <AccountActivity
+              key={`${state.householdId}:${account.id}:${state.period}`}
+              household={state.householdId}
+              period={state.period}
+              accountId={account.id}
+              currency={account.currency}
+              hidden={hidden}
+              onPeriod={state.selectPeriod}
+            />
           </View>
         ) : (
           <>

@@ -82,7 +82,8 @@ public interface ILedgerStore
         Guid? incomeSourceId,
         string? description,
         CancellationToken cancellationToken,
-        IdempotencyRequest? idempotencyRequest = null);
+        IdempotencyRequest? idempotencyRequest = null,
+        TransactionClassificationSnapshot? expectedState = null);
 
     Task<IReadOnlyList<AccountBalance>> GetBalancesAsync(
         Guid actorUserId,
@@ -98,6 +99,24 @@ public interface ILedgerStore
         Guid actorUserId,
         SetBudgetCommand command,
         IdempotencyRequest idempotencyRequest,
+        CancellationToken cancellationToken);
+
+    Task<GoalAllocationResult> AllocateToGoalAsync(
+        Guid actorUserId,
+        AllocateGoalCommand command,
+        IdempotencyRequest idempotencyRequest,
+        CancellationToken cancellationToken);
+
+    Task<GoalAllocationResult> ReverseGoalAllocationAsync(
+        Guid actorUserId,
+        ReverseGoalAllocationCommand command,
+        IdempotencyRequest idempotencyRequest,
+        CancellationToken cancellationToken);
+
+    Task<GoalAllocationHistory> ListGoalAllocationsAsync(
+        Guid actorUserId,
+        Guid householdId,
+        Guid goalId,
         CancellationToken cancellationToken);
 }
 

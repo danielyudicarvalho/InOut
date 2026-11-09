@@ -44,6 +44,15 @@ export function DashboardSetupScreen({
         </Link>
         <small>Finanças para o seu lar</small>
         <nav aria-label="Navegação principal">
+          <Link href={`/residencia?${new URLSearchParams(context)}`}>
+            Minha residência
+          </Link>
+          <Link href={`/categorias?${new URLSearchParams(context)}`}>
+            Categorias
+          </Link>
+          <Link href={`/gerenciar-fontes?${new URLSearchParams(context)}`}>
+            Fontes de renda
+          </Link>
           <Link
             className="income-nav-link"
             href={`/lancamentos?${new URLSearchParams(context)}`}

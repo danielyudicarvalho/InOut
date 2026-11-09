@@ -30,8 +30,12 @@ export function LedgerHistoryScreen() {
     initialPeriod: typeof p.period === "string" ? p.period : "",
   });
   const [filters, setFilters] = useState<HistoryFilters>(() => ({
-      transactionId: typeof p.transaction === "string" ? p.transaction : "",
-    })),
+    accountId: typeof p.accountId === "string" ? p.accountId : "",
+    categoryId: typeof p.categoryId === "string" ? p.categoryId : "",
+    incomeSourceId:
+      typeof p.incomeSourceId === "string" ? p.incomeSourceId : "",
+    transactionId: typeof p.transaction === "string" ? p.transaction : "",
+  })),
     [search, setSearch] = useState(""),
     [offset, setOffset] = useState(0),
     [picker, setPicker] = useState(false),
@@ -69,11 +73,19 @@ export function LedgerHistoryScreen() {
             style={s.image}
           />
         </View>
-        {filters.transactionId && (
+        {filters.categoryId || filters.incomeSourceId ? (
+          <View>
+            <Text>Exibindo registros do cadastro selecionado.</Text>
+            <Pressable accessibilityRole="button" onPress={() => change({})}>
+              <Text style={s.link}>Limpar filtro do cadastro</Text>
+            </Pressable>
+          </View>
+        ) : null}
+        {filters.transactionId ? (
           <Pressable style={s.button} onPress={() => change({})}>
             <Text>Ver histórico completo</Text>
           </Pressable>
-        )}
+        ) : null}
         <TextInput
           style={s.input}
           accessibilityLabel="Buscar pela descrição"
@@ -206,7 +218,7 @@ function HistoryRows({
           onPress={() =>
             router.push({
               pathname: "/lancamento",
-              params: { household, period, transaction: item.transactionId },
+              params: { household, transaction: item.transactionId, period },
             })
           }
         >

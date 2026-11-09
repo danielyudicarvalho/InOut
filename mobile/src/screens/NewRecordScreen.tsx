@@ -49,7 +49,7 @@ export function NewRecordScreen() {
 
   return (
     <RecordView
-      key={`${kind}:${household}:${period}:${currency}:${typeof p.draft === "string" ? p.draft : ""}`}
+      key={`${kind}:${household}:${period}:${currency}:${typeof p.accountId === "string" ? p.accountId : ""}:${typeof p.draft === "string" ? p.draft : ""}`}
       kind={kind as RecordKind}
       household={household}
       period={period}
@@ -132,7 +132,13 @@ function RecordForm({
   kind: RecordKind;
   householdName: string;
 }) {
-  const state = useRecord(household, kind, currency);
+  const params = useLocalSearchParams();
+  const state = useRecord(
+    household,
+    kind,
+    currency,
+    typeof params.accountId === "string" ? params.accountId : "",
+  );
   const [reviewing, setReviewing] = useState(false);
   const [reviewError, setReviewError] = useState("");
   const [newOpen, setNewOpen] = useState(false);

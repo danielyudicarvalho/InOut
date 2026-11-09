@@ -87,6 +87,13 @@ function createMockRepo(allRows = [origRow, revRow, subRow]) {
           const matched = allRows.filter((r) => r.transactionId === txId);
           return new Response(JSON.stringify(matched));
         }
+        const revOf = u.searchParams.get("reversalOf");
+        if (revOf) {
+          const matched = allRows.filter(
+            (r) => r.reversalOf?.toLowerCase() === revOf.toLowerCase(),
+          );
+          return new Response(JSON.stringify(matched));
+        }
         return new Response(JSON.stringify(allRows));
       }
       return new Response(JSON.stringify([]));

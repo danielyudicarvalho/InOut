@@ -20,7 +20,7 @@ public sealed class HouseholdExceptionHandler : IExceptionHandler
         {
             HouseholdErrorCodes.OwnerRequired or HouseholdErrorCodes.MembershipRequired =>
                 StatusCodes.Status403Forbidden,
-            HouseholdErrorCodes.HouseholdFull or HouseholdErrorCodes.AlreadyMember =>
+            HouseholdErrorCodes.LastOwner or HouseholdErrorCodes.MemberNotFound or HouseholdErrorCodes.HouseholdFull or HouseholdErrorCodes.AlreadyMember =>
                 StatusCodes.Status409Conflict,
             _ => StatusCodes.Status400BadRequest
         };

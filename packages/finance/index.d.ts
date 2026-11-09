@@ -147,6 +147,45 @@ export type HistoryFilters = {
   accountId?: string;
 };
 export function historyKind(item: Pick<HistoryItem, "kind">): string;
+export type AnalysisFacts = {
+  incomeCents: number;
+  expenseCents: number;
+  resultCents: number;
+};
+export type AnalysisChange = {
+  kind: string;
+  id: string | null;
+  name: string;
+  currentCents: number;
+  previousCents: number;
+  deltaCents: number;
+  percentageChange: number | null;
+};
+export type AnalysisAccount = {
+  id: string;
+  name: string;
+  incomeCents: number;
+  expenseCents: number;
+  transferInCents: number;
+  transferOutCents: number;
+  inflowCents: number;
+  outflowCents: number;
+  changeCents: number;
+};
+export type FinancialAnalysis = {
+  from: string;
+  to: string;
+  previousFrom: string;
+  previousTo: string;
+  currency: string;
+  isReconciled: boolean;
+  current: AnalysisFacts;
+  previous: AnalysisFacts;
+  changes: AnalysisChange[];
+  series: (AnalysisFacts & { from: string; to: string })[];
+  accounts: AnalysisAccount[];
+};
+
 export type AuxiliaryKind = "account" | "category" | "source";
 export type AuxiliaryFields = {
   name: string;
@@ -192,6 +231,7 @@ export function createAuxiliaryStore(
   submit(): Promise<void>;
 };
 export type TransactionDetail = {
+  reversalId?: string | null;
   original?: TransactionDetail;
   categoryId: string | null;
   sourceId: string | null;
@@ -268,7 +308,14 @@ export function createClassificationStore(
   options: Parameters<typeof createReversalStore>[3],
 ): {
   getSnapshot(): {
-    status: "loading" | "ready" | "saving" | "uncertain" | "success" | "error";
+    status:
+      | "loading"
+      | "ready"
+      | "saving"
+      | "uncertain"
+      | "success"
+      | "error"
+      | "stale";
     fields: ClassificationFields;
     options: ClassificationOptions | null;
     notice: string;
@@ -281,6 +328,28 @@ export function createClassificationStore(
   submit(): Promise<void>;
 };
 export interface FinanceRepository {
+  analysis(
+    householdId: string,
+    period: string,
+    currency: string,
+    signal?: AbortSignal,
+  ): Promise<FinancialAnalysis>;
+  createCategory(
+    household: string,
+    body: {
+      name: string;
+      flow: "income" | "expense";
+      parentId?: string | null;
+    },
+    key: string,
+    signal?: AbortSignal,
+  ): Promise<{ id: string; name: string; flow: string; parentId?: string }>;
+  createIncomeSource(
+    household: string,
+    body: { name: string },
+    id: string,
+    signal?: AbortSignal,
+  ): Promise<{ id: string; name: string }>;
   correctClassification(
     household: string,
     transactionId: string,
@@ -288,6 +357,12 @@ export interface FinanceRepository {
       categoryId: string;
       incomeSourceId: string | null;
       description: string | null;
+      expectedState?: {
+        status: string;
+        categoryId: string | null;
+        incomeSourceId: string | null;
+        description: string | null;
+      };
     },
     key: string,
     signal?: AbortSignal,
@@ -337,6 +412,18 @@ export interface FinanceRepository {
     householdId: string,
     signal?: AbortSignal,
   ): Promise<RecordOptions>;
+  createCategory(
+    householdId: string,
+    body: { name: string; flow: "income" | "expense"; parentId?: string | null },
+    key: string,
+    signal?: AbortSignal,
+  ): Promise<{ id: string; name: string; flow: string; parentId: string | null }>;
+  createIncomeSource(
+    householdId: string,
+    body: { name: string },
+    id?: string,
+    signal?: AbortSignal,
+  ): Promise<{ id: string; name: string }>;
   postRecord(
     householdId: string,
     kind: RecordKind,
@@ -363,10 +450,290 @@ export interface FinanceRepository {
     currency: string,
     offset: number,
     signal?: AbortSignal,
+    includeArchivedAccounts?: boolean,
   ): Promise<IncomePage>;
   households(signal?: AbortSignal): Promise<Household[]>;
   home(id: string, period: string, signal?: AbortSignal): Promise<Home>;
+  budgets(
+    household: string,
+    from: string,
+    to: string,
+    signal?: AbortSignal,
+  ): Promise<PlanningBudget[]>;
+  budget(
+    household: string,
+    budgetId: string,
+    signal?: AbortSignal,
+  ): Promise<PlanningBudgetDetail>;
+  setBudget(
+    household: string,
+    body: { [key: string]: unknown },
+    key: string,
+    signal?: AbortSignal,
+  ): Promise<unknown>;
+  goals(household: string, signal?: AbortSignal): Promise<PlanningGoal[]>;
+  goal(
+    household: string,
+    goalId: string,
+    signal?: AbortSignal,
+  ): Promise<PlanningGoalDetail>;
+  createGoal(
+    household: string,
+    body: { [key: string]: unknown },
+    key: string,
+    signal?: AbortSignal,
+  ): Promise<PlanningGoal>;
+  updateGoal(
+    household: string,
+    goalId: string,
+    body: { [key: string]: unknown },
+    key: string,
+    signal?: AbortSignal,
+  ): Promise<PlanningGoal>;
+  changeGoalStatus(
+    household: string,
+    goalId: string,
+    status: string,
+    key: string,
+    signal?: AbortSignal,
+  ): Promise<PlanningGoal>;
+  allocateGoal(
+    household: string,
+    goalId: string,
+    body: { [key: string]: unknown },
+    key: string,
+    signal?: AbortSignal,
+  ): Promise<unknown>;
+  reverseAllocation(
+    household: string,
+    goalId: string,
+    allocationId: string,
+    body: { [key: string]: unknown },
+    key: string,
+    signal?: AbortSignal,
+  ): Promise<unknown>;
+  projects(household: string, signal?: AbortSignal): Promise<PlanningProject[]>;
+  project(
+    household: string,
+    projectId: string,
+    signal?: AbortSignal,
+  ): Promise<PlanningProject>;
+  createProject(
+    household: string,
+    body: { [key: string]: unknown },
+    key: string,
+    signal?: AbortSignal,
+  ): Promise<PlanningProject>;
+  updateProject(
+    household: string,
+    projectId: string,
+    body: { [key: string]: unknown },
+    key: string,
+    signal?: AbortSignal,
+  ): Promise<PlanningProject>;
+  closeProject(
+    household: string,
+    projectId: string,
+    key: string,
+    signal?: AbortSignal,
+  ): Promise<PlanningProject>;
+  linkProjectMovement(
+    household: string,
+    projectId: string,
+    transactionId: string,
+    key: string,
+    signal?: AbortSignal,
+  ): Promise<PlanningProject>;
+  unlinkProjectMovement(
+    household: string,
+    projectId: string,
+    transactionId: string,
+    key: string,
+    signal?: AbortSignal,
+  ): Promise<PlanningProject>;
+  recurringPlans(
+    household: string,
+    signal?: AbortSignal,
+  ): Promise<PlanningRecurringPlan[]>;
+  recurringPreview(
+    household: string,
+    planId: string,
+    from: string,
+    signal?: AbortSignal,
+  ): Promise<string[]>;
+  createRecurringPlan(
+    household: string,
+    body: { [key: string]: unknown },
+    key: string,
+    signal?: AbortSignal,
+  ): Promise<PlanningRecurringPlan>;
+  changeRecurringStatus(
+    household: string,
+    planId: string,
+    status: string,
+    signal?: AbortSignal,
+  ): Promise<PlanningRecurringPlan>;
+  realizeOccurrence(
+    household: string,
+    planId: string,
+    scheduledOn: string,
+    key: string,
+    signal?: AbortSignal,
+  ): Promise<unknown>;
+  agenda(
+    household: string,
+    from: string,
+    to: string,
+    signal?: AbortSignal,
+  ): Promise<PlanningAgendaItem[]>;
+  forecasts(
+    household: string,
+    signal?: AbortSignal,
+  ): Promise<PlanningForecast[]>;
+  createForecast(
+    household: string,
+    body: { [key: string]: unknown },
+    key: string,
+    signal?: AbortSignal,
+  ): Promise<PlanningForecast>;
+  compareForecast(
+    household: string,
+    forecastId: string,
+    signal?: AbortSignal,
+  ): Promise<PlanningForecastComparison[]>;
 }
+export type PlanningBudget = {
+  id: string;
+  categoryId: string;
+  categoryName: string;
+  periodStart: string;
+  periodEnd: string;
+  limitCents: number;
+  spentCents: number | null;
+  remainingCents: number | null;
+  currency: string | null;
+};
+export type PlanningBudgetDetail = {
+  budget: PlanningBudget;
+  revisions: {
+    id: string;
+    previousLimitCents: number | null;
+    limitCents: number;
+    currency: string;
+    createdAt: string;
+  }[];
+  expenses: {
+    transactionId: string;
+    occurredOn: string;
+    description: string | null;
+    accountName: string;
+    amountCents: number;
+  }[];
+};
+export type PlanningGoal = {
+  id: string;
+  name: string;
+  targetCents: number;
+  allocatedCents: number;
+  targetDate: string | null;
+  currency: string | null;
+  status: string;
+  archivedAt: string | null;
+};
+export type PlanningGoalDetail = {
+  goal: PlanningGoal;
+  allocations: {
+    id: string;
+    amountCents: number;
+    currency: string;
+    kind: string;
+    reversalOf: string | null;
+    occurredOn: string;
+    note: string | null;
+  }[];
+};
+export type PlanningProject = {
+  id: string;
+  name: string;
+  currency: string;
+  plannedCents: number;
+  startsOn: string;
+  endsOn: string | null;
+  notes: string | null;
+  status: string;
+  lines: { id: string; name: string; flow: string; amountCents: number }[];
+  movements: {
+    transactionId: string;
+    occurredOn: string;
+    description: string | null;
+  }[];
+  comparison: {
+    plannedIncomeCents: number;
+    plannedExpenseCents: number;
+    actualIncomeCents: number;
+    actualExpenseCents: number;
+  };
+};
+export type PlanningRecurringPlan = {
+  id: string;
+  name: string;
+  flow: string;
+  accountId: string;
+  categoryId: string;
+  amountCents: number;
+  currency: string;
+  dayOfMonth: number;
+  startsOn: string;
+  endsOn: string | null;
+  status: string;
+};
+export type PlanningAgendaItem = {
+  planId: string;
+  planName: string;
+  scheduledOn: string;
+  flow: string;
+  amountCents: number;
+  currency: string;
+  state: string;
+  transactionId: string | null;
+};
+export type PlanningForecast = {
+  id: string;
+  accountId: string;
+  currency: string;
+  asOf: string;
+  months: number;
+  openingBalanceCents: number;
+  points: {
+    month: string;
+    expectedIncomeCents: number;
+    expectedExpenseCents: number;
+    projectedBalanceCents: number;
+    contributions: {
+      planId: string;
+      scheduledOn: string;
+      flow: string;
+      amountCents: number;
+      currency: string;
+    }[];
+  }[];
+  assumptions: {
+    planId: string;
+    name: string;
+    amountCents: number;
+    currency: string;
+    dayOfMonth: number;
+    status: string;
+  }[];
+};
+export type PlanningForecastComparison = {
+  month: string;
+  expectedIncomeCents: number;
+  expectedExpenseCents: number;
+  projectedBalanceCents: number;
+  actualIncomeCents: number;
+  actualExpenseCents: number;
+};
 export class FinanceFailure extends Error {
   readonly code: string;
   constructor(code: string);
@@ -374,6 +741,7 @@ export class FinanceFailure extends Error {
 export function financeMessage(error: unknown): string;
 export function monthOptions(now?: Date): string[];
 export function periodLabel(period: string): string;
+export function parseMoneyInput(value: string): number;
 export function money(cents: number, currency: string): string;
 export function createFinanceRepository(options: {
   baseUrl: string | undefined;
@@ -461,6 +829,7 @@ export type RecordFields = {
   accountId: string;
   destinationId: string;
   categoryId: string;
+  subcategoryId?: string;
   sourceId: string;
   amount: string;
   date: string;
@@ -477,12 +846,12 @@ export function recordReview(
   options: RecordOptions,
 ): RecordReview;
 export type RecordOptions = {
-  accounts: { id: string; name: string; currency: string }[];
+  accounts: { id: string; name: string; currency: string; kind?: string | null }[];
   categories: {
     id: string;
     name: string;
     flow: "income" | "expense";
-    parentId?: string;
+    parentId?: string | null;
   }[];
   sources: { id: string; name: string }[];
 };
@@ -512,6 +881,7 @@ export function createRecordStore(
       save: (value: string) => Promise<void>;
       remove: (key: string) => Promise<void>;
     };
+    preferredAccountId?: string;
     randomId: () => string;
     now?: () => Date;
     timeoutMs?: number;
@@ -576,6 +946,23 @@ export function createAccountStore(
   retry: () => void;
   edit: (field: keyof AccountFields, value: string) => void;
   submit: () => Promise<void>;
+};
+
+export function createTransactionDetailStore(
+  repository: FinanceRepository,
+  household: string,
+  transactionId: string,
+  options?: { timeoutMs?: number },
+): {
+  getSnapshot(): {
+    status: "loading" | "ready" | "error";
+    detail: TransactionDetail | null;
+    notice: string;
+    refreshed: boolean;
+  };
+  subscribe(listener: () => void): () => void;
+  start(): () => void;
+  reload(): Promise<boolean>;
 };
 
 export function reversalReconciliation(
@@ -685,5 +1072,3 @@ export function createDuplicateResolutionStore(
   retry(): void;
   select(id: string): void;
 };
-
-

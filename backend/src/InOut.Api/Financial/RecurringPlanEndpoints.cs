@@ -13,6 +13,8 @@ public sealed record CreateRecurringPlanRequest(
 
 public sealed record ChangeRecurringPlanStatusRequest(RecurringPlanStatus Status);
 
+public sealed record RealizeRecurringOccurrenceRequest(DateOnly ScheduledOn);
+
 public static class RecurringPlanEndpoints
 {
     public static IEndpointRouteBuilder MapRecurringPlanEndpoints(this IEndpointRouteBuilder endpoints)
@@ -52,6 +54,27 @@ public static class RecurringPlanEndpoints
             var plan = await service.GetAsync(householdId, planId, UserId(principal), cancellationToken);
             return Results.Ok(RecurringPlanService.Preview(plan, from, count ?? 6));
         }).WithName("PreviewRecurringPlan");
+
+        plans.MapPost("/{planId:guid}/occurrences", async (
+            Guid householdId, Guid planId, RealizeRecurringOccurrenceRequest request,
+            [FromHeader(Name = ApiContract.Headers.IdempotencyKey)] Guid idempotencyKey,
+            ClaimsPrincipal principal, RecurringPlanService service, CancellationToken cancellationToken) =>
+        {
+            var result = await service.RealizeAsync(UserId(principal), new RealizeRecurringOccurrenceCommand(
+                householdId, planId, request.ScheduledOn, idempotencyKey), cancellationToken);
+            return result.Replayed
+                ? Results.Ok(result)
+                : Results.Created(
+                    $"/api/v1/households/{householdId}/recurring-plans/{planId}/occurrences/{result.Id}",
+                    result);
+        }).WithName("RealizeRecurringOccurrence");
+
+        plans.MapGet("/{planId:guid}/occurrences", async (
+            Guid householdId, Guid planId, ClaimsPrincipal principal,
+            RecurringPlanService service, CancellationToken cancellationToken) =>
+            Results.Ok(await service.ListOccurrencesAsync(
+                householdId, planId, UserId(principal), cancellationToken)))
+            .WithName("ListRecurringOccurrences");
 
         plans.MapPatch("/{planId:guid}/status", async (Guid householdId, Guid planId,
             ChangeRecurringPlanStatusRequest request, ClaimsPrincipal principal,

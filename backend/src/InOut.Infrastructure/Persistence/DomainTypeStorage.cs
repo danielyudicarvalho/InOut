@@ -44,6 +44,13 @@ internal static class DomainTypeStorage
     internal static string GoalStatusToString(GoalStatus value) => Lower(value);
     internal static GoalStatus GoalStatusFromString(string value) => Parse<GoalStatus>(value);
 
+    internal static string GoalAllocationKindToString(GoalAllocationKind value) => Lower(value);
+    internal static GoalAllocationKind GoalAllocationKindFromString(string value) => Parse<GoalAllocationKind>(value);
+
+    internal static string GoalAllocationOriginToString(GoalAllocationOrigin value) => Lower(value);
+    internal static GoalAllocationOrigin GoalAllocationOriginFromString(string value) =>
+        Parse<GoalAllocationOrigin>(value);
+
     internal static string RecurringPlanStatusToString(RecurringPlanStatus value) => Lower(value);
     internal static RecurringPlanStatus RecurringPlanStatusFromString(string value) => Parse<RecurringPlanStatus>(value);
 

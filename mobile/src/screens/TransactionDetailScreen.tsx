@@ -16,6 +16,7 @@ import { useReversal } from "../finance/use-reversal";
 import { ReversalDetail } from "../components/ReversalDetail";
 import { ReversalSheet } from "../components/ReversalSheet";
 import { theme as t } from "../theme";
+
 export function TransactionDetailScreen() {
   const p = useLocalSearchParams();
   return (
@@ -28,6 +29,7 @@ export function TransactionDetailScreen() {
     />
   );
 }
+
 function DetailView({
   household,
   id,
@@ -230,6 +232,7 @@ function DetailView({
               {detail.reversalOf && (
                 <Pressable
                   style={s.button}
+                  accessibilityRole="button"
                   onPress={() => target(detail.reversalOf!)}
                 >
                   <Text>Ver lançamento original deste estorno</Text>
@@ -426,6 +429,7 @@ function DetailView({
     </SafeAreaView>
   );
 }
+
 const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: t.cream },
   content: { padding: 20, gap: 12 },

@@ -1,6 +1,10 @@
 using InOut.Application.Financial;
+using InOut.Application.Financial.Forecasts;
+using InOut.Application.Financial.Planning;
+using InOut.Application.Financial.RecurringPlans;
 using InOut.Application.Financial.Dashboard;
 using InOut.Application.Idempotency;
+using InOut.Application.Households;
 using InOut.Domain.Financial;
 using InOut.Domain.Households;
 using InOut.Infrastructure.Financial;
@@ -36,6 +40,11 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
         await using var command = connection.CreateCommand();
         command.CommandText = Schema;
         await command.ExecuteNonQueryAsync();
+        var root = new DirectoryInfo(AppContext.BaseDirectory);
+        while (root is not null && !Directory.Exists(Path.Combine(root.FullName, "db", "fly", "migrations"))) root = root.Parent;
+        var migration = Directory.GetFiles(Path.Combine(root!.FullName, "db", "fly", "migrations"), "*_planning_currencies.sql").Single();
+        command.CommandText = await File.ReadAllTextAsync(migration);
+        await command.ExecuteNonQueryAsync();
 
         await using var seed = connection.CreateCommand();
         seed.CommandText = """
@@ -52,14 +61,14 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
             insert into public.categories (id, household_id, name, flow, created_by)
             values (@expense_category_id, @household_id, 'Food', 'expense', @actor_user_id);
             insert into public.budgets (
-              id, household_id, category_id, period_start, period_end, limit_cents, created_by)
+              id, household_id, category_id, period_start, period_end, limit_cents, created_by, currency)
             values (
               gen_random_uuid(), @household_id, @expense_category_id,
-              '2026-09-01', '2026-09-30', 500, @actor_user_id);
+              '2026-09-01', '2026-09-30', 500, @actor_user_id, 'BRL');
             insert into public.goals (
-              id, household_id, name, target_cents, allocated_cents, target_date)
+              id, household_id, name, target_cents, allocated_cents, target_date, currency, created_by)
             values (
-              gen_random_uuid(), @household_id, 'Emergency fund', 10000, 2500, '2026-12-31');
+              gen_random_uuid(), @household_id, 'Emergency fund', 10000, 2500, '2026-12-31', 'BRL', @actor_user_id);
             """;
         seed.Parameters.AddWithValue("household_id", householdId);
         seed.Parameters.AddWithValue("actor_user_id", actorUserId);
@@ -81,6 +90,44 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
         var households = await store.ListAsync(Guid.NewGuid(), CancellationToken.None);
 
         Assert.Empty(households);
+    }
+
+    [Fact]
+    public async Task CollaborationProtectsLastOwnerAndPreservesHistoricalAuthorshipAfterLeave()
+    {
+        var transaction = await PostIncomeAsync(Guid.NewGuid());
+        await using var context = CreateContext();
+        var store = new EfHouseholdStore(context, NullLogger<EfHouseholdStore>.Instance);
+        var service = new HouseholdService(store, TimeProvider.System);
+        await Assert.ThrowsAsync<HouseholdRuleException>(() => service.RemoveMemberAsync(actorUserId, householdId, actorUserId, CancellationToken.None));
+        await Assert.ThrowsAsync<HouseholdRuleException>(() => service.CreateInvitationAsync(Guid.NewGuid(), householdId, CancellationToken.None));
+        var invite = await service.CreateInvitationAsync(actorUserId, householdId, CancellationToken.None);
+        var secondUser = Guid.NewGuid();
+        await service.AcceptInvitationAsync(secondUser, invite.Code, CancellationToken.None);
+        var replay = await service.AcceptInvitationAsync(secondUser, invite.Code, CancellationToken.None);
+        Assert.Equal(householdId, replay.Id);
+        await Assert.ThrowsAsync<HouseholdRuleException>(() => service.ChangeRoleAsync(secondUser, householdId, secondUser, HouseholdRole.Owner, CancellationToken.None));
+        await service.ChangeRoleAsync(actorUserId, householdId, secondUser, HouseholdRole.Owner, CancellationToken.None);
+        await service.RemoveMemberAsync(actorUserId, householdId, actorUserId, CancellationToken.None);
+        await Assert.ThrowsAsync<HouseholdRuleException>(() => service.GetContextAsync(actorUserId, householdId, CancellationToken.None));
+        var remaining = await service.GetContextAsync(secondUser, householdId, CancellationToken.None);
+        Assert.Equal(HouseholdRole.Owner, Assert.Single(remaining.Members).Role);
+        var historical = await CreateStore(context).GetHistoryAsync(secondUser, householdId, 50,
+            new LedgerHistoryFilter(TransactionId: transaction.TransactionId), CancellationToken.None);
+        Assert.NotEmpty(historical);
+        Assert.All(historical, row => Assert.Equal(actorUserId, row.CreatedBy));
+    }
+
+    [Fact]
+    public async Task RevokedInvitationCannotBeAcceptedAndItsHashIsNotListed()
+    {
+        await using var context = CreateContext();
+        var service = new HouseholdService(new EfHouseholdStore(context, NullLogger<EfHouseholdStore>.Instance), TimeProvider.System);
+        var invite = await service.CreateInvitationAsync(actorUserId, householdId, CancellationToken.None);
+        var row = Assert.Single(await service.ListInvitationsAsync(actorUserId, householdId, CancellationToken.None));
+        await service.RevokeInvitationAsync(actorUserId, householdId, row.Id, CancellationToken.None);
+        await Assert.ThrowsAsync<HouseholdRuleException>(() => service.AcceptInvitationAsync(Guid.NewGuid(), invite.Code, CancellationToken.None));
+        Assert.NotNull(Assert.Single(await service.ListInvitationsAsync(actorUserId, householdId, CancellationToken.None)).RevokedAt);
     }
 
     [Fact]
@@ -926,7 +973,7 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
             var service = new LedgerService(CreateStore(context));
             var result = await service.SetBudgetAsync(
                 actorUserId,
-                new SetBudgetCommand(null, householdId, expenseCategoryId, periodStart, periodEnd, initialLimit, Guid.NewGuid()),
+                new SetBudgetCommand(null, householdId, expenseCategoryId, periodStart, periodEnd, initialLimit, Guid.NewGuid(), "BRL"),
                 CancellationToken.None);
 
             Assert.Equal(expenseCategoryId, result.CategoryId);
@@ -961,7 +1008,7 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
             var service = new LedgerService(CreateStore(context));
             var updatedResult = await service.SetBudgetAsync(
                 actorUserId,
-                new SetBudgetCommand(null, householdId, expenseCategoryId, periodStart, periodEnd, updatedLimit, Guid.NewGuid()),
+                new SetBudgetCommand(null, householdId, expenseCategoryId, periodStart, periodEnd, updatedLimit, Guid.NewGuid(), "BRL"),
                 CancellationToken.None);
 
             Assert.Equal(updatedLimit, updatedResult.LimitCents);
@@ -980,6 +1027,33 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task BudgetsInDifferentCurrenciesCoexistAndCannotReplayOrReinterpretAnotherCurrency()
+    {
+        await using var context = CreateContext();
+        var service = new LedgerService(CreateStore(context));
+        var usdAccount = Guid.NewGuid();
+        await service.CreateAccountAsync(actorUserId, new CreateAccountCommand(usdAccount, householdId,
+            "Dollar account", AccountKind.Checking, "USD", 1000, new DateOnly(2026, 9, 1), Guid.NewGuid()), CancellationToken.None);
+        await service.PostExpenseAsync(actorUserId, new PostExpenseCommand(householdId, usdAccount,
+            expenseCategoryId, 200, "USD", new DateOnly(2026, 9, 2), Guid.NewGuid(), null), CancellationToken.None);
+        var command = new SetBudgetCommand(null, householdId, expenseCategoryId, new DateOnly(2026, 9, 1),
+            new DateOnly(2026, 9, 30), 500, Guid.NewGuid(), "USD");
+        var usd = await service.SetBudgetAsync(actorUserId, command, CancellationToken.None);
+        Assert.Equal("USD", usd.Currency);
+        var replay = await service.SetBudgetAsync(actorUserId, command with { Currency = "usd" }, CancellationToken.None);
+        Assert.True(replay.Replayed);
+        var conflict = await Assert.ThrowsAsync<IdempotencyException>(() => service.SetBudgetAsync(actorUserId,
+            command with { Currency = "BRL" }, CancellationToken.None));
+        Assert.Equal(IdempotencyErrorCodes.Conflict, conflict.Code);
+        await Assert.ThrowsAsync<FinancialRuleException>(() => service.SetBudgetAsync(actorUserId,
+            command with { Id = usd.Id, Currency = "BRL", IdempotencyKey = Guid.NewGuid() }, CancellationToken.None));
+        var dashboard = await CreateDashboardUseCase(context).ExecuteAsync(
+            new GetFinancialDashboardQuery(actorUserId, householdId, 2026, 9), CancellationToken.None);
+        Assert.Equal(0L, dashboard.Budgets.Single(b => b.Currency == "BRL").SpentCents);
+        Assert.Equal(200L, dashboard.Budgets.Single(b => b.Currency == "USD").SpentCents);
+    }
+
+    [Fact]
     public async Task SetBudgetRejectsNonExpenseCategory()
     {
         var periodStart = new DateOnly(2026, 9, 1);
@@ -991,10 +1065,306 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
         var ex = await Assert.ThrowsAsync<FinancialRuleException>(() =>
             service.SetBudgetAsync(
                 actorUserId,
-                new SetBudgetCommand(null, householdId, categoryId, periodStart, periodEnd, 100_000, Guid.NewGuid()),
+                new SetBudgetCommand(null, householdId, categoryId, periodStart, periodEnd, 100_000, Guid.NewGuid(), "BRL"),
                 CancellationToken.None));
 
         Assert.Equal(FinancialErrorCodes.InvalidCategory, ex.Code);
+    }
+
+    [Fact]
+    public async Task GoalAllocationHistoryExplainsProgressAndReversalKeepsTheOriginal()
+    {
+        var goalId = Guid.NewGuid();
+        await ExecuteAsync("""
+            insert into public.goals (
+              id, household_id, name, target_cents, allocated_cents, currency, created_by)
+            values (@goal_id, @household_id, 'Trip', 10000, 0, 'BRL', @actor_user_id)
+            """, ("goal_id", goalId));
+        try
+        {
+            await using var context = CreateContext();
+            var service = new LedgerService(CreateStore(context));
+            var unexplainedId = await ScalarAsync<Guid>("""
+                select id from public.goals
+                where household_id = @household_id and name = 'Emergency fund'
+                """);
+            var unexplained = await Assert.ThrowsAsync<FinancialRuleException>(() =>
+                service.AllocateToGoalAsync(actorUserId, new AllocateGoalCommand(
+                    householdId, unexplainedId, 100, "BRL", new DateOnly(2026, 11, 5), null, Guid.NewGuid()),
+                    CancellationToken.None));
+            Assert.Equal(FinancialErrorCodes.GoalProgressUnexplained, unexplained.Code);
+
+            var key = Guid.NewGuid();
+            var command = new AllocateGoalCommand(
+                householdId, goalId, 4_000, "BRL", new DateOnly(2026, 11, 1), " reserva ", key);
+            var first = await service.AllocateToGoalAsync(actorUserId, command, CancellationToken.None);
+            Assert.Equal(4_000, first.AllocatedCents);
+            Assert.Equal(GoalAllocationKind.Contribution, first.Kind);
+            Assert.Equal("reserva", first.Note);
+            Assert.False(first.Replayed);
+            var replay = await service.AllocateToGoalAsync(
+                actorUserId, command with { Currency = "brl", Note = "reserva" }, CancellationToken.None);
+            Assert.True(replay.Replayed);
+            Assert.Equal(first.Id, replay.Id);
+            Assert.Equal(1L, await CountAsync("public.goal_allocations", "goal_id", goalId));
+            var conflict = await Assert.ThrowsAsync<IdempotencyException>(() =>
+                service.AllocateToGoalAsync(actorUserId, command with { AmountCents = 100 }, CancellationToken.None));
+            Assert.Equal(IdempotencyErrorCodes.Conflict, conflict.Code);
+            var mismatch = await Assert.ThrowsAsync<FinancialRuleException>(() =>
+                service.AllocateToGoalAsync(actorUserId, command with
+                {
+                    AmountCents = 100,
+                    Currency = "USD",
+                    IdempotencyKey = Guid.NewGuid(),
+                }, CancellationToken.None));
+            Assert.Equal(FinancialErrorCodes.CurrencyMismatch, mismatch.Code);
+
+            var second = await service.AllocateToGoalAsync(actorUserId, new AllocateGoalCommand(
+                householdId, goalId, 6_000, "BRL", new DateOnly(2026, 11, 2), null, Guid.NewGuid()),
+                CancellationToken.None);
+            Assert.Equal(GoalStatus.Completed, second.GoalStatus);
+            Assert.Equal(10_000, second.AllocatedCents);
+            var blocked = await Assert.ThrowsAsync<FinancialRuleException>(() =>
+                service.AllocateToGoalAsync(actorUserId, new AllocateGoalCommand(
+                    householdId, goalId, 1, "BRL", new DateOnly(2026, 11, 2), null, Guid.NewGuid()),
+                    CancellationToken.None));
+            Assert.Equal(FinancialErrorCodes.InvalidGoalName, blocked.Code);
+
+            var reversal = await service.ReverseGoalAllocationAsync(actorUserId, new ReverseGoalAllocationCommand(
+                householdId, goalId, first.Id, new DateOnly(2026, 11, 3), "desfeito", Guid.NewGuid()),
+                CancellationToken.None);
+            Assert.Equal(first.Id, reversal.ReversalOf);
+            Assert.Equal(6_000, reversal.AllocatedCents);
+            Assert.Equal(GoalStatus.Active, reversal.GoalStatus);
+            Assert.Equal(GoalAllocationKind.Reversal, reversal.Kind);
+            var duplicate = await Assert.ThrowsAsync<FinancialRuleException>(() =>
+                service.ReverseGoalAllocationAsync(actorUserId, new ReverseGoalAllocationCommand(
+                    householdId, goalId, first.Id, new DateOnly(2026, 11, 4), null, Guid.NewGuid()),
+                    CancellationToken.None));
+            Assert.Equal(FinancialErrorCodes.GoalAllocationNotReversible, duplicate.Code);
+            var reversalOfReversal = await Assert.ThrowsAsync<FinancialRuleException>(() =>
+                service.ReverseGoalAllocationAsync(actorUserId, new ReverseGoalAllocationCommand(
+                    householdId, goalId, reversal.Id, new DateOnly(2026, 11, 4), null, Guid.NewGuid()),
+                    CancellationToken.None));
+            Assert.Equal(FinancialErrorCodes.ReversalOfReversal, reversalOfReversal.Code);
+
+            var history = await service.ListGoalAllocationsAsync(
+                actorUserId, householdId, goalId, CancellationToken.None);
+            Assert.Equal(3, history.Allocations.Count);
+            Assert.True(history.ProgressIsExplained);
+            Assert.Equal(6_000, history.AllocatedCents);
+            Assert.Contains(history.Allocations, item => item.Id == first.Id && item.Kind == GoalAllocationKind.Contribution);
+            Assert.Equal(6_000L, await ScalarAsync<long>(
+                "select allocated_cents from public.goals where id = @goal_id", ("goal_id", goalId)));
+            Assert.Equal(2L, await ScalarAsync<long>("""
+                select count(*) from public.goal_allocations
+                where goal_id = @goal_id and kind = 'contribution'
+                """, ("goal_id", goalId)));
+        }
+        finally
+        {
+            await ExecuteAsync(
+                "update public.goals set archived_at = now(), status_id = 12 where id = @goal_id",
+                ("goal_id", goalId));
+        }
+    }
+
+    [Fact]
+    public async Task RealizingARecurringDatePostsOneTransactionAndRejectsASecond()
+    {
+        await using var context = CreateContext();
+        var service = new RecurringPlanService(
+            new EfRecurringPlanStore(context, new IdempotencyPolicy(), TimeProvider.System));
+        var plan = await service.CreateAsync(actorUserId, new CreateRecurringPlanCommand(
+            Guid.NewGuid(), householdId, "Rent", FinancialFlow.Expense, accountId, expenseCategoryId,
+            null, 18_000, "BRL", 31, new DateOnly(2026, 1, 1), null, Guid.NewGuid()), CancellationToken.None);
+        var scheduled = new DateOnly(2026, 2, 28);
+        var command = new RealizeRecurringOccurrenceCommand(householdId, plan.Id, scheduled, Guid.NewGuid());
+
+        var first = await service.RealizeAsync(actorUserId, command, CancellationToken.None);
+        Assert.Equal(scheduled, first.ScheduledOn);
+        Assert.Equal(18_000, first.AmountCents);
+        Assert.Equal("BRL", first.Currency);
+        Assert.Equal(FinancialFlow.Expense, first.Flow);
+        Assert.Equal(plan.Id, first.PlanId);
+        Assert.False(first.Replayed);
+
+        var replay = await service.RealizeAsync(actorUserId, command, CancellationToken.None);
+        Assert.True(replay.Replayed);
+        Assert.Equal(first.Id, replay.Id);
+        Assert.Equal(first.TransactionId, replay.TransactionId);
+        Assert.Equal(1L, await CountAsync("public.recurring_occurrences", "plan_id", plan.Id));
+        Assert.Equal(1L, await CountAsync("public.transactions", "id", first.TransactionId));
+        Assert.Equal("Rent", await ScalarAsync<string>(
+            "select description from public.transactions where id = @transaction_id",
+            ("transaction_id", first.TransactionId)));
+
+        var duplicate = await Assert.ThrowsAsync<FinancialRuleException>(() =>
+            service.RealizeAsync(actorUserId, command with { IdempotencyKey = Guid.NewGuid() }, CancellationToken.None));
+        Assert.Equal(FinancialErrorCodes.RecurringOccurrenceAlreadyRealized, duplicate.Code);
+        var conflict = await Assert.ThrowsAsync<IdempotencyException>(() =>
+            service.RealizeAsync(actorUserId, command with { ScheduledOn = new DateOnly(2026, 3, 31) }, CancellationToken.None));
+        Assert.Equal(IdempotencyErrorCodes.Conflict, conflict.Code);
+        var offSchedule = await Assert.ThrowsAsync<FinancialRuleException>(() =>
+            service.RealizeAsync(actorUserId, new RealizeRecurringOccurrenceCommand(
+                householdId, plan.Id, new DateOnly(2026, 2, 27), Guid.NewGuid()), CancellationToken.None));
+        Assert.Equal(FinancialErrorCodes.InvalidRecurringPlan, offSchedule.Code);
+
+        var march = await service.RealizeAsync(actorUserId, new RealizeRecurringOccurrenceCommand(
+            householdId, plan.Id, new DateOnly(2026, 3, 31), Guid.NewGuid()), CancellationToken.None);
+        Assert.NotEqual(first.TransactionId, march.TransactionId);
+
+        await service.ChangeStatusAsync(
+            householdId, plan.Id, RecurringPlanStatus.Paused, actorUserId, CancellationToken.None);
+        var paused = await Assert.ThrowsAsync<FinancialRuleException>(() =>
+            service.RealizeAsync(actorUserId, new RealizeRecurringOccurrenceCommand(
+                householdId, plan.Id, new DateOnly(2026, 4, 30), Guid.NewGuid()), CancellationToken.None));
+        Assert.Equal(FinancialErrorCodes.InvalidRecurringPlan, paused.Code);
+
+        var listed = await service.ListOccurrencesAsync(householdId, plan.Id, actorUserId, CancellationToken.None);
+        Assert.Equal(2, listed.Count);
+        Assert.Contains(listed, item => item.Id == first.Id && item.TransactionId == first.TransactionId);
+        Assert.Equal(2L, await CountAsync("public.transactions", "description", "Rent"));
+    }
+
+    [Fact]
+    public async Task HistoricalForecastOpeningBalanceStopsAtAsOf()
+    {
+        await using var context = CreateContext();
+        var ledger = new LedgerService(CreateStore(context));
+        await ledger.PostIncomeAsync(actorUserId, new PostIncomeCommand(
+            householdId, accountId, categoryId, 5_000, "BRL", new DateOnly(2026, 1, 10), Guid.NewGuid(), null),
+            CancellationToken.None);
+        var expense = await ledger.PostExpenseAsync(actorUserId, new PostExpenseCommand(
+            householdId, accountId, expenseCategoryId, 1_000, "BRL", new DateOnly(2026, 1, 20), Guid.NewGuid(), null),
+            CancellationToken.None);
+        await ledger.PostIncomeAsync(actorUserId, new PostIncomeCommand(
+            householdId, accountId, categoryId, 100, "BRL", new DateOnly(2026, 2, 15), Guid.NewGuid(), null),
+            CancellationToken.None);
+        await ledger.PostExpenseAsync(actorUserId, new PostExpenseCommand(
+            householdId, accountId, expenseCategoryId, 500, "BRL", new DateOnly(2026, 3, 1), Guid.NewGuid(), null),
+            CancellationToken.None);
+        await ledger.ReverseAsync(actorUserId, new ReverseTransactionCommand(
+            householdId, expense.TransactionId, new DateOnly(2026, 3, 2), Guid.NewGuid(), null),
+            CancellationToken.None);
+
+        var asOf = new DateOnly(2026, 2, 15);
+        var forecast = await new ForecastService(new EfForecastStore(context, new IdempotencyPolicy(), TimeProvider.System))
+            .CreateAsync(householdId, accountId, asOf, 1, actorUserId, Guid.NewGuid(), CancellationToken.None);
+
+        Assert.Equal(asOf, forecast.AsOf);
+        Assert.Equal(4_100, forecast.OpeningBalanceCents);
+        Assert.Equal(4_100, forecast.Points.Single().ProjectedBalanceCents);
+        Assert.Equal(4_100L, await ScalarAsync<long>(
+            "select opening_balance_cents from public.forecasts where id = @forecast_id",
+            ("forecast_id", forecast.Id)));
+        Assert.Empty(forecast.Assumptions);
+    }
+
+    [Fact]
+    public async Task SavedForecastKeepsPlanTermsAfterThePlanChanges()
+    {
+        await using var context = CreateContext();
+        var plans = new RecurringPlanService(new EfRecurringPlanStore(context, new IdempotencyPolicy(), TimeProvider.System));
+        var plan = await plans.CreateAsync(actorUserId, new CreateRecurringPlanCommand(
+            Guid.NewGuid(), householdId, "Rent", FinancialFlow.Expense, accountId, expenseCategoryId,
+            null, 18_000, "BRL", 5, new DateOnly(2026, 1, 1), null, Guid.NewGuid()), CancellationToken.None);
+        var asOf = new DateOnly(2026, 11, 1);
+        var created = await new ForecastService(new EfForecastStore(context, new IdempotencyPolicy(), TimeProvider.System))
+            .CreateAsync(householdId, accountId, asOf, 1, actorUserId, Guid.NewGuid(), CancellationToken.None);
+
+        await ExecuteAsync(
+            "update public.recurring_plans set name = 'Changed', amount_cents = 1, day_of_month = 1, currency = 'USD' where id = @plan_id",
+            ("plan_id", plan.Id));
+        var forecast = await new ForecastService(new EfForecastStore(context, new IdempotencyPolicy(), TimeProvider.System))
+            .GetAsync(householdId, created.Id, actorUserId, CancellationToken.None);
+
+        var assumption = Assert.Single(forecast.Assumptions);
+        var contribution = Assert.Single(forecast.Points.Single().Contributions);
+        Assert.Equal(plan.Id, assumption.PlanId);
+        Assert.Equal("Rent", assumption.Name);
+        Assert.Equal(18_000, assumption.AmountCents);
+        Assert.Equal("BRL", assumption.Currency);
+        Assert.Equal(5, assumption.DayOfMonth);
+        Assert.Equal(accountId, assumption.AccountId);
+        Assert.Equal(expenseCategoryId, assumption.CategoryId);
+        Assert.Equal(RecurringPlanStatus.Active, assumption.Status);
+        Assert.Equal(new DateOnly(2026, 11, 5), contribution.ScheduledOn);
+        Assert.Equal(18_000, contribution.AmountCents);
+        Assert.Equal(18_000, forecast.Points.Single().ExpectedExpenseCents);
+        Assert.Equal("Changed", await ScalarAsync<string>(
+            "select name from public.recurring_plans where id = @plan_id", ("plan_id", plan.Id)));
+    }
+
+    [Fact]
+    public async Task PlanningScreensExplainBudgetsGoalsProjectsAgendaAndForecasts()
+    {
+        Guid expenseId;
+        await using (var context = CreateContext())
+        {
+            var ledger = new LedgerService(CreateStore(context));
+            await ledger.SetBudgetAsync(actorUserId, new SetBudgetCommand(
+                null, householdId, expenseCategoryId, new DateOnly(2026, 11, 1), new DateOnly(2026, 11, 30),
+                100_000, Guid.NewGuid(), "BRL"), CancellationToken.None);
+            expenseId = (await ledger.PostExpenseAsync(actorUserId, new PostExpenseCommand(
+                householdId, accountId, expenseCategoryId, 20_000, "BRL", new DateOnly(2026, 11, 15),
+                Guid.NewGuid(), "Mercado"), CancellationToken.None)).TransactionId;
+            await ledger.SetBudgetAsync(actorUserId, new SetBudgetCommand(
+                null, householdId, expenseCategoryId, new DateOnly(2026, 11, 1), new DateOnly(2026, 11, 30),
+                80_000, Guid.NewGuid(), "BRL"), CancellationToken.None);
+        }
+
+        await using var read = CreateContext();
+        var planning = new PlanningService(new EfPlanningStore(read, new IdempotencyPolicy(), TimeProvider.System));
+        var budget = Assert.Single(await planning.ListBudgetsAsync(
+            actorUserId, householdId, new DateOnly(2026, 11, 1), new DateOnly(2026, 11, 30), CancellationToken.None),
+            item => item.CategoryId == expenseCategoryId && item.PeriodStart == new DateOnly(2026, 11, 1));
+        Assert.Equal(80_000, budget.LimitCents);
+        Assert.Equal(20_000, budget.SpentCents);
+        Assert.Equal(60_000, budget.RemainingCents);
+        var detail = await planning.GetBudgetAsync(actorUserId, householdId, budget.Id, CancellationToken.None);
+        Assert.Equal(2, detail.Revisions.Count);
+        Assert.Null(detail.Revisions[0].PreviousLimitCents);
+        Assert.Equal(100_000, detail.Revisions[1].PreviousLimitCents);
+        Assert.Equal(20_000, Assert.Single(detail.Expenses).AmountCents);
+
+        var goal = await planning.CreateGoalAsync(actorUserId, new CreateGoalCommand(
+            Guid.NewGuid(), householdId, "Viagem", 50_000, "BRL", new DateOnly(2026, 12, 1), Guid.NewGuid()),
+            CancellationToken.None);
+        var renamed = await planning.UpdateGoalAsync(actorUserId, new UpdateGoalCommand(
+            householdId, goal.Id, "Viagem de inverno", 50_000, goal.TargetDate, Guid.NewGuid()), CancellationToken.None);
+        var completed = await planning.ChangeGoalStatusAsync(actorUserId, new ChangeGoalStatusCommand(
+            householdId, goal.Id, "completed", Guid.NewGuid()), CancellationToken.None);
+        Assert.Equal("Viagem de inverno", renamed.Name);
+        Assert.Equal(0, completed.AllocatedCents);
+        Assert.Equal(GoalStatus.Completed, completed.Status);
+
+        var lineId = Guid.NewGuid();
+        var project = await planning.CreateProjectAsync(actorUserId, new CreateProjectCommand(
+            Guid.NewGuid(), householdId, "Férias", "BRL", 30_000, new DateOnly(2026, 11, 1), null, "praia",
+            [new ProjectLine(lineId, "Mercado", FinancialFlow.Expense, 30_000)], Guid.NewGuid()), CancellationToken.None);
+        var linked = await planning.LinkMovementAsync(actorUserId, new LinkProjectMovementCommand(
+            householdId, project.Id, expenseId, Guid.NewGuid()), CancellationToken.None);
+        Assert.Equal(30_000, linked.Comparison.PlannedExpenseCents);
+        Assert.Equal(20_000, linked.Comparison.ActualExpenseCents);
+        Assert.Equal(expenseId, Assert.Single(linked.Movements).TransactionId);
+
+        await new RecurringPlanService(new EfRecurringPlanStore(read, new IdempotencyPolicy(), TimeProvider.System))
+            .CreateAsync(actorUserId, new CreateRecurringPlanCommand(
+                Guid.NewGuid(), householdId, "Aluguel", FinancialFlow.Expense, accountId, expenseCategoryId,
+                null, 18_000, "BRL", 5, new DateOnly(2026, 1, 1), null, Guid.NewGuid()), CancellationToken.None);
+        var agenda = await planning.AgendaAsync(actorUserId, householdId,
+            new DateOnly(2026, 11, 1), new DateOnly(2026, 11, 30), new DateOnly(2026, 11, 1), CancellationToken.None);
+        var rent = Assert.Single(agenda, item => item.PlanName == "Aluguel");
+        Assert.Equal(new DateOnly(2026, 11, 5), rent.ScheduledOn);
+        Assert.Equal(AgendaState.Expected, rent.State);
+
+        var forecast = await new ForecastService(new EfForecastStore(read, new IdempotencyPolicy(), TimeProvider.System))
+            .CreateAsync(householdId, accountId, new DateOnly(2026, 11, 1), 1, actorUserId, Guid.NewGuid(), CancellationToken.None);
+        var compared = Assert.Single(await planning.CompareForecastAsync(
+            actorUserId, householdId, forecast.Id, CancellationToken.None));
+        Assert.Equal(18_000, compared.ExpectedExpenseCents);
+        Assert.Equal(20_000, compared.ActualExpenseCents);
     }
 
     [Fact]
@@ -1209,6 +1579,96 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
                      postCorrectionBalances.Single(b => b.AccountId == accountId).BalanceCents);
     }
 
+    [Fact]
+    public async Task StaleCorrectionRollsBackWhileIdempotentReplayDoesNotOverwriteTheCurrentRecord()
+    {
+        Guid transactionId;
+        await using (var setup = CreateContext())
+        {
+            var result = await new LedgerService(CreateStore(setup)).PostExpenseAsync(actorUserId,
+                new PostExpenseCommand(householdId, accountId, expenseCategoryId, 32_000, "BRL",
+                    new DateOnly(2026, 11, 2), Guid.NewGuid(), "Original"), CancellationToken.None);
+            transactionId = result.TransactionId;
+        }
+        var original = new TransactionClassificationSnapshot(FinancialTransactionStatus.Posted, expenseCategoryId, null, "Original");
+        var winnerKey = Guid.NewGuid();
+        async Task<LedgerHistoryItem> CorrectAsync(string description, Guid key, TransactionClassificationSnapshot expected)
+        {
+            await using var context = CreateContext();
+            return await new LedgerService(CreateStore(context)).CorrectClassificationAsync(householdId,
+                transactionId, actorUserId, expenseCategoryId, null, description,
+                CancellationToken.None, key, expected);
+        }
+
+        var winner = await CorrectAsync("Winner", winnerKey, original);
+        var failure = await Assert.ThrowsAsync<FinancialRuleException>(() => CorrectAsync("Stale update", Guid.NewGuid(), original));
+        Assert.Equal(FinancialErrorCodes.TransactionChanged, failure.Code);
+        var refreshed = original with { Description = "Winner" };
+        await CorrectAsync("Latest", Guid.NewGuid(), refreshed);
+        var replay = await CorrectAsync("Winner", winnerKey, original);
+        Assert.Equal(winner.Description, replay.Description);
+
+        await using var verification = CreateContext();
+        var store = CreateStore(verification);
+        var rows = await store.GetHistoryAsync(actorUserId, householdId, 2,
+            new LedgerHistoryFilter(TransactionId: transactionId), CancellationToken.None);
+        Assert.Equal("Latest", Assert.Single(rows).Description);
+        var balances = await store.GetBalancesAsync(actorUserId, householdId, CancellationToken.None);
+        Assert.Equal(-32_000, balances.Single(balance => balance.AccountId == accountId).BalanceCents);
+    }
+
+    [Fact]
+    public async Task CorrectionAfterReversalIsRejectedAndTheCompensationCanBeReadByOriginalId()
+    {
+        Guid transactionId;
+        await using (var setup = CreateContext())
+        {
+            var result = await new LedgerService(CreateStore(setup)).PostExpenseAsync(actorUserId,
+                new PostExpenseCommand(householdId, accountId, expenseCategoryId, 32_000, "BRL",
+                    new DateOnly(2026, 11, 2), Guid.NewGuid(), "Original"), CancellationToken.None);
+            transactionId = result.TransactionId;
+        }
+        var reversal = await ReverseAsync(transactionId, Guid.NewGuid());
+        await using var context = CreateContext();
+        var store = CreateStore(context);
+        var failure = await Assert.ThrowsAsync<FinancialRuleException>(() =>
+            new LedgerService(store).CorrectClassificationAsync(householdId, transactionId, actorUserId,
+                expenseCategoryId, null, "Stale", CancellationToken.None, Guid.NewGuid(),
+                new TransactionClassificationSnapshot(FinancialTransactionStatus.Posted, expenseCategoryId, null, "Original")));
+        Assert.Equal(FinancialErrorCodes.TransactionChanged, failure.Code);
+        var rows = await store.GetHistoryAsync(actorUserId, householdId, 2,
+            new LedgerHistoryFilter(ReversalOf: transactionId), CancellationToken.None);
+        Assert.Equal(reversal.TransactionId, Assert.Single(rows).TransactionId);
+        var balances = await store.GetBalancesAsync(actorUserId, householdId, CancellationToken.None);
+        Assert.Equal(0, balances.Single(balance => balance.AccountId == accountId).BalanceCents);
+    }
+
+    [Fact]
+    public async Task ArchivedAccountAndSourceRemainInHistoricalIncomeAndFilteredHistory()
+    {
+        await using var context = CreateContext();
+        var store = CreateStore(context);
+        var sourceId = Guid.NewGuid();
+        await store.CreateIncomeSourceAsync(IncomeSource.Create(sourceId, householdId, "Historical salary"), actorUserId, CancellationToken.None);
+        var service = new LedgerService(store);
+        var created = await service.PostIncomeAsync(actorUserId,
+            new PostIncomeCommand(householdId, accountId, categoryId, 12345, "BRL", new DateOnly(2026, 9, 15), Guid.NewGuid(), "Salary", sourceId), CancellationToken.None);
+        await service.ArchiveAccountAsync(householdId, accountId, actorUserId, CancellationToken.None);
+        await store.ArchiveIncomeSourceAsync(householdId, sourceId, actorUserId, CancellationToken.None);
+
+        var reader = new EfDashboardReader(context);
+        var active = await reader.ReadAsync(actorUserId, householdId, FinancialPeriod.Monthly(2026, 9), CancellationToken.None);
+        Assert.DoesNotContain(active.Accounts, item => item.Id == accountId);
+        var breakdown = await new GetIncomeBreakdown(new EfHouseholdMembershipReader(context), reader).ExecuteAsync(
+            new GetIncomeBreakdownQuery(actorUserId, householdId, "BRL", 2026, 9, IncludeArchivedAccounts: true), CancellationToken.None);
+        var source = Assert.Single(breakdown.Sources, item => item.IncomeSourceId == sourceId);
+        Assert.Equal(12345L, source.AmountCents);
+        Assert.Equal("Historical salary", source.IncomeSourceName);
+        var history = await store.GetHistoryAsync(actorUserId, householdId, 50,
+            new LedgerHistoryFilter(IncomeSourceId: sourceId), CancellationToken.None);
+        Assert.Contains(history, item => item.TransactionId == created.TransactionId);
+    }
+
     private async Task<LedgerWriteResult> PostIncomeAsync(
         Guid idempotencyKey,
         long amountCents = 1_000,
@@ -1256,6 +1716,36 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
 
     private static GetFinancialDashboard CreateDashboardUseCase(InOutDbContext context) =>
         new(new EfHouseholdMembershipReader(context), new EfDashboardReader(context));
+
+    private async Task ExecuteAsync(string sql, params (string Name, object Value)[] parameters)
+    {
+        await using var connection = new NpgsqlConnection(postgres.GetConnectionString());
+        await connection.OpenAsync();
+        await using var command = connection.CreateCommand();
+        command.CommandText = sql;
+        Bind(command, parameters);
+        await command.ExecuteNonQueryAsync();
+    }
+
+    private async Task<T> ScalarAsync<T>(string sql, params (string Name, object Value)[] parameters)
+    {
+        await using var connection = new NpgsqlConnection(postgres.GetConnectionString());
+        await connection.OpenAsync();
+        await using var command = connection.CreateCommand();
+        command.CommandText = sql;
+        Bind(command, parameters);
+        return (T)(await command.ExecuteScalarAsync())!;
+    }
+
+    private void Bind(NpgsqlCommand command, params (string Name, object Value)[] parameters)
+    {
+        command.Parameters.AddWithValue("household_id", householdId);
+        command.Parameters.AddWithValue("actor_user_id", actorUserId);
+        foreach (var (name, value) in parameters)
+        {
+            command.Parameters.AddWithValue(name, value);
+        }
+    }
 
     private async Task<long> CountAsync(string qualifiedTable)
     {
@@ -1325,7 +1815,8 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
           ('category_status', 'Category Status'),
           ('income_source_status', 'Income Source Status'),
           ('goal_status', 'Goal Status'),
-          ('recurring_plan_status', 'Recurring Plan Status');
+          ('recurring_plan_status', 'Recurring Plan Status'),
+          ('financial_project_status', 'Financial Project Status');
         insert into public.status_values (id, type_code, code, name) values
           (1, 'account_status', 'active', 'Active'),
           (2, 'account_status', 'frozen', 'Frozen'),
@@ -1341,7 +1832,9 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
           (12, 'goal_status', 'archived', 'Archived'),
           (13, 'recurring_plan_status', 'active', 'Active'),
           (14, 'recurring_plan_status', 'paused', 'Paused'),
-          (15, 'recurring_plan_status', 'archived', 'Archived');
+          (15, 'recurring_plan_status', 'archived', 'Archived'),
+          (16, 'financial_project_status', 'active', 'Active'),
+          (17, 'financial_project_status', 'closed', 'Closed');
         create table public.accounts (
           id uuid primary key,
           household_id uuid not null references public.households(id),
@@ -1429,7 +1922,117 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
           allocated_cents bigint not null,
           target_date date,
           status_id int not null default 9 references public.status_values(id),
+          created_by uuid not null,
+          created_at timestamptz not null default now(),
           archived_at timestamptz
+        );
+        create table public.goal_allocations (
+          id uuid primary key,
+          household_id uuid not null references public.households(id),
+          goal_id uuid not null references public.goals(id),
+          amount_cents bigint not null,
+          currency text not null,
+          kind text not null,
+          origin text not null,
+          reversal_of uuid,
+          occurred_on date not null,
+          note text,
+          created_by uuid not null,
+          created_at timestamptz not null default now()
+        );
+        create unique index goal_allocations_one_reversal_per_original_uidx
+          on public.goal_allocations (household_id, reversal_of)
+          where kind = 'reversal';
+        create table public.recurring_plans (
+          id uuid primary key,
+          household_id uuid not null references public.households(id),
+          name text not null,
+          flow text not null,
+          account_id uuid not null,
+          category_id uuid not null,
+          income_source_id uuid,
+          amount_cents bigint not null,
+          currency text not null,
+          day_of_month int not null,
+          starts_on date not null,
+          ends_on date,
+          status_id int not null default 13 references public.status_values(id),
+          created_by uuid not null,
+          created_at timestamptz not null default now(),
+          updated_at timestamptz not null default now(),
+          unique (household_id, id)
+        );
+        create table public.recurring_occurrences (
+          id uuid primary key,
+          household_id uuid not null references public.households(id),
+          plan_id uuid not null,
+          scheduled_on date not null,
+          transaction_id uuid not null,
+          flow text not null,
+          amount_cents bigint not null,
+          currency text not null,
+          created_by uuid not null,
+          created_at timestamptz not null default now(),
+          constraint recurring_occurrences_plan_date_uidx unique (household_id, plan_id, scheduled_on),
+          constraint recurring_occurrences_transaction_uidx unique (transaction_id),
+          foreign key (household_id, plan_id) references public.recurring_plans (household_id, id),
+          foreign key (household_id, transaction_id) references public.transactions (household_id, id)
+        );
+        create table public.forecasts (
+          id uuid primary key,
+          household_id uuid not null references public.households(id),
+          account_id uuid not null,
+          currency text not null,
+          as_of date not null,
+          months int not null,
+          opening_balance_cents bigint not null,
+          points jsonb not null,
+          assumptions jsonb not null default '[]'::jsonb,
+          calculated_at timestamptz not null,
+          created_by uuid not null
+        );
+        create table public.budget_revisions (
+          id uuid primary key,
+          household_id uuid not null references public.households(id),
+          budget_id uuid not null references public.budgets(id),
+          previous_limit_cents bigint,
+          limit_cents bigint not null,
+          currency text not null,
+          created_by uuid not null,
+          created_at timestamptz not null default now()
+        );
+        create table public.financial_projects (
+          id uuid primary key,
+          household_id uuid not null references public.households(id),
+          name text not null,
+          currency text not null,
+          planned_cents bigint not null,
+          starts_on date not null,
+          ends_on date,
+          notes text,
+          status_id int not null references public.status_values(id),
+          created_by uuid not null,
+          created_at timestamptz not null default now(),
+          closed_at timestamptz,
+          unique (household_id, id)
+        );
+        create table public.financial_project_lines (
+          id uuid primary key,
+          household_id uuid not null,
+          project_id uuid not null,
+          name text not null,
+          flow text not null,
+          amount_cents bigint not null,
+          foreign key (household_id, project_id)
+            references public.financial_projects (household_id, id)
+        );
+        create table public.financial_project_movements (
+          household_id uuid not null,
+          project_id uuid not null,
+          transaction_id uuid not null,
+          linked_by uuid not null,
+          linked_at timestamptz not null default now(),
+          primary key (household_id, project_id, transaction_id)
         );
         create table public.audit_events (
           id bigint generated by default as identity primary key,
@@ -1495,7 +2098,8 @@ public sealed class EfLedgerStoreIntegrationTests : IAsyncLifetime
           created_at timestamptz not null default now(),
           expires_at timestamptz not null,
           accepted_by uuid,
-          accepted_at timestamptz
+          accepted_at timestamptz,
+          revoked_at timestamptz
         );
         """;
 }

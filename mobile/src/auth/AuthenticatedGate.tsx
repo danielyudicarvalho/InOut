@@ -1,6 +1,7 @@
 import { useEffect, type ReactNode } from "react";
 import { router, usePathname, useLocalSearchParams } from "expo-router";
 import { useSessionRestoration } from "./use-session-restoration";
+import { HouseholdAccessGuard } from "./HouseholdAccessGuard";
 import { SessionView } from "../screens/SessionScreen";
 
 export function AuthenticatedGate({
@@ -32,7 +33,11 @@ export function AuthenticatedGate({
     (!allowAnonymous && status === "authenticated") ||
     (allowAnonymous && status === "expired")
   )
-    return <>{children}</>;
+    return allowAnonymous ? (
+      <>{children}</>
+    ) : (
+      <HouseholdAccessGuard>{children}</HouseholdAccessGuard>
+    );
 
   const handleLogin = () => {
     if (currentRoute && currentRoute !== "/" && currentRoute !== "/entrar") {

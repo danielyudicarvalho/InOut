@@ -29,6 +29,8 @@ public sealed partial class EfLedgerStore
             .Where(item => item.HouseholdId == householdId);
         if (filter.TransactionId is not null)
             transactions = transactions.Where(item => item.Id == filter.TransactionId.Value);
+        if (filter.ReversalOf is not null)
+            transactions = transactions.Where(item => item.ReversalOf == filter.ReversalOf.Value);
         if (filter.From is not null)
             transactions = transactions.Where(item => item.OccurredOn >= filter.From.Value);
         if (filter.To is not null)
@@ -235,7 +237,8 @@ public sealed partial class EfLedgerStore
         Guid? incomeSourceId,
         string? description,
         CancellationToken cancellationToken,
-        IdempotencyRequest? idempotencyRequest = null)
+        IdempotencyRequest? idempotencyRequest = null,
+        TransactionClassificationSnapshot? expectedState = null)
     {
         await using var databaseTransaction = await dbContext.BeginUserTransactionAsync(
             actorUserId, cancellationToken);
@@ -263,6 +266,9 @@ public sealed partial class EfLedgerStore
                 FinancialErrorCodes.TransactionNotFound,
                 "Transaction was not found.");
         }
+
+        var domainTransaction = ToDomain(transactionRecord);
+        domainTransaction.EnsureClassificationUnchanged(expectedState);
 
         CategoryRecord? categoryRecord = null;
         if (categoryId is not null)
@@ -298,14 +304,14 @@ public sealed partial class EfLedgerStore
             }
         }
 
-        var domainTransaction = ToDomain(transactionRecord);
         var categoryDomain = categoryRecord is null ? null : ToDomain(categoryRecord);
         var sourceDomain = sourceRecord is null ? null : ToDomain(sourceRecord);
 
         var correctedDomain = domainTransaction.CorrectClassification(
             categoryDomain,
             sourceDomain,
-            description);
+            description,
+            expectedState);
 
         transactionRecord.Description = correctedDomain.Description;
         transactionRecord.IncomeSourceId = correctedDomain.IncomeSourceId;

@@ -1,12 +1,7 @@
 import { useMemo } from "react";
-import type { RecordKind } from "@inout/finance";
+import type { RecordKind, RecordOptions } from "@inout/finance";
 
-export interface CategoryOption {
-  id: string;
-  name: string;
-  flow: "income" | "expense";
-  parentId?: string;
-}
+export type CategoryOption = RecordOptions["categories"][number];
 
 export function useCategoryHierarchy(
   categories: CategoryOption[],

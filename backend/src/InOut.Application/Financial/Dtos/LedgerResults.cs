@@ -35,7 +35,8 @@ public sealed record LedgerHistoryFilter(
     string? Search = null,
     int Offset = 0,
     bool IncludeSubcategories = false,
-    Guid? TransactionId = null);
+    Guid? TransactionId = null,
+    Guid? ReversalOf = null);
 
 public sealed record LedgerHistoryItem(
     Guid TransactionId,
@@ -86,10 +87,16 @@ public sealed record DashboardCategoryExpense(
     Guid CategoryId, string CategoryName, Guid? ParentId, string Currency, long AmountCents);
 
 public sealed record DashboardBudgetProgress(
-    Guid BudgetId, Guid CategoryId, string CategoryName, long LimitCents, long SpentCents);
+    Guid BudgetId, Guid CategoryId, string CategoryName, long LimitCents, long? SpentCents, string? Currency)
+{
+    public bool RequiresCurrencySelection => Currency is null;
+}
 
 public sealed record DashboardGoalProgress(
-    Guid GoalId, string Name, long TargetCents, long AllocatedCents, DateOnly? TargetDate);
+    Guid GoalId, string Name, long TargetCents, long AllocatedCents, DateOnly? TargetDate, string? Currency)
+{
+    public bool RequiresCurrencySelection => Currency is null;
+}
 
 public sealed record FinancialDashboard(
     DateOnly PeriodStart,
@@ -110,5 +117,44 @@ public sealed record BudgetResult(
     DateOnly PeriodStart,
     DateOnly PeriodEnd,
     long LimitCents,
-    bool Replayed);
+    bool Replayed,
+    string Currency);
+
+public sealed record GoalAllocationItem(
+    Guid Id,
+    long AmountCents,
+    string Currency,
+    GoalAllocationKind Kind,
+    GoalAllocationOrigin Origin,
+    Guid? ReversalOf,
+    DateOnly OccurredOn,
+    string? Note,
+    Guid CreatedBy,
+    DateTimeOffset CreatedAt);
+
+public sealed record GoalAllocationHistory(
+    Guid GoalId,
+    string? Currency,
+    long TargetCents,
+    long AllocatedCents,
+    GoalStatus Status,
+    bool ProgressIsExplained,
+    IReadOnlyList<GoalAllocationItem> Allocations);
+
+public sealed record GoalAllocationResult(
+    Guid Id,
+    Guid HouseholdId,
+    Guid GoalId,
+    long AmountCents,
+    string Currency,
+    GoalAllocationKind Kind,
+    GoalAllocationOrigin Origin,
+    Guid? ReversalOf,
+    DateOnly OccurredOn,
+    string? Note,
+    Guid CreatedBy,
+    DateTimeOffset CreatedAt,
+    long AllocatedCents,
+    GoalStatus GoalStatus,
+    bool Replayed = false);
 

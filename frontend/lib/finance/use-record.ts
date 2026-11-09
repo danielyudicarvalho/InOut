@@ -6,17 +6,18 @@ import {
   FinanceFailure,
   type RecordKind,
 } from "@inout/finance";
-import { getAuthClient } from "../auth/composition";
+import { browserApiBase, getAuthClient } from "../auth/composition";
 export function useRecord(
   household: string,
   kind: RecordKind,
   currency: string,
+  preferredAccountId = "",
 ) {
-  const [store] = useState(() => {
+  const [bundle] = useState(() => {
     let actorId = "",
       storageKey = "";
     const repository = createFinanceRepository({
-      baseUrl: process.env.NEXT_PUBLIC_API_BASE_URL,
+      baseUrl: browserApiBase(),
       getToken: async () => {
         const { data, error } = await getAuthClient().auth.getSession();
         if (error || !data.session || data.session.user.id !== actorId)
@@ -24,7 +25,8 @@ export function useRecord(
         return data.session.access_token;
       },
     });
-    return createRecordStore(repository, household, kind, currency, {
+    const store = createRecordStore(repository, household, kind, currency, {
+      preferredAccountId,
       randomId: () => window.crypto.randomUUID(),
       storage: {
         load: async () => {
@@ -48,17 +50,47 @@ export function useRecord(
         },
       },
     });
+    return { repository, store };
   });
   const state = useSyncExternalStore(
-    store.subscribe,
-    store.getSnapshot,
-    store.getSnapshot,
+    bundle.store.subscribe,
+    bundle.store.getSnapshot,
+    bundle.store.getSnapshot,
   );
-  useEffect(() => store.start(), [store]);
+  useEffect(() => bundle.store.start(), [bundle.store]);
+
+  const createCategory = async (
+    name: string,
+    flow: "income" | "expense",
+    parentId?: string | null,
+  ) => {
+    const key = window.crypto.randomUUID();
+    const result = await bundle.repository.createCategory(
+      household,
+      { name, flow, parentId },
+      key,
+    );
+    bundle.store.retry();
+    return result;
+  };
+
+  const createIncomeSource = async (name: string) => {
+    const id = window.crypto.randomUUID();
+    const result = await bundle.repository.createIncomeSource(
+      household,
+      { name },
+      id,
+    );
+    bundle.store.retry();
+    return result;
+  };
+
   return {
     ...state,
-    edit: store.edit,
-    submit: store.submit,
-    retry: store.retry,
+    edit: bundle.store.edit,
+    submit: bundle.store.submit,
+    retry: bundle.store.retry,
+    createCategory,
+    createIncomeSource,
   };
 }

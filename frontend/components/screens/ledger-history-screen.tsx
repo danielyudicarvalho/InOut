@@ -26,6 +26,9 @@ export function LedgerHistoryScreen() {
     [recordOpen, setRecordOpen] = useState(false),
     [filtersOpen, setFiltersOpen] = useState(false),
     [filters, setFilters] = useState<HistoryFilters>(() => ({
+      accountId: p.get("accountId") ?? "",
+      categoryId: p.get("categoryId") ?? "",
+      incomeSourceId: p.get("incomeSourceId") ?? "",
       transactionId: p.get("transaction") ?? "",
     })),
     [search, setSearch] = useState(""),
@@ -43,10 +46,23 @@ export function LedgerHistoryScreen() {
         <nav>
           <Link href={`/inicio?${params}`}>Início</Link>
           <strong aria-current="page">Lançamentos</strong>
-          <Link href={`/composicao-saldo?${params}`}>Contas</Link>
+          <Link href={`/contas?${params}`}>Contas</Link>
         </nav>
       </aside>
       <div className="dashboard-body">
+        {filters.categoryId || filters.incomeSourceId ? (
+          <p role="status">
+            Exibindo registros do cadastro selecionado.{" "}
+            <button
+              onClick={() => {
+                setFilters({});
+                setOffset(0);
+              }}
+            >
+              Limpar filtro do cadastro
+            </button>
+          </p>
+        ) : null}
         <header className="dashboard-topbar">
           <label>
             Residência{" "}

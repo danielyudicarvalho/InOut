@@ -11,7 +11,11 @@ export function AuthCallbackScreen({
 }: {
   recovery?: boolean;
 }) {
-  const callback = useRef<{ code: string | null; error: boolean } | null>(null);
+  const callback = useRef<{
+    code: string | null;
+    email: string | null;
+    error: boolean;
+  } | null>(null);
   const router = useRouter();
   const [notice, setNotice] = useState("Confirmando seu acesso…");
   useEffect(() => {
@@ -20,10 +24,11 @@ export function AuthCallbackScreen({
       const params = new URLSearchParams(window.location.search);
       callback.current = {
         code: params.get("code"),
+        email: params.get("email"),
         error: params.has("error"),
       };
     }
-    const { code, error } = callback.current;
+    const { code, email, error } = callback.current;
     window.history.replaceState(
       null,
       "",
@@ -39,8 +44,12 @@ export function AuthCallbackScreen({
         recovery,
         result: (async () => {
           const auth = getAuth();
-          if (recovery) {
-            await auth.exchangeRecoveryCode(code);
+          if (recovery && email) {
+            await auth.exchangeRecoveryCode(`${email} ${code}`);
+            return;
+          }
+          if (email) {
+            await auth.confirm(email, code);
             return;
           }
           await auth.exchangeCode(code);

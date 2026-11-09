@@ -6,6 +6,10 @@ export class FinanceFailure extends Error {
 }
 export function financeMessage(error) {
   const messages = {
+    catalog_conflict:
+      "Já existe um cadastro ativo com esse nome. Escolha outro nome.",
+    stale:
+      "Este lançamento foi atualizado. Recarregue os dados para continuar.",
     reversal_reason:
       "Informe o motivo do estorno para manter o histórico da correção.",
     not_found: "Lançamento não encontrado nesta residência.",
@@ -108,6 +112,17 @@ export function periodLabel(period) {
   }).format(new Date(y, m - 1, 1));
 }
 
+export function parseMoneyInput(value) {
+  if (typeof value !== "string") throw new FinanceFailure("validation");
+  const cleaned = value.trim().replace(/\s/g, "");
+  if (!/^\d{1,12}([.,]\d{1,2})?$/.test(cleaned))
+    throw new FinanceFailure("validation");
+  const [whole, fraction = ""] = cleaned.replace(",", ".").split(".");
+  const cents = Number(whole) * 100 + Number(fraction.padEnd(2, "0"));
+  if (!Number.isSafeInteger(cents) || cents <= 0)
+    throw new FinanceFailure("validation");
+  return cents;
+}
 export function money(cents, code) {
   const value = BigInt(integer(cents));
   const absolute = value < 0n ? -value : value;
@@ -179,31 +194,60 @@ export function createFinanceRepository({
       if (signal?.aborted) throw error;
       throw new FinanceFailure("network");
     }
-    if (!response.ok)
+    if (!response.ok) {
+      // A 409 is not by itself proof that this write was rejected.
+      // Only this domain code guarantees that the transaction rolled back.
+      if (response.status === 409) {
+        let problem;
+        try {
+          problem = await response.json();
+        } catch {
+          /* Remain uncertain. */
+        }
+        if (
+          ["category_conflict", "income_source_conflict"].includes(
+            problem?.code,
+          )
+        )
+          throw new FinanceFailure("catalog_conflict");
+        if (problem?.code === "transaction_changed")
+          throw new FinanceFailure("stale");
+      }
       throw new FinanceFailure(
         response.status === 401
           ? "unauthorized"
           : response.status === 403
             ? "forbidden"
-            : response.status === 400 || response.status === 422
-              ? "validation"
-              : response.status === 409
-                ? "conflict"
-                : "server",
+            : response.status === 404
+              ? "not_found"
+              : response.status === 400 || response.status === 422
+                ? "validation"
+                : response.status === 409
+                  ? "conflict"
+                  : "server",
       );
+    }
     try {
       return await response.json();
     } catch {
       throw new FinanceFailure("invalid");
     }
   }
-  async function breakdown(kind, householdId, period, code, offset, signal) {
+  async function breakdown(
+    kind,
+    householdId,
+    period,
+    code,
+    offset,
+    signal,
+    includeArchivedAccounts = false,
+  ) {
     const bounds = parsePeriod(period);
     const query = bounds.custom
       ? `from=${bounds.from}&to=${bounds.to}`
       : `year=${period.slice(0, 4)}&month=${Number(period.slice(5))}`;
     const raw = await get(
-      `/api/v1/households/${encodeURIComponent(householdId)}/ledger/dashboard/${kind}?currency=${encodeURIComponent(currency(code))}&${query}&offset=${integer(offset)}&limit=50`,
+      `/api/v1/households/${encodeURIComponent(householdId)}/ledger/dashboard/${kind}?currency=${encodeURIComponent(currency(code))}&${query}&offset=${integer(offset)}&limit=50${includeArchivedAccounts ? "&includeArchivedAccounts=true" : ""}`,
       signal,
     );
     if (
@@ -290,7 +334,87 @@ export function createFinanceRepository({
       items,
     };
   }
+  function planningList(path, signal, map) {
+    return get(path, signal).then((rows) => array(rows).map(map));
+  }
+  function planningWrite(path, key, body, signal, map, method = "POST") {
+    if (!validOperationKey(key)) throw new FinanceFailure("validation");
+    return get(path, signal, {
+      key,
+      method,
+      ...(body == null ? {} : { body }),
+    }).then((row) => (map ? map(row) : row));
+  }
   return {
+    async analysis(householdId, period, code, signal) {
+      const bounds = parsePeriod(period);
+      const query = new URLSearchParams({
+        from: bounds.from,
+        to: bounds.to,
+        currency: currency(code),
+      });
+      const raw = await get(
+        `/api/v1/households/${encodeURIComponent(householdId)}/ledger/analysis?${query}`,
+        signal,
+      );
+      if (
+        !raw ||
+        raw.from !== bounds.from ||
+        raw.to !== bounds.to ||
+        raw.currency !== code ||
+        typeof raw.isReconciled !== "boolean"
+      )
+        throw new FinanceFailure("invalid");
+      const facts = (row) => ({
+        incomeCents: integer(row.incomeCents),
+        expenseCents: integer(row.expenseCents),
+        resultCents: integer(row.resultCents),
+      });
+      const changes = array(raw.changes).map((row) => {
+        if (
+          row.percentageChange !== null &&
+          (typeof row.percentageChange !== "number" ||
+            !Number.isFinite(row.percentageChange))
+        )
+          throw new FinanceFailure("invalid");
+        return {
+          ...row,
+          kind: string(row.kind),
+          name: string(row.name),
+          currentCents: integer(row.currentCents),
+          previousCents: integer(row.previousCents),
+          deltaCents: integer(row.deltaCents),
+        };
+      });
+      return {
+        ...raw,
+        previousFrom: date(raw.previousFrom),
+        previousTo: date(raw.previousTo),
+        current: facts(raw.current),
+        previous: facts(raw.previous),
+        changes,
+        series: array(raw.series).map((row) => ({
+          ...facts(row),
+          from: date(row.from),
+          to: date(row.to),
+        })),
+        accounts: array(raw.accounts).map((row) => ({
+          id: string(row.id),
+          name: string(row.name),
+          ...Object.fromEntries(
+            [
+              "incomeCents",
+              "expenseCents",
+              "transferInCents",
+              "transferOutCents",
+              "inflowCents",
+              "outflowCents",
+              "changeCents",
+            ].map((key) => [key, integer(row[key])]),
+          ),
+        })),
+      };
+    },
     async ledgerHistory(householdId, period, filters = {}, offset = 0, signal) {
       const homes = await this.households(signal);
       if (!homes.some((h) => h.id === householdId))
@@ -410,7 +534,11 @@ export function createFinanceRepository({
           string(row.kind).toLowerCase() !== kind ||
           string(row.status).toLowerCase() !== status ||
           row.occurredOn !== first.occurredOn ||
-          row.createdBy !== first.createdBy
+          row.createdBy !== first.createdBy ||
+          row.postedAt !== first.postedAt ||
+          row.description !== first.description ||
+          row.incomeSourceId !== first.incomeSourceId ||
+          row.reversalOf !== first.reversalOf
         )
           throw new FinanceFailure("invalid");
         return {
@@ -427,7 +555,8 @@ export function createFinanceRepository({
         incoming = postings.find((p) => p.amount > 0);
       if (
         (kind === "transfer" && postings.length !== 2) ||
-        (kind === "openingbalance" && postings.length !== 1) ||
+        (["openingbalance", "income", "expense"].includes(kind) &&
+          postings.length !== 1) ||
         (postings.length > 1 &&
           (postings.length !== 2 ||
             !outgoing ||
@@ -482,7 +611,34 @@ export function createFinanceRepository({
               : string(first.description),
         },
       );
+      let reversalId = null;
+      if (status === "reversed") {
+        const reversals = array(
+          await get(
+            `${root}/history?reversalOf=${encodeURIComponent(transactionId)}&limit=200`,
+            signal,
+          ),
+        );
+        if (
+          reversals.some(
+            (row) =>
+              row.reversalOf?.toLowerCase() !== transactionId.toLowerCase() ||
+              String(row.kind).toLowerCase() !== "reversal",
+          )
+        )
+          throw new FinanceFailure("invalid");
+        const identifiers = [
+          ...new Set(reversals.map((row) => string(row.transactionId))),
+        ];
+        if (
+          identifiers.length > 1 ||
+          identifiers.some((id) => !validOperationKey(id))
+        )
+          throw new FinanceFailure("invalid");
+        reversalId = identifiers[0] ?? null;
+      }
       return {
+        reversalId,
         id: string(first.transactionId),
         kind,
         status,
@@ -575,8 +731,23 @@ export function createFinanceRepository({
         name: string(row.name),
       }));
     },
-    income(householdId, period, code, offset, signal) {
-      return breakdown("income", householdId, period, code, offset, signal);
+    income(
+      householdId,
+      period,
+      code,
+      offset,
+      signal,
+      includeArchivedAccounts = false,
+    ) {
+      return breakdown(
+        "income",
+        householdId,
+        period,
+        code,
+        offset,
+        signal,
+        includeArchivedAccounts,
+      );
     },
     expense(householdId, period, code, offset, signal) {
       return breakdown("expense", householdId, period, code, offset, signal);
@@ -608,6 +779,41 @@ export function createFinanceRepository({
         name: string(result.account.name),
         replayed: result.replayed,
       };
+    },
+    async createCategory(household, body, key, signal) {
+      if (!validOperationKey(key)) throw new FinanceFailure("validation");
+      const result = await get(
+        `/api/v1/households/${encodeURIComponent(household)}/ledger/categories`,
+        signal,
+        {
+          key,
+          body: {
+            id: key,
+            name: body.name,
+            flow: body.flow,
+            parentId: body.parentId ?? null,
+          },
+        },
+      );
+      if (result?.id?.toLowerCase() !== key.toLowerCase())
+        throw new FinanceFailure("invalid");
+      return {
+        id: string(result.id),
+        name: string(result.name),
+        flow: string(result.flow).toLowerCase(),
+        ...(result.parentId ? { parentId: string(result.parentId) } : {}),
+      };
+    },
+    async createIncomeSource(household, body, id, signal) {
+      if (!validOperationKey(id)) throw new FinanceFailure("validation");
+      const result = await get(
+        `/api/v1/households/${encodeURIComponent(household)}/ledger/income-sources`,
+        signal,
+        { key: id, body: { id, name: body.name } },
+      );
+      if (result?.id?.toLowerCase() !== id.toLowerCase())
+        throw new FinanceFailure("invalid");
+      return { id: string(result.id), name: string(result.name) };
     },
     async createAuxiliary(household, kind, body, key, signal) {
       if (kind === "account") {
@@ -658,7 +864,9 @@ export function createFinanceRepository({
           .map((row) => ({
             id: string(row.id),
             name: string(row.name),
+            kind: row.kind ? string(row.kind) : null,
             currency: currency(row.currency),
+            ...(row.kind ? { kind: string(row.kind) } : {}),
           })),
         categories: array(categories)
           .filter((row) => row.archivedAt == null)
@@ -670,14 +878,65 @@ export function createFinanceRepository({
               id: string(row.id),
               name: string(row.name),
               flow,
-              ...(row.parentId == null
-                ? {}
-                : { parentId: string(row.parentId) }),
+              parentId: row.parentId ? string(row.parentId) : null,
             };
           }),
         sources: array(sources)
           .filter((row) => row.archivedAt == null)
           .map((row) => ({ id: string(row.id), name: string(row.name) })),
+      };
+    },
+    async createCategory(householdId, { name, flow, parentId }, key, signal) {
+      if (!validOperationKey(key)) throw new FinanceFailure("validation");
+      const normalizedFlow = string(flow).toLowerCase();
+      if (!["income", "expense"].includes(normalizedFlow))
+        throw new FinanceFailure("validation");
+      const normalizedName = string(name).trim();
+      if (!normalizedName || normalizedName.length > 80)
+        throw new FinanceFailure("validation");
+      const result = await get(
+        `/api/v1/households/${encodeURIComponent(householdId)}/ledger/categories`,
+        signal,
+        {
+          body: {
+            id: key,
+            name: normalizedName,
+            flow: normalizedFlow,
+            parentId: parentId ? string(parentId) : null,
+          },
+          key,
+        },
+      );
+      if (!result || typeof result.id !== "string")
+        throw new FinanceFailure("invalid");
+      return {
+        id: string(result.id),
+        name: string(result.name),
+        flow: string(result.flow).toLowerCase(),
+        parentId: result.parentId ? string(result.parentId) : null,
+      };
+    },
+    async createIncomeSource(householdId, { name }, id, signal) {
+      const normalizedName = string(name).trim();
+      if (!normalizedName || normalizedName.length > 80)
+        throw new FinanceFailure("validation");
+      const sourceId = id || crypto.randomUUID();
+      const result = await get(
+        `/api/v1/households/${encodeURIComponent(householdId)}/ledger/income-sources`,
+        signal,
+        {
+          body: {
+            id: sourceId,
+            name: normalizedName,
+          },
+          key: sourceId,
+        },
+      );
+      if (!result || typeof result.id !== "string")
+        throw new FinanceFailure("invalid");
+      return {
+        id: string(result.id),
+        name: string(result.name),
       };
     },
     async postRecord(householdId, kind, body, key, signal) {
@@ -828,6 +1087,373 @@ export function createFinanceRepository({
         isReconciled: dashboards.every((d) => d.isReconciled),
       };
     },
+    budgets(household, from, to, signal) {
+      return planningList(
+        `/api/v1/households/${id(household)}/ledger/budgets?from=${date(from)}&to=${date(to)}`,
+        signal,
+        budgetView,
+      );
+    },
+    async budget(household, budgetId, signal) {
+      const row = await get(
+        `/api/v1/households/${id(household)}/ledger/budgets/${id(budgetId)}`,
+        signal,
+      );
+      return {
+        budget: budgetView(row.budget),
+        revisions: array(row.revisions).map((item) => ({
+          id: string(item.id),
+          previousLimitCents:
+            item.previousLimitCents == null
+              ? null
+              : integer(item.previousLimitCents),
+          limitCents: integer(item.limitCents),
+          currency: currency(item.currency),
+          createdAt: string(item.createdAt),
+        })),
+        expenses: array(row.expenses).map((item) => ({
+          transactionId: string(item.transactionId),
+          occurredOn: date(item.occurredOn),
+          description: item.description == null ? null : string(item.description),
+          accountName: string(item.accountName),
+          amountCents: integer(item.amountCents),
+        })),
+      };
+    },
+    setBudget(household, body, key, signal) {
+      return planningWrite(
+        `/api/v1/households/${id(household)}/ledger/budgets`,
+        key,
+        body,
+        signal,
+      );
+    },
+    goals(household, signal) {
+      return planningList(
+        `/api/v1/households/${id(household)}/ledger/goals`,
+        signal,
+        goalView,
+      );
+    },
+    async goal(household, goalId, signal) {
+      const row = await get(
+        `/api/v1/households/${id(household)}/ledger/goals/${id(goalId)}`,
+        signal,
+      );
+      return {
+        goal: goalView(row.goal),
+        allocations: array(row.allocations).map((item) => ({
+          id: string(item.id),
+          amountCents: integer(item.amountCents),
+          currency: currency(item.currency),
+          kind: string(item.kind).toLowerCase(),
+          reversalOf: item.reversalOf == null ? null : string(item.reversalOf),
+          occurredOn: date(item.occurredOn),
+          note: item.note == null ? null : string(item.note),
+        })),
+      };
+    },
+    createGoal(household, body, key, signal) {
+      return planningWrite(
+        `/api/v1/households/${id(household)}/ledger/goals`,
+        key,
+        { ...body, id: key },
+        signal,
+        goalView,
+      );
+    },
+    updateGoal(household, goalId, body, key, signal) {
+      return planningWrite(
+        `/api/v1/households/${id(household)}/ledger/goals/${id(goalId)}`,
+        key,
+        body,
+        signal,
+        goalView,
+        "PUT",
+      );
+    },
+    changeGoalStatus(household, goalId, status, key, signal) {
+      return planningWrite(
+        `/api/v1/households/${id(household)}/ledger/goals/${id(goalId)}/status`,
+        key,
+        { status },
+        signal,
+        goalView,
+      );
+    },
+    allocateGoal(household, goalId, body, key, signal) {
+      return planningWrite(
+        `/api/v1/households/${id(household)}/ledger/goals/${id(goalId)}/allocations`,
+        key,
+        body,
+        signal,
+      );
+    },
+    reverseAllocation(household, goalId, allocationId, body, key, signal) {
+      return planningWrite(
+        `/api/v1/households/${id(household)}/ledger/goals/${id(goalId)}/allocations/${id(allocationId)}/reversals`,
+        key,
+        body,
+        signal,
+      );
+    },
+    projects(household, signal) {
+      return planningList(
+        `/api/v1/households/${id(household)}/projects`,
+        signal,
+        projectView,
+      );
+    },
+    project(household, projectId, signal) {
+      return get(
+        `/api/v1/households/${id(household)}/projects/${id(projectId)}`,
+        signal,
+      ).then(projectView);
+    },
+    createProject(household, body, key, signal) {
+      return planningWrite(
+        `/api/v1/households/${id(household)}/projects`,
+        key,
+        { ...body, id: key },
+        signal,
+        projectView,
+      );
+    },
+    updateProject(household, projectId, body, key, signal) {
+      return planningWrite(
+        `/api/v1/households/${id(household)}/projects/${id(projectId)}`,
+        key,
+        body,
+        signal,
+        projectView,
+        "PUT",
+      );
+    },
+    closeProject(household, projectId, key, signal) {
+      return planningWrite(
+        `/api/v1/households/${id(household)}/projects/${id(projectId)}/close`,
+        key,
+        {},
+        signal,
+        projectView,
+      );
+    },
+    linkProjectMovement(household, projectId, transactionId, key, signal) {
+      return planningWrite(
+        `/api/v1/households/${id(household)}/projects/${id(projectId)}/movements`,
+        key,
+        { transactionId },
+        signal,
+        projectView,
+      );
+    },
+    unlinkProjectMovement(household, projectId, transactionId, key, signal) {
+      return planningWrite(
+        `/api/v1/households/${id(household)}/projects/${id(projectId)}/movements/${id(transactionId)}`,
+        key,
+        null,
+        signal,
+        projectView,
+        "DELETE",
+      );
+    },
+    recurringPlans(household, signal) {
+      return planningList(
+        `/api/v1/households/${id(household)}/recurring-plans`,
+        signal,
+        planView,
+      );
+    },
+    recurringPreview(household, planId, from, signal) {
+      return planningList(
+        `/api/v1/households/${id(household)}/recurring-plans/${id(planId)}/preview?from=${date(from)}&count=6`,
+        signal,
+        (item) => date(item),
+      );
+    },
+    createRecurringPlan(household, body, key, signal) {
+      return planningWrite(
+        `/api/v1/households/${id(household)}/recurring-plans`,
+        key,
+        { ...body, id: key },
+        signal,
+        planView,
+      );
+    },
+    changeRecurringStatus(household, planId, status, signal) {
+      return planningWrite(
+        `/api/v1/households/${id(household)}/recurring-plans/${id(planId)}/status`,
+        crypto.randomUUID(),
+        { status },
+        signal,
+        planView,
+        "PATCH",
+      );
+    },
+    realizeOccurrence(household, planId, scheduledOn, key, signal) {
+      return planningWrite(
+        `/api/v1/households/${id(household)}/recurring-plans/${id(planId)}/occurrences`,
+        key,
+        { scheduledOn },
+        signal,
+      );
+    },
+    agenda(household, from, to, signal) {
+      return planningList(
+        `/api/v1/households/${id(household)}/agenda?from=${date(from)}&to=${date(to)}`,
+        signal,
+        agendaItem,
+      );
+    },
+    forecasts(household, signal) {
+      return planningList(
+        `/api/v1/households/${id(household)}/forecasts`,
+        signal,
+        forecastView,
+      );
+    },
+    createForecast(household, body, key, signal) {
+      return planningWrite(
+        `/api/v1/households/${id(household)}/forecasts`,
+        key,
+        body,
+        signal,
+        forecastView,
+      );
+    },
+    compareForecast(household, forecastId, signal) {
+      return planningList(
+        `/api/v1/households/${id(household)}/forecasts/${id(forecastId)}/comparison`,
+        signal,
+        (item) => ({
+          month: date(item.month),
+          expectedIncomeCents: integer(item.expectedIncomeCents),
+          expectedExpenseCents: integer(item.expectedExpenseCents),
+          projectedBalanceCents: integer(item.projectedBalanceCents),
+          actualIncomeCents: integer(item.actualIncomeCents),
+          actualExpenseCents: integer(item.actualExpenseCents),
+        }),
+      );
+    },
+  };
+}
+function id(value) {
+  return encodeURIComponent(string(value));
+}
+function nullableCurrency(value) {
+  return value == null ? null : currency(value);
+}
+function budgetView(row) {
+  return {
+    id: string(row.id),
+    categoryId: string(row.categoryId),
+    categoryName: string(row.categoryName),
+    periodStart: date(row.periodStart),
+    periodEnd: date(row.periodEnd),
+    limitCents: integer(row.limitCents),
+    spentCents: row.spentCents == null ? null : integer(row.spentCents),
+    remainingCents:
+      row.remainingCents == null ? null : integer(row.remainingCents),
+    currency: nullableCurrency(row.currency),
+  };
+}
+function goalView(row) {
+  return {
+    id: string(row.id),
+    name: string(row.name),
+    targetCents: integer(row.targetCents),
+    allocatedCents: integer(row.allocatedCents),
+    targetDate: row.targetDate == null ? null : date(row.targetDate),
+    currency: nullableCurrency(row.currency),
+    status: string(row.status).toLowerCase(),
+    archivedAt: row.archivedAt ?? null,
+  };
+}
+function projectView(row) {
+  return {
+    id: string(row.id),
+    name: string(row.name),
+    currency: currency(row.currency),
+    plannedCents: integer(row.plannedCents),
+    startsOn: date(row.startsOn),
+    endsOn: row.endsOn == null ? null : date(row.endsOn),
+    notes: row.notes == null ? null : string(row.notes),
+    status: string(row.status).toLowerCase(),
+    lines: array(row.lines).map((line) => ({
+      id: string(line.id),
+      name: string(line.name),
+      flow: string(line.flow).toLowerCase(),
+      amountCents: integer(line.amountCents),
+    })),
+    movements: array(row.movements).map((item) => ({
+      transactionId: string(item.transactionId),
+      occurredOn: date(item.occurredOn),
+      description: item.description == null ? null : string(item.description),
+    })),
+    comparison: {
+      plannedIncomeCents: integer(row.comparison.plannedIncomeCents),
+      plannedExpenseCents: integer(row.comparison.plannedExpenseCents),
+      actualIncomeCents: integer(row.comparison.actualIncomeCents),
+      actualExpenseCents: integer(row.comparison.actualExpenseCents),
+    },
+  };
+}
+function planView(row) {
+  return {
+    id: string(row.id),
+    name: string(row.name),
+    flow: string(row.flow).toLowerCase(),
+    accountId: string(row.accountId),
+    categoryId: string(row.categoryId),
+    amountCents: integer(row.amountCents),
+    currency: currency(row.currency),
+    dayOfMonth: integer(row.dayOfMonth),
+    startsOn: date(row.startsOn),
+    endsOn: row.endsOn == null ? null : date(row.endsOn),
+    status: string(row.status).toLowerCase(),
+  };
+}
+function agendaItem(row) {
+  return {
+    planId: string(row.planId),
+    planName: string(row.planName),
+    scheduledOn: date(row.scheduledOn),
+    flow: string(row.flow).toLowerCase(),
+    amountCents: integer(row.amountCents),
+    currency: currency(row.currency),
+    state: string(row.state).toLowerCase(),
+    transactionId: row.transactionId == null ? null : string(row.transactionId),
+  };
+}
+function forecastView(row) {
+  return {
+    id: string(row.id),
+    accountId: string(row.accountId),
+    currency: currency(row.currency),
+    asOf: date(row.asOf),
+    months: integer(row.months),
+    openingBalanceCents: integer(row.openingBalanceCents),
+    points: array(row.points).map((point) => ({
+      month: date(point.month),
+      expectedIncomeCents: integer(point.expectedIncomeCents),
+      expectedExpenseCents: integer(point.expectedExpenseCents),
+      projectedBalanceCents: integer(point.projectedBalanceCents),
+      contributions: array(point.contributions ?? []).map((item) => ({
+        planId: string(item.planId),
+        scheduledOn: date(item.scheduledOn),
+        flow: string(item.flow).toLowerCase(),
+        amountCents: integer(item.amountCents),
+        currency: currency(item.currency),
+      })),
+    })),
+    assumptions: array(row.assumptions ?? []).map((item) => ({
+      planId: string(item.planId),
+      name: string(item.name),
+      amountCents: integer(item.amountCents),
+      currency: currency(item.currency),
+      dayOfMonth: integer(item.dayOfMonth),
+      status: string(item.status).toLowerCase(),
+    })),
   };
 }
 export function createFinancialHomeStore(
@@ -1329,8 +1955,9 @@ export function prepareRecord(kind, fields, options) {
       ...common,
     };
   }
+  const effectiveCategoryId = fields.subcategoryId || fields.categoryId;
   const category = options.categories.find(
-    (row) => row.id === fields.categoryId && row.flow === kind,
+    (row) => row.id === effectiveCategoryId && row.flow === kind,
   );
   if (
     !category ||
@@ -1410,6 +2037,10 @@ function createWriteStore(
         )
           throw new FinanceFailure("pending");
         spec.restore(pending.body);
+        if (pending.rejected === true) {
+          await storage.remove(pending.key);
+          pending = null;
+        }
       }
       const options = await spec.options(
         repository,
@@ -1460,7 +2091,10 @@ function createWriteStore(
       key = pending?.key ?? randomId();
       if (!validOperationKey(key)) throw new FinanceFailure("configuration");
     } catch (error) {
-      publish({ notice: financeMessage(error) });
+      publish({
+        ...(error?.code === "stale" ? { status: "stale" } : {}),
+        notice: financeMessage(error),
+      });
       return;
     }
     cancel();
@@ -1518,6 +2152,26 @@ function createWriteStore(
       });
     } catch (error) {
       if (!active || id !== version) return;
+      if (error?.code === "stale") {
+        // Persist the definite rejection before cleanup so reopening cannot replay it.
+        if (pending) {
+          pending = { ...pending, rejected: true };
+          try {
+            await storage.save(JSON.stringify(pending));
+          } catch {
+            /* Keep in-memory guard. */
+          }
+          try {
+            await storage.remove(pending.key);
+            pending = null;
+          } catch {
+            /* Retry cleanup on reload. */
+          }
+        }
+        if (active && id === version)
+          publish({ status: "stale", notice: financeMessage(error) });
+        return;
+      }
       if (error?.code === "validation" && pending) {
         try {
           await storage.remove(pending.key);
@@ -1565,6 +2219,7 @@ function createWriteStore(
         return;
       const fields = { ...state.fields, [field]: value };
       if (field === "accountId") fields.destinationId = "";
+      if (field === "categoryId") fields.subcategoryId = "";
       publish({ fields, notice: "" });
     },
     submit,
@@ -1600,6 +2255,7 @@ function restoreRecord(body) {
     accountId: body.accountId ?? body.sourceAccountId ?? "",
     destinationId: body.destinationAccountId ?? "",
     categoryId: body.categoryId ?? "",
+    subcategoryId: "",
     sourceId: body.incomeSourceId ?? "",
     amount: `${cents / 100n},${String(cents % 100n).padStart(2, "0")}`,
     date: body.occurredOn,
@@ -1612,6 +2268,7 @@ const recordWriteSpec = {
     accountId: "",
     destinationId: "",
     categoryId: "",
+    subcategoryId: "",
     sourceId: "",
     amount: "",
     date: localRecordDate(today),
@@ -1636,7 +2293,16 @@ const recordWriteSpec = {
 export function createRecordStore(repository, household, kind, code, options) {
   return createWriteStore(repository, household, kind, code, {
     ...options,
-    spec: recordWriteSpec,
+    spec: {
+      ...recordWriteSpec,
+      initialize: (fields, catalogs, currency) => {
+        const initial = recordWriteSpec.initialize(fields, catalogs, currency);
+        const preferred = catalogs.accounts.find(
+          (account) => account.id === options.preferredAccountId,
+        );
+        return preferred ? { ...initial, accountId: preferred.id } : initial;
+      },
+    },
   });
 }
 export function initialAccountAmount(value) {
@@ -2051,8 +2717,9 @@ export function createClassificationStore(
       }),
       restore,
       prepare: (kind, fields, options) => {
+        if (!canCorrectClassification(options.detail))
+          throw new FinanceFailure("stale");
         if (
-          !canCorrectClassification(options.detail) ||
           !options.categories.some(
             (c) => c.id === fields.categoryId && c.flow === options.detail.kind,
           ) ||
@@ -2065,6 +2732,12 @@ export function createClassificationStore(
         if (description.length > 500) throw new FinanceFailure("validation");
         return {
           transactionId,
+          expectedState: {
+            status: options.detail.status,
+            categoryId: options.detail.categoryId,
+            incomeSourceId: options.detail.sourceId,
+            description: options.detail.rawDescription || null,
+          },
           categoryId: fields.categoryId,
           incomeSourceId: fields.sourceId || null,
           description: description || null,
@@ -2075,6 +2748,9 @@ export function createClassificationStore(
           id,
           transactionId,
           {
+            ...(body.expectedState
+              ? { expectedState: body.expectedState }
+              : {}),
             categoryId: body.categoryId,
             incomeSourceId: body.incomeSourceId,
             description: body.description,
@@ -2116,6 +2792,82 @@ export function classificationChoices(options) {
   return { categories, sources };
 }
 
+export function createTransactionDetailStore(
+  repository,
+  household,
+  transactionId,
+  { timeoutMs = 20000 } = {},
+) {
+  let state = { status: "loading", detail: null, notice: "", refreshed: false };
+  let active = false,
+    version = 0,
+    controller,
+    timer,
+    loaded = false;
+  const listeners = new Set();
+  const publish = (patch) => {
+    state = { ...state, ...patch };
+    listeners.forEach((fn) => fn());
+  };
+  const cancel = () => {
+    version++;
+    controller?.abort();
+    clearTimeout(timer);
+  };
+  async function load() {
+    cancel();
+    const current = version;
+    controller = new AbortController();
+    publish({ status: "loading", detail: null, notice: "", refreshed: false });
+    timer = setTimeout(() => {
+      if (active && current === version) {
+        cancel();
+        publish({
+          status: "error",
+          detail: null,
+          notice: financeMessage(new FinanceFailure("timeout")),
+        });
+      }
+    }, timeoutMs);
+    try {
+      const detail = await repository.transaction(
+        household,
+        transactionId,
+        controller.signal,
+      );
+      if (!active || current !== version) return false;
+      publish({ status: "ready", detail, refreshed: loaded });
+      loaded = true;
+      return true;
+    } catch (error) {
+      if (active && current === version)
+        publish({
+          status: "error",
+          detail: null,
+          notice: financeMessage(error),
+        });
+      return false;
+    } finally {
+      if (current === version) clearTimeout(timer);
+    }
+  }
+  return {
+    getSnapshot: () => state,
+    subscribe(fn) {
+      listeners.add(fn);
+      return () => listeners.delete(fn);
+    },
+    start() {
+      active = true;
+      void load();
+      return () => {
+        active = false;
+        cancel();
+      };
+    },
+    reload: () => (active ? load() : Promise.resolve(false)),
+  };
+}
 export function reversalEffects(detail) {
   return detail.postings.map((p) => ({
     accountName: p.accountName,
@@ -2524,5 +3276,3 @@ export function createDuplicateResolutionStore(
     },
   };
 }
-
-

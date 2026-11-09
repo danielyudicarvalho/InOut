@@ -121,6 +121,12 @@ test("classification loads actual fields without writing and restores an uncerta
   await store.submit();
   assert.deepEqual(calls[0], calls[1]);
   assert.deepEqual(calls[0][2], {
+    expectedState: {
+      status: "posted",
+      categoryId: "child",
+      incomeSourceId: "source",
+      description: "Salary",
+    },
     categoryId: "child",
     incomeSourceId: null,
     description: "Updated",

@@ -1,12 +1,24 @@
 {
   "name": "@inout/finance",
-  "version": "0.19.0",
+  "version": "0.20.0",
   "private": true,
   "type": "module",
   "exports": {
     ".": {
       "types": "./index.d.ts",
       "default": "./index.mjs"
+    },
+    "./accounts": {
+      "types": "./accounts.d.ts",
+      "default": "./accounts.mjs"
+    },
+    "./catalog": {
+      "types": "./catalog.d.ts",
+      "default": "./catalog.mjs"
+    },
+    "./collaboration": {
+      "types": "./collaboration.d.ts",
+      "default": "./collaboration.mjs"
     }
   },
   "scripts": {

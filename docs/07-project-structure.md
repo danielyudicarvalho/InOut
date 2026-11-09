@@ -22,8 +22,8 @@ backend/src/
 
 ## Regras de Dependência
 
-1. As interfaces (`frontend/` e `mobile/`) interagem com o Supabase Auth para sessão e enviam o JWT autenticado para a API ASP.NET Core.
-2. A API valida o JWT (via Supabase JWKS) e executa as regras financeiras autoritativas.
+1. As interfaces (`frontend/` e `mobile/`) interagem com o previous hosted provider Auth para sessão e enviam o JWT autenticado para a API ASP.NET Core.
+2. A API valida o JWT (via previous hosted provider JWKS) e executa as regras financeiras autoritativas.
 3. As interfaces web/mobile não implementam regras financeiras nem acessam tabelas de negócio diretamente.
 
 ## Comandos de Validação

@@ -22,7 +22,7 @@ import { PeriodPicker } from "../financial/selectors/period-picker";
 import { DashboardSetupScreen } from "./dashboard-setup-screen";
 import { useFinancialHome } from "../../lib/finance/use-financial-home";
 
-const icons = [House, Receipt, Wallet, ChartPie, Target, Gear];
+const icons = [House, Receipt, Wallet, ChartPie, ChartPie, Target, Gear];
 export function DashboardScreen() {
   const p = useSearchParams();
   const household = p.get("household") ?? "",
@@ -56,7 +56,8 @@ function DashboardView({
     "Lançamentos",
     "Contas",
     "Categorias",
-    "Metas",
+    "Análises",
+    "Planejamento",
     "Configurações",
   ];
   const setup = state.data ? dashboardSetupState(state.data) : "active";
@@ -157,6 +158,36 @@ function DashboardView({
   const rows = data.transactions.slice(0, 4);
   const household = state.households.find((h) => h.id === state.householdId)!;
   function unavailable(label: string) {
+    if (label === "Análises") {
+      router.push(
+        `/analises?${new URLSearchParams({ household: state.householdId, period: state.period, currency })}`,
+      );
+      return;
+    }
+    if (label === "Configurações") {
+      router.push(
+        `/residencia?${new URLSearchParams({ household: state.householdId })}`,
+      );
+      return;
+    }
+    if (label === "Categorias") {
+      router.push(
+        `/categorias?${new URLSearchParams({ household: state.householdId, period: state.period })}`,
+      );
+      return;
+    }
+    if (label === "Contas") {
+      router.push(
+        `/contas?${new URLSearchParams({ household: state.householdId, period: state.period })}`,
+      );
+      return;
+    }
+    if (label === "Planejamento") {
+      router.push(
+        `/planejamento?${new URLSearchParams({ household: state.householdId, period: state.period, currency })}`,
+      );
+      return;
+    }
     if (label === "Lançamentos") {
       router.push(
         `/lancamentos?${new URLSearchParams({ household: state.householdId, period: state.period, currency: chosenCurrency })}`,

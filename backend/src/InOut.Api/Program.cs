@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using InOut.Api;
 using InOut.Api.Diagnostics;
+using InOut.Api.Identity;
 using InOut.Api.Financial;
 using InOut.Api.Households;
 using InOut.Api.Middleware;
@@ -10,6 +11,7 @@ using InOut.Application.Financial;
 using InOut.Application.Financial.Dashboard;
 using InOut.Application.Financial.Export;
 using InOut.Application.Financial.Forecasts;
+using InOut.Application.Financial.Planning;
 using InOut.Application.Financial.RecurringPlans;
 using InOut.Application.Households;
 using InOut.Application.Idempotency;
@@ -20,8 +22,13 @@ using InOut.Infrastructure.Idempotency;
 using InOut.Infrastructure.Persistence;
 using InOut.Infrastructure.Security;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
-using Microsoft.EntityFrameworkCore;
-using Npgsql;
+using Microsoft.AspNetCore.HttpOverrides;
+
+if (args is ["migrate"])
+{
+    Environment.ExitCode = await InOut.Api.Identity.SchemaMigrator.RunAsync(args);
+    return;
+}
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -38,18 +45,46 @@ builder.Services.Configure<ExceptionHandlerOptions>(options =>
     options.SuppressDiagnosticsCallback = _ => true);
 builder.Services.AddOpenApi();
 builder.Services.AddHealthChecks();
-builder.Services.AddSupabaseAuthentication(builder.Configuration);
+builder.Services.AddInOutIdentity(builder.Configuration, builder.Environment);
+builder.Services.AddAntiforgery(options =>
+{
+    options.Cookie.Name = "inout_antiforgery";
+    options.Cookie.HttpOnly = true;
+    options.Cookie.SameSite = SameSiteMode.Lax;
+    options.HeaderName = "X-CSRF-TOKEN";
+});
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddPolicy("identity", httpContext =>
+    {
+        var clientIp = httpContext.Request.Headers["fly-client-ip"].FirstOrDefault()
+            ?? httpContext.Connection.RemoteIpAddress?.ToString()
+            ?? "local";
+        return System.Threading.RateLimiting.RateLimitPartition.GetFixedWindowLimiter(
+            clientIp,
+            _ => new System.Threading.RateLimiting.FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 30,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0
+            });
+    });
+});
 builder.Services.AddHouseholdAuthorization();
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.ForwardLimit = 1;
+    options.KnownIPNetworks.Clear();
+    options.KnownProxies.Clear();
+});
 builder.Services.AddCors(options => options.AddDefaultPolicy(policy =>
     policy.WithOrigins(
             builder.Configuration.GetSection(ApiContract.Configuration.AllowedOrigins).Get<string[]>() ?? [])
         .AllowAnyHeader()
         .AllowAnyMethod()));
 
-var databaseConnection = builder.Configuration.GetConnectionString(ApiContract.Configuration.DatabaseConnection)
-    ?? throw new InvalidOperationException("ConnectionStrings:InOut is required.");
-builder.Services.AddSingleton(_ => new NpgsqlDataSourceBuilder(databaseConnection).Build());
-builder.Services.AddDbContext<InOutDbContext>(options => options.UseNpgsql(databaseConnection));
 builder.Services.AddScoped<IHouseholdMembershipReader, EfHouseholdMembershipReader>();
 builder.Services.AddScoped<IHouseholdStore, EfHouseholdStore>();
 builder.Services.AddScoped<HouseholdService>();
@@ -59,8 +94,11 @@ builder.Services.AddScoped<IRecurringPlanStore, EfRecurringPlanStore>();
 builder.Services.AddScoped<RecurringPlanService>();
 builder.Services.AddScoped<IForecastStore, EfForecastStore>();
 builder.Services.AddScoped<ForecastService>();
+builder.Services.AddScoped<IPlanningStore, EfPlanningStore>();
+builder.Services.AddScoped<PlanningService>();
 builder.Services.AddScoped<IDashboardReader, EfDashboardReader>();
 builder.Services.AddScoped<GetFinancialDashboard>();
+builder.Services.AddScoped<GetFinancialAnalysis>();
 builder.Services.AddScoped<GetIncomeBreakdown>();
 builder.Services.AddScoped<GetExpenseBreakdown>();
 builder.Services.AddScoped<CompareFinancialPeriods>();
@@ -70,13 +108,54 @@ builder.Services.AddSingleton<IIdempotencyPolicy, IdempotencyPolicy>();
 builder.Services.AddScoped<IInboxMessageProcessor, EfInboxMessageProcessor>();
 builder.Services.AddSingleton(TimeProvider.System);
 
-var app = builder.Build();
+if (args is ["import", var importPath])
+{
+    var importMode = builder.Configuration["IdentityImport:Mode"];
+    InOut.Application.Identity.IdentityImportGate.Require(importMode, builder.Environment.IsProduction());
+    var bytes = await InOut.Api.Identity.IdentityImportCommand.ReadLocalAsync(importPath, CancellationToken.None);
+    var rows = InOut.Api.Identity.IdentityImportCommand.Parse(bytes);
+    await using var host = builder.Build();
+    await host.PrepareIdentityAsync();
+    await using var scope = host.Services.CreateAsyncScope();
+    var importer = scope.ServiceProvider.GetRequiredService<InOut.Infrastructure.Identity.IdentityImporter>();
+    var plan = await importer.ImportAsync(
+        rows,
+        InOut.Infrastructure.Identity.IdentityImporter.SourceHash(System.Text.Encoding.UTF8.GetString(bytes)),
+        CancellationToken.None);
+    if (plan.Accepted &&
+        string.Equals(
+            importMode,
+            InOut.Application.Identity.IdentityImportGate.ApprovedCutover,
+            StringComparison.Ordinal))
+    {
+        var accounts = scope.ServiceProvider.GetRequiredService<InOut.Application.Identity.IIdentityAccounts>();
+        foreach (var user in plan.Users)
+        {
+            await accounts.RevokeSessionsAsync(user.Id, CancellationToken.None);
+        }
+    }
 
+    Console.WriteLine(JsonSerializer.Serialize(new
+    {
+        accepted = plan.Accepted,
+        code = plan.Code,
+        counts = plan.Counts
+    }));
+    Environment.ExitCode = plan.Accepted ? 0 : 2;
+    return;
+}
+
+var app = builder.Build();
+await app.PrepareIdentityAsync();
+
+app.UseForwardedHeaders();
 app.UseMiddleware<CorrelationIdMiddleware>();
 app.UseExceptionHandler();
 app.UseCors();
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseAntiforgery();
 
 if (app.Environment.IsDevelopment())
 {
@@ -100,10 +179,12 @@ app.MapGet(
     .RequireAuthorization(HouseholdMemberRequirement.PolicyName)
     .WithName(ApiContract.EndpointNames.CheckHouseholdAccess);
 
+app.MapIdentityEndpoints();
 app.MapHouseholdEndpoints();
 app.MapLedgerEndpoints();
 app.MapRecurringPlanEndpoints();
 app.MapForecastEndpoints();
+app.MapPlanningEndpoints();
 
 app.MapHealthChecks(
     ApiContract.Routes.Liveness,

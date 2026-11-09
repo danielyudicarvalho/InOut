@@ -42,7 +42,9 @@ function repo(rows, calls = [], homes = [{ id: "h", name: "Casa" }]) {
                   { id: "root", name: "Alimentação" },
                   { id: "child", name: "Mercado", parentId: "root" },
                 ]
-              : rows,
+              : url.includes("reversalOf=")
+                ? rows.filter((r) => r.reversalOf && r.kind === "reversal")
+                : rows,
         ),
       );
     },

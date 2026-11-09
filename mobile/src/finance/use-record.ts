@@ -12,6 +12,7 @@ export function useRecord(
   household: string,
   kind: RecordKind,
   currency: string,
+  preferredAccountId = "",
 ) {
   const [store] = useState(() => {
     let actorId = "",
@@ -26,6 +27,7 @@ export function useRecord(
       },
     });
     return createRecordStore(repository, household, kind, currency, {
+      preferredAccountId,
       randomId: randomUUID,
       storage: {
         load: async () => {

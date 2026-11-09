@@ -18,9 +18,8 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: supabase/setup-cli@d239d1052f6f024a8d746d7e5aeddead63b9cb53 # v3.1.0
-        with:
-          version: 2.117.0
+      - name: Install Postgres client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
       - name: Require backup credentials
         env:
           DATABASE_URL: ${{ secrets.INOUT_BACKUP_DATABASE_URL }}

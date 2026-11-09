@@ -160,6 +160,38 @@ function DashboardView({
   const rows = data.transactions.slice(0, 4);
   const household = state.households.find((h) => h.id === state.householdId)!;
   function unavailable(label: string) {
+    if (label === "Mais") {
+      router.push({
+        pathname: "/residencia",
+        params: { household: state.householdId },
+      });
+      return;
+    }
+    if (label === "Categorias") {
+      router.push({
+        pathname: "/categorias",
+        params: { household: state.householdId, period: state.period },
+      });
+      return;
+    }
+    if (label === "Análises") {
+      router.push({
+        pathname: "/analises",
+        params: {
+          household: state.householdId,
+          period: state.period,
+          currency,
+        },
+      });
+      return;
+    }
+    if (label === "Contas") {
+      router.push({
+        pathname: "/contas",
+        params: { household: state.householdId, period: state.period },
+      });
+      return;
+    }
     if (label === "Lançamentos") {
       router.push({
         pathname: "/lancamentos",
@@ -463,6 +495,22 @@ function DashboardView({
               ))
             : null}
         </View>
+        <Pressable
+          accessibilityRole="button"
+          onPress={() =>
+            router.push({
+              pathname: "/planejamento",
+              params: {
+                household: state.householdId,
+                period: state.period,
+                currency,
+              },
+            })
+          }
+          style={s.textButton}
+        >
+          <Text style={s.link}>Planejamento da casa</Text>
+        </Pressable>
         <View style={s.panel}>
           <View style={s.sectionHeading}>
             <Text accessibilityRole="header" style={s.heading}>
@@ -543,7 +591,7 @@ function DashboardView({
           { name: "Lançamentos", icon: "receipt-text-outline" },
           { name: "Novo", icon: "plus-circle" },
           { name: "Contas", icon: "wallet-outline" },
-          { name: "Mais", icon: "dots-horizontal" },
+          { name: "Análises", icon: "chart-bar" },
         ].map((item, index) => (
           <Pressable
             accessibilityRole="button"
@@ -565,7 +613,7 @@ function DashboardView({
                   | "plus-circle"
                   | "wallet-outline"
                   | "receipt-text-outline"
-                  | "dots-horizontal"
+                  | "chart-bar"
               }
               size={24}
               color={index === 0 ? "#365738" : t.muted}

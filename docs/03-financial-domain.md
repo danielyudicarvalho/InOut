@@ -33,6 +33,16 @@ Representa saldo inicial, receita, despesa, transferência ou estorno. É a raiz
 
 Mantêm planejamento, sem reescrever fatos do ledger. Indicadores são derivados dos movimentos válidos do período.
 
+O progresso de uma meta não é um saldo editável. Cada aporte é uma alocação imutável, com valor, moeda da meta, data, autor e origem. O valor acumulado é a soma das contribuições menos os estornos. Desfazer um aporte cria outra alocação, do tipo estorno, ligada à original; a original permanece no histórico. Um estorno não estorna outro estorno, e cada contribuição só pode ser estornada uma vez. Uma meta pausada não recebe aportes novos, mas ainda pode desfazer um aporte já registrado. Uma meta arquivada não muda o progresso.
+
+Uma recorrência calcula datas previstas. Calcular uma data não lança movimento nem cria ocorrência. Realizar uma data contabiliza uma receita ou despesa com as condições atuais do plano e registra uma ocorrência imutável, que identifica essa data e o lançamento. A mesma data de um plano só pode ser realizada uma vez, e um lançamento só realiza uma ocorrência. Um plano pausado ou arquivado não pode ser realizado. Estornar o lançamento depois não apaga a ocorrência nem libera a data.
+
+O saldo inicial de uma previsão é o saldo da conta na data de referência. Entram os lançamentos dessa conta com data até `AsOf`, inclusive. Um movimento posterior, mesmo um estorno, não entra numa previsão histórica.
+
+Uma previsão também guarda uma cópia das condições dos planos que participaram: nome, fluxo, conta, categoria, fonte, valor, moeda, dia, início, fim e estado. Cada mês registra a data prevista e o valor aplicados. Alterar o plano depois não reescreve essa cópia. Previsões gravadas antes dela permanecem apenas com os identificadores dos planos. A comparação com o realizado soma, em cada mês da previsão, as receitas e despesas da conta; não recalcula o previsto a partir dos planos atuais.
+
+Cada alteração de limite de orçamento registra o valor anterior e o novo. O gasto continua derivado das despesas da categoria, moeda e período. Uma meta pode ser criada, renomeada, pausada, concluída ou arquivada; o progresso continua vindo só das alocações. Um projeto financeiro guarda o plano e pode apontar para lançamentos já contabilizados. Esse vínculo não altera o lançamento. A agenda mostra as datas que os planos produzem e, quando uma data foi realizada, o lançamento correspondente. O valor, o dia e o nome de uma recorrência permanecem os da criação; a situação pode mudar.
+
 ## Modelo mínimo sugerido
 
 - `households`
@@ -43,6 +53,9 @@ Mantêm planejamento, sem reescrever fatos do ledger. Indicadores são derivados
 - `entries`
 - `budgets`
 - `goals`
+- `goal_allocations`
+- `recurring_plans`
+- `recurring_occurrences`
 - `audit_events`
 
 Uma transação contém entradas contábeis. Para receita ou despesa, o MVP pode usar uma conta de contrapartida lógica. Para transferência, duas entradas opostas garantem soma zero.
@@ -61,6 +74,7 @@ Uma transação contém entradas contábeis. Para receita ou despesa, o MVP pode
 10. Subcategoria pertence à categoria informada.
 11. Contas ou categorias referenciadas não são apagadas; são arquivadas.
 12. Datas, autor e instante de criação são armazenados de forma inequívoca.
+13. Cada data prevista de uma recorrência é realizada por no máximo um lançamento contabilizado, e esse vínculo é imutável.
 
 ## Estados da transação
 
@@ -88,7 +102,8 @@ Exemplo: despesa de R$ 150 registrada como R$ 510.
 - **Resultado do período** = receitas externas - despesas externas.
 - **Transferências internas** não alteram resultado nem patrimônio consolidado.
 - **Uso do orçamento** = despesas válidas da categoria / limite do período.
-- **Progresso da meta** = valor alocado / valor-alvo.
+- **Progresso da meta** = (contribuições − estornos) / valor-alvo.
+- **Saldo inicial da previsão** = soma das entradas da conta cuja data do lançamento é menor ou igual a `AsOf`.
 
 ## Projeção mensal do painel
 

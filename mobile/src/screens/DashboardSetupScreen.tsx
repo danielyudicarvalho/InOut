@@ -52,6 +52,33 @@ export function DashboardSetupScreen({
     <SafeAreaView style={s.safe}>
       <ScrollView contentContainerStyle={s.content}>
         <BrandLogo />
+        <Pressable
+          accessibilityRole="button"
+          style={s.textButton}
+          onPress={() =>
+            router.push({ pathname: "/residencia", params: context })
+          }
+        >
+          <Text style={s.link}>Minha residência</Text>
+        </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          style={s.textButton}
+          onPress={() =>
+            router.push({ pathname: "/categorias", params: context })
+          }
+        >
+          <Text style={s.link}>Gerenciar categorias</Text>
+        </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          style={s.textButton}
+          onPress={() =>
+            router.push({ pathname: "/gerenciar-fontes", params: context })
+          }
+        >
+          <Text style={s.link}>Gerenciar fontes de renda</Text>
+        </Pressable>
         <View style={s.top}>
           <Pressable
             accessibilityRole="button"

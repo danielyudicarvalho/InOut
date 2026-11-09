@@ -1,6 +1,6 @@
 {
   "name": "@inout/identity",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": true,
   "type": "module",
   "exports": {
@@ -8,9 +8,13 @@
       "types": "./index.d.ts",
       "default": "./index.mjs"
     },
-    "./supabase": {
-      "types": "./supabase.d.ts",
-      "default": "./supabase.mjs"
+    "./bff": {
+      "types": "./bff.d.ts",
+      "default": "./bff.mjs"
+    },
+    "./openid": {
+      "types": "./openid.d.ts",
+      "default": "./openid.mjs"
     },
     "./session": {
       "types": "./session.d.ts",
@@ -19,8 +23,5 @@
   },
   "scripts": {
     "test": "node --test *.test.mjs"
-  },
-  "dependencies": {
-    "@supabase/supabase-js": "2.118.0"
   }
 }

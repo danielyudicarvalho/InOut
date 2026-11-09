@@ -99,6 +99,16 @@ test("history rejects corrupt directions and negative unsigned cents", async () 
       { code: "invalid" },
     );
 });
+test("catalog detail links send category and source filters to history", async () => {
+  const calls = [];
+  await repository([], calls).ledgerHistory("h", "2026-10", {
+    categoryId: "category",
+    incomeSourceId: "source",
+  });
+  const query = new URL(calls[1]).searchParams;
+  assert.equal(query.get("categoryId"), "category");
+  assert.equal(query.get("incomeSourceId"), "source");
+});
 
 test("filter draft restores hierarchy without mutating applied filters and removes incompatible income source", async () => {
   const { historyDraft, applyHistoryDraft } = await import("./index.mjs");

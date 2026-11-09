@@ -23,12 +23,26 @@ internal static class PersistenceVocabulary
         internal const string TransactionPosted = "financial.transaction.posted";
         internal const string TransactionReversed = "financial.transaction.reversed";
         internal const string BudgetSet = "financial.budget.set";
+        internal const string GoalAllocationRecorded = "financial.goal.allocation_recorded";
+        internal const string GoalAllocationReversed = "financial.goal.allocation_reversed";
+        internal const string RecurringOccurrenceRealized = "financial.recurring_occurrence.realized";
+        internal const string GoalCreated = "financial.goal.created";
+        internal const string GoalUpdated = "financial.goal.updated";
+        internal const string ProjectCreated = "financial.project.created";
+        internal const string ProjectUpdated = "financial.project.updated";
+        internal const string ProjectClosed = "financial.project.closed";
+        internal const string ProjectMovementLinked = "financial.project.movement_linked";
+        internal const string ProjectMovementUnlinked = "financial.project.movement_unlinked";
     }
 
     internal static class EntityTypes
     {
         internal const string Account = "account";
         internal const string Budget = "budget";
+        internal const string GoalAllocation = "goal_allocation";
+        internal const string Goal = "goal";
+        internal const string FinancialProject = "financial_project";
+        internal const string RecurringOccurrence = "recurring_occurrence";
         internal const string Category = "category";
         internal const string Household = "household";
         internal const string HouseholdInvitation = "household_invitation";
@@ -61,6 +75,17 @@ internal static class PersistenceVocabulary
         internal const string PostTransfer = "post_transfer";
         internal const string ReverseTransaction = "reverse_transaction";
         internal const string SetBudget = "set_budget";
+        internal const string AllocateGoal = "allocate_goal";
+        internal const string ReverseGoalAllocation = "reverse_goal_allocation";
+        internal const string RealizeRecurringOccurrence = "realize_recurring_occurrence";
+        internal const string CreateGoal = "create_goal";
+        internal const string UpdateGoal = "update_goal";
+        internal const string ChangeGoalStatus = "change_goal_status";
+        internal const string CreateProject = "create_project";
+        internal const string UpdateProject = "update_project";
+        internal const string CloseProject = "close_project";
+        internal const string LinkProjectMovement = "link_project_movement";
+        internal const string UnlinkProjectMovement = "unlink_project_movement";
         internal const string CorrectClassification = "correct_classification";
     }
 

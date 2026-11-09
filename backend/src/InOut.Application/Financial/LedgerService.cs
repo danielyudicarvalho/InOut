@@ -127,18 +127,24 @@ public sealed class LedgerService(ILedgerStore store)
         Guid? incomeSourceId,
         string? description,
         CancellationToken cancellationToken,
-        Guid? idempotencyKey = null) =>
-        store.CorrectClassificationAsync(
-            householdId,
-            transactionId,
-            actorUserId,
-            categoryId,
-            incomeSourceId,
-            description,
-            cancellationToken,
-            idempotencyKey is null ? null : IdempotencyRequest.Create(
-                householdId, actorUserId, IdempotencyOperation.CorrectClassification,
-                idempotencyKey.Value, transactionId, categoryId, incomeSourceId, description));
+        Guid? idempotencyKey = null,
+        TransactionClassificationSnapshot? expectedState = null)
+    {
+        IdempotencyRequest? request = null;
+        if (idempotencyKey is { } key)
+        {
+            object?[] semanticValues = expectedState is null
+                ? [transactionId, categoryId, incomeSourceId, description]
+                : [transactionId, categoryId, incomeSourceId, description,
+                   expectedState.Status, expectedState.CategoryId, expectedState.IncomeSourceId, expectedState.Description];
+            request = IdempotencyRequest.Create(householdId, actorUserId,
+                IdempotencyOperation.CorrectClassification, key, semanticValues);
+        }
+
+        return store.CorrectClassificationAsync(
+            householdId, transactionId, actorUserId, categoryId, incomeSourceId,
+            description, cancellationToken, request, expectedState);
+    }
 
     public Task<LedgerWriteResult> PostIncomeAsync(
         Guid actorUserId,
@@ -227,22 +233,45 @@ public sealed class LedgerService(ILedgerStore store)
         store.ReconcileAsync(actorUserId, householdId, cancellationToken);
 
     public Task<BudgetResult> SetBudgetAsync(
-        Guid actorUserId,
-        SetBudgetCommand command,
-        CancellationToken cancellationToken) =>
-        store.SetBudgetAsync(
-            actorUserId,
-            command,
-            IdempotencyRequest.Create(
-                command.HouseholdId,
-                actorUserId,
-                IdempotencyOperation.SetBudget,
-                command.IdempotencyKey,
-                command.CategoryId,
-                command.PeriodStart,
-                command.PeriodEnd,
-                command.LimitCents),
+        Guid actorUserId, SetBudgetCommand command, CancellationToken cancellationToken)
+    {
+        command = command with { Currency = new Money(0, command.Currency).Currency };
+        return store.SetBudgetAsync(actorUserId, command,
+            IdempotencyRequest.Create(command.HouseholdId, actorUserId, IdempotencyOperation.SetBudget,
+                command.IdempotencyKey, command.Id, command.CategoryId, command.PeriodStart,
+                command.PeriodEnd, command.LimitCents, command.Currency), cancellationToken);
+    }
+
+    public Task<GoalAllocationResult> AllocateToGoalAsync(
+        Guid actorUserId, AllocateGoalCommand command, CancellationToken cancellationToken)
+    {
+        var amount = Money.Positive(command.AmountCents, command.Currency);
+        command = command with
+        {
+            AmountCents = amount.Cents,
+            Currency = amount.Currency,
+            Note = GoalAllocation.NormalizeNote(command.Note),
+        };
+        return store.AllocateToGoalAsync(actorUserId, command,
+            IdempotencyRequest.Create(command.HouseholdId, actorUserId, IdempotencyOperation.AllocateGoal,
+                command.IdempotencyKey, command.GoalId, command.AmountCents, command.Currency,
+                command.OccurredOn, command.Note), cancellationToken);
+    }
+
+    public Task<GoalAllocationResult> ReverseGoalAllocationAsync(
+        Guid actorUserId, ReverseGoalAllocationCommand command, CancellationToken cancellationToken)
+    {
+        command = command with { Note = GoalAllocation.NormalizeNote(command.Note) };
+        return store.ReverseGoalAllocationAsync(actorUserId, command,
+            IdempotencyRequest.Create(command.HouseholdId, actorUserId, IdempotencyOperation.ReverseGoalAllocation,
+                command.IdempotencyKey, command.GoalId, command.AllocationId, command.OccurredOn, command.Note),
             cancellationToken);
+    }
+
+    public Task<GoalAllocationHistory> ListGoalAllocationsAsync(
+        Guid actorUserId, Guid householdId, Guid goalId, CancellationToken cancellationToken) =>
+        store.ListGoalAllocationsAsync(actorUserId, householdId, goalId, cancellationToken);
+
 
 
     private Task<LedgerWriteResult> PostAsync(

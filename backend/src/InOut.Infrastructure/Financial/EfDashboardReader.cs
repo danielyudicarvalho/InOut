@@ -7,17 +7,26 @@ namespace InOut.Infrastructure.Financial;
 
 public sealed class EfDashboardReader(InOutDbContext dbContext) : IDashboardReader
 {
-    public async Task<DashboardSourceData> ReadAsync(
+    public Task<DashboardSourceData> ReadAsync(
+        Guid actorUserId, Guid householdId, FinancialPeriod period, CancellationToken cancellationToken) =>
+        ReadCoreAsync(actorUserId, householdId, period, false, cancellationToken);
+
+    public Task<DashboardSourceData> ReadIncomeHistoryAsync(
+        Guid actorUserId, Guid householdId, FinancialPeriod period, CancellationToken cancellationToken) =>
+        ReadCoreAsync(actorUserId, householdId, period, true, cancellationToken);
+
+    private async Task<DashboardSourceData> ReadCoreAsync(
         Guid actorUserId,
         Guid householdId,
         FinancialPeriod period,
+        bool includeArchivedAccounts,
         CancellationToken cancellationToken)
     {
         await using var transaction = await dbContext.BeginUserTransactionAsync(
             actorUserId,
             cancellationToken);
 
-        var accounts = await ReadAccountsAsync(householdId, period.End, cancellationToken);
+        var accounts = await ReadAccountsAsync(householdId, period.End, includeArchivedAccounts, cancellationToken);
         var categories = await ReadCategoriesAsync(householdId, cancellationToken);
         var incomeSources = await ReadIncomeSourcesAsync(householdId, cancellationToken);
         var postings = await ReadPostingsAsync(householdId, period, cancellationToken);
@@ -47,9 +56,10 @@ public sealed class EfDashboardReader(InOutDbContext dbContext) : IDashboardRead
     private async Task<IReadOnlyList<DashboardAccountSource>> ReadAccountsAsync(
         Guid householdId,
         DateOnly through,
+        bool includeArchived,
         CancellationToken cancellationToken) =>
         await dbContext.Accounts.AsNoTracking()
-            .Where(account => account.HouseholdId == householdId && account.ArchivedAt == null)
+            .Where(account => account.HouseholdId == householdId && (includeArchived || account.ArchivedAt == null))
             .OrderBy(account => account.Name)
             .Select(account => new DashboardAccountSource(
                 account.Id,
@@ -130,7 +140,8 @@ public sealed class EfDashboardReader(InOutDbContext dbContext) : IDashboardRead
                     entry.Id,
                     transaction.OccurredOn,
                     transaction.Description,
-                    transaction.ReversalOf)))
+                    transaction.ReversalOf,
+                    entry.Direction)))
             .ToArray();
     }
 
@@ -144,7 +155,8 @@ public sealed class EfDashboardReader(InOutDbContext dbContext) : IDashboardRead
             .Select(budget => new DashboardBudgetSource(
                 budget.Id,
                 budget.CategoryId,
-                budget.LimitCents))
+                budget.LimitCents,
+                budget.Currency))
             .ToArrayAsync(cancellationToken);
 
     private async Task<IReadOnlyList<DashboardGoalSource>> ReadGoalsAsync(
@@ -158,7 +170,8 @@ public sealed class EfDashboardReader(InOutDbContext dbContext) : IDashboardRead
                 goal.Name,
                 goal.TargetCents,
                 goal.AllocatedCents,
-                goal.TargetDate))
+                goal.TargetDate,
+                goal.Currency))
             .ToArrayAsync(cancellationToken);
 
     private async Task<ReconciliationCounts> ReadReconciliationAsync(

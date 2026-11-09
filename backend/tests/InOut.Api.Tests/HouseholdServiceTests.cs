@@ -55,6 +55,11 @@ public sealed class HouseholdServiceTests
 
     private sealed class RecordingStore : IHouseholdStore
     {
+        public Task<HouseholdContext> GetContextAsync(Guid actorId, Guid householdId, CancellationToken ct) => throw new NotSupportedException();
+        public Task<IReadOnlyList<InvitationSummary>> ListInvitationsAsync(Guid actorId, Guid householdId, CancellationToken ct) => throw new NotSupportedException();
+        public Task ChangeRoleAsync(Guid actorId, Guid householdId, Guid memberId, HouseholdRole role, CancellationToken ct) => throw new NotSupportedException();
+        public Task RemoveMemberAsync(Guid actorId, Guid householdId, Guid memberId, CancellationToken ct) => throw new NotSupportedException();
+        public Task RevokeInvitationAsync(Guid actorId, Guid householdId, Guid invitationId, CancellationToken ct) => throw new NotSupportedException();
         public string? CreatedName { get; private set; }
         public byte[]? TokenHash { get; private set; }
 

@@ -54,6 +54,7 @@ public sealed partial class InOutDbContext(DbContextOptions<InOutDbContext> opti
             entity.Property(item => item.ExpiresAt).HasColumnName("expires_at");
             entity.Property(item => item.AcceptedBy).HasColumnName("accepted_by");
             entity.Property(item => item.AcceptedAt).HasColumnName("accepted_at");
+            entity.Property(item => item.RevokedAt).HasColumnName("revoked_at");
             entity.HasOne<HouseholdRecord>()
                 .WithMany()
                 .HasForeignKey(item => item.HouseholdId);
@@ -107,6 +108,7 @@ internal sealed class HouseholdInvitationRecord
     public DateTimeOffset ExpiresAt { get; set; }
     public Guid? AcceptedBy { get; set; }
     public DateTimeOffset? AcceptedAt { get; set; }
+    public DateTimeOffset? RevokedAt { get; set; }
 }
 
 internal sealed class AuditEventRecord

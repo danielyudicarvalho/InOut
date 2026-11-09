@@ -35,10 +35,17 @@ public sealed class EfForecastStore(
             throw new FinancialRuleException(FinancialErrorCodes.InvalidForecast,
                 "Forecast account must be active and belong to this household.");
 
-        var opening = await dbContext.Entries.AsNoTracking()
-            .Where(item => item.HouseholdId == householdId && item.AccountId == accountId)
-            .SumAsync(item => (long?)(item.Direction == EntryDirection.Credit
-                ? item.AmountCents : -item.AmountCents), cancellationToken) ?? 0;
+        var movements = await (
+            from entry in dbContext.Entries.AsNoTracking()
+            join posted in dbContext.FinancialTransactions.AsNoTracking()
+                on new { entry.HouseholdId, Id = entry.TransactionId }
+                equals new { posted.HouseholdId, posted.Id }
+            where entry.HouseholdId == householdId && entry.AccountId == accountId &&
+                posted.OccurredOn <= asOf
+            select new { posted.OccurredOn, entry.Direction, entry.AmountCents })
+            .ToListAsync(cancellationToken);
+        var opening = Forecast.OpeningBalance(asOf, movements.Select(movement =>
+            new ForecastMovement(movement.OccurredOn, movement.Direction, movement.AmountCents)));
         var rows = await dbContext.RecurringPlans.AsNoTracking()
             .Where(item => item.HouseholdId == householdId && item.AccountId == accountId &&
                 item.Status == RecurringPlanStatus.Active && item.StartsOn <= asOf.AddMonths(months) &&
@@ -48,9 +55,12 @@ public sealed class EfForecastStore(
             row.Name, row.Flow, row.AccountId, row.CategoryId, row.IncomeSourceId,
             row.AmountCents, row.Currency, row.DayOfMonth, row.StartsOn, row.EndsOn)
             .ChangeStatus(row.Status)).ToArray();
-        var points = Forecast.Project(asOf, months, opening, plans);
+        var projection = Forecast.Project(asOf, months, opening, plans);
         var result = new ForecastSummary(Guid.NewGuid(), householdId, accountId,
-            account.Currency, asOf, months, opening, points, timeProvider.GetUtcNow());
+            account.Currency, asOf, months, opening, projection.Points, timeProvider.GetUtcNow())
+        {
+            Assumptions = projection.Assumptions,
+        };
         dbContext.Forecasts.Add(new ForecastRecord
         {
             Id = result.Id,
@@ -60,7 +70,8 @@ public sealed class EfForecastStore(
             AsOf = asOf,
             Months = months,
             OpeningBalanceCents = opening,
-            Points = JsonSerializer.Serialize(points),
+            Points = JsonSerializer.Serialize(projection.Points),
+            Assumptions = JsonSerializer.Serialize(projection.Assumptions),
             CalculatedAt = result.CalculatedAt,
             CreatedBy = identity.ActorUserId,
         });
@@ -96,8 +107,31 @@ public sealed class EfForecastStore(
         return rows.Select(ToSummary).ToArray();
     }
 
-    private static ForecastSummary ToSummary(ForecastRecord row) => new(
-        row.Id, row.HouseholdId, row.AccountId, row.Currency, row.AsOf,
-        row.Months, row.OpeningBalanceCents,
-        JsonSerializer.Deserialize<ForecastPoint[]>(row.Points) ?? [], row.CalculatedAt);
+    private static ForecastSummary ToSummary(ForecastRecord row)
+    {
+        var storedPoints = JsonSerializer.Deserialize<StoredForecastPoint[]>(row.Points) ?? [];
+        return new ForecastSummary(
+            row.Id, row.HouseholdId, row.AccountId, row.Currency, row.AsOf,
+            row.Months, row.OpeningBalanceCents,
+            storedPoints.Select(point => point.ToPoint()).ToArray(), row.CalculatedAt)
+        {
+            Assumptions = string.IsNullOrWhiteSpace(row.Assumptions)
+                ? []
+                : JsonSerializer.Deserialize<ForecastPlanSnapshot[]>(row.Assumptions) ?? [],
+        };
+    }
+
+    private sealed class StoredForecastPoint
+    {
+        public DateOnly Month { get; set; }
+        public long ExpectedIncomeCents { get; set; }
+        public long ExpectedExpenseCents { get; set; }
+        public long ProjectedBalanceCents { get; set; }
+        public List<Guid> RecurringPlanIds { get; set; } = [];
+        public List<ForecastContribution> Contributions { get; set; } = [];
+
+        public ForecastPoint ToPoint() => new(
+            Month, ExpectedIncomeCents, ExpectedExpenseCents, ProjectedBalanceCents,
+            RecurringPlanIds, Contributions);
+    }
 }

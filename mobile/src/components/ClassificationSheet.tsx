@@ -17,35 +17,51 @@ import {
   displayDate,
   historyKind,
   money,
+  type TransactionDetail,
 } from "@inout/finance";
 import { useClassification } from "../finance/use-classification";
 import { AuxiliarySelector } from "./AuxiliarySelector";
 import { theme as t } from "../theme";
+
 export function ClassificationSheet({
   household,
   transactionId,
   onClose,
   onSaved,
+  onConflict,
 }: {
   household: string;
   transactionId: string;
   onClose: () => void;
   onSaved: () => void;
+  onConflict?: (detail: TransactionDetail) => void;
 }) {
   const state = useClassification(household, transactionId),
     saving = state.status === "saving",
     pending = state.status === "uncertain";
-  useEffect(() => {
-    if (state.status === "success") onSaved();
-  }, [state.status, onSaved]);
+
   const options = state.options,
     detail = options?.detail,
     choices = options ? classificationChoices(options) : null,
     editable = !!detail && canCorrectClassification(detail);
+
+  useEffect(() => {
+    if (state.status === "success") {
+      onSaved();
+    } else if (
+      detail &&
+      (state.status === "stale" ||
+        (state.status === "ready" && !canCorrectClassification(detail)))
+    ) {
+      onConflict?.(detail);
+    }
+  }, [state.status, detail, onSaved, onConflict]);
+
   return (
     <Modal
       transparent
       animationType="slide"
+      visible
       onRequestClose={() => {
         if (!saving) onClose();
       }}
@@ -181,6 +197,7 @@ export function ClassificationSheet({
     </Modal>
   );
 }
+
 const s = StyleSheet.create({
   overlay: {
     flex: 1,

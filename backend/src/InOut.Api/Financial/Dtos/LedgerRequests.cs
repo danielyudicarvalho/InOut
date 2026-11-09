@@ -48,12 +48,24 @@ public sealed record ReverseTransactionRequest(
 public sealed record CorrectTransactionClassificationRequest(
     Guid? CategoryId,
     Guid? IncomeSourceId,
-    string? Description);
+    string? Description,
+    TransactionClassificationSnapshot? ExpectedState = null);
 
 public sealed record SetBudgetRequest(
     Guid? Id,
     Guid CategoryId,
     DateOnly PeriodStart,
     DateOnly PeriodEnd,
-    long LimitCents);
+    long LimitCents,
+    string Currency);
+
+public sealed record AllocateGoalRequest(
+    long AmountCents,
+    string Currency,
+    DateOnly OccurredOn,
+    string? Note);
+
+public sealed record ReverseGoalAllocationRequest(
+    DateOnly OccurredOn,
+    string? Note);
 

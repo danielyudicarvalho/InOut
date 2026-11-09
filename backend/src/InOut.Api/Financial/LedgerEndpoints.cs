@@ -150,6 +150,7 @@ public static class LedgerEndpoints
             int? offset,
             bool? includeSubcategories,
             Guid? transactionId,
+            Guid? reversalOf,
             DateOnly? from,
             DateOnly? to,
             Guid? accountId,
@@ -163,7 +164,7 @@ public static class LedgerEndpoints
         {
             FinancialTransactionKind? parsedKind = !string.IsNullOrWhiteSpace(kind) && Enum.TryParse<FinancialTransactionKind>(kind, ignoreCase: true, out var k) ? k : null;
             return Results.Ok(await service.GetHistoryAsync(UserId(principal), householdId, limit ?? 100,
-                new LedgerHistoryFilter(from, to, accountId, categoryId, parsedKind, incomeSourceId, search, Math.Max(0, offset ?? 0), includeSubcategories ?? false, transactionId), cancellationToken));
+                new LedgerHistoryFilter(from, to, accountId, categoryId, parsedKind, incomeSourceId, search, Math.Max(0, offset ?? 0), includeSubcategories ?? false, transactionId, reversalOf), cancellationToken));
         }).WithName(ApiContract.EndpointNames.GetLedgerHistory);
 
         ledger.MapPost(ApiContract.Routes.Income, async (
@@ -274,7 +275,8 @@ public static class LedgerEndpoints
                 request.IncomeSourceId,
                 request.Description,
                 cancellationToken,
-                idempotencyKey);
+                idempotencyKey,
+                request.ExpectedState);
             return Results.Ok(updatedItem);
         }).WithName(ApiContract.EndpointNames.CorrectTransactionClassification);
 
@@ -311,7 +313,8 @@ public static class LedgerEndpoints
                     request.PeriodStart,
                     request.PeriodEnd,
                     request.LimitCents,
-                    idempotencyKey),
+                    idempotencyKey,
+                    request.Currency),
                 cancellationToken);
 
             return result.Replayed
@@ -320,6 +323,70 @@ public static class LedgerEndpoints
                     $"/api/v1/households/{householdId}/ledger/budgets/{result.Id}",
                     result);
         }).WithName(ApiContract.EndpointNames.SetBudget);
+
+        ledger.MapPost(ApiContract.Routes.GoalAllocations, async (
+            Guid householdId,
+            Guid goalId,
+            AllocateGoalRequest request,
+            [FromHeader(Name = ApiContract.Headers.IdempotencyKey)] Guid idempotencyKey,
+            ClaimsPrincipal principal,
+            LedgerService service,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await service.AllocateToGoalAsync(
+                UserId(principal),
+                new AllocateGoalCommand(
+                    householdId,
+                    goalId,
+                    request.AmountCents,
+                    request.Currency,
+                    request.OccurredOn,
+                    request.Note,
+                    idempotencyKey),
+                cancellationToken);
+            return result.Replayed
+                ? Results.Ok(result)
+                : Results.Created(
+                    ApiContract.Routes.GoalAllocationResource(householdId, goalId, result.Id),
+                    result);
+        }).WithName(ApiContract.EndpointNames.AllocateGoal);
+
+        ledger.MapPost(ApiContract.Routes.GoalAllocationReversals, async (
+            Guid householdId,
+            Guid goalId,
+            Guid allocationId,
+            ReverseGoalAllocationRequest request,
+            [FromHeader(Name = ApiContract.Headers.IdempotencyKey)] Guid idempotencyKey,
+            ClaimsPrincipal principal,
+            LedgerService service,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await service.ReverseGoalAllocationAsync(
+                UserId(principal),
+                new ReverseGoalAllocationCommand(
+                    householdId,
+                    goalId,
+                    allocationId,
+                    request.OccurredOn,
+                    request.Note,
+                    idempotencyKey),
+                cancellationToken);
+            return result.Replayed
+                ? Results.Ok(result)
+                : Results.Created(
+                    ApiContract.Routes.GoalAllocationResource(householdId, goalId, result.Id),
+                    result);
+        }).WithName(ApiContract.EndpointNames.ReverseGoalAllocation);
+
+        ledger.MapGet(ApiContract.Routes.GoalAllocations, async (
+            Guid householdId,
+            Guid goalId,
+            ClaimsPrincipal principal,
+            LedgerService service,
+            CancellationToken cancellationToken) =>
+            Results.Ok(await service.ListGoalAllocationsAsync(
+                UserId(principal), householdId, goalId, cancellationToken)))
+            .WithName(ApiContract.EndpointNames.GetGoalAllocations);
 
 
         ledger.MapGet(ApiContract.Routes.Dashboard, async (
@@ -345,12 +412,13 @@ public static class LedgerEndpoints
             DateOnly? to,
             int? offset,
             int? limit,
+            bool? includeArchivedAccounts,
             ClaimsPrincipal principal,
             GetIncomeBreakdown useCase,
             CancellationToken cancellationToken) =>
             Results.Ok(await useCase.ExecuteAsync(
                 new GetIncomeBreakdownQuery(UserId(principal), householdId, currency,
-                    year, month, from, to, offset ?? 0, limit ?? 50),
+                    year, month, from, to, offset ?? 0, limit ?? 50, includeArchivedAccounts ?? false),
                 cancellationToken)))
             .WithName(ApiContract.EndpointNames.GetIncomeBreakdown);
 
@@ -371,6 +439,11 @@ public static class LedgerEndpoints
                     year, month, from, to, offset ?? 0, limit ?? 50),
                 cancellationToken)))
             .WithName(ApiContract.EndpointNames.GetExpenseBreakdown);
+
+        ledger.MapGet("/analysis", async (Guid householdId, string currency, DateOnly from, DateOnly to,
+            ClaimsPrincipal principal, GetFinancialAnalysis useCase, CancellationToken ct) =>
+            Results.Ok(await useCase.ExecuteAsync(UserId(principal), householdId, currency, from, to, ct)))
+            .WithName("GetFinancialAnalysis");
 
         ledger.MapGet(ApiContract.Routes.CompareDashboard, async (
             Guid householdId,
