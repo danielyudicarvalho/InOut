@@ -1,9 +1,11 @@
 using InOut.Domain.Households;
 using Xunit;
 namespace InOut.Domain.Tests;
+
 public sealed class HouseholdMembershipTests
 {
-    [Fact] public void LastResponsibleCannotLeaveBeRemovedOrDemoted()
+    [Fact]
+    public void LastResponsibleCannotLeaveBeRemovedOrDemoted()
     {
         var id = Guid.NewGuid();
         var owner = new HouseholdMembership(id, HouseholdRole.Owner);
@@ -13,7 +15,8 @@ public sealed class HouseholdMembershipTests
         owner.EnsureCanRemove(id, HouseholdRole.Owner, 2);
         owner.EnsureCanChangeRole(HouseholdRole.Owner, HouseholdRole.Member, 2);
     }
-    [Fact] public void MemberCanLeaveButCannotPromoteOrRemoveOthers()
+    [Fact]
+    public void MemberCanLeaveButCannotPromoteOrRemoveOthers()
     {
         var id = Guid.NewGuid();
         var member = new HouseholdMembership(id, HouseholdRole.Member);

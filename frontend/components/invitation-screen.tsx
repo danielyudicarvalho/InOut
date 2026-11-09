@@ -8,7 +8,7 @@ import {
   createCollaborationRepository,
   collaborationMessage,
 } from "@inout/finance/collaboration";
-import { getAuthClient } from "../lib/auth/composition";
+import { browserApiBase, getAuthClient } from "../lib/auth/composition";
 import {
   Plant,
   ArrowLeft,
@@ -51,7 +51,7 @@ export function InvitationScreen() {
     setNotice("");
     try {
       const repository = createCollaborationRepository({
-        baseUrl: process.env.NEXT_PUBLIC_API_BASE_URL,
+        baseUrl: browserApiBase(),
         getToken: async () => {
           const { data } = await getAuthClient().auth.getSession();
           return data.session?.access_token ?? null;

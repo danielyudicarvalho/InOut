@@ -1,34 +1,73 @@
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import {
-  AuthFailure,
-  createAuthService,
-  requirePublicConfig,
-} from "@inout/identity";
-import { createSupabaseAuthRepository } from "@inout/identity/supabase";
-let client: SupabaseClient | undefined;
+import { AuthFailure, createAuthService, requireIssuer } from "@inout/identity";
+import { createBffAuthRepository } from "@inout/identity/bff";
+
+type SessionPayload = {
+  user: { id: string; email: string; emailConfirmed: boolean } | null;
+  csrf: string | null;
+};
+
+export function browserApiBase() {
+  if (typeof window === "undefined") throw new AuthFailure("configuration");
+  return window.location.origin;
+}
+
+async function session(): Promise<SessionPayload | null> {
+  const response = await fetch("/api/auth/session", {
+    credentials: "same-origin",
+    headers: { accept: "application/json" },
+  });
+  if (response.status === 401) return null;
+  if (!response.ok) throw new AuthFailure("session_missing");
+  return (await response.json()) as SessionPayload;
+}
+
 export function getAuthClient() {
   if (typeof window === "undefined") throw new AuthFailure("configuration");
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
-  requirePublicConfig(url, key);
-  return (client ??= createClient(url!, key!, {
+  return {
     auth: {
-      flowType: "pkce",
-      detectSessionInUrl: false,
-      persistSession: true,
-      autoRefreshToken: true,
+      async getSession() {
+        const current = await session();
+        if (!current?.csrf || !current.user)
+          return { data: { session: null }, error: null };
+        return {
+          data: {
+            session: {
+              access_token: current.csrf,
+              user: { id: current.user.id },
+            },
+          },
+          error: null,
+        };
+      },
+      async getUser() {
+        const current = await session();
+        return {
+          data: { user: current?.user ? { id: current.user.id } : null },
+          error: null,
+        };
+      },
+      startAutoRefresh() {},
+      stopAutoRefresh() {},
     },
-  }));
+  };
 }
+
 export function getAuth() {
+  if (typeof window === "undefined") throw new AuthFailure("configuration");
+  requireIssuer(window.location.origin);
+  const channel =
+    typeof BroadcastChannel === "function"
+      ? new BroadcastChannel("inout-auth")
+      : undefined;
   return createAuthService(
-    createSupabaseAuthRepository(
-      getAuthClient(),
-      `${window.location.origin}/auth/callback`,
-      `${window.location.origin}/auth/recuperar`,
-    ),
+    createBffAuthRepository({
+      fetch: (input, init) => fetch(input, init),
+      origin: window.location.origin,
+      channel,
+    }),
   );
 }
+
 export function rememberEmail(email: string) {
   try {
     sessionStorage.setItem("ninho.pending-email", email.trim().toLowerCase());
@@ -36,6 +75,7 @@ export function rememberEmail(email: string) {
     /* Confirmation also supports manual email entry. */
   }
 }
+
 export function pendingEmail() {
   try {
     return sessionStorage.getItem("ninho.pending-email") ?? "";

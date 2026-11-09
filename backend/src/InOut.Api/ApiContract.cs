@@ -48,8 +48,6 @@ internal static class ApiContract
     {
         internal const string AllowedOrigins = "Cors:AllowedOrigins";
         internal const string DatabaseConnection = "InOut";
-        internal const string SupabaseAudience = "Supabase:Jwt:Audience";
-        internal const string SupabaseIssuer = "Supabase:Jwt:Issuer";
     }
 
     internal static class Headers

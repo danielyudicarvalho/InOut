@@ -2,8 +2,8 @@
 
 ## Fonte da verdade
 
-O PostgreSQL do Supabase é a fonte autoritativa dos dados compartilhados. Cada
-usuário possui identidade própria no Supabase Auth; o acesso aos dados decorre
+O PostgreSQL do previous hosted provider é a fonte autoritativa dos dados compartilhados. Cada
+usuário possui identidade própria no previous hosted provider Auth; o acesso aos dados decorre
 da associação em `household_members`, nunca de metadados editáveis do usuário.
 
 ## Modelo inicial
@@ -53,8 +53,8 @@ autoria. Campos de autoria e residência são imutáveis depois da criação.
 
 ## Sessão no cliente
 
-O Flutter inicializa o Supabase somente quando recebe `SUPABASE_URL` e
-`SUPABASE_PUBLISHABLE_KEY` por `--dart-define`. O SDK restaura a sessão persistida
+O Flutter inicializa o previous hosted provider somente quando recebe `previous hosted provider_URL` e
+`previous hosted provider_PUBLISHABLE_KEY` por `--dart-define`. O SDK restaura a sessão persistida
 e o gate de sessão reage a login, logout e renovação. Nenhuma chave secreta ou
 `service_role` pertence ao aplicativo.
 
@@ -65,15 +65,11 @@ o usuário possa alterar.
 
 ## Migrações e testes
 
-As mudanças vivem em `supabase/migrations` e os testes pgTAP em
-`supabase/tests/database`. Para reproduzir localmente:
+As mudanças atuais vivem em `db/fly`. O histórico anterior está em `docs/history`. Para aplicar o schema num Postgres descartável:
 
 ```bash
-supabase start
-supabase db reset
-supabase db lint --schema public,private --level warning --fail-on error
-supabase test db
-supabase stop
+export INOUT_DIRECT_URL='Host=127.0.0.1;Database=inout;Username=postgres;Password=postgres'
+bash tool/local-up.sh
 ```
 
 A CI recria e analisa o banco a partir das migrações e valida estrutura, RLS, leitura

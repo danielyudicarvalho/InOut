@@ -4,7 +4,7 @@
 
 - Node.js 22 LTS / 24 LTS e npm para `frontend/`, `mobile/` e `packages/identity`;
 - .NET 10 SDK para `backend/`;
-- Supabase CLI para migrations de banco e testes RLS locais;
+- .NET SDK 10 e Postgres para migrations em `db/fly` e testes de RLS;
 - Docker com Docker Compose v2 para execução local integrada.
 
 Mudanças de dependências devem ocorrer em PR própria, com lockfiles atualizados (`package-lock.json`, `Directory.Packages.props`).
@@ -13,7 +13,7 @@ Mudanças de dependências devem ocorrer em PR própria, com lockfiles atualizad
 
 Copie `cloud.env.example` para `.env.cloud` e preencha para desenvolvimento com banco hospedado, ou use `tool/local-up.sh` para banco local. Arquivos `.env*`, credenciais de banco e chaves de assinatura nunca devem ser versionados.
 
-Os clientes (`frontend` e `mobile`) recebem somente a URL pública e a chave publicável/anon do Supabase. O JWT da sessão de usuário acompanha as requisições autenticadas à API ASP.NET Core.
+O web não publica segredo. O mobile publica só o issuer. A API recebe o access token de referência e aplica o sujeito na mesma transação da consulta.
 
 ## Pipeline de CI
 

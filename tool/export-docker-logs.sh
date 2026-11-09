@@ -5,7 +5,7 @@ cd "$(dirname "$0")/.."
 mode="${1:-cloud}"
 case "$mode" in
   cloud) compose_file=compose.cloud.yaml; env_file=.env.cloud ;;
-  local) compose_file=compose.yaml; env_file=.env.docker.local ;;
+  local) compose_file=compose.yaml; env_file=.env ;;
   *) echo 'Usage: bash tool/export-docker-logs.sh [cloud|local]' >&2; exit 2 ;;
 esac
 

@@ -23,7 +23,7 @@ npm run build:ios
 
 `src/screens/WelcomeScreen.tsx` contém a tela; `src/theme.ts` contém os tokens visuais; `assets/pipo-home.webp` é a ilustração local. Safe area, rolagem, descrições acessíveis e fechamento do modal com o botão voltar do Android estão contemplados. Fontes são empacotadas localmente.
 
-Login, cadastro e confirmação de e-mail usam Supabase Auth e Expo Router. Configuração, callbacks nativos, arquitetura e testes: [autenticação dos clientes React](../docs/auth-react-clients.md). Recuperação e redefinição de senha também estão integradas. Telas financeiras permanecem prévias.
+A entrada usa o navegador do sistema, authorization code e PKCE S256. Os tokens ficam no SecureStore. Não há segredo nativo. Veja [autenticação dos clientes](../docs/auth-react-clients.md).
 
 ## Code quality
 

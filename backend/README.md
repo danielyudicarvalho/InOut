@@ -36,15 +36,15 @@ Em desenvolvimento, o OpenAPI fica disponível em `/openapi/v1.json`. Health che
 
 Configuração varia por ambiente e não contém segredos no repositório:
 
-- `ConnectionStrings__InOut`: conexão PostgreSQL do usuário `inout_api_runtime`;
-- `Supabase__Jwt__Issuer`: `https://<project-ref>.supabase.co/auth/v1`;
-- `Supabase__Jwt__Audience`: `authenticated`;
+- `ConnectionStrings__InOut`: conexão PostgreSQL do papel `inout_api_runtime` no pooler de sessão;
+- `ConnectionStrings__InOutDirect`: endpoint direto para migrations, sem pooler;
+- `Auth__Issuer` e `Auth__PublicOrigin`: URLs públicas do emissor e do web;
+- `Deployment__RegionApproved`: precisa ser `true` em produção, com região e capacidade explícitas;
 - `Cors__AllowedOrigins__0` (e seguintes): origens HTTPS permitidas.
 
-O token do Supabase é validado pelo JWKS do projeto, aceitando somente ES256 ou
-RS256, com assinatura, emissor, audiência e expiração obrigatórios. O `sub` é a
-única identidade usada pela API; `user_metadata` e `household_id` do cliente não
-concedem autorização.
+A API emite e valida tokens de referência do OpenIddict. O `sub` é a única identidade usada; nome de exibição e metadados do cliente não concedem autorização.
+
+`dotnet run --project src/InOut.Api -- migrate` aplica o schema pelo endpoint direto. `dotnet run --project src/InOut.Api -- import caminho/local.json` importa um arquivo local já exportado. O comando recusa URL remota e recusa quando `IdentityImport__Mode` não é `rehearsal` ou `approved-cutover`. `rehearsal` também recusa o ambiente Production. O modo `approved-cutover` revoga sessões dos usuários importados; o ensaio não. Nenhum dos dois exporta dados ao vivo nem apaga a conta de origem. O ensaio sintético está em `tests/InOut.Api.Tests/Fixtures/synthetic-identity.json`.
 
 ### Usuário de runtime
 
@@ -64,7 +64,7 @@ transação. A política RLS exige que esse sujeito coincida com `user_id`, e a
 consulta repete explicitamente o par `(household_id, user_id)`.
 
 O corte operacional e o rollback são definidos no
-[runbook da GOM-101](../docs/runbooks/gom-101-legacy-cutover.md).
+[runbook histórico da GOM-101](../docs/history/superseded/runbooks/gom-101-legacy-cutover.md) e o [plano de migração](../docs/fly-identity-migration.md).
 
 ## Identity & Household API
 
@@ -73,7 +73,7 @@ O corte operacional e o rollback são definidos no
 - `POST /api/v1/households/{householdId}/invitations`
 - `POST /api/v1/household-invitations/accept`
 
-Todos exigem `Authorization: Bearer <Supabase access token>`. Convites contêm 24
+Todos exigem `Authorization: Bearer <access token>`. Convites contêm 24
 bytes aleatórios, são persistidos somente como SHA-256, expiram em 24 horas e
 são consumidos uma única vez. Escritas, auditoria e locks ocorrem na mesma
 transação PostgreSQL.
@@ -100,4 +100,4 @@ domínio continuam independentes da chave; consulte a ADR-006.
 
 ## Limites
 
-Domain e Application não podem depender de ASP.NET Core, EF Core, Npgsql, Supabase ou frameworks de interface. Os testes de arquitetura bloqueiam violações básicas dessa direção.
+Domain e Application não podem depender de ASP.NET Core, EF Core, Npgsql ou frameworks de interface. Os testes de arquitetura bloqueiam violações básicas dessa direção.

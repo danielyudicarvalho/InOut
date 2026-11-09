@@ -4,8 +4,8 @@ WORKDIR /app
 # Ensure Node resolves IPv4 first to avoid IPv6 lookup timeouts on Docker networks
 ENV NODE_OPTIONS="--dns-result-order=ipv4first"
 
-# Copy identity package and frontend package manifests
-COPY packages/identity/ ./packages/identity/
+# Copy workspace packages and frontend package manifests
+COPY packages/ ./packages/
 COPY frontend/package.json frontend/package-lock.json* frontend/.npmrc* ./frontend/
 
 WORKDIR /app/frontend
@@ -24,13 +24,6 @@ COPY frontend/ ./frontend/
 
 WORKDIR /app/frontend
 
-ARG NEXT_PUBLIC_SUPABASE_URL
-ARG NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
-ARG NEXT_PUBLIC_API_URL
-
-ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL
-ENV NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=$NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
-ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 ENV NODE_ENV=production
 
 RUN npm run build

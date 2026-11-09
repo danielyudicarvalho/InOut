@@ -5,7 +5,7 @@ import {
   createIncomeDetailsStore,
   FinanceFailure,
 } from "@inout/finance";
-import { getAuthClient } from "../auth/composition";
+import { browserApiBase, getAuthClient } from "../auth/composition";
 export function useIncomeDetails(
   household: string,
   period: string,
@@ -14,7 +14,7 @@ export function useIncomeDetails(
   const [store] = useState(() =>
     createIncomeDetailsStore(
       createFinanceRepository({
-        baseUrl: process.env.NEXT_PUBLIC_API_BASE_URL,
+        baseUrl: browserApiBase(),
         getToken: async () => {
           const { data, error } = await getAuthClient().auth.getSession();
           if (error) throw new FinanceFailure("unauthorized");

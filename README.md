@@ -26,8 +26,9 @@ Registrar entradas, saídas e transferências; organizar categorias e subcategor
 - [Design visual e sistema de cores](docs/06-visual-design.md)
 - [Ambientes, dependências e integração contínua](docs/08-environments-and-ci.md)
 - [Banco de dados e isolamento por residência](docs/09-database-security.md)
-- [Inventário dos limites Supabase e plano de migração](docs/10-supabase-boundary-inventory.md)
-- [Runbook do corte dos caminhos legados](docs/runbooks/gom-101-legacy-cutover.md)
+- [Migração para Fly Managed Postgres e Identity](docs/fly-identity-migration.md)
+- [Inventário histórico do provedor anterior](docs/history/10-previous-provider-boundary-inventory.md)
+- [Runbook histórico do corte dos caminhos legados](docs/history/superseded/runbooks/gom-101-legacy-cutover.md)
 - [Registro de decisões arquiteturais](docs/adr/README.md)
 
 ## Desenvolvimento
@@ -36,9 +37,11 @@ A aplicação é composta por:
 - **Frontend Web**: Next.js 16 (`frontend/`)
 - **Mobile (Android/iOS)**: React Native + Expo (`mobile/`)
 - **Backend API**: ASP.NET Core 10 (`backend/`)
-- **Banco e Auth**: Supabase Pro (PostgreSQL + Supavisor pooler + Auth)
+- **Banco e Auth**: Fly Managed Postgres, ASP.NET Core Identity e OpenIddict no monólito
 
-### Docker: API and Frontend with hosted Supabase
+### Docker: API and web BFF
+
+The browser talks only to the Next server. `API_BASE_URL`, `AUTH_WEB_CLIENT_SECRET` and `BFF_SESSION_KEY` stay on the server. The API uses `ConnectionStrings__InOut` for the runtime role and `ConnectionStrings__InOutDirect` for migrations.
 
 ```bash
 cp cloud.env.example .env.cloud
@@ -46,7 +49,7 @@ cp cloud.env.example .env.cloud
 docker compose -f compose.cloud.yaml --env-file .env.cloud up --build -d
 ```
 
-See [hosted Supabase setup](docs/cloud-docker.md) for role and migration prerequisites, or [isolated local Supabase setup](docs/local-docker.md) to run Auth and database locally.
+See [cloud setup](docs/cloud-docker.md) and [local setup](docs/local-docker.md). Region, latency and a live cutover are not claimed by this repository.
 
 ### Frontend Web (Next.js)
 

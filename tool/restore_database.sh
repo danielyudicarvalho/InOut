@@ -2,7 +2,7 @@
 set -euo pipefail
 umask 077
 
-# Run against a fresh, isolated Supabase project only; never against the source database.
+# Run against a fresh, isolated previous hosted provider project only; never against the source database.
 if [[ $# -ne 1 || -z "${RESTORE_DATABASE_URL:-}" || -z "${BACKUP_PASSPHRASE:-}" || "${CONFIRM_ISOLATED_TARGET:-}" != yes ]]; then
   echo 'Usage: RESTORE_DATABASE_URL=... BACKUP_PASSPHRASE=... CONFIRM_ISOLATED_TARGET=yes restore_database.sh BACKUP.gpg' >&2
   exit 2

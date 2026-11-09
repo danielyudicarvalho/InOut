@@ -14,12 +14,13 @@ COPY backend/src/ ./backend/src/
 RUN dotnet publish backend/src/InOut.Api/InOut.Api.csproj -c Release --no-restore -o /app/publish /p:UseAppHost=false
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0
-RUN apt-get update && apt-get install -y --no-install-recommends tini coreutils \
+RUN apt-get update && apt-get install -y --no-install-recommends tini coreutils curl \
     && rm -rf /var/lib/apt/lists/* \
     && mkdir -p /var/log/inout \
     && chown -R $APP_UID:$APP_UID /var/log/inout
 WORKDIR /app
 COPY --from=build /app/publish .
+COPY --chown=$APP_UID:$APP_UID db ./db
 ENV ASPNETCORE_URLS=http://+:8080
 EXPOSE 8080
 USER $APP_UID

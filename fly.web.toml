@@ -1,0 +1,24 @@
+# Review configuration for the Next.js BFF. Do not deploy from this change.
+# gru is an unapproved candidate, shared with the API only after an explicit region decision.
+app = 'inout-web'
+primary_region = 'gru'
+
+[build]
+  dockerfile = 'frontend/Dockerfile'
+
+[env]
+  PORT = '3000'
+  NODE_ENV = 'production'
+
+[http_service]
+  internal_port = 3000
+  force_https = true
+  auto_stop_machines = 'stop'
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ['app']
+
+[[vm]]
+  memory = '512mb'
+  cpu_kind = 'shared'
+  cpus = 1

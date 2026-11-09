@@ -1,0 +1,53 @@
+[
+  {
+    "id": "11111111-1111-1111-1111-111111111111",
+    "email": "Ada@Example.com",
+    "encryptedPassword": "$2a$04$SXchv4nhrWAJ7F0ceOJkpOImkcpmXAHRqx30vUczq5TCjxXRNuQL.",
+    "emailConfirmedAt": "2026-01-01T00:00:00Z",
+    "bannedUntil": null,
+    "displayName": "Ada",
+    "isBanned": false,
+    "logins": [
+      {
+        "provider": "email",
+        "issuer": null,
+        "subject": "ada@example.com"
+      }
+    ],
+    "factors": []
+  },
+  {
+    "id": "22222222-2222-2222-2222-222222222222",
+    "email": " unconfirmed@example.com ",
+    "encryptedPassword": null,
+    "emailConfirmedAt": null,
+    "bannedUntil": null,
+    "displayName": "New",
+    "isBanned": false,
+    "logins": [],
+    "factors": []
+  },
+  {
+    "id": "33333333-3333-3333-3333-333333333333",
+    "email": "banned@example.com",
+    "encryptedPassword": "$argon2id$v=19$stored-not-verified",
+    "emailConfirmedAt": "2026-01-01T00:00:00Z",
+    "bannedUntil": "2099-01-01T00:00:00Z",
+    "displayName": "Banned",
+    "isBanned": true,
+    "logins": [
+      {
+        "provider": "google",
+        "issuer": "https://accounts.google.com",
+        "subject": "google-subject-1"
+      }
+    ],
+    "factors": [
+      {
+        "id": "factor-1",
+        "status": "verified",
+        "containsSecret": true
+      }
+    ]
+  }
+]
