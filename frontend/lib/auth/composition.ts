@@ -1,5 +1,6 @@
 import { AuthFailure, createAuthService, requireIssuer } from "@inout/identity";
 import { createBffAuthRepository } from "@inout/identity/bff";
+import { resetUser } from "../analytics/posthog";
 
 type SessionPayload = {
   user: { id: string; email: string; emailConfirmed: boolean } | null;
@@ -59,13 +60,20 @@ export function getAuth() {
     typeof BroadcastChannel === "function"
       ? new BroadcastChannel("inout-auth")
       : undefined;
-  return createAuthService(
+  const service = createAuthService(
     createBffAuthRepository({
       fetch: (input, init) => fetch(input, init),
       origin: window.location.origin,
       channel,
     }),
   );
+  return {
+    ...service,
+    async signOut() {
+      await service.signOut();
+      resetUser();
+    },
+  };
 }
 
 export function rememberEmail(email: string) {
