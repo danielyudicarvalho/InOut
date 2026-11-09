@@ -14,6 +14,12 @@ services:
       Cors__AllowedOrigins__0: http://localhost:3000
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
       OTEL_SERVICE_NAME: inout-api
+      Auth__Email__Delivery: ${AUTH_EMAIL_DELIVERY:-capture}
+      Auth__Resend__ApiKey: ${RESEND_API_KEY:-}
+      Auth__Email__From: ${AUTH_EMAIL_FROM:-InOut <noreply@inout.app>}
+      Sentry__Dsn: ${SENTRY_DSN:-}
+      PostHog__ApiKey: ${POSTHOG_API_KEY:-}
+      PostHog__Host: ${POSTHOG_HOST:-https://us.i.posthog.com}
     ports:
       - 127.0.0.1:8080:8080
     volumes:
@@ -23,6 +29,12 @@ services:
     build:
       context: .
       dockerfile: frontend/Dockerfile
+      # Browser keys are baked in at build time: rebuild after changing them.
+      args:
+        NEXT_PUBLIC_POSTHOG_KEY: ${NEXT_PUBLIC_POSTHOG_KEY:-}
+        NEXT_PUBLIC_POSTHOG_HOST: ${NEXT_PUBLIC_POSTHOG_HOST:-https://us.i.posthog.com}
+        NEXT_PUBLIC_SENTRY_DSN: ${NEXT_PUBLIC_SENTRY_DSN:-}
+        NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE: ${NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE:-0.1}
     environment:
       API_BASE_URL: http://api:8080
       AUTH_WEB_CLIENT_SECRET: ${AUTH_WEB_CLIENT_SECRET:?Set the web client secret}

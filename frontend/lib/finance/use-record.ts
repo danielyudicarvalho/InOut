@@ -2,10 +2,13 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import {
   createFinanceRepository,
+  createRecordFormTracker,
   createRecordStore,
   FinanceFailure,
+  type RecordFields,
   type RecordKind,
 } from "@inout/finance";
+import { captureEvent, setHousehold } from "../analytics/posthog";
 import { browserApiBase, getAuthClient } from "../auth/composition";
 export function useRecord(
   household: string,
@@ -59,6 +62,25 @@ export function useRecord(
   );
   useEffect(() => bundle.store.start(), [bundle.store]);
 
+  // Form timing for the Event Taxonomy (field names only, never values).
+  const [tracker] = useState(() =>
+    createRecordFormTracker({ kind, emit: captureEvent }),
+  );
+  useEffect(() => {
+    if (state.status !== "ready") return;
+    setHousehold(household);
+    tracker.start();
+  }, [state.status, household, tracker]);
+  useEffect(() => () => tracker.close(), [tracker]);
+  const edit = (field: keyof RecordFields, value: string) => {
+    tracker.edit(field);
+    bundle.store.edit(field, value);
+  };
+  const submit = () => {
+    tracker.submit();
+    return bundle.store.submit();
+  };
+
   const createCategory = async (
     name: string,
     flow: "income" | "expense",
@@ -87,8 +109,8 @@ export function useRecord(
 
   return {
     ...state,
-    edit: bundle.store.edit,
-    submit: bundle.store.submit,
+    edit,
+    submit,
     retry: bundle.store.retry,
     createCategory,
     createIncomeSource,

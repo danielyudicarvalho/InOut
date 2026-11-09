@@ -1,3 +1,4 @@
+using InOut.Api.Diagnostics;
 using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
@@ -60,7 +61,10 @@ public static class IdentityEndpoints
             return Results.Unauthorized();
         }
 
-        return Result(await accounts.ConfirmEmailAsync(body.Email, body.Code, cancellationToken));
+        var result = await accounts.ConfirmEmailAsync(body.Email, body.Code, cancellationToken);
+        // These endpoints accept only the web BFF's client credentials.
+        ProductEvents.AccountConfirmed(http, result, "web");
+        return Result(result);
     }
 
     private static async Task<IResult> Resend(
@@ -217,6 +221,13 @@ public static class IdentityEndpoints
             }
 
             var principal = IdentityPrincipal.Create(user, granted);
+            if (request.IsAuthorizationCodeGrantType())
+            {
+                // A refresh is not a sign-in; only the code exchange that ends a login counts.
+                ProductEvents.Enqueue(http, ProductEvents.Create(
+                    user.Id.ToString(), "signed_in", ProductEvents.ClientFrom(request.ClientId)));
+            }
+
             return Results.SignIn(principal, authenticationScheme: OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
         }
 
@@ -238,6 +249,7 @@ public static class IdentityEndpoints
             return Results.Forbid();
         }
 
+        ProductEvents.Enqueue(http, ProductEvents.Create(redeemed.Id.ToString(), "signed_in", "web"));
         IEnumerable<string> scopes = request.GetScopes().Any()
             ? request.GetScopes()
             : [Scopes.OpenId, Scopes.Email, Scopes.Profile, Scopes.OfflineAccess];

@@ -1,10 +1,13 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import {
   createFinanceRepository,
+  createRecordFormTracker,
   createRecordStore,
   FinanceFailure,
+  type RecordFields,
   type RecordKind,
 } from "@inout/finance";
+import { captureEvent, setHousehold } from "../analytics/posthog";
 import { getAuthClient } from "../auth/composition";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { randomUUID } from "expo-crypto";
@@ -58,10 +61,29 @@ export function useRecord(
     store.getSnapshot,
   );
   useEffect(() => store.start(), [store]);
+
+  // Form timing for the Event Taxonomy (field names only, never values).
+  const [tracker] = useState(() =>
+    createRecordFormTracker({ kind, emit: captureEvent }),
+  );
+  useEffect(() => {
+    if (state.status !== "ready") return;
+    setHousehold(household);
+    tracker.start();
+  }, [state.status, household, tracker]);
+  useEffect(() => () => tracker.close(), [tracker]);
+  const edit = (field: keyof RecordFields, value: string) => {
+    tracker.edit(field);
+    store.edit(field, value);
+  };
+  const submit = () => {
+    tracker.submit();
+    return store.submit();
+  };
   return {
     ...state,
-    edit: store.edit,
-    submit: store.submit,
+    edit,
+    submit,
     retry: store.retry,
   };
 }

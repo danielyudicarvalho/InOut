@@ -172,12 +172,39 @@ public static class IdentityHosting
             .PersistKeysToDbContext<IdentityDbContext>()
             .SetApplicationName("InOut");
         var delivery = configuration["Auth:Email:Delivery"] ?? (production ? "" : "capture");
-        if (production && delivery is not "smtp")
+        if (production && delivery is not "smtp" and not "resend")
         {
-            throw new InvalidOperationException("Production email delivery must be smtp. Capture delivery is refused.");
+            throw new InvalidOperationException("Production email delivery must be smtp or resend. Capture delivery is refused.");
         }
 
-        if (delivery == "smtp")
+        if (string.Equals(delivery, "resend", StringComparison.OrdinalIgnoreCase))
+        {
+            var apiKey = configuration["Auth:Resend:ApiKey"] ?? configuration["RESEND_API_KEY"];
+            var from = configuration["Auth:Email:From"] ?? configuration["Auth:Resend:From"];
+            if (string.IsNullOrWhiteSpace(apiKey))
+            {
+                throw new InvalidOperationException("Resend API key is required when Auth:Email:Delivery is resend.");
+            }
+            if (string.IsNullOrWhiteSpace(from))
+            {
+                // Resend's sandbox sender only delivers to the account owner.
+                if (production)
+                {
+                    throw new InvalidOperationException(
+                        "Auth:Email:From is required in production when Auth:Email:Delivery is resend. Use an address on a domain verified in Resend.");
+                }
+
+                from = "InOut <onboarding@resend.dev>";
+            }
+
+            services.AddHttpClient("Resend");
+            services.AddSingleton<IIdentityMail>(provider =>
+            {
+                var factory = provider.GetRequiredService<IHttpClientFactory>();
+                return new ResendIdentityMail(factory.CreateClient("Resend"), apiKey, from);
+            });
+        }
+        else if (string.Equals(delivery, "smtp", StringComparison.OrdinalIgnoreCase))
         {
             var host = configuration["Auth:Email:Host"];
             var from = configuration["Auth:Email:From"];

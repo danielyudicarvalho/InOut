@@ -12,6 +12,7 @@
     <PackageReference Include="SQLitePCLRaw.lib.e_sqlite3" />
     <PackageReference Include="OpenIddict.AspNetCore" />
     <PackageReference Include="Microsoft.OpenApi" />
+    <PackageReference Include="Sentry.AspNetCore" />
     <PackageReference Include="OpenTelemetry.Extensions.Hosting" />
     <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" />
     <PackageReference Include="OpenTelemetry.Instrumentation.Http" />

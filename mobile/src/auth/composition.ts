@@ -2,6 +2,7 @@ import * as Crypto from "expo-crypto";
 import * as SecureStore from "expo-secure-store";
 import * as WebBrowser from "expo-web-browser";
 import { createAuthService, requireIssuer } from "@inout/identity";
+import { resetUser } from "../analytics/posthog";
 import {
   createOpenIdAuthRepository,
   createOpenIdSession,
@@ -49,7 +50,14 @@ export function getAuthClient() {
 }
 
 export function getAuth() {
-  return createAuthService(authRepository());
+  const service = createAuthService(authRepository());
+  return {
+    ...service,
+    async signOut() {
+      await service.signOut();
+      resetUser();
+    },
+  };
 }
 
 let email = "";

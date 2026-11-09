@@ -44,7 +44,12 @@ services:
       ConnectionStrings__InOutDirect: "Host=db;Port=5432;Database=inout;Username=postgres;Password=${INOUT_DIRECT_PASSWORD:-postgres}"
       Auth__Issuer: http://localhost:8080/
       Auth__PublicOrigin: http://localhost:3000
-      Auth__Email__Delivery: capture
+      Auth__Email__Delivery: ${AUTH_EMAIL_DELIVERY:-capture}
+      Auth__Resend__ApiKey: ${RESEND_API_KEY:-}
+      Auth__Email__From: ${AUTH_EMAIL_FROM:-InOut <onboarding@resend.dev>}
+      Sentry__Dsn: ${SENTRY_DSN:-}
+      PostHog__ApiKey: ${POSTHOG_API_KEY:-}
+      PostHog__Host: ${POSTHOG_HOST:-https://us.i.posthog.com}
       Database__PoolMode: session
       Cors__AllowedOrigins__0: http://localhost:3000
       Cors__AllowedOrigins__1: http://localhost:8081
@@ -52,7 +57,9 @@ services:
       Auth__MobileRedirectUris__1: inout://auth/recuperar
       Auth__MobileRedirectUris__2: http://localhost:8081/auth/callback
     ports:
-      - "127.0.0.1:8080:8080"
+      # Localhost only by default. For testing on a phone on the same network,
+      # set API_BIND_ADDRESS=0.0.0.0 (this exposes the API to the whole LAN).
+      - "${API_BIND_ADDRESS:-127.0.0.1}:8080:8080"
     depends_on:
       migrator:
         condition: service_completed_successfully
@@ -70,6 +77,12 @@ services:
     build:
       context: .
       dockerfile: frontend/Dockerfile
+      # Browser keys are baked in at build time: rebuild after changing them.
+      args:
+        NEXT_PUBLIC_POSTHOG_KEY: ${NEXT_PUBLIC_POSTHOG_KEY:-}
+        NEXT_PUBLIC_POSTHOG_HOST: ${NEXT_PUBLIC_POSTHOG_HOST:-https://us.i.posthog.com}
+        NEXT_PUBLIC_SENTRY_DSN: ${NEXT_PUBLIC_SENTRY_DSN:-}
+        NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE: ${NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE:-0.1}
     container_name: inout-web
     environment:
       API_BASE_URL: http://api:8080
@@ -93,6 +106,9 @@ services:
     environment:
       EXPO_PUBLIC_AUTH_ISSUER: http://localhost:8080
       EXPO_PUBLIC_API_BASE_URL: http://localhost:8080
+      EXPO_PUBLIC_POSTHOG_KEY: ${EXPO_PUBLIC_POSTHOG_KEY:-}
+      EXPO_PUBLIC_POSTHOG_HOST: ${EXPO_PUBLIC_POSTHOG_HOST:-https://us.i.posthog.com}
+      EXPO_PUBLIC_SENTRY_DSN: ${EXPO_PUBLIC_SENTRY_DSN:-}
     ports:
       - "127.0.0.1:8081:8081"
     depends_on:

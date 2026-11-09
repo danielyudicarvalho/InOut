@@ -1,13 +1,23 @@
 import { useEffect } from "react";
 import { AppState, Platform } from "react-native";
 import { getAuthClient } from "../auth/composition";
-import { Stack } from "expo-router";
+import { Stack, usePathname } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { useFonts } from "expo-font";
 import { Lora_700Bold } from "@expo-google-fonts/lora/700Bold";
 import { DMSans_400Regular } from "@expo-google-fonts/dm-sans/400Regular";
-export default function Layout() {
+import { captureScreen, initPostHog } from "../analytics/posthog";
+import { initSentry, Sentry } from "../monitoring/sentry";
+
+initSentry();
+initPostHog();
+
+function Layout() {
+  const pathname = usePathname();
+  useEffect(() => {
+    if (pathname) captureScreen(pathname);
+  }, [pathname]);
   useEffect(() => {
     if (Platform.OS === "web") return;
     try {
@@ -34,3 +44,5 @@ export default function Layout() {
     </SafeAreaProvider>
   );
 }
+
+export default Sentry.wrap(Layout);

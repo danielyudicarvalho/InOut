@@ -1,3 +1,4 @@
+import { reportWriteFailure } from "./telemetry.mjs";
 import { FinanceFailure } from "./index.mjs";
 export function groupAccounts(
   accounts,
@@ -33,6 +34,19 @@ export function createAccountsRepository({
   fetcher = fetch,
 }) {
   async function request(household, suffix = "", method = "GET", body, signal) {
+    try {
+      return await send(household, suffix, method, body, signal);
+    } catch (error) {
+      if (method !== "GET" && error instanceof FinanceFailure)
+        reportWriteFailure(
+          `/api/v1/households/${household}/ledger/accounts${suffix}`,
+          method,
+          error.code,
+        );
+      throw error;
+    }
+  }
+  async function send(household, suffix, method, body, signal) {
     let base;
     try {
       base = new URL(baseUrl);

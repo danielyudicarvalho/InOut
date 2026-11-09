@@ -1,3 +1,4 @@
+using InOut.Api.Diagnostics;
 using System.Security.Claims;
 using InOut.Api.Security;
 using InOut.Application.Financial.Forecasts;
@@ -24,7 +25,11 @@ public static class ForecastEndpoints
                 cancellationToken);
             return result.Replayed ? Results.Ok(result) : Results.Created(
                 $"/api/v1/households/{householdId}/forecasts/{result.Id}", result);
-        }).WithName("CreateForecast");
+        }).WithName("CreateForecast")
+            .TrackLedgerWrite("forecast_saved", (CreateForecastRequest r) => new Dictionary<string, object?>
+            {
+                ["horizon_months"] = r.Months,
+            });
 
         forecasts.MapGet("/", async (Guid householdId, ClaimsPrincipal principal,
             ForecastService service, CancellationToken cancellationToken) =>

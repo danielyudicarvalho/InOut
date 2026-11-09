@@ -1,6 +1,8 @@
+using InOut.Api.Diagnostics;
 using System.Security.Claims;
 using InOut.Api.Security;
 using InOut.Application.Households;
+using InOut.Domain.Households;
 
 namespace InOut.Api.Households;
 
@@ -29,7 +31,12 @@ public static class HouseholdEndpoints
                 UserId(principal), request.Name, cancellationToken);
             return Results.Created(ApiContract.Routes.HouseholdResource(household.Id), household);
         })
-            .WithName(ApiContract.EndpointNames.CreateHousehold);
+            .WithName(ApiContract.EndpointNames.CreateHousehold)
+            .TrackProductEvent("household_created", new ProductEventOptions
+            {
+                HouseholdFromResult = value => (value as Household)?.Id,
+                MemberCountAfter = 1,
+            });
 
         households.MapPost(ApiContract.Routes.HouseholdInvitations, async (
             Guid householdId,
@@ -41,7 +48,8 @@ public static class HouseholdEndpoints
                 await service.CreateInvitationAsync(
                     UserId(principal), householdId, cancellationToken)))
             .RequireAuthorization(HouseholdMemberRequirement.PolicyName)
-            .WithName(ApiContract.EndpointNames.CreateHouseholdInvitation);
+            .WithName(ApiContract.EndpointNames.CreateHouseholdInvitation)
+            .TrackProductEvent("household_invitation_created");
 
         endpoints.MapPost(ApiContract.Routes.AcceptInvitation, async (
             AcceptHouseholdInvitationRequest request,
@@ -52,7 +60,12 @@ public static class HouseholdEndpoints
                 UserId(principal), request.Code, cancellationToken)))
             .RequireAuthorization()
             .WithTags(ApiContract.Tags.Households)
-            .WithName(ApiContract.EndpointNames.AcceptHouseholdInvitation);
+            .WithName(ApiContract.EndpointNames.AcceptHouseholdInvitation)
+            .TrackProductEvent("household_invitation_accepted", new ProductEventOptions
+            {
+                HouseholdFromResult = value => (value as Household)?.Id,
+                MemberCountAfter = 2,
+            });
 
         households.MapGet("/{householdId:guid}/context", async (Guid householdId, ClaimsPrincipal principal, HouseholdService service, CancellationToken ct) =>
             Results.Ok(await service.GetContextAsync(UserId(principal), householdId, ct)));
@@ -74,7 +87,9 @@ public static class HouseholdEndpoints
         {
             await service.RemoveMemberAsync(UserId(principal), householdId, UserId(principal), ct);
             return Results.NoContent();
-        });
+        })
+            // Households hold at most two members and the last owner cannot leave.
+            .TrackProductEvent("household_member_left", new ProductEventOptions { MemberCountAfter = 1 });
         households.MapDelete("/{householdId:guid}/invitations/{invitationId:guid}", async (Guid householdId, Guid invitationId, ClaimsPrincipal principal, HouseholdService service, CancellationToken ct) =>
         {
             await service.RevokeInvitationAsync(UserId(principal), householdId, invitationId, ct);

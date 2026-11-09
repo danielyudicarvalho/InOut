@@ -6,6 +6,7 @@ on:
         "frontend/**",
         "mobile/**",
         "packages/identity/**",
+        "packages/finance/**",
         ".prettier*",
         ".github/workflows/ui-quality.yml",
       ]
@@ -15,6 +16,7 @@ on:
         "frontend/**",
         "mobile/**",
         "packages/identity/**",
+        "packages/finance/**",
         ".prettier*",
         ".github/workflows/ui-quality.yml",
       ]

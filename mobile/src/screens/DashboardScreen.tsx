@@ -1,5 +1,5 @@
 import { BrandLogo } from "../components/BrandLogo";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -18,6 +18,7 @@ import { NewRecordPicker } from "../components/NewRecordPicker";
 import { PeriodPicker } from "../components/PeriodPicker";
 import { DashboardSetupScreen } from "./DashboardSetupScreen";
 import { useFinancialHome } from "../finance/use-financial-home";
+import { captureEvent, setHousehold } from "../analytics/posthog";
 
 export function DashboardScreen() {
   const p = useLocalSearchParams();
@@ -42,6 +43,10 @@ function DashboardView({
   initialCurrency: string;
 }) {
   const state = useFinancialHome(options);
+  useEffect(() => setHousehold(state.householdId), [state.householdId]);
+  // Event Taxonomy: a summary value opened to see what explains it.
+  const drilldown = (from: string) =>
+    captureEvent("summary_drilldown_opened", { from });
   const [periodOpen, setPeriodOpen] = useState(false);
   const [recordOpen, setRecordOpen] = useState(false);
   const [chosenCurrency, setCurrency] = useState(initialCurrency);
@@ -282,7 +287,8 @@ function DashboardView({
               style={s.balance}
               accessibilityRole="button"
               accessibilityLabel={`Ver composição em ${code}`}
-              onPress={() =>
+              onPress={() => {
+                drilldown("balance");
                 router.push({
                   pathname: "/composicao-saldo",
                   params: {
@@ -290,8 +296,8 @@ function DashboardView({
                     period: state.period,
                     currency: code,
                   },
-                })
-              }
+                });
+              }}
             >
               <Text style={s.small}>
                 {code === "BRL" ? "🇧🇷" : code === "USD" ? "🇺🇸" : "💱"} {code}
@@ -369,7 +375,14 @@ function DashboardView({
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel={`Ver detalhamento de ${item.label.toLowerCase()}`}
-                  onPress={() =>
+                  onPress={() => {
+                    drilldown(
+                      item.label === "Receitas"
+                        ? "income"
+                        : item.label === "Despesas"
+                          ? "expense"
+                          : "result",
+                    );
                     router.push({
                       pathname:
                         item.label === "Receitas"
@@ -382,8 +395,8 @@ function DashboardView({
                         period: state.period,
                         currency,
                       },
-                    })
-                  }
+                    });
+                  }}
                 >
                   <Text style={s.caption}>
                     Ver {item.label.toLowerCase()} ›
@@ -394,7 +407,8 @@ function DashboardView({
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel="Ver receitas por fonte de renda"
-                  onPress={() =>
+                  onPress={() => {
+                    drilldown("income_source");
                     router.push({
                       pathname: "/fontes-renda",
                       params: {
@@ -402,8 +416,8 @@ function DashboardView({
                         period: state.period,
                         currency,
                       },
-                    })
-                  }
+                    });
+                  }}
                 >
                   <Text style={s.caption}>Ver por fonte de renda ›</Text>
                 </Pressable>
@@ -412,7 +426,8 @@ function DashboardView({
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel="Ver despesas por categoria"
-                  onPress={() =>
+                  onPress={() => {
+                    drilldown("category");
                     router.push({
                       pathname: "/resumo-categorias",
                       params: {
@@ -420,8 +435,8 @@ function DashboardView({
                         period: state.period,
                         currency,
                       },
-                    })
-                  }
+                    });
+                  }}
                 >
                   <Text style={s.caption}>Ver por categoria ›</Text>
                 </Pressable>

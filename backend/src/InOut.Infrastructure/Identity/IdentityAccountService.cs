@@ -60,7 +60,8 @@ public sealed class IdentityAccountService(
                     new IdentityMail(
                         existing.Email!,
                         "Conta InOut",
-                        "Se você já tem uma conta, entre com sua senha ou redefina-a. Nenhuma conta nova foi criada."),
+                        "Se você já tem uma conta, entre com sua senha ou redefina-a. Nenhuma conta nova foi criada.",
+                        EmailTemplates.ExistingAccountEmailHtml()),
                     cancellationToken);
             }
 
@@ -344,11 +345,16 @@ public sealed class IdentityAccountService(
         var path = purpose == ResetPurpose ? "/auth/recuperar" : "/auth/callback";
         var link = $"{PublicOrigin.TrimEnd('/')}{path}?email={Uri.EscapeDataString(user.Email!)}&code={code}";
         var subject = purpose == ResetPurpose ? "Redefinir senha do InOut" : "Confirmar e-mail do InOut";
+        var minutes = (int)lifetime.TotalMinutes;
+        var html = purpose == ResetPurpose
+            ? EmailTemplates.PasswordResetEmailHtml(code, link, minutes)
+            : EmailTemplates.ConfirmationEmailHtml(code, link, minutes);
         await mail.SendAsync(
             new IdentityMail(
                 user.Email!,
                 subject,
-                $"Código {code}. Ele expira em {(int)lifetime.TotalMinutes} minutos e só pode ser usado uma vez. {link}"),
+                $"Código {code}. Ele expira em {minutes} minutos e só pode ser usado uma vez. {link}",
+                html),
             cancellationToken);
         return true;
     }

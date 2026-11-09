@@ -32,12 +32,30 @@ if (args is ["migrate"])
 
 var builder = WebApplication.CreateBuilder(args);
 
+var sentryDsn = builder.Configuration["Sentry:Dsn"] ?? builder.Configuration["SENTRY_DSN"];
+if (!string.IsNullOrWhiteSpace(sentryDsn))
+{
+    builder.WebHost.UseSentry(options =>
+    {
+        options.Dsn = sentryDsn;
+        options.TracesSampleRate = builder.Configuration.GetValue("Sentry:TracesSampleRate", 0.1);
+        options.Environment = builder.Environment.EnvironmentName;
+        options.AttachStacktrace = true;
+        options.SendDefaultPii = false;
+        // Expected business outcomes, already answered as 4xx problem details.
+        options.AddExceptionFilterForType<InOut.Domain.Households.HouseholdRuleException>();
+        options.AddExceptionFilterForType<InOut.Domain.Financial.FinancialRuleException>();
+        options.AddExceptionFilterForType<IdempotencyException>();
+    });
+}
+
 builder.Services.ConfigureHttpJsonOptions(options =>
     options.SerializerOptions.Converters.Add(
         new JsonStringEnumConverter(JsonNamingPolicy.CamelCase)));
 
 builder.Services.AddProblemDetails();
 builder.Services.AddCustomObservability(builder.Configuration);
+builder.Services.AddInOutPostHog(builder.Configuration);
 builder.Services.AddExceptionHandler<HouseholdExceptionHandler>();
 builder.Services.AddExceptionHandler<FinancialExceptionHandler>();
 builder.Services.AddExceptionHandler<UnhandledExceptionHandler>();
