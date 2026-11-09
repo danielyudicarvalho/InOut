@@ -2,6 +2,7 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { createSessionRestorer } from "@inout/identity/session";
 import { AppState } from "react-native";
+import { identifyUser, resetUser } from "../analytics/posthog";
 import { getAuth } from "./composition";
 export function useSessionRestoration() {
   const [restorer] = useState(() => createSessionRestorer(getAuth));
@@ -20,5 +21,10 @@ export function useSessionRestoration() {
       stop();
     };
   }, [restorer]);
+  const userId = snapshot.user?.id;
+  useEffect(() => {
+    if (userId) identifyUser(userId);
+    else if (snapshot.status === "expired") resetUser();
+  }, [userId, snapshot.status]);
   return { ...snapshot, retry: restorer.restore };
 }

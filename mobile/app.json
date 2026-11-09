@@ -25,6 +25,11 @@
     },
     "scheme": "inout",
     "backgroundColor": "#fbf6e8",
-    "plugins": ["expo-font", "expo-router"]
+    "plugins": [
+      "expo-font",
+      "expo-router",
+      "@sentry/react-native",
+      "expo-localization"
+    ]
   }
 }

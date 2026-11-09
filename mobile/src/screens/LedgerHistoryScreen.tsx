@@ -30,12 +30,12 @@ export function LedgerHistoryScreen() {
     initialPeriod: typeof p.period === "string" ? p.period : "",
   });
   const [filters, setFilters] = useState<HistoryFilters>(() => ({
-    accountId: typeof p.accountId === "string" ? p.accountId : "",
-    categoryId: typeof p.categoryId === "string" ? p.categoryId : "",
-    incomeSourceId:
-      typeof p.incomeSourceId === "string" ? p.incomeSourceId : "",
-    transactionId: typeof p.transaction === "string" ? p.transaction : "",
-  })),
+      accountId: typeof p.accountId === "string" ? p.accountId : "",
+      categoryId: typeof p.categoryId === "string" ? p.categoryId : "",
+      incomeSourceId:
+        typeof p.incomeSourceId === "string" ? p.incomeSourceId : "",
+      transactionId: typeof p.transaction === "string" ? p.transaction : "",
+    })),
     [search, setSearch] = useState(""),
     [offset, setOffset] = useState(0),
     [picker, setPicker] = useState(false),
