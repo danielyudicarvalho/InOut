@@ -1,3 +1,4 @@
+using InOut.Api.Diagnostics;
 using System.Net;
 using InOut.Application.Identity;
 using InOut.Infrastructure.Identity;
@@ -126,6 +127,8 @@ public static class AccountPages
         await antiforgery.ValidateRequestAsync(http);
         var form = await http.Request.ReadFormAsync(cancellationToken);
         var result = await accounts.ConfirmEmailAsync(form["email"].ToString(), form["code"].ToString(), cancellationToken);
+        // Hosted pages are reached from a browser; the calling app is not known here.
+        ProductEvents.AccountConfirmed(http, result, "unknown");
         return Results.Redirect(result.Succeeded ? "/account/login" : "/account/confirm?error=invalid_token");
     }
 

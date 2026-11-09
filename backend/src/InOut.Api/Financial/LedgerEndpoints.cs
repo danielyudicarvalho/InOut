@@ -42,7 +42,13 @@ public static class LedgerEndpoints
                 : Results.Created(
                     ApiContract.Routes.AccountResource(householdId, result.Account.Id),
                     result);
-        }).WithName(ApiContract.EndpointNames.CreateAccount);
+        }).WithName(ApiContract.EndpointNames.CreateAccount)
+            .TrackLedgerWrite("financial_account_created", (CreateAccountRequest r) => new Dictionary<string, object?>
+            {
+                ["account_kind"] = r.Kind.ToString().ToLowerInvariant(),
+                ["currency"] = r.Currency,
+                ["has_opening_balance"] = r.InitialBalanceCents != 0,
+            });
 
         ledger.MapGet(ApiContract.Routes.Accounts, async (
             Guid householdId,
@@ -98,7 +104,8 @@ public static class LedgerEndpoints
             var source = await service.CreateIncomeSourceAsync(
                 householdId, UserId(principal), request.Id, request.Name, cancellationToken);
             return Results.Created($"/api/v1/households/{householdId}/ledger/income-sources/{source.Id}", source);
-        }).WithName(ApiContract.EndpointNames.CreateIncomeSource);
+        }).WithName(ApiContract.EndpointNames.CreateIncomeSource)
+            .TrackProductEvent("income_source_created", new ProductEventOptions { CreatedOnly = true });
 
         ledger.MapDelete(ApiContract.Routes.IncomeSourceById, async (
             Guid householdId, Guid sourceId, ClaimsPrincipal principal,
@@ -132,7 +139,12 @@ public static class LedgerEndpoints
                 householdId, UserId(principal), request.Id, request.Name, request.Flow,
                 request.ParentId, idempotencyKey, cancellationToken);
             return Results.Created(ApiContract.Routes.CategoryResource(householdId, category.Id), category);
-        }).WithName(ApiContract.EndpointNames.CreateCategory);
+        }).WithName(ApiContract.EndpointNames.CreateCategory)
+            .TrackLedgerWrite("category_created", (CreateCategoryRequest r) => new Dictionary<string, object?>
+            {
+                ["flow"] = r.Flow.ToString().ToLowerInvariant(),
+                ["is_subcategory"] = r.ParentId is not null,
+            });
 
         ledger.MapDelete(ApiContract.Routes.CategoryById, async (
             Guid householdId,
@@ -191,7 +203,12 @@ public static class LedgerEndpoints
                 cancellationToken);
             return WriteResult(householdId, result);
         }).WithName(ApiContract.EndpointNames.PostIncome)
-            .TrackProductEvent("income_recorded", createdOnly: true);
+            .TrackLedgerWrite("income_recorded", (PostIncomeRequest r) => new Dictionary<string, object?>
+            {
+                ["currency"] = r.Currency,
+                ["has_description"] = !string.IsNullOrWhiteSpace(r.Description),
+                ["has_income_source"] = r.IncomeSourceId is not null,
+            });
 
         ledger.MapPost(ApiContract.Routes.Expenses, async (
             Guid householdId,
@@ -215,7 +232,12 @@ public static class LedgerEndpoints
                 cancellationToken);
             return WriteResult(householdId, result);
         }).WithName(ApiContract.EndpointNames.PostExpense)
-            .TrackProductEvent("expense_recorded", createdOnly: true);
+            .TrackLedgerWrite("expense_recorded", (PostExpenseRequest r) => new Dictionary<string, object?>
+            {
+                ["currency"] = r.Currency,
+                ["has_description"] = !string.IsNullOrWhiteSpace(r.Description),
+                ["has_category"] = r.CategoryId != Guid.Empty,
+            });
 
         ledger.MapPost(ApiContract.Routes.Transfers, async (
             Guid householdId,
@@ -239,7 +261,11 @@ public static class LedgerEndpoints
                 cancellationToken);
             return WriteResult(householdId, result);
         }).WithName(ApiContract.EndpointNames.PostTransfer)
-            .TrackProductEvent("transfer_recorded", createdOnly: true);
+            .TrackLedgerWrite("transfer_recorded", (PostTransferRequest r) => new Dictionary<string, object?>
+            {
+                ["currency"] = r.Currency,
+                ["has_description"] = !string.IsNullOrWhiteSpace(r.Description),
+            });
 
         ledger.MapPost(ApiContract.Routes.Reversals, async (
             Guid householdId,
@@ -261,7 +287,7 @@ public static class LedgerEndpoints
                 cancellationToken);
             return WriteResult(householdId, result);
         }).WithName(ApiContract.EndpointNames.ReverseTransaction)
-            .TrackProductEvent("transaction_reversed", createdOnly: true);
+            .TrackProductEvent("transaction_reversed", new ProductEventOptions { CreatedOnly = true });
 
         ledger.MapPatch(ApiContract.Routes.TransactionById, async (
             Guid householdId,
@@ -283,7 +309,12 @@ public static class LedgerEndpoints
                 idempotencyKey,
                 request.ExpectedState);
             return Results.Ok(updatedItem);
-        }).WithName(ApiContract.EndpointNames.CorrectTransactionClassification);
+        }).WithName(ApiContract.EndpointNames.CorrectTransactionClassification)
+            .TrackProductEvent("transaction_reclassified", new ProductEventOptions
+            {
+                Properties = ProductEventOptions.FromRequest((CorrectTransactionClassificationRequest r) =>
+                    new Dictionary<string, object?> { ["changed"] = ReclassifiedFields(r) }),
+            });
 
         ledger.MapGet(ApiContract.Routes.Balances, async (
             Guid householdId,
@@ -328,7 +359,10 @@ public static class LedgerEndpoints
                     $"/api/v1/households/{householdId}/ledger/budgets/{result.Id}",
                     result);
         }).WithName(ApiContract.EndpointNames.SetBudget)
-            .TrackProductEvent("budget_set", createdOnly: true);
+            .TrackLedgerWrite("budget_set", (SetBudgetRequest r) => new Dictionary<string, object?>
+            {
+                ["currency"] = r.Currency,
+            });
 
         ledger.MapPost(ApiContract.Routes.GoalAllocations, async (
             Guid householdId,
@@ -356,7 +390,10 @@ public static class LedgerEndpoints
                     ApiContract.Routes.GoalAllocationResource(householdId, goalId, result.Id),
                     result);
         }).WithName(ApiContract.EndpointNames.AllocateGoal)
-            .TrackProductEvent("goal_allocation_recorded", createdOnly: true);
+            .TrackLedgerWrite("goal_allocation_recorded", (AllocateGoalRequest r) => new Dictionary<string, object?>
+            {
+                ["currency"] = r.Currency,
+            });
 
         ledger.MapPost(ApiContract.Routes.GoalAllocationReversals, async (
             Guid householdId,
@@ -478,9 +515,22 @@ public static class LedgerEndpoints
                 FinancialCsvWriter.Write(rows),
                 "text/csv; charset=utf-8",
                 $"inout-ledger-{householdId}.csv");
-        }).WithName(ApiContract.EndpointNames.ExportFinancialCsv);
+        }).WithName(ApiContract.EndpointNames.ExportFinancialCsv)
+            .TrackProductEvent("ledger_exported");
 
         return endpoints;
+    }
+
+    private static string ReclassifiedFields(CorrectTransactionClassificationRequest request)
+    {
+        var classification = request.CategoryId is not null || request.IncomeSourceId is not null;
+        var description = request.Description is not null;
+        return (classification, description) switch
+        {
+            (true, true) => "both",
+            (false, true) => "description",
+            _ => "category",
+        };
     }
 
     private static IResult WriteResult(Guid householdId, LedgerWriteResult result) =>

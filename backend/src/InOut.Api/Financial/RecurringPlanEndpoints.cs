@@ -1,3 +1,4 @@
+using InOut.Api.Diagnostics;
 using System.Security.Claims;
 using InOut.Api.Security;
 using InOut.Application.Financial.RecurringPlans;
@@ -35,7 +36,12 @@ public static class RecurringPlanEndpoints
                 idempotencyKey), cancellationToken);
             return result.Replayed ? Results.Ok(result) : Results.Created(
                 $"/api/v1/households/{householdId}/recurring-plans/{result.Id}", result);
-        }).WithName("CreateRecurringPlan");
+        }).WithName("CreateRecurringPlan")
+            .TrackLedgerWrite("recurring_plan_created", (CreateRecurringPlanRequest r) => new Dictionary<string, object?>
+            {
+                ["flow"] = r.Flow.ToString().ToLowerInvariant(),
+                ["currency"] = r.Currency,
+            });
 
         plans.MapGet("/", async (Guid householdId, ClaimsPrincipal principal,
             RecurringPlanService service, CancellationToken cancellationToken) =>
@@ -67,7 +73,8 @@ public static class RecurringPlanEndpoints
                 : Results.Created(
                     $"/api/v1/households/{householdId}/recurring-plans/{planId}/occurrences/{result.Id}",
                     result);
-        }).WithName("RealizeRecurringOccurrence");
+        }).WithName("RealizeRecurringOccurrence")
+            .TrackProductEvent("recurring_occurrence_realized", new ProductEventOptions { CreatedOnly = true });
 
         plans.MapGet("/{planId:guid}/occurrences", async (
             Guid householdId, Guid planId, ClaimsPrincipal principal,

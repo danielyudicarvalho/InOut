@@ -1,3 +1,4 @@
+using InOut.Api.Diagnostics;
 using System.Security.Claims;
 using InOut.Api.Security;
 using InOut.Application.Financial.Planning;
@@ -62,7 +63,11 @@ public static class PlanningEndpoints
                 request.TargetDate, idempotencyKey), cancellationToken);
             return result.Replayed ? Results.Ok(result) : Results.Created(
                 $"/api/v1/households/{householdId}/ledger/goals/{result.Id}", result);
-        }).WithName("CreateGoal");
+        }).WithName("CreateGoal")
+            .TrackLedgerWrite("goal_created", (CreateGoalRequest r) => new Dictionary<string, object?>
+            {
+                ["currency"] = r.Currency,
+            });
 
         ledger.MapPut("/goals/{goalId:guid}", async (Guid householdId, Guid goalId, UpdateGoalRequest request,
             [FromHeader(Name = ApiContract.Headers.IdempotencyKey)] Guid idempotencyKey,
