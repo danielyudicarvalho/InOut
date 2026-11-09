@@ -7,7 +7,15 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { useFonts } from "expo-font";
 import { Lora_700Bold } from "@expo-google-fonts/lora/700Bold";
 import { DMSans_400Regular } from "@expo-google-fonts/dm-sans/400Regular";
+import { initPostHog } from "../analytics/posthog";
+import { initSentry } from "../monitoring/sentry";
+
+initSentry();
+
 export default function Layout() {
+  useEffect(() => {
+    initPostHog();
+  }, []);
   useEffect(() => {
     if (Platform.OS === "web") return;
     try {

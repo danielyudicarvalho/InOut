@@ -42,7 +42,7 @@ export function middleware(req: NextRequest) {
     req.cookies.get("inout-session")?.value ||
     req.cookies
       .getAll()
-      .find((c) => c.name.startsWith("sb-") && c.name.endsWith("-auth-token"))
+      .find((c: { name: string; value: string }) => c.name.startsWith("sb-") && c.name.endsWith("-auth-token"))
       ?.value;
 
   const isAuthenticated = Boolean(sessionCookie);

@@ -22,6 +22,8 @@ const lora = Lora({
   variable: "--font-lora",
   display: "swap",
 });
+import { PostHogProvider } from "../components/providers/posthog-provider";
+
 export const metadata: Metadata = {
   title: "Ninho • InOut",
   description:
@@ -32,7 +34,9 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="pt-BR" className={`${dmSans.variable} ${lora.variable}`}>
-      <body>{children}</body>
+      <body>
+        <PostHogProvider>{children}</PostHogProvider>
+      </body>
     </html>
   );
 }

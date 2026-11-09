@@ -30,6 +30,11 @@ public sealed class SmtpIdentityMail(string host, int port, string user, string 
             Credentials = new NetworkCredential(user, password)
         };
         using var mail = new MailMessage(from, message.To, message.Subject, message.Text);
+        if (!string.IsNullOrWhiteSpace(message.Html))
+        {
+            mail.IsBodyHtml = true;
+            mail.Body = message.Html;
+        }
 #pragma warning disable SYSLIB0014
         await client.SendMailAsync(mail, cancellationToken);
 #pragma warning restore SYSLIB0014

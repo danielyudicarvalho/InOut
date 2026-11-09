@@ -24,7 +24,7 @@ public sealed record IdentityCommandResult(
     string? AuthenticatorKey = null,
     string? OtpAuthUri = null);
 
-public sealed record IdentityMail(string To, string Subject, string Text);
+public sealed record IdentityMail(string To, string Subject, string Text, string? Html = null);
 
 public interface IIdentityMail
 {

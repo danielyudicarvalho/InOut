@@ -32,6 +32,19 @@ if (args is ["migrate"])
 
 var builder = WebApplication.CreateBuilder(args);
 
+var sentryDsn = builder.Configuration["Sentry:Dsn"] ?? builder.Configuration["SENTRY_DSN"];
+if (!string.IsNullOrWhiteSpace(sentryDsn))
+{
+    builder.WebHost.UseSentry(options =>
+    {
+        options.Dsn = sentryDsn;
+        options.TracesSampleRate = builder.Configuration.GetValue("Sentry:TracesSampleRate", 1.0);
+        options.Environment = builder.Environment.EnvironmentName;
+        options.AttachStacktrace = true;
+        options.SendDefaultPii = false;
+    });
+}
+
 builder.Services.ConfigureHttpJsonOptions(options =>
     options.SerializerOptions.Converters.Add(
         new JsonStringEnumConverter(JsonNamingPolicy.CamelCase)));
