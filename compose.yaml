@@ -55,7 +55,7 @@ services:
       Auth__MobileRedirectUris__1: inout://auth/recuperar
       Auth__MobileRedirectUris__2: http://localhost:8081/auth/callback
     ports:
-      - "127.0.0.1:8080:8080"
+      - "8080:8080"
     depends_on:
       migrator:
         condition: service_completed_successfully
