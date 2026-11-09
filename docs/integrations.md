@@ -35,5 +35,9 @@ Regras de privacidade (dados financeiros):
 - Só o id opaco do usuário é enviado em `identify`; nada de e-mail, nome, valores ou descrições.
 - Web: sem autocapture, sem gravação de sessão, sem console; URLs sem query string (`before_send`).
 - Mobile: telas registradas pelo caminho da rota, sem gravação de sessão.
-- API: eventos `household_created`, `household_invitation_created`, `household_invitation_accepted`, `income_recorded`, `expense_recorded`, `transfer_recorded`, `transaction_reversed`, `budget_set`, `goal_allocation_recorded`. Enviados em segundo plano (nunca atrasam a requisição); repetições idempotentes não contam.
+- Taxonomia completa: documento "Event Taxonomy — InOut" (Drive, docs/product).
+- Toda mensagem leva `source`, `client` (web/mobile na API; web/ios/android nos apps), `schema_version` e `app_version`. Eventos da residência levam o grupo `household` e `household_id`.
+- API (enviados em segundo plano, nunca atrasam a requisição; repetições idempotentes não contam): `account_confirmed`, `signed_in` (troca de código ou ticket; renovação de token não conta), `household_created`, `household_invitation_created`, `household_invitation_accepted`, `household_member_left`, `financial_account_created`, `category_created`, `income_source_created`, `income_recorded`, `expense_recorded`, `transfer_recorded`, `transaction_reversed`, `transaction_reclassified`, `budget_set`, `goal_created`, `goal_allocation_recorded`, `recurring_plan_created`, `recurring_occurrence_realized`, `forecast_saved`, `ledger_exported`.
+- Propriedades da API passam por uma lista permitida (`ProductEvents.AllowedProperties`); valores, descrições e nomes são descartados mesmo que um endpoint tente enviá-los. Para adicionar uma propriedade, inclua-a na lista e no documento de taxonomia.
+- Web e mobile: `$pageview`/`$screen`, `record_form_started`/`record_form_submitted`/`record_form_abandoned`, `financial_command_failed` (via `setFinanceTelemetry` em `@inout/finance`), `summary_drilldown_opened`, `duplicate_resolved`.
 - No projeto PostHog, mantenha desligados a gravação de sessão e a captura de console, e ligue a anonimização de IP.
