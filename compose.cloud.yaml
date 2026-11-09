@@ -14,7 +14,7 @@ services:
       Cors__AllowedOrigins__0: http://localhost:3000
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
       OTEL_SERVICE_NAME: inout-api
-      Auth__Email__Delivery: ${AUTH_EMAIL_DELIVERY:-console}
+      Auth__Email__Delivery: ${AUTH_EMAIL_DELIVERY:-capture}
       Auth__Resend__ApiKey: ${RESEND_API_KEY:-}
       Auth__Email__From: ${AUTH_EMAIL_FROM:-InOut <noreply@inout.app>}
       Sentry__Dsn: ${SENTRY_DSN:-}

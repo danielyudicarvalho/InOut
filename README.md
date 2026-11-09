@@ -27,6 +27,7 @@ Registrar entradas, saídas e transferências; organizar categorias e subcategor
 - [Ambientes, dependências e integração contínua](docs/08-environments-and-ci.md)
 - [Banco de dados e isolamento por residência](docs/09-database-security.md)
 - [Migração para Fly Managed Postgres e Identity](docs/fly-identity-migration.md)
+- [Integrações: Resend, Sentry e PostHog](docs/integrations.md)
 - [Inventário histórico do provedor anterior](docs/history/10-previous-provider-boundary-inventory.md)
 - [Runbook histórico do corte dos caminhos legados](docs/history/superseded/runbooks/gom-101-legacy-cutover.md)
 - [Registro de decisões arquiteturais](docs/adr/README.md)

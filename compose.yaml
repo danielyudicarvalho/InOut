@@ -57,7 +57,9 @@ services:
       Auth__MobileRedirectUris__1: inout://auth/recuperar
       Auth__MobileRedirectUris__2: http://localhost:8081/auth/callback
     ports:
-      - "8080:8080"
+      # Localhost only by default. For testing on a phone on the same network,
+      # set API_BIND_ADDRESS=0.0.0.0 (this exposes the API to the whole LAN).
+      - "${API_BIND_ADDRESS:-127.0.0.1}:8080:8080"
     depends_on:
       migrator:
         condition: service_completed_successfully
