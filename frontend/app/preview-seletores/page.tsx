@@ -78,19 +78,30 @@ export default function PreviewSeletoresPage() {
   const [description, setDescription] = useState("");
 
   const [categoryModalOpen, setCategoryModalOpen] = useState(
-    () => typeof window !== "undefined" && new URLSearchParams(window.location.search).get("modal") === "category",
+    () =>
+      typeof window !== "undefined" &&
+      new URLSearchParams(window.location.search).get("modal") === "category",
   );
   const [subcategoryModalOpen, setSubcategoryModalOpen] = useState(
-    () => typeof window !== "undefined" && new URLSearchParams(window.location.search).get("modal") === "subcategory",
+    () =>
+      typeof window !== "undefined" &&
+      new URLSearchParams(window.location.search).get("modal") ===
+        "subcategory",
   );
   const [accountModalOpen, setAccountModalOpen] = useState(
-    () => typeof window !== "undefined" && new URLSearchParams(window.location.search).get("modal") === "account",
+    () =>
+      typeof window !== "undefined" &&
+      new URLSearchParams(window.location.search).get("modal") === "account",
   );
   const [sourceModalOpen, setSourceModalOpen] = useState(
-    () => typeof window !== "undefined" && new URLSearchParams(window.location.search).get("modal") === "source",
+    () =>
+      typeof window !== "undefined" &&
+      new URLSearchParams(window.location.search).get("modal") === "source",
   );
   const [dateModalOpen, setDateModalOpen] = useState(
-    () => typeof window !== "undefined" && new URLSearchParams(window.location.search).get("modal") === "date",
+    () =>
+      typeof window !== "undefined" &&
+      new URLSearchParams(window.location.search).get("modal") === "date",
   );
 
   const selectedCategory = categories.find((c) => c.id === categoryId) ?? null;
