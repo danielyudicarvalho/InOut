@@ -78,17 +78,9 @@ builder.Services.AddRateLimiter(options =>
 });
 builder.Services.AddHouseholdAuthorization();
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
-{
-    options.ForwardLimit = 1;
-    if (builder.Configuration.GetValue<bool>("Deployment:TrustFlyProxy"))
-    {
-        options.ForwardedHeaders = ForwardedHeaders.XForwardedProto;
-    }
-    else
-    {
-        options.ForwardedHeaders = ForwardedHeaders.None;
-    }
-});
+    FlyForwardedHeaders.Configure(
+        options,
+        builder.Configuration.GetValue("Deployment:TrustFlyProxy", false)));
 builder.Services.AddCors(options => options.AddDefaultPolicy(policy =>
     policy.WithOrigins(
             builder.Configuration.GetSection(ApiContract.Configuration.AllowedOrigins).Get<string[]>() ?? [])

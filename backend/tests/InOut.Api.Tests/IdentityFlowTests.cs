@@ -469,6 +469,67 @@ public sealed class IdentityFlowTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task HostedResetAppliesPasswordWhenMfaReenrollmentIsRequired()
+    {
+        var mfaId = Guid.NewGuid();
+        await using (var scope = factory.Services.CreateAsyncScope())
+        {
+            var importer = scope.ServiceProvider.GetRequiredService<IdentityImporter>();
+            await importer.ImportAsync(
+            [
+                new ExportedIdentityUser(
+                    mfaId,
+                    "hosted-reset@example.com",
+                    BCrypt.Net.BCrypt.HashPassword("password8", workFactor: 4),
+                    DateTimeOffset.UtcNow,
+                    null,
+                    "HostedReset",
+                    false,
+                    [],
+                    [new ExportedFactor("f1", "verified", true)])
+            ],
+            IdentityImporter.SourceHash("hosted-reset-" + mfaId),
+            CancellationToken.None);
+        }
+
+        Assert.Equal(HttpStatusCode.OK, (await client.PostAsJsonAsync("/api/v1/identity/forgot", new
+        {
+            email = "hosted-reset@example.com"
+        })).StatusCode);
+        var recoveryCode = CodeFor("hosted-reset@example.com");
+        using var browser = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        var page = await browser.GetAsync("/account/reset");
+        var html = await page.Content.ReadAsStringAsync();
+        var token = Between(html, "name=\"__RequestVerificationToken\" value=\"", "\"");
+        var posted = await browser.PostAsync("/account/reset", new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["__RequestVerificationToken"] = WebUtility.HtmlDecode(token),
+            ["email"] = "hosted-reset@example.com",
+            ["code"] = recoveryCode,
+            ["password"] = "password9"
+        }));
+        Assert.Equal(HttpStatusCode.Redirect, posted.StatusCode);
+        Assert.Contains("/account/mfa?enroll=1", posted.Headers.Location?.ToString() ?? "", StringComparison.Ordinal);
+        Assert.Contains(
+            "inout_mfa_enroll",
+            string.Join('\n', posted.Headers.GetValues("Set-Cookie")),
+            StringComparison.Ordinal);
+
+        var oldPassword = await ReadAsync(await client.PostAsJsonAsync("/api/v1/identity/login", new
+        {
+            email = "hosted-reset@example.com",
+            password = "password8"
+        }));
+        Assert.Equal("invalid_credentials", oldPassword.Code);
+        var newPassword = await ReadAsync(await client.PostAsJsonAsync("/api/v1/identity/login", new
+        {
+            email = "hosted-reset@example.com",
+            password = "password9"
+        }));
+        Assert.Equal("mfa_recovery_required", newPassword.Code);
+    }
+
+    [Fact]
     public async Task SyntheticFixtureImportsOnceAndReplaysWithoutARemoteExport()
     {
         Assert.Throws<InvalidOperationException>(() => IdentityImportGate.Require(null, false));

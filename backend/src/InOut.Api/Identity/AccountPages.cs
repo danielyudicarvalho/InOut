@@ -212,19 +212,8 @@ public static class AccountPages
             return Results.Redirect("/account/reset?error=invalid_token&returnUrl=" + Uri.EscapeDataString(returnUrl));
         }
 
-        if (exchange.Code == IdentityCodes.MfaReenrollmentRequired)
-        {
-            http.Response.Cookies.Append("inout_mfa_enroll", exchange.Ticket, new CookieOptions
-            {
-                HttpOnly = true,
-                Secure = http.Request.IsHttps,
-                SameSite = SameSiteMode.Lax,
-                MaxAge = TimeSpan.FromMinutes(15),
-                Path = "/account"
-            });
-            return Results.Redirect("/account/mfa?enroll=1&returnUrl=" + Uri.EscapeDataString(returnUrl));
-        }
-
+        // MFA-import recovery still has to hash the new password. Skipping
+        // ResetPasswordAsync left the imported hash in place.
         var reset = await accounts.ResetPasswordAsync(exchange.Ticket, form["password"].ToString(), cancellationToken);
         if (reset.Code == IdentityCodes.MfaReenrollmentRequired && reset.Ticket is not null)
         {
