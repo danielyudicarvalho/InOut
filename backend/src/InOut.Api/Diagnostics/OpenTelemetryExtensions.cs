@@ -10,16 +10,17 @@ public static class OpenTelemetryExtensions
     public static IServiceCollection AddCustomObservability(this IServiceCollection services, IConfiguration configuration)
     {
         var serviceName = configuration["OTEL_SERVICE_NAME"] ?? "inout-api";
-        var otlpEndpoint = configuration["OTEL_EXPORTER_OTLP_ENDPOINT"] ?? "http://otel-collector:4317";
+        var otlpEndpoint = configuration["OTEL_EXPORTER_OTLP_ENDPOINT"];
 
-        services.AddOpenTelemetry()
+        var builder = services.AddOpenTelemetry()
             .ConfigureResource(resource => resource
                 .AddService(serviceName: serviceName, serviceVersion: "1.0.0")
                 .AddAttributes(new Dictionary<string, object>
                 {
                     ["environment"] = configuration["ASPNETCORE_ENVIRONMENT"] ?? "Production"
-                }))
-            .WithTracing(tracing =>
+                }));
+
+        builder.WithTracing(tracing =>
             {
                 tracing
                     .AddAspNetCoreInstrumentation(options =>
@@ -34,24 +35,24 @@ public static class OpenTelemetryExtensions
                     .AddHttpClientInstrumentation()
                     .AddEntityFrameworkCoreInstrumentation(options =>
                     {
-                        options.SetDbStatementForText = true;
+                        options.SetDbStatementForText = false;
                     })
-                    .AddNpgsql()
-                    .AddOtlpExporter(options =>
-                    {
-                        options.Endpoint = new Uri(otlpEndpoint);
-                    });
+                    .AddNpgsql();
+                if (!string.IsNullOrWhiteSpace(otlpEndpoint))
+                {
+                    tracing.AddOtlpExporter(options => options.Endpoint = new Uri(otlpEndpoint));
+                }
             })
             .WithMetrics(metrics =>
             {
                 metrics
                     .AddAspNetCoreInstrumentation()
                     .AddHttpClientInstrumentation()
-                    .AddPrometheusExporter()
-                    .AddOtlpExporter(options =>
-                    {
-                        options.Endpoint = new Uri(otlpEndpoint);
-                    });
+                    .AddPrometheusExporter();
+                if (!string.IsNullOrWhiteSpace(otlpEndpoint))
+                {
+                    metrics.AddOtlpExporter(options => options.Endpoint = new Uri(otlpEndpoint));
+                }
             });
 
         return services;

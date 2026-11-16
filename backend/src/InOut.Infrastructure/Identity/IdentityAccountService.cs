@@ -1,9 +1,12 @@
+using System.Data;
+using System.Data.Common;
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using InOut.Application.Identity;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using OpenIddict.Abstractions;
 
 namespace InOut.Infrastructure.Identity;
@@ -13,10 +16,12 @@ public sealed class IdentityAccountService(
     UserManager<InOutUser> users,
     IOpenIddictTokenManager tokens,
     IIdentityMail mail,
-    TimeProvider clock) : IIdentityAccounts
+    TimeProvider clock,
+    AuthAttemptBudget attempts) : IIdentityAccounts
 {
     public const string LoginPurpose = "login";
     public const string MfaPurpose = "mfa";
+    public const string MfaEnrollPurpose = "mfa-enroll";
     public const string RecoveryPurpose = "recovery";
     public const string ConfirmPurpose = "confirm";
     public const string ResetPurpose = "reset";
@@ -99,8 +104,8 @@ public sealed class IdentityAccountService(
         }
 
         user.EmailConfirmed = true;
-        await users.UpdateAsync(user);
-        var ticket = await IssueTicketAsync(user.Id, LoginPurpose, TicketLifetime, cancellationToken);
+        IdentityImporter.EnsureSucceeded(await users.UpdateAsync(user), "confirm-email");
+        var ticket = await IssueTicketAsync(user, LoginPurpose, TicketLifetime, cancellationToken);
         return new IdentityCommandResult(true, IdentityCodes.SignedIn, View(user), ticket);
     }
 
@@ -150,6 +155,11 @@ public sealed class IdentityAccountService(
         if (!check)
         {
             await users.AccessFailedAsync(user);
+            if (!await attempts.TryAccountFailureAsync(user.Email ?? email, cancellationToken))
+            {
+                return Fail(IdentityCodes.RateLimited);
+            }
+
             return Fail(IdentityCodes.InvalidCredentials);
         }
 
@@ -164,33 +174,73 @@ public sealed class IdentityAccountService(
             return Fail(IdentityCodes.EmailNotConfirmed);
         }
 
-        if (user.MfaReenrollmentRequired || user.TwoFactorEnabled)
+        if (user.MfaReenrollmentRequired)
         {
-            var ticket = await IssueTicketAsync(user.Id, MfaPurpose, MfaTicketLifetime, cancellationToken);
-            return new IdentityCommandResult(false, IdentityCodes.MfaReenrollmentRequired, View(user), ticket);
+            return new IdentityCommandResult(false, IdentityCodes.MfaRecoveryRequired, View(user));
         }
 
-        var login = await IssueTicketAsync(user.Id, LoginPurpose, TicketLifetime, cancellationToken);
+        if (user.TwoFactorEnabled)
+        {
+            var key = await users.GetAuthenticatorKeyAsync(user);
+            if (string.IsNullOrEmpty(key))
+            {
+                return new IdentityCommandResult(false, IdentityCodes.MfaRecoveryRequired, View(user));
+            }
+
+            var mfa = await IssueTicketAsync(user, MfaPurpose, MfaTicketLifetime, cancellationToken);
+            return new IdentityCommandResult(false, IdentityCodes.MfaRequired, View(user), mfa);
+        }
+
+        var login = await IssueTicketAsync(user, LoginPurpose, TicketLifetime, cancellationToken);
         return new IdentityCommandResult(true, IdentityCodes.SignedIn, View(user), login);
     }
 
+    public async Task<bool> TryRedeemLoginTicketAsync(string ticket, CancellationToken cancellationToken) =>
+        await ConsumeTicketUserAsync(ticket, LoginPurpose, cancellationToken) is not null;
+
     public async Task<IdentityCommandResult> StartMfaReenrollmentAsync(
         string ticket,
+        string password,
         CancellationToken cancellationToken)
     {
-        var user = await RequireTicketUserAsync(ticket, MfaPurpose, consume: false, cancellationToken);
-        if (user is null)
+        var user = await RequireTicketUserAsync(ticket, MfaEnrollPurpose, consume: false, cancellationToken)
+            ?? await RequireTicketUserAsync(ticket, RecoveryPurpose, consume: false, cancellationToken);
+        if (user is null || !user.MfaReenrollmentRequired)
         {
             return Fail(IdentityCodes.InvalidToken);
         }
 
-        if (!user.MfaReenrollmentRequired && !string.IsNullOrEmpty(await users.GetAuthenticatorKeyAsync(user)))
+        if (!await users.CheckPasswordAsync(user, password))
         {
-            return new IdentityCommandResult(true, IdentityCodes.MfaReenrollmentRequired, View(user), ticket);
+            await users.AccessFailedAsync(user);
+            if (!await attempts.TryAccountFailureAsync(user.Email ?? user.Id.ToString(), cancellationToken))
+            {
+                return Fail(IdentityCodes.RateLimited);
+            }
+
+            return Fail(IdentityCodes.InvalidToken);
         }
 
-        await users.ResetAuthenticatorKeyAsync(user);
+        return await EnsureAuthenticatorKeyAsync(user, ticket, cancellationToken);
+    }
+
+    public async Task<IdentityCommandResult> ReadMfaEnrollmentAsync(
+        string ticket,
+        CancellationToken cancellationToken)
+    {
+        var user = await RequireTicketUserAsync(ticket, MfaEnrollPurpose, consume: false, cancellationToken)
+            ?? await RequireTicketUserAsync(ticket, RecoveryPurpose, consume: false, cancellationToken);
+        if (user is null || !user.MfaReenrollmentRequired)
+        {
+            return Fail(IdentityCodes.InvalidToken);
+        }
+
         var key = await users.GetAuthenticatorKeyAsync(user);
+        if (string.IsNullOrEmpty(key))
+        {
+            return Fail(IdentityCodes.InvalidToken);
+        }
+
         var uri = $"otpauth://totp/InOut:{Uri.EscapeDataString(user.Email!)}?secret={key}&issuer=InOut&digits=6";
         return new IdentityCommandResult(true, IdentityCodes.MfaReenrollmentRequired, View(user), ticket, key, uri);
     }
@@ -200,27 +250,46 @@ public sealed class IdentityAccountService(
         string code,
         CancellationToken cancellationToken)
     {
-        var user = await RequireTicketUserAsync(ticket, MfaPurpose, consume: false, cancellationToken);
-        if (user is null)
+        var user = await RequireTicketUserAsync(ticket, MfaEnrollPurpose, consume: false, cancellationToken)
+            ?? await RequireTicketUserAsync(ticket, RecoveryPurpose, consume: false, cancellationToken);
+        if (user is null || !user.MfaReenrollmentRequired)
         {
             return Fail(IdentityCodes.InvalidToken);
         }
 
-        var valid = await users.VerifyTwoFactorTokenAsync(
+        await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+        user = await LockTicketUserAsync(ticket, [MfaEnrollPurpose, RecoveryPurpose], cancellationToken);
+        if (user is null || !user.MfaReenrollmentRequired)
+        {
+            return Fail(IdentityCodes.InvalidToken);
+        }
+
+        var result = await CompleteTotpAsync(
             user,
-            TokenOptions.DefaultAuthenticatorProvider,
-            code.Replace(" ", "", StringComparison.Ordinal));
-        if (!valid)
+            ticket,
+            [MfaEnrollPurpose, RecoveryPurpose],
+            code,
+            enroll: true,
+            cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+        return result;
+    }
+
+    public async Task<IdentityCommandResult> VerifyMfaAsync(
+        string ticket,
+        string code,
+        CancellationToken cancellationToken)
+    {
+        await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+        var user = await LockTicketUserAsync(ticket, [MfaPurpose], cancellationToken);
+        if (user is null || user.MfaReenrollmentRequired || !user.TwoFactorEnabled)
         {
             return Fail(IdentityCodes.InvalidToken);
         }
 
-        await ConsumeTicketAsync(ticket, MfaPurpose, cancellationToken);
-        user.TwoFactorEnabled = true;
-        user.MfaReenrollmentRequired = false;
-        await users.UpdateAsync(user);
-        var login = await IssueTicketAsync(user.Id, LoginPurpose, TicketLifetime, cancellationToken);
-        return new IdentityCommandResult(true, IdentityCodes.SignedIn, View(user), login);
+        var result = await CompleteTotpAsync(user, ticket, [MfaPurpose], code, enroll: false, cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+        return result;
     }
 
     public async Task<IdentityCommandResult> RequestPasswordResetAsync(
@@ -247,8 +316,12 @@ public sealed class IdentityAccountService(
             return Fail(IdentityCodes.InvalidToken);
         }
 
-        var ticket = await IssueTicketAsync(user.Id, RecoveryPurpose, RecoveryTicketLifetime, cancellationToken);
-        return new IdentityCommandResult(true, IdentityCodes.SignedIn, View(user), ticket);
+        var purpose = user.MfaReenrollmentRequired ? MfaEnrollPurpose : RecoveryPurpose;
+        var ticket = await IssueTicketAsync(user, purpose, RecoveryTicketLifetime, cancellationToken);
+        var resultCode = user.MfaReenrollmentRequired
+            ? IdentityCodes.MfaReenrollmentRequired
+            : IdentityCodes.SignedIn;
+        return new IdentityCommandResult(true, resultCode, View(user), ticket);
     }
 
     public async Task<IdentityCommandResult> ResetPasswordAsync(
@@ -256,21 +329,52 @@ public sealed class IdentityAccountService(
         string password,
         CancellationToken cancellationToken)
     {
-        if (password.Length < 8)
-        {
-            return Fail(IdentityCodes.WeakPassword);
-        }
-
-        var user = await RequireTicketUserAsync(ticket, RecoveryPurpose, consume: true, cancellationToken);
+        await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
+        var user = await RequireTicketUserAsync(ticket, RecoveryPurpose, consume: false, cancellationToken)
+            ?? await RequireTicketUserAsync(ticket, MfaEnrollPurpose, consume: false, cancellationToken);
         if (user is null)
         {
             return Fail(IdentityCodes.InvalidToken);
         }
 
-        user.PasswordHash = users.PasswordHasher.HashPassword(user, password);
-        await users.UpdateAsync(user);
+        foreach (var validator in users.PasswordValidators)
+        {
+            var check = await validator.ValidateAsync(users, user, password);
+            if (!check.Succeeded)
+            {
+                return Fail(IdentityCodes.WeakPassword);
+            }
+        }
+
+        if (!await ConsumeTicketAsync(ticket, RecoveryPurpose, cancellationToken) &&
+            !await ConsumeTicketAsync(ticket, MfaEnrollPurpose, cancellationToken))
+        {
+            return Fail(IdentityCodes.InvalidToken);
+        }
+
+        var resetToken = await users.GeneratePasswordResetTokenAsync(user);
+        var reset = await users.ResetPasswordAsync(user, resetToken, password);
+        if (!reset.Succeeded)
+        {
+            return Fail(IdentityCodes.WeakPassword);
+        }
+
+        user = await users.FindByIdAsync(user.Id.ToString()) ?? user;
         await RevokeSessionsAsync(user.Id, cancellationToken);
-        return new IdentityCommandResult(true, IdentityCodes.SignedIn, View(user));
+        IdentityCommandResult result;
+        if (user.MfaReenrollmentRequired)
+        {
+            user = await users.FindByIdAsync(user.Id.ToString()) ?? user;
+            var enroll = await IssueTicketAsync(user, MfaEnrollPurpose, RecoveryTicketLifetime, cancellationToken);
+            result = new IdentityCommandResult(true, IdentityCodes.MfaReenrollmentRequired, View(user), enroll);
+        }
+        else
+        {
+            result = new IdentityCommandResult(true, IdentityCodes.SignedIn, View(user));
+        }
+
+        await transaction.CommitAsync(cancellationToken);
+        return result;
     }
 
     public async Task<IdentityUserView?> FindByIdAsync(Guid userId, CancellationToken cancellationToken)
@@ -286,17 +390,34 @@ public sealed class IdentityAccountService(
             await tokens.TryRevokeAsync(token, cancellationToken);
         }
 
+        var now = clock.GetUtcNow();
+        await db.LoginTickets
+            .Where(item => item.UserId == userId && item.ConsumedAt == null)
+            .ExecuteUpdateAsync(
+                updates => updates.SetProperty(item => item.ConsumedAt, now),
+                cancellationToken);
+        await db.EmailChallenges
+            .Where(item => item.UserId == userId && item.ConsumedAt == null)
+            .ExecuteUpdateAsync(
+                updates => updates.SetProperty(item => item.ConsumedAt, now),
+                cancellationToken);
+        await db.BrowserSessions
+            .Where(item => item.UserId == userId && item.RevokedAt == null)
+            .ExecuteUpdateAsync(
+                updates => updates.SetProperty(item => item.RevokedAt, now),
+                cancellationToken);
+
         var user = await users.FindByIdAsync(userId.ToString());
         if (user is not null)
         {
-            await users.UpdateSecurityStampAsync(user);
+            IdentityImporter.EnsureSucceeded(await users.UpdateSecurityStampAsync(user), "security-stamp");
         }
     }
 
     public async Task<InOutUser?> RedeemLoginTicketAsync(
         string ticket,
         CancellationToken cancellationToken) =>
-        await RequireTicketUserAsync(ticket, LoginPurpose, consume: true, cancellationToken);
+        await ConsumeTicketUserAsync(ticket, LoginPurpose, cancellationToken);
 
     private bool IsBanned(InOutUser user) =>
         user.BannedUntil is not null && user.BannedUntil > clock.GetUtcNow();
@@ -337,6 +458,7 @@ public sealed class IdentityAccountService(
             UserId = user.Id,
             Purpose = purpose,
             CodeHash = Hash(purpose, user.Id, code),
+            SecurityStamp = user.SecurityStamp ?? "",
             CreatedAt = now,
             ExpiresAt = now.Add(lifetime)
         });
@@ -361,25 +483,68 @@ public sealed class IdentityAccountService(
     {
         var now = clock.GetUtcNow();
         var hash = Hash(purpose, user.Id, code.Trim());
-        var challenge = await db.EmailChallenges.SingleOrDefaultAsync(
-            item => item.UserId == user.Id &&
-                    item.Purpose == purpose &&
-                    item.CodeHash == hash &&
-                    item.ConsumedAt == null &&
-                    item.ExpiresAt > now,
+        var stamp = user.SecurityStamp ?? "";
+        var redeemed = await AtomicConsumeAsync(
+            postgresSql: """
+                update identity.email_challenges
+                set consumed_at = @now
+                where user_id = @user_id
+                  and purpose = @purpose
+                  and code_hash = @hash
+                  and security_stamp = @stamp
+                  and consumed_at is null
+                  and failed_attempts < @limit
+                  and expires_at > @now
+                returning user_id
+                """,
+            sqlite: () => db.EmailChallenges
+                .Where(item => item.UserId == user.Id &&
+                               item.Purpose == purpose &&
+                               item.CodeHash == hash &&
+                               item.SecurityStamp == stamp &&
+                               item.ConsumedAt == null &&
+                               item.FailedAttempts < AuthAttemptBudget.ChallengeFailureLimit &&
+                               item.ExpiresAt > now)
+                .ExecuteUpdateAsync(
+                    updates => updates.SetProperty(item => item.ConsumedAt, now),
+                    cancellationToken),
+            bind: command =>
+            {
+                AddParameter(command, "now", now.ToUnixTimeMilliseconds());
+                AddParameter(command, "user_id", user.Id);
+                AddParameter(command, "purpose", purpose);
+                AddParameter(command, "hash", hash);
+                AddParameter(command, "stamp", stamp);
+                AddParameter(command, "limit", AuthAttemptBudget.ChallengeFailureLimit);
+            },
             cancellationToken);
-        if (challenge is null)
+        if (redeemed)
+        {
+            return true;
+        }
+
+        await db.EmailChallenges
+            .Where(item => item.UserId == user.Id &&
+                           item.Purpose == purpose &&
+                           item.ConsumedAt == null &&
+                           item.ExpiresAt > now)
+            .ExecuteUpdateAsync(
+                updates => updates
+                    .SetProperty(item => item.FailedAttempts, item => item.FailedAttempts + 1)
+                    .SetProperty(
+                        item => item.ConsumedAt,
+                        item => item.FailedAttempts + 1 >= AuthAttemptBudget.ChallengeFailureLimit ? now : item.ConsumedAt),
+                cancellationToken);
+        if (!await attempts.TryAccountFailureAsync(user.Email ?? user.Id.ToString(), cancellationToken))
         {
             return false;
         }
 
-        challenge.ConsumedAt = now;
-        await db.SaveChangesAsync(cancellationToken);
-        return true;
+        return false;
     }
 
     private async Task<string> IssueTicketAsync(
-        Guid userId,
+        InOutUser user,
         string purpose,
         TimeSpan lifetime,
         CancellationToken cancellationToken)
@@ -388,9 +553,10 @@ public sealed class IdentityAccountService(
         db.LoginTickets.Add(new LoginTicket
         {
             Id = Guid.NewGuid(),
-            UserId = userId,
+            UserId = user.Id,
             Purpose = purpose,
             TokenHash = TicketHash(purpose, token),
+            SecurityStamp = user.SecurityStamp ?? "",
             ExpiresAt = clock.GetUtcNow().Add(lifetime)
         });
         await db.SaveChangesAsync(cancellationToken);
@@ -403,6 +569,11 @@ public sealed class IdentityAccountService(
         bool consume,
         CancellationToken cancellationToken)
     {
+        if (consume)
+        {
+            return await ConsumeTicketUserAsync(ticket, purpose, cancellationToken);
+        }
+
         if (string.IsNullOrWhiteSpace(ticket))
         {
             return null;
@@ -414,6 +585,7 @@ public sealed class IdentityAccountService(
             item => item.Purpose == purpose &&
                     item.TokenHash == hash &&
                     item.ConsumedAt == null &&
+                    item.FailedAttempts < AuthAttemptBudget.ChallengeFailureLimit &&
                     item.ExpiresAt > now,
             cancellationToken);
         if (row is null)
@@ -421,18 +593,320 @@ public sealed class IdentityAccountService(
             return null;
         }
 
-        if (consume)
+        var user = await users.FindByIdAsync(row.UserId.ToString());
+        if (user is null || IsBanned(user) || !string.Equals(row.SecurityStamp, user.SecurityStamp, StringComparison.Ordinal))
         {
-            row.ConsumedAt = now;
-            await db.SaveChangesAsync(cancellationToken);
+            return null;
         }
 
-        var user = await users.FindByIdAsync(row.UserId.ToString());
-        return user is null || IsBanned(user) ? null : user;
+        return user;
     }
 
-    private async Task ConsumeTicketAsync(string ticket, string purpose, CancellationToken cancellationToken) =>
-        await RequireTicketUserAsync(ticket, purpose, consume: true, cancellationToken);
+    private async Task<bool> ConsumeTicketAsync(string ticket, string purpose, CancellationToken cancellationToken)
+    {
+        var user = await ConsumeTicketUserAsync(ticket, purpose, cancellationToken);
+        return user is not null;
+    }
+
+    private async Task<InOutUser?> ConsumeTicketUserAsync(
+        string ticket,
+        string purpose,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(ticket))
+        {
+            return null;
+        }
+
+        var now = clock.GetUtcNow();
+        var hash = TicketHash(purpose, ticket);
+        Guid? userId = null;
+        string? stamp = null;
+        if (db.Database.IsNpgsql())
+        {
+            var connection = db.Database.GetDbConnection();
+            if (connection.State != ConnectionState.Open)
+            {
+                await db.Database.OpenConnectionAsync(cancellationToken);
+            }
+
+            await using var command = connection.CreateCommand();
+            command.Transaction = db.Database.CurrentTransaction?.GetDbTransaction();
+            command.CommandText = """
+                update identity.login_tickets
+                set consumed_at = @now
+                where purpose = @purpose
+                  and token_hash = @hash
+                  and consumed_at is null
+                  and failed_attempts < @limit
+                  and expires_at > @now
+                returning user_id, security_stamp
+                """;
+            AddParameter(command, "now", now.ToUnixTimeMilliseconds());
+            AddParameter(command, "purpose", purpose);
+            AddParameter(command, "hash", hash);
+            AddParameter(command, "limit", AuthAttemptBudget.ChallengeFailureLimit);
+            await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+            if (await reader.ReadAsync(cancellationToken))
+            {
+                userId = reader.GetGuid(0);
+                stamp = reader.GetString(1);
+            }
+        }
+        else
+        {
+            var affected = await db.LoginTickets
+                .Where(item => item.Purpose == purpose &&
+                               item.TokenHash == hash &&
+                               item.ConsumedAt == null &&
+                               item.FailedAttempts < AuthAttemptBudget.ChallengeFailureLimit &&
+                               item.ExpiresAt > now)
+                .ExecuteUpdateAsync(
+                    updates => updates.SetProperty(item => item.ConsumedAt, now),
+                    cancellationToken);
+            if (affected == 1)
+            {
+                var row = await db.LoginTickets.AsNoTracking().SingleAsync(
+                    item => item.Purpose == purpose && item.TokenHash == hash,
+                    cancellationToken);
+                userId = row.UserId;
+                stamp = row.SecurityStamp;
+            }
+        }
+
+        if (userId is null || stamp is null)
+        {
+            return null;
+        }
+
+        var user = await users.FindByIdAsync(userId.Value.ToString());
+        if (user is null || IsBanned(user) || !string.Equals(stamp, user.SecurityStamp, StringComparison.Ordinal))
+        {
+            return null;
+        }
+
+        return user;
+    }
+
+    private async Task<bool> AtomicConsumeAsync(
+        string postgresSql,
+        Func<Task<int>> sqlite,
+        Action<DbCommand> bind,
+        CancellationToken cancellationToken)
+    {
+        if (!db.Database.IsNpgsql())
+        {
+            return await sqlite() == 1;
+        }
+
+        var connection = db.Database.GetDbConnection();
+        if (connection.State != ConnectionState.Open)
+        {
+            await db.Database.OpenConnectionAsync(cancellationToken);
+        }
+
+        await using var command = connection.CreateCommand();
+        command.Transaction = db.Database.CurrentTransaction?.GetDbTransaction();
+        command.CommandText = postgresSql;
+        bind(command);
+        var scalar = await command.ExecuteScalarAsync(cancellationToken);
+        return scalar is not null && scalar is not DBNull;
+    }
+
+    private static void AddParameter(DbCommand command, string name, object value)
+    {
+        var parameter = command.CreateParameter();
+        parameter.ParameterName = name;
+        parameter.Value = value;
+        command.Parameters.Add(parameter);
+    }
+
+    private async Task RegisterTicketFailureAsync(
+        string ticket,
+        IReadOnlyList<string> purposes,
+        CancellationToken cancellationToken)
+    {
+        var now = clock.GetUtcNow();
+        foreach (var purpose in purposes)
+        {
+            var hash = TicketHash(purpose, ticket);
+            await db.LoginTickets
+                .Where(item => item.Purpose == purpose &&
+                               item.TokenHash == hash &&
+                               item.ConsumedAt == null)
+                .ExecuteUpdateAsync(
+                    updates => updates
+                        .SetProperty(item => item.FailedAttempts, item => item.FailedAttempts + 1)
+                        .SetProperty(
+                            item => item.ConsumedAt,
+                            item => item.FailedAttempts + 1 >= AuthAttemptBudget.ChallengeFailureLimit ? now : item.ConsumedAt),
+                    cancellationToken);
+        }
+    }
+
+    private async Task<IdentityCommandResult> EnsureAuthenticatorKeyAsync(
+        InOutUser user,
+        string ticket,
+        CancellationToken cancellationToken)
+    {
+        var key = await users.GetAuthenticatorKeyAsync(user);
+        if (string.IsNullOrEmpty(key))
+        {
+            IdentityImporter.EnsureSucceeded(await users.ResetAuthenticatorKeyAsync(user), "mfa-reset-key");
+            user = await users.FindByIdAsync(user.Id.ToString()) ?? user;
+            await db.LoginTickets
+                .Where(item => item.UserId == user.Id &&
+                               item.ConsumedAt == null &&
+                               (item.Purpose == MfaEnrollPurpose || item.Purpose == RecoveryPurpose))
+                .ExecuteUpdateAsync(
+                    updates => updates.SetProperty(item => item.SecurityStamp, user.SecurityStamp ?? ""),
+                    cancellationToken);
+            key = await users.GetAuthenticatorKeyAsync(user);
+        }
+
+        var uri = $"otpauth://totp/InOut:{Uri.EscapeDataString(user.Email!)}?secret={key}&issuer=InOut&digits=6";
+        return new IdentityCommandResult(true, IdentityCodes.MfaReenrollmentRequired, View(user), ticket, key, uri);
+    }
+
+    private async Task<InOutUser?> LockTicketUserAsync(
+        string ticket,
+        IReadOnlyList<string> purposes,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(ticket))
+        {
+            return null;
+        }
+
+        var now = clock.GetUtcNow();
+        foreach (var purpose in purposes)
+        {
+            var hash = TicketHash(purpose, ticket);
+            Guid? userId = null;
+            string? stamp = null;
+            if (db.Database.IsNpgsql())
+            {
+                var locked = await AtomicConsumeAsync(
+                    postgresSql: """
+                        update identity.login_tickets
+                        set security_stamp = security_stamp
+                        where purpose = @purpose
+                          and token_hash = @hash
+                          and consumed_at is null
+                          and failed_attempts < @limit
+                          and expires_at > @now
+                        returning user_id
+                        """,
+                    sqlite: () => Task.FromResult(0),
+                    bind: command =>
+                    {
+                        AddParameter(command, "now", now.ToUnixTimeMilliseconds());
+                        AddParameter(command, "purpose", purpose);
+                        AddParameter(command, "hash", hash);
+                        AddParameter(command, "limit", AuthAttemptBudget.ChallengeFailureLimit);
+                    },
+                    cancellationToken);
+                if (!locked)
+                {
+                    continue;
+                }
+
+                var row = await db.LoginTickets.AsNoTracking().SingleAsync(
+                    item => item.Purpose == purpose && item.TokenHash == hash,
+                    cancellationToken);
+                userId = row.UserId;
+                stamp = row.SecurityStamp;
+            }
+            else
+            {
+                var affected = await db.LoginTickets
+                    .Where(item => item.Purpose == purpose &&
+                                   item.TokenHash == hash &&
+                                   item.ConsumedAt == null &&
+                                   item.FailedAttempts < AuthAttemptBudget.ChallengeFailureLimit &&
+                                   item.ExpiresAt > now)
+                    .ExecuteUpdateAsync(
+                        updates => updates.SetProperty(item => item.SecurityStamp, item => item.SecurityStamp),
+                        cancellationToken);
+                if (affected != 1)
+                {
+                    continue;
+                }
+
+                var row = await db.LoginTickets.AsNoTracking().SingleAsync(
+                    item => item.Purpose == purpose && item.TokenHash == hash,
+                    cancellationToken);
+                userId = row.UserId;
+                stamp = row.SecurityStamp;
+            }
+
+            if (userId is null || stamp is null)
+            {
+                continue;
+            }
+
+            var user = await users.FindByIdAsync(userId.Value.ToString());
+            if (user is null || IsBanned(user) || !string.Equals(stamp, user.SecurityStamp, StringComparison.Ordinal))
+            {
+                return null;
+            }
+
+            return user;
+        }
+
+        return null;
+    }
+
+    private async Task<IdentityCommandResult> CompleteTotpAsync(
+        InOutUser user,
+        string ticket,
+        IReadOnlyList<string> purposes,
+        string code,
+        bool enroll,
+        CancellationToken cancellationToken)
+    {
+        var step = clock.GetUtcNow().ToUnixTimeSeconds() / 30;
+        var normalized = code.Replace(" ", "", StringComparison.Ordinal);
+        var valid = user.LastTotpStep != step &&
+                    await users.VerifyTwoFactorTokenAsync(
+                        user,
+                        TokenOptions.DefaultAuthenticatorProvider,
+                        normalized);
+        if (!valid)
+        {
+            await RegisterTicketFailureAsync(ticket, purposes, cancellationToken);
+            await users.AccessFailedAsync(user);
+            if (!await attempts.TryAccountFailureAsync(user.Email ?? user.Id.ToString(), cancellationToken))
+            {
+                return Fail(IdentityCodes.RateLimited);
+            }
+
+            return Fail(IdentityCodes.InvalidToken);
+        }
+
+        user.LastTotpStep = step;
+        if (enroll)
+        {
+            user.TwoFactorEnabled = true;
+            user.MfaReenrollmentRequired = false;
+        }
+
+        IdentityImporter.EnsureSucceeded(await users.UpdateAsync(user), enroll ? "mfa-enroll" : "mfa-verify");
+        var consumed = false;
+        foreach (var purpose in purposes)
+        {
+            consumed |= await ConsumeTicketAsync(ticket, purpose, cancellationToken);
+        }
+
+        if (!consumed)
+        {
+            return Fail(IdentityCodes.InvalidToken);
+        }
+
+        await users.ResetAccessFailedCountAsync(user);
+        var login = await IssueTicketAsync(user, LoginPurpose, TicketLifetime, cancellationToken);
+        return new IdentityCommandResult(true, IdentityCodes.SignedIn, View(user), login);
+    }
 
     public static string TicketHash(string purpose, string token) =>
         Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes($"{purpose}:{token.Trim()}")));

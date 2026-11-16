@@ -23,6 +23,105 @@ namespace InOut.Infrastructure.Identity.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("InOut.Infrastructure.Identity.AuthAttempt", b =>
+                {
+                    b.Property<string>("Key")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("key");
+
+                    b.Property<long>("WindowStart")
+                        .HasColumnType("bigint")
+                        .HasColumnName("window_start");
+
+                    b.Property<int>("Count")
+                        .HasColumnType("integer")
+                        .HasColumnName("count");
+
+                    b.HasKey("Key", "WindowStart");
+
+                    b.ToTable("auth_attempts", "identity");
+                });
+
+            modelBuilder.Entity("InOut.Infrastructure.Identity.BrowserSession", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<long?>("AccessExpiresAt")
+                        .HasColumnType("bigint")
+                        .HasColumnName("access_expires_at");
+
+                    b.Property<string>("AccessTokenProtected")
+                        .HasColumnType("text")
+                        .HasColumnName("access_token_protected");
+
+                    b.Property<long>("CreatedAt")
+                        .HasColumnType("bigint")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("CsrfHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("csrf_hash");
+
+                    b.Property<long>("ExpiresAt")
+                        .HasColumnType("bigint")
+                        .HasColumnName("expires_at");
+
+                    b.Property<string>("PendingTicketProtected")
+                        .HasColumnType("text")
+                        .HasColumnName("pending_ticket_protected");
+
+                    b.Property<string>("Purpose")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("purpose");
+
+                    b.Property<long?>("RefreshClaimedAt")
+                        .HasColumnType("bigint")
+                        .HasColumnName("refresh_claimed_at");
+
+                    b.Property<string>("RefreshTokenProtected")
+                        .HasColumnType("text")
+                        .HasColumnName("refresh_token_protected");
+
+                    b.Property<string>("ReplacedByHash")
+                        .HasColumnType("text")
+                        .HasColumnName("replaced_by_hash");
+
+                    b.Property<long?>("RevokedAt")
+                        .HasColumnType("bigint")
+                        .HasColumnName("revoked_at");
+
+                    b.Property<string>("SecurityStamp")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("security_stamp");
+
+                    b.Property<string>("SessionHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("session_hash");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SessionHash")
+                        .IsUnique();
+
+                    b.ToTable("browser_sessions", "identity");
+                });
+
             modelBuilder.Entity("InOut.Infrastructure.Identity.EmailChallenge", b =>
                 {
                     b.Property<Guid>("Id")
@@ -48,11 +147,21 @@ namespace InOut.Infrastructure.Identity.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("expires_at");
 
+                    b.Property<int>("FailedAttempts")
+                        .HasColumnType("integer")
+                        .HasColumnName("failed_attempts");
+
                     b.Property<string>("Purpose")
                         .IsRequired()
                         .HasMaxLength(32)
                         .HasColumnType("character varying(32)")
                         .HasColumnName("purpose");
+
+                    b.Property<string>("SecurityStamp")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("security_stamp");
 
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid")
@@ -141,6 +250,10 @@ namespace InOut.Infrastructure.Identity.Migrations
                         .HasColumnType("boolean")
                         .HasColumnName("mfa_reenrollment_required");
 
+                    b.Property<long?>("LastTotpStep")
+                        .HasColumnType("bigint")
+                        .HasColumnName("last_totp_step");
+
                     b.Property<string>("NormalizedEmail")
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)")
@@ -203,11 +316,21 @@ namespace InOut.Infrastructure.Identity.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("expires_at");
 
+                    b.Property<int>("FailedAttempts")
+                        .HasColumnType("integer")
+                        .HasColumnName("failed_attempts");
+
                     b.Property<string>("Purpose")
                         .IsRequired()
                         .HasMaxLength(32)
                         .HasColumnType("character varying(32)")
                         .HasColumnName("purpose");
+
+                    b.Property<string>("SecurityStamp")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("security_stamp");
 
                     b.Property<string>("TokenHash")
                         .IsRequired()

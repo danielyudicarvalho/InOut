@@ -10,27 +10,60 @@ public static class AccountPages
 {
     public static WebApplication MapAccountPages(this WebApplication app)
     {
-        app.MapGet("/account/login", Show);
-        app.MapPost("/account/login", Login);
-        app.MapGet("/account/register", Show);
-        app.MapPost("/account/register", Register);
-        app.MapGet("/account/confirm", Show);
-        app.MapPost("/account/confirm", Confirm);
-        app.MapGet("/account/forgot", Show);
-        app.MapPost("/account/forgot", Forgot);
-        app.MapGet("/account/reset", Show);
-        app.MapPost("/account/reset", Reset);
-        app.MapGet("/account/mfa", Show);
-        app.MapPost("/account/mfa", Mfa);
+        var group = app.MapGroup("/account").RequireRateLimiting("identity");
+        group.MapGet("/login", Show);
+        group.MapPost("/login", Login);
+        group.MapGet("/register", Show);
+        group.MapPost("/register", Register);
+        group.MapGet("/confirm", Show);
+        group.MapPost("/confirm", Confirm);
+        group.MapGet("/forgot", Show);
+        group.MapPost("/forgot", Forgot);
+        group.MapGet("/reset", Show);
+        group.MapPost("/reset", Reset);
+        group.MapGet("/mfa", Show);
+        group.MapPost("/mfa", Mfa);
+        group.MapGet("/logout", ShowLogout);
+        group.MapPost("/logout", Logout);
         return app;
     }
 
-    private static IResult Show(HttpContext http, IAntiforgery antiforgery)
+    private static async Task<IResult> Show(
+        HttpContext http,
+        IAntiforgery antiforgery,
+        IIdentityAccounts accounts,
+        CancellationToken cancellationToken)
     {
         var path = http.Request.Path.Value ?? "/account/login";
         var query = http.Request.Query;
         var token = antiforgery.GetAndStoreTokens(http);
         var returnUrl = LocalReturn(query["returnUrl"]);
+        string mfaFields;
+        if (path == "/account/mfa" && !string.IsNullOrEmpty(http.Request.Cookies["inout_mfa_enroll"]))
+        {
+            var started = await accounts.ReadMfaEnrollmentAsync(
+                http.Request.Cookies["inout_mfa_enroll"]!,
+                cancellationToken);
+            var secret = WebUtility.HtmlEncode(started.AuthenticatorKey ?? "");
+            var passwordField = string.IsNullOrEmpty(started.AuthenticatorKey)
+                ? """<label>Senha atual<input name="password" type="password" required></label>"""
+                : "";
+            mfaFields = $"""
+                <p>Cadastre este autenticador novo. O fator importado não é revelado.</p>
+                <p><code>{secret}</code></p>
+                <input type="hidden" name="returnUrl" value="{WebUtility.HtmlEncode(returnUrl)}">
+                {passwordField}
+                <label>Código do autenticador<input name="code" inputmode="numeric" autocomplete="one-time-code"></label>
+                """;
+        }
+        else
+        {
+            mfaFields = $"""
+                <input type="hidden" name="returnUrl" value="{WebUtility.HtmlEncode(returnUrl)}">
+                <label>Código do autenticador<input name="code" inputmode="numeric" required autocomplete="one-time-code"></label>
+                """;
+        }
+
         var body = path switch
         {
             "/account/register" => Fields("Criar conta", path, token.RequestToken!, """
@@ -42,7 +75,9 @@ public static class AccountPages
                 <label>E-mail<input name="email" type="email" value="{WebUtility.HtmlEncode(query["email"])}" required></label>
                 <label>Código<input name="code" inputmode="numeric" required></label>
                 """),
-            "/account/forgot" => Fields("Esqueci a senha", path, token.RequestToken!, """
+            "/account/forgot" => Fields("Esqueci a senha", path, token.RequestToken!, $"""
+                <p>A reposição do autenticador exige este e-mail. A senha sozinha não substitui um fator importado.</p>
+                <input type="hidden" name="returnUrl" value="{WebUtility.HtmlEncode(returnUrl)}">
                 <label>E-mail<input name="email" type="email" required></label>
                 """),
             "/account/reset" => Fields("Nova senha", path, token.RequestToken!, $"""
@@ -50,16 +85,25 @@ public static class AccountPages
                 <label>Código<input name="code" inputmode="numeric" required></label>
                 <label>Nova senha<input name="password" type="password" minlength="8" required></label>
                 """),
-            "/account/mfa" => Fields("Verificação", path, token.RequestToken!, $"""
-                <input type="hidden" name="ticket" value="{WebUtility.HtmlEncode(query["ticket"])}">
-                <label>Código do autenticador<input name="code" inputmode="numeric" required></label>
-                """),
+            "/account/mfa" => Fields("Verificação", path, token.RequestToken!, mfaFields),
             _ => Fields("Entrar", "/account/login", token.RequestToken!, $"""
                 <input type="hidden" name="returnUrl" value="{WebUtility.HtmlEncode(returnUrl)}">
                 <label>E-mail<input name="email" type="email" required></label>
                 <label>Senha<input name="password" type="password" required></label>
                 """)
         };
+        return Results.Content(Page(body), "text/html; charset=utf-8");
+    }
+
+    private static IResult ShowLogout(HttpContext http, IAntiforgery antiforgery)
+    {
+        var token = antiforgery.GetAndStoreTokens(http);
+        var postLogout = LocalPostLogout(http.Request.Query["post_logout_redirect_uri"]);
+        var body = Fields("Sair", "/account/logout", token.RequestToken!, $"""
+            <input type="hidden" name="post_logout_redirect_uri" value="{WebUtility.HtmlEncode(postLogout)}">
+            <p>Encerrar a sessão neste dispositivo. Marque para sair de todos os aparelhos.</p>
+            <label><input type="checkbox" name="logout_all" value="1"> Encerrar todas as sessões</label>
+            """);
         return Results.Content(Page(body), "text/html; charset=utf-8");
     }
 
@@ -72,8 +116,14 @@ public static class AccountPages
     {
         await antiforgery.ValidateRequestAsync(http);
         var form = await http.Request.ReadFormAsync(cancellationToken);
+        var returnUrl = LocalReturn(form["returnUrl"].ToString());
         var result = await accounts.LoginAsync(form["email"].ToString(), form["password"].ToString(), cancellationToken);
-        if (result.Code == IdentityCodes.MfaReenrollmentRequired)
+        if (result.Code == IdentityCodes.MfaRecoveryRequired)
+        {
+            return Results.Redirect("/account/forgot?mfa=1&returnUrl=" + Uri.EscapeDataString(returnUrl));
+        }
+
+        if (result.Code == IdentityCodes.MfaRequired)
         {
             http.Response.Cookies.Append("inout_mfa", result.Ticket ?? "", new CookieOptions
             {
@@ -83,7 +133,7 @@ public static class AccountPages
                 MaxAge = TimeSpan.FromMinutes(15),
                 Path = "/account"
             });
-            return Results.Redirect("/account/mfa");
+            return Results.Redirect("/account/mfa?returnUrl=" + Uri.EscapeDataString(returnUrl));
         }
 
         if (!result.Succeeded || result.User is null)
@@ -98,7 +148,7 @@ public static class AccountPages
         }
 
         await signIn.SignInAsync(user, isPersistent: false);
-        return Results.LocalRedirect(LocalReturn(form["returnUrl"].ToString()));
+        return Results.LocalRedirect(returnUrl);
     }
 
     private static async Task<IResult> Register(
@@ -137,8 +187,11 @@ public static class AccountPages
     {
         await antiforgery.ValidateRequestAsync(http);
         var form = await http.Request.ReadFormAsync(cancellationToken);
+        var returnUrl = LocalReturn(form["returnUrl"].ToString());
         await accounts.RequestPasswordResetAsync(form["email"].ToString(), cancellationToken);
-        return Results.Redirect("/account/reset?sent=1&email=" + Uri.EscapeDataString(form["email"].ToString()));
+        return Results.Redirect(
+            "/account/reset?sent=1&email=" + Uri.EscapeDataString(form["email"].ToString())
+            + "&returnUrl=" + Uri.EscapeDataString(returnUrl));
     }
 
     private static async Task<IResult> Reset(
@@ -149,16 +202,32 @@ public static class AccountPages
     {
         await antiforgery.ValidateRequestAsync(http);
         var form = await http.Request.ReadFormAsync(cancellationToken);
+        var returnUrl = LocalReturn(form["returnUrl"].ToString());
         var exchange = await accounts.ExchangeRecoveryCodeAsync(
             form["email"].ToString(),
             form["code"].ToString(),
             cancellationToken);
         if (!exchange.Succeeded || exchange.Ticket is null)
         {
-            return Results.Redirect("/account/reset?error=invalid_token");
+            return Results.Redirect("/account/reset?error=invalid_token&returnUrl=" + Uri.EscapeDataString(returnUrl));
         }
 
+        // MFA-import recovery still has to hash the new password. Skipping
+        // ResetPasswordAsync left the imported hash in place.
         var reset = await accounts.ResetPasswordAsync(exchange.Ticket, form["password"].ToString(), cancellationToken);
+        if (reset.Code == IdentityCodes.MfaReenrollmentRequired && reset.Ticket is not null)
+        {
+            http.Response.Cookies.Append("inout_mfa_enroll", reset.Ticket, new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = http.Request.IsHttps,
+                SameSite = SameSiteMode.Lax,
+                MaxAge = TimeSpan.FromMinutes(15),
+                Path = "/account"
+            });
+            return Results.Redirect("/account/mfa?enroll=1&returnUrl=" + Uri.EscapeDataString(returnUrl));
+        }
+
         return Results.Redirect(reset.Succeeded ? "/account/login?reset=1" : "/account/reset?error=invalid_token");
     }
 
@@ -171,13 +240,37 @@ public static class AccountPages
     {
         await antiforgery.ValidateRequestAsync(http);
         var form = await http.Request.ReadFormAsync(cancellationToken);
-        var ticket = string.IsNullOrEmpty(form["ticket"])
-            ? http.Request.Cookies["inout_mfa"] ?? ""
-            : form["ticket"].ToString();
-        var result = await accounts.ConfirmMfaReenrollmentAsync(ticket, form["code"].ToString(), cancellationToken);
+        var returnUrl = LocalReturn(form["returnUrl"].ToString());
+        var enroll = !string.IsNullOrEmpty(http.Request.Cookies["inout_mfa_enroll"]);
+        var ticket = enroll
+            ? http.Request.Cookies["inout_mfa_enroll"] ?? ""
+            : http.Request.Cookies["inout_mfa"] ?? "";
+        IdentityCommandResult result;
+        if (enroll)
+        {
+            if (!string.IsNullOrEmpty(form["password"].ToString()))
+            {
+                var started = await accounts.StartMfaReenrollmentAsync(
+                    ticket,
+                    form["password"].ToString(),
+                    cancellationToken);
+                if (!started.Succeeded)
+                {
+                    return Results.Redirect(
+                        "/account/mfa?error=" + Uri.EscapeDataString(started.Code)
+                        + "&returnUrl=" + Uri.EscapeDataString(returnUrl));
+                }
+            }
+
+            result = await accounts.ConfirmMfaReenrollmentAsync(ticket, form["code"].ToString(), cancellationToken);
+        }
+        else
+        {
+            result = await accounts.VerifyMfaAsync(ticket, form["code"].ToString(), cancellationToken);
+        }
         if (!result.Succeeded || result.User is null)
         {
-            return Results.Redirect("/account/mfa?error=invalid_token&ticket=" + Uri.EscapeDataString(form["ticket"].ToString()));
+            return Results.Redirect("/account/mfa?error=invalid_token&returnUrl=" + Uri.EscapeDataString(returnUrl));
         }
 
         var user = await signIn.UserManager.FindByIdAsync(result.User.Id.ToString());
@@ -187,7 +280,32 @@ public static class AccountPages
         }
 
         await signIn.SignInAsync(user, isPersistent: false);
-        return Results.LocalRedirect(LocalReturn(form["returnUrl"].ToString()));
+        http.Response.Cookies.Delete("inout_mfa", new CookieOptions { Path = "/account" });
+        http.Response.Cookies.Delete("inout_mfa_enroll", new CookieOptions { Path = "/account" });
+        return Results.LocalRedirect(returnUrl);
+    }
+
+    private static async Task<IResult> Logout(
+        HttpContext http,
+        IAntiforgery antiforgery,
+        SignInManager<InOutUser> signIn,
+        IIdentityAccounts accounts,
+        CancellationToken cancellationToken)
+    {
+        await antiforgery.ValidateRequestAsync(http);
+        var form = await http.Request.ReadFormAsync(cancellationToken);
+        var user = await signIn.UserManager.GetUserAsync(http.User);
+        if (user is not null &&
+            string.Equals(form["logout_all"].ToString(), "1", StringComparison.Ordinal))
+        {
+            await accounts.RevokeSessionsAsync(user.Id, cancellationToken);
+        }
+
+        await signIn.SignOutAsync();
+        var redirect = LocalPostLogout(form["post_logout_redirect_uri"]);
+        return string.IsNullOrEmpty(redirect)
+            ? Results.Redirect("/account/login")
+            : Results.Redirect(redirect);
     }
 
     private static string LocalReturn(string? value)
@@ -205,6 +323,24 @@ public static class AccountPages
         }
 
         return value;
+    }
+
+    private static string LocalPostLogout(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value) ||
+            !Uri.TryCreate(value, UriKind.Absolute, out var uri) ||
+            !string.IsNullOrEmpty(uri.UserInfo) ||
+            !string.IsNullOrEmpty(uri.Fragment))
+        {
+            return "";
+        }
+
+        if (uri.Scheme == "inout" && uri.Host == "auth")
+        {
+            return uri.ToString();
+        }
+
+        return "";
     }
 
     private static string Fields(string title, string action, string token, string fields) =>

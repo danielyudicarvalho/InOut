@@ -10,6 +10,7 @@ using InOut.Application.Identity;
 using InOut.Infrastructure.Identity;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
@@ -277,6 +278,11 @@ public sealed class IdentityFlowTests : IAsyncLifetime
             email = "person@example.com",
             code = resetCode
         })).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsJsonAsync("/api/v1/identity/reset", new
+        {
+            ticket = recovery.Ticket,
+            password = "short"
+        })).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await client.PostAsJsonAsync("/api/v1/identity/reset", new
         {
             ticket = recovery.Ticket,
@@ -377,11 +383,38 @@ public sealed class IdentityFlowTests : IAsyncLifetime
         });
         var body = await blocked.Content.ReadAsStringAsync();
         Assert.Equal(HttpStatusCode.Forbidden, blocked.StatusCode);
-        Assert.Contains("mfa_reenrollment_required", body, StringComparison.Ordinal);
+        Assert.Contains("mfa_recovery_required", body, StringComparison.Ordinal);
         Assert.DoesNotContain("access_token", body, StringComparison.Ordinal);
-        var mfa = JsonSerializer.Deserialize<CommandBody>(body, JsonOptions)
+        var passwordTicket = JsonSerializer.Deserialize<CommandBody>(body, JsonOptions)
             ?? throw new InvalidOperationException(body);
-        var startedResponse = await client.PostAsJsonAsync("/api/v1/identity/mfa/start", new { ticket = mfa.Ticket });
+        Assert.True(string.IsNullOrEmpty(passwordTicket.Ticket), body);
+        var rejectedEnroll = await client.PostAsJsonAsync("/api/v1/identity/mfa/start", new
+        {
+            ticket = passwordTicket.Ticket ?? "password-only",
+            password = "password8"
+        });
+        Assert.Equal(HttpStatusCode.BadRequest, rejectedEnroll.StatusCode);
+
+        Assert.Equal(HttpStatusCode.OK, (await client.PostAsJsonAsync("/api/v1/identity/forgot", new
+        {
+            email = "mfa@example.com"
+        })).StatusCode);
+        var recoveryCode = CodeFor("mfa@example.com");
+        var recovery = await ReadAsync(await client.PostAsJsonAsync("/api/v1/identity/recovery/exchange", new
+        {
+            email = "mfa@example.com",
+            code = recoveryCode
+        }));
+        Assert.Equal("mfa_reenrollment_required", recovery.Code);
+        var startedWithoutPassword = await client.PostAsJsonAsync(
+            "/api/v1/identity/mfa/start",
+            new { ticket = recovery.Ticket });
+        Assert.Equal(HttpStatusCode.BadRequest, startedWithoutPassword.StatusCode);
+        var startedResponse = await client.PostAsJsonAsync("/api/v1/identity/mfa/start", new
+        {
+            ticket = recovery.Ticket,
+            password = "password8"
+        });
         var startedBody = await startedResponse.Content.ReadAsStringAsync();
         var started = JsonSerializer.Deserialize<CommandBody>(startedBody, JsonOptions)
             ?? throw new InvalidOperationException(startedBody);
@@ -389,7 +422,7 @@ public sealed class IdentityFlowTests : IAsyncLifetime
         var totp = Totp.Create(started.AuthenticatorKey!);
         var confirmed = await ReadAsync(await client.PostAsJsonAsync("/api/v1/identity/mfa/confirm", new
         {
-            ticket = mfa.Ticket,
+            ticket = recovery.Ticket,
             code = totp
         }));
         Assert.Equal("signed_in", confirmed.Code);
@@ -402,6 +435,98 @@ public sealed class IdentityFlowTests : IAsyncLifetime
             ["scope"] = "openid offline_access"
         });
         Assert.False(string.IsNullOrEmpty(tokens.AccessToken));
+
+        var mfaLogin = await ReadAsync(await client.PostAsJsonAsync("/api/v1/identity/login", new
+        {
+            email = "mfa@example.com",
+            password = "password8"
+        }));
+        Assert.Equal("mfa_required", mfaLogin.Code);
+        Assert.False(string.IsNullOrEmpty(mfaLogin.Ticket));
+        for (var attempt = 0; attempt < 5; attempt++)
+        {
+            var failed = await client.PostAsJsonAsync("/api/v1/identity/mfa/verify", new
+            {
+                ticket = mfaLogin.Ticket,
+                code = "000000"
+            });
+            Assert.Equal(HttpStatusCode.BadRequest, failed.StatusCode);
+        }
+
+        var burned = await client.PostAsJsonAsync("/api/v1/identity/mfa/verify", new
+        {
+            ticket = mfaLogin.Ticket,
+            code = Totp.Create(started.AuthenticatorKey!)
+        });
+        Assert.Equal(HttpStatusCode.BadRequest, burned.StatusCode);
+
+        var locked = await ReadAsync(await client.PostAsJsonAsync("/api/v1/identity/login", new
+        {
+            email = "mfa@example.com",
+            password = "password8"
+        }));
+        Assert.Equal("account_unavailable", locked.Code);
+    }
+
+    [Fact]
+    public async Task HostedResetAppliesPasswordWhenMfaReenrollmentIsRequired()
+    {
+        var mfaId = Guid.NewGuid();
+        await using (var scope = factory.Services.CreateAsyncScope())
+        {
+            var importer = scope.ServiceProvider.GetRequiredService<IdentityImporter>();
+            await importer.ImportAsync(
+            [
+                new ExportedIdentityUser(
+                    mfaId,
+                    "hosted-reset@example.com",
+                    BCrypt.Net.BCrypt.HashPassword("password8", workFactor: 4),
+                    DateTimeOffset.UtcNow,
+                    null,
+                    "HostedReset",
+                    false,
+                    [],
+                    [new ExportedFactor("f1", "verified", true)])
+            ],
+            IdentityImporter.SourceHash("hosted-reset-" + mfaId),
+            CancellationToken.None);
+        }
+
+        Assert.Equal(HttpStatusCode.OK, (await client.PostAsJsonAsync("/api/v1/identity/forgot", new
+        {
+            email = "hosted-reset@example.com"
+        })).StatusCode);
+        var recoveryCode = CodeFor("hosted-reset@example.com");
+        using var browser = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        var page = await browser.GetAsync("/account/reset");
+        var html = await page.Content.ReadAsStringAsync();
+        var token = Between(html, "name=\"__RequestVerificationToken\" value=\"", "\"");
+        var posted = await browser.PostAsync("/account/reset", new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["__RequestVerificationToken"] = WebUtility.HtmlDecode(token),
+            ["email"] = "hosted-reset@example.com",
+            ["code"] = recoveryCode,
+            ["password"] = "password9"
+        }));
+        Assert.Equal(HttpStatusCode.Redirect, posted.StatusCode);
+        Assert.Contains("/account/mfa?enroll=1", posted.Headers.Location?.ToString() ?? "", StringComparison.Ordinal);
+        Assert.Contains(
+            "inout_mfa_enroll",
+            string.Join('\n', posted.Headers.GetValues("Set-Cookie")),
+            StringComparison.Ordinal);
+
+        var oldPassword = await ReadAsync(await client.PostAsJsonAsync("/api/v1/identity/login", new
+        {
+            email = "hosted-reset@example.com",
+            password = "password8"
+        }));
+        Assert.Equal("invalid_credentials", oldPassword.Code);
+        var newPassword = await ReadAsync(await client.PostAsJsonAsync("/api/v1/identity/login", new
+        {
+            email = "hosted-reset@example.com",
+            password = "password9"
+        }));
+        Assert.Equal("mfa_recovery_required", newPassword.Code);
     }
 
     [Fact]
@@ -526,6 +651,208 @@ public sealed class IdentityFlowTests : IAsyncLifetime
         });
         Assert.False(string.IsNullOrEmpty(tokens.AccessToken));
         Assert.DoesNotContain("client_secret", tokens.Raw, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task IdentityCookieDoesNotAuthorizeApiV1AndTicketsAreSingleUse()
+    {
+        await client.PostAsJsonAsync("/api/v1/identity/register", new
+        {
+            email = "cookie@example.com",
+            password = "password8",
+            name = "Cookie"
+        });
+        await client.PostAsJsonAsync("/api/v1/identity/confirm", new
+        {
+            email = "cookie@example.com",
+            code = CodeFor("cookie@example.com")
+        });
+        using var browser = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        var loginPage = await browser.GetAsync("/account/login?returnUrl=/connect/authorize");
+        var html = await loginPage.Content.ReadAsStringAsync();
+        var token = Between(html, "name=\"__RequestVerificationToken\" value=\"", "\"");
+        var posted = await browser.PostAsync("/account/login", new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["__RequestVerificationToken"] = WebUtility.HtmlDecode(token),
+            ["email"] = "cookie@example.com",
+            ["password"] = "password8",
+            ["returnUrl"] = "/connect/authorize"
+        }));
+        Assert.Equal(HttpStatusCode.Redirect, posted.StatusCode);
+        var withCookie = await browser.GetAsync("/api/v1/households/aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa/access");
+        Assert.Equal(HttpStatusCode.Unauthorized, withCookie.StatusCode);
+
+        var login = await ReadAsync(await client.PostAsJsonAsync("/api/v1/identity/login", new
+        {
+            email = "cookie@example.com",
+            password = "password8"
+        }));
+        var tokens = await TokenAsync(new Dictionary<string, string>
+        {
+            ["grant_type"] = "identity_ticket",
+            ["client_id"] = "inout-web",
+            ["client_secret"] = "dev-only-web-client-secret",
+            ["ticket"] = login.Ticket!
+        });
+        Assert.False(string.IsNullOrEmpty(tokens.AccessToken));
+        using var anonymous = factory.CreateClient();
+        var second = await anonymous.PostAsync("/connect/token", new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["grant_type"] = "identity_ticket",
+            ["client_id"] = "inout-web",
+            ["client_secret"] = "dev-only-web-client-secret",
+            ["ticket"] = login.Ticket!
+        }));
+        Assert.Equal(HttpStatusCode.BadRequest, second.StatusCode);
+    }
+
+    [Fact]
+    public async Task ParallelTicketRedemptionConsumesOnce()
+    {
+        await client.PostAsJsonAsync("/api/v1/identity/register", new
+        {
+            email = "race@example.com",
+            password = "password8",
+            name = "Race"
+        });
+        await client.PostAsJsonAsync("/api/v1/identity/confirm", new
+        {
+            email = "race@example.com",
+            code = CodeFor("race@example.com")
+        });
+        var login = await ReadAsync(await client.PostAsJsonAsync("/api/v1/identity/login", new
+        {
+            email = "race@example.com",
+            password = "password8"
+        }));
+        var form = () => new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["grant_type"] = "identity_ticket",
+            ["client_id"] = "inout-web",
+            ["client_secret"] = "dev-only-web-client-secret",
+            ["ticket"] = login.Ticket!
+        });
+        using var left = factory.CreateClient();
+        using var right = factory.CreateClient();
+        var results = await Task.WhenAll(
+            left.PostAsync("/connect/token", form()),
+            right.PostAsync("/connect/token", form()));
+        Assert.True(
+            results.Count(item => item.StatusCode == HttpStatusCode.OK) <= 1,
+            string.Join(" | ", results.Select(item => item.StatusCode)));
+        using var leftover = factory.CreateClient();
+        var third = await leftover.PostAsync("/connect/token", form());
+        Assert.Equal(HttpStatusCode.BadRequest, third.StatusCode);
+    }
+
+    [Fact]
+    public async Task TotpReplayAndSessionSubjectAndRefreshAndLogout()
+    {
+        await client.PostAsJsonAsync("/api/v1/identity/register", new
+        {
+            email = "totp@example.com",
+            password = "password8",
+            name = "Totp"
+        });
+        await client.PostAsJsonAsync("/api/v1/identity/confirm", new
+        {
+            email = "totp@example.com",
+            code = CodeFor("totp@example.com")
+        });
+        await using (var scope = factory.Services.CreateAsyncScope())
+        {
+            var users = scope.ServiceProvider.GetRequiredService<UserManager<InOutUser>>();
+            var user = await users.FindByEmailAsync("totp@example.com");
+            IdentityImporter.EnsureSucceeded(await users.ResetAuthenticatorKeyAsync(user!), "totp-key");
+            user!.TwoFactorEnabled = true;
+            IdentityImporter.EnsureSucceeded(await users.UpdateAsync(user), "totp-enable");
+        }
+
+        string key;
+        await using (var scope = factory.Services.CreateAsyncScope())
+        {
+            var users = scope.ServiceProvider.GetRequiredService<UserManager<InOutUser>>();
+            var user = await users.FindByEmailAsync("totp@example.com");
+            key = (await users.GetAuthenticatorKeyAsync(user!))!;
+        }
+
+        var firstLogin = await ReadAsync(await client.PostAsJsonAsync("/api/v1/identity/login", new
+        {
+            email = "totp@example.com",
+            password = "password8"
+        }));
+        var verified = await ReadAsync(await client.PostAsJsonAsync("/api/v1/identity/mfa/verify", new
+        {
+            ticket = firstLogin.Ticket,
+            code = Totp.Create(key)
+        }));
+        Assert.Equal("signed_in", verified.Code);
+        var secondLogin = await ReadAsync(await client.PostAsJsonAsync("/api/v1/identity/login", new
+        {
+            email = "totp@example.com",
+            password = "password8"
+        }));
+        var replay = await client.PostAsJsonAsync("/api/v1/identity/mfa/verify", new
+        {
+            ticket = secondLogin.Ticket,
+            code = Totp.Create(key)
+        });
+        Assert.Equal(HttpStatusCode.BadRequest, replay.StatusCode);
+
+        var tokens = await TokenAsync(new Dictionary<string, string>
+        {
+            ["grant_type"] = "identity_ticket",
+            ["client_id"] = "inout-web",
+            ["client_secret"] = "dev-only-web-client-secret",
+            ["ticket"] = verified.Ticket!,
+            ["scope"] = "openid email profile offline_access"
+        });
+        var wrongUser = await client.PostAsJsonAsync("/api/v1/identity/sessions", new
+        {
+            userId = Guid.NewGuid(),
+            accessToken = tokens.AccessToken,
+            refreshToken = tokens.RefreshToken
+        });
+        Assert.Equal(HttpStatusCode.OK, wrongUser.StatusCode);
+        var session = JsonDocument.Parse(await wrongUser.Content.ReadAsStringAsync()).RootElement;
+        Assert.NotEqual(Guid.Empty.ToString(), session.GetProperty("user").GetProperty("id").GetString());
+        Assert.Equal(
+            "totp@example.com",
+            session.GetProperty("user").GetProperty("email").GetString());
+
+        await using (var scope = factory.Services.CreateAsyncScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<IdentityDbContext>();
+            var hash = BrowserSessionService.Hash(session.GetProperty("sessionId").GetString()!);
+            var row = await db.BrowserSessions.SingleAsync(item => item.SessionHash == hash);
+            row.AccessExpiresAt = DateTimeOffset.UtcNow.AddSeconds(-1);
+            await db.SaveChangesAsync();
+        }
+
+        var resolved = await client.PostAsJsonAsync("/api/v1/identity/sessions/resolve", new
+        {
+            sessionId = session.GetProperty("sessionId").GetString()
+        });
+        Assert.Equal(HttpStatusCode.OK, resolved.StatusCode);
+        var resolvedBody = JsonDocument.Parse(await resolved.Content.ReadAsStringAsync()).RootElement;
+        Assert.False(string.IsNullOrEmpty(resolvedBody.GetProperty("accessToken").GetString()));
+        Assert.NotEqual(tokens.AccessToken, resolvedBody.GetProperty("accessToken").GetString());
+
+        using var anonymous = factory.CreateClient();
+        Assert.Equal(
+            HttpStatusCode.MethodNotAllowed,
+            (await anonymous.GetAsync("/connect/logout")).StatusCode);
+    }
+
+    [Fact]
+    public void ImporterAbortsWhenIdentityResultFails()
+    {
+        var failed = IdentityResult.Failed(new IdentityError { Code = "Duplicate", Description = "exists" });
+        var exception = Assert.Throws<InvalidOperationException>(() =>
+            IdentityImporter.EnsureSucceeded(failed, "import-update"));
+        Assert.Contains("import-update", exception.Message, StringComparison.Ordinal);
+        Assert.Contains("Duplicate", exception.Message, StringComparison.Ordinal);
+        IdentityImporter.EnsureSucceeded(IdentityResult.Success, "import-update");
     }
 
     private string CodeFor(string email)

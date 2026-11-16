@@ -25,9 +25,12 @@ services:
       context: .
       dockerfile: backend/Dockerfile
     container_name: inout-migrator
-    entrypoint: ["dotnet", "InOut.Api.dll", "migrate"]
+    command: ["migrate"]
     environment:
+      ASPNETCORE_ENVIRONMENT: Development
       ConnectionStrings__InOutDirect: "Host=db;Port=5432;Database=inout;Username=postgres;Password=${INOUT_DIRECT_PASSWORD:-postgres}"
+      Database__AllowInsecureLocalTransport: "true"
+      Database__LocalTestHosts__0: db
     depends_on:
       db:
         condition: service_healthy
@@ -46,6 +49,8 @@ services:
       Auth__PublicOrigin: http://localhost:3000
       Auth__Email__Delivery: capture
       Database__PoolMode: session
+      Database__AllowInsecureLocalTransport: "true"
+      Database__LocalTestHosts__0: db
       Cors__AllowedOrigins__0: http://localhost:3000
       Cors__AllowedOrigins__1: http://localhost:8081
       Auth__MobileRedirectUris__0: inout://auth/callback

@@ -12,9 +12,10 @@ export function AuthCallbackScreen({
 }: {
   recovery?: boolean;
 }) {
-  const { code, error } = useLocalSearchParams<{
+  const { code, error, state } = useLocalSearchParams<{
     code?: string;
     error?: string;
+    state?: string;
   }>();
   const [notice, setNotice] = useState("Confirmando seu acesso…");
   useEffect(() => {
@@ -33,7 +34,15 @@ export function AuthCallbackScreen({
             await auth.exchangeRecoveryCode(code);
             return;
           }
-          await auth.exchangeCode(code);
+          await auth.exchangeCode(
+            code,
+            typeof state === "string" ? state : undefined,
+            `inout://auth/callback?code=${encodeURIComponent(code)}${
+              typeof state === "string"
+                ? `&state=${encodeURIComponent(state)}`
+                : ""
+            }`,
+          );
           const user = await auth.currentUser();
           if (!user?.emailConfirmed) throw new Error("confirmation");
         })(),
@@ -55,7 +64,7 @@ export function AuthCallbackScreen({
     return () => {
       active = false;
     };
-  }, [code, error, recovery]);
+  }, [code, error, recovery, state]);
   return (
     <SafeAreaView style={s.content}>
       <Text accessibilityRole="header" style={s.title}>

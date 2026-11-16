@@ -332,8 +332,12 @@ public sealed partial class EfLedgerStore
         await dbContext.SaveChangesAsync(cancellationToken);
         var historyList = await QueryHistoryAsync(
             householdId, 2, new LedgerHistoryFilter(TransactionId: transactionId), cancellationToken);
-        var historyItem = historyList.FirstOrDefault()
-            ?? throw new InvalidOperationException("Failed to retrieve updated transaction history item.");
+        if (historyList.Count == 0)
+        {
+            throw new InvalidOperationException("Failed to retrieve updated transaction history item.");
+        }
+
+        var historyItem = historyList[0];
         if (acquisition is not null)
         {
             idempotency.Complete(acquisition.Record, historyItem, (int)HttpStatusCode.OK,

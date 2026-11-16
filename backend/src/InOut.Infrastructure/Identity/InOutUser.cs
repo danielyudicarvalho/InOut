@@ -9,4 +9,6 @@ public sealed class InOutUser : IdentityUser<Guid>
     public DateTimeOffset? BannedUntil { get; set; }
 
     public bool MfaReenrollmentRequired { get; set; }
+
+    public long? LastTotpStep { get; set; }
 }

@@ -28,9 +28,21 @@ public static class IdentityEndpoints
         group.MapPost("/login", Login);
         group.MapPost("/mfa/start", MfaStart);
         group.MapPost("/mfa/confirm", MfaConfirm);
-        app.MapMethods("/connect/authorize", [HttpMethods.Get, HttpMethods.Post], Authorize);
-        app.MapPost("/connect/token", Token);
-        app.MapMethods("/connect/userinfo", [HttpMethods.Get, HttpMethods.Post], UserInfo);
+        group.MapPost("/mfa/verify", MfaVerify);
+        group.MapPost("/sessions", CreateSession);
+        group.MapPost("/sessions/pending", CreatePendingSession);
+        group.MapPost("/sessions/resolve", ResolveSession);
+        group.MapPost("/sessions/mfa", CompleteMfaSession);
+        group.MapPost("/sessions/rotate", RotateSession);
+        group.MapPost("/sessions/revoke", RevokeSession);
+        app.MapMethods("/connect/authorize", [HttpMethods.Get, HttpMethods.Post], Authorize)
+            .RequireRateLimiting("identity");
+        app.MapPost("/connect/token", Token).RequireRateLimiting("identity");
+        app.MapMethods("/connect/userinfo", [HttpMethods.Get, HttpMethods.Post], UserInfo)
+            .RequireRateLimiting("identity");
+        app.MapGet("/connect/logout", () => Results.StatusCode(StatusCodes.Status405MethodNotAllowed))
+            .RequireRateLimiting("identity");
+        app.MapPost("/connect/logout", EndSession).RequireRateLimiting("identity");
         app.MapAccountPages();
         return app;
     }
@@ -144,7 +156,7 @@ public static class IdentityEndpoints
             return Results.Unauthorized();
         }
 
-        return Result(await accounts.StartMfaReenrollmentAsync(body.Ticket, cancellationToken));
+        return Result(await accounts.StartMfaReenrollmentAsync(body.Ticket, body.Password, cancellationToken));
     }
 
     private static async Task<IResult> MfaConfirm(
@@ -159,6 +171,213 @@ public static class IdentityEndpoints
         }
 
         return Result(await accounts.ConfirmMfaReenrollmentAsync(body.Ticket, body.Code, cancellationToken));
+    }
+
+    private static async Task<IResult> MfaVerify(
+        HttpContext http,
+        IdentityCommand body,
+        IIdentityAccounts accounts,
+        CancellationToken cancellationToken)
+    {
+        if (!AuthorizeClient(http))
+        {
+            return Results.Unauthorized();
+        }
+
+        return Result(await accounts.VerifyMfaAsync(body.Ticket, body.Code, cancellationToken));
+    }
+
+    private static async Task<IResult> CreateSession(
+        HttpContext http,
+        SessionCommand body,
+        BrowserSessionService sessions,
+        CancellationToken cancellationToken)
+    {
+        if (!AuthorizeClient(http))
+        {
+            return Results.Unauthorized();
+        }
+
+        var created = await sessions.CreateAuthenticatedAsync(
+            body.AccessToken,
+            body.RefreshToken,
+            cancellationToken);
+        return created is null ? Results.BadRequest() : SessionResult(created);
+    }
+
+    private static async Task<IResult> CreatePendingSession(
+        HttpContext http,
+        SessionCommand body,
+        BrowserSessionService sessions,
+        CancellationToken cancellationToken)
+    {
+        if (!AuthorizeClient(http))
+        {
+            return Results.Unauthorized();
+        }
+
+        var created = await sessions.CreatePendingAsync(body.Ticket, body.Purpose, cancellationToken);
+        return created is null ? Results.BadRequest() : SessionResult(created);
+    }
+
+    private static async Task<IResult> ResolveSession(
+        HttpContext http,
+        SessionCommand body,
+        BrowserSessionService sessions,
+        IdentityTokenIssuer issuer,
+        UserManager<InOutUser> users,
+        CancellationToken cancellationToken)
+    {
+        if (!AuthorizeClient(http))
+        {
+            return Results.Unauthorized();
+        }
+
+        var current = await sessions.GetAsync(body.SessionId, cancellationToken);
+        if (current is null)
+        {
+            return Results.Json(new { code = "session_missing" }, statusCode: StatusCodes.Status401Unauthorized);
+        }
+
+        if (current.Purpose == BrowserSessionService.AuthenticatedPurpose &&
+            current.RefreshToken is not null &&
+            current.AccessExpiresAt is not null &&
+            current.AccessExpiresAt < TimeProvider.System.GetUtcNow().AddMinutes(1))
+        {
+            if (!await sessions.TryClaimRefreshAsync(body.SessionId, cancellationToken))
+            {
+                return SessionResult(current);
+            }
+
+            var user = await users.FindByIdAsync(current.User.Id.ToString());
+            if (user is null)
+            {
+                await sessions.RevokeAsync(body.SessionId, cancellationToken);
+                return Results.Json(new { code = "session_missing" }, statusCode: StatusCodes.Status401Unauthorized);
+            }
+
+            var minted = await issuer.RefreshAsync(current.RefreshToken, user, cancellationToken);
+            if (minted is null)
+            {
+                await sessions.RevokeAsync(body.SessionId, cancellationToken);
+                return Results.Json(new { code = "session_missing" }, statusCode: StatusCodes.Status401Unauthorized);
+            }
+
+            current = await sessions.CompleteRefreshAsync(
+                body.SessionId,
+                minted.Value.Access,
+                minted.Value.Refresh,
+                minted.Value.Expires,
+                cancellationToken);
+            if (current is null)
+            {
+                return Results.Json(new { code = "session_missing" }, statusCode: StatusCodes.Status401Unauthorized);
+            }
+        }
+
+        return SessionResult(current);
+    }
+
+    private static async Task<IResult> CompleteMfaSession(
+        HttpContext http,
+        SessionCommand body,
+        BrowserSessionService sessions,
+        CancellationToken cancellationToken)
+    {
+        if (!AuthorizeClient(http))
+        {
+            return Results.Unauthorized();
+        }
+
+        if (!await sessions.CsrfMatchesAsync(body.SessionId, body.Csrf, cancellationToken))
+        {
+            return Results.BadRequest();
+        }
+
+        var completed = await sessions.CompleteMfaAsync(
+            body.SessionId,
+            body.Code,
+            body.Password,
+            cancellationToken);
+        return completed is null ? Results.BadRequest() : SessionResult(completed);
+    }
+
+    private static async Task<IResult> RotateSession(
+        HttpContext http,
+        SessionCommand body,
+        BrowserSessionService sessions,
+        CancellationToken cancellationToken)
+    {
+        if (!AuthorizeClient(http))
+        {
+            return Results.Unauthorized();
+        }
+
+        if (!await sessions.CsrfMatchesAsync(body.SessionId, body.Csrf, cancellationToken))
+        {
+            return Results.BadRequest();
+        }
+
+        var rotated = await sessions.RotateAsync(body.SessionId, cancellationToken);
+        return rotated is null ? Results.BadRequest() : SessionResult(rotated);
+    }
+
+    private static async Task<IResult> RevokeSession(
+        HttpContext http,
+        SessionCommand body,
+        BrowserSessionService sessions,
+        CancellationToken cancellationToken)
+    {
+        if (!AuthorizeClient(http))
+        {
+            return Results.Unauthorized();
+        }
+
+        if (!string.IsNullOrEmpty(body.Csrf) &&
+            !await sessions.CsrfMatchesAsync(body.SessionId, body.Csrf, cancellationToken))
+        {
+            return Results.BadRequest();
+        }
+
+        await sessions.RevokeAsync(body.SessionId, cancellationToken);
+        return Results.Json(new { code = "signed_out" });
+    }
+
+    private static async Task<IResult> EndSession(HttpContext http, SignInManager<InOutUser> signIn, IIdentityAccounts accounts)
+    {
+        if (!HttpMethods.IsPost(http.Request.Method))
+        {
+            return Results.StatusCode(StatusCodes.Status405MethodNotAllowed);
+        }
+
+        var logoutAll = http.Request.HasFormContentType &&
+            string.Equals(
+                (await http.Request.ReadFormAsync(http.RequestAborted))["logout_all"].ToString(),
+                "1",
+                StringComparison.Ordinal);
+        var user = await signIn.UserManager.GetUserAsync(http.User);
+        if (user is not null && logoutAll)
+        {
+            await accounts.RevokeSessionsAsync(user.Id, http.RequestAborted);
+        }
+
+        await signIn.SignOutAsync();
+        var redirect = http.Request.Query["post_logout_redirect_uri"].ToString();
+        if (string.IsNullOrEmpty(redirect))
+        {
+            redirect = http.Request.HasFormContentType
+                ? (await http.Request.ReadFormAsync(http.RequestAborted))["post_logout_redirect_uri"].ToString()
+                : "";
+        }
+
+        if (Uri.TryCreate(redirect, UriKind.Absolute, out var uri) &&
+            uri.Scheme == "inout" &&
+            uri.Host == "auth")
+        {
+            return Results.Redirect(uri.ToString());
+        }
+
+        return Results.Redirect("/account/login");
     }
 
     private static async Task<IResult> Authorize(HttpContext http, UserManager<InOutUser> users)
@@ -207,7 +426,7 @@ public static class IdentityEndpoints
                 !string.Equals(stamp, user.SecurityStamp, StringComparison.Ordinal) ||
                 (user.BannedUntil is not null && user.BannedUntil > TimeProvider.System.GetUtcNow()))
             {
-                return Results.Forbid();
+                return RejectToken();
             }
 
             var granted = request.GetScopes();
@@ -222,12 +441,12 @@ public static class IdentityEndpoints
 
         if (request.GrantType != IdentityHosting.TicketGrant)
         {
-            return Results.Forbid();
+            return RejectToken();
         }
 
         if (!string.Equals(request.ClientId, IdentityHosting.WebClientId, StringComparison.Ordinal))
         {
-            return Results.Forbid();
+            return RejectToken();
         }
 
         var redeemed = await accounts.RedeemLoginTicketAsync(
@@ -235,7 +454,7 @@ public static class IdentityEndpoints
             http.RequestAborted);
         if (redeemed is null || redeemed.MfaReenrollmentRequired || !redeemed.EmailConfirmed)
         {
-            return Results.Forbid();
+            return RejectToken();
         }
 
         IEnumerable<string> scopes = request.GetScopes().Any()
@@ -268,6 +487,15 @@ public static class IdentityEndpoints
             ["email_verified"] = user.EmailConfirmed ? "true" : "false"
         });
     }
+
+    private static IResult RejectToken() =>
+        Results.Forbid(
+            properties: new AuthenticationProperties(new Dictionary<string, string?>
+            {
+                [OpenIddictServerAspNetCoreConstants.Properties.Error] = Errors.InvalidGrant,
+                [OpenIddictServerAspNetCoreConstants.Properties.ErrorDescription] = "The token request was rejected."
+            }),
+            authenticationSchemes: [OpenIddictServerAspNetCoreDefaults.AuthenticationScheme]);
 
     private static bool AuthorizeClient(HttpContext http)
     {
@@ -313,7 +541,9 @@ public static class IdentityEndpoints
             IdentityCodes.EmailNotConfirmed or
                 IdentityCodes.AccountUnavailable or
                 IdentityCodes.PasswordResetRequired or
-                IdentityCodes.MfaReenrollmentRequired => StatusCodes.Status403Forbidden,
+                IdentityCodes.MfaReenrollmentRequired or
+                IdentityCodes.MfaRequired or
+                IdentityCodes.MfaRecoveryRequired => StatusCodes.Status403Forbidden,
             _ => StatusCodes.Status200OK
         };
         return Results.Json(new
@@ -326,6 +556,19 @@ public static class IdentityEndpoints
             otpAuthUri = result.OtpAuthUri
         }, statusCode: status);
     }
+
+    private static IResult SessionResult(BrowserSessionIssue session) =>
+        Results.Json(new
+        {
+            sessionId = session.SessionId,
+            csrf = session.Csrf,
+            purpose = session.Purpose,
+            user = session.User,
+            expiresAt = session.ExpiresAt,
+            accessToken = session.AccessToken,
+            loginTicket = session.LoginTicket,
+            pendingTicket = session.PendingTicket
+        });
 }
 
 public sealed record IdentityCommand(
@@ -334,3 +577,14 @@ public sealed record IdentityCommand(
     string Name = "",
     string Code = "",
     string Ticket = "");
+
+public sealed record SessionCommand(
+    Guid? UserId = null,
+    string AccessToken = "",
+    string RefreshToken = "",
+    string Ticket = "",
+    string Purpose = "",
+    string SessionId = "",
+    string Code = "",
+    string Csrf = "",
+    string Password = "");

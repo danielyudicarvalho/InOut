@@ -16,6 +16,24 @@ export function createOpenIdAuthRepository(options: {
   now?: () => number;
 }): AuthRepository & { accessToken(): Promise<string | null> };
 
+export function readCallbackParams(
+  url: string | URL,
+  expectedRedirectUri: string,
+): { code: string; state: string; error: string };
+
+export function completeAuthorizationCallback(input: {
+  url: string;
+  expectedRedirectUri: string;
+  pending: {
+    verifier: string;
+    state: string;
+    redirectUri: string;
+    createdAt?: number;
+  };
+  now: () => number;
+  markUsed: (state: string) => Promise<boolean>;
+}): Promise<{ code: string; verifier: string; redirectUri: string }>;
+
 export function createOpenIdSession(repository: {
   accessToken(): Promise<string | null>;
   currentUser(): Promise<{ id: string } | null>;

@@ -1,37 +1,32 @@
 import { NextResponse } from "next/server";
 import {
+  guardMutation,
   identityCommand,
-  readSession,
-  verifySameOrigin,
-  writeSession,
+  pendingSession,
 } from "../../../../lib/auth/bff-server";
 
 export async function POST(request: Request) {
-  if (!verifySameOrigin(request)) {
-    return NextResponse.json({ code: "csrf_rejected" }, { status: 403 });
-  }
+  const rejected = await guardMutation(request);
+  if (rejected) return rejected;
   const body = (await request.json()) as { email?: string; code?: string };
-  const result = await identityCommand("/api/v1/identity/recovery/exchange", {
-    email: body.email ?? "",
-    code: body.code ?? "",
-  });
+  const result = await identityCommand(
+    "/api/v1/identity/recovery/exchange",
+    {
+      email: body.email ?? "",
+      code: body.code ?? "",
+    },
+    request,
+  );
   if (result.status !== 200 || !result.payload.ticket) {
     return NextResponse.json(
       { code: result.payload.code ?? "recovery_required" },
       { status: 400 },
     );
   }
-  const current = await readSession();
-  await writeSession(
-    {
-      access_token: current?.accessToken ?? "recovery",
-      refresh_token: current?.refreshToken ?? "recovery",
-      expires_in: current
-        ? Math.max(1, Math.floor((current.expiresAt - Date.now()) / 1000))
-        : 60,
-    },
-    current?.user ?? result.payload.user ?? null,
-    { ticket: result.payload.ticket, expiresAt: Date.now() + 15 * 60 * 1000 },
-  );
-  return NextResponse.json({ code: "signed_in" });
+  const purpose =
+    result.payload.code === "mfa_reenrollment_required"
+      ? "mfa-enroll"
+      : "recovery";
+  await pendingSession(request, result.payload.ticket, purpose);
+  return NextResponse.json({ code: result.payload.code ?? "signed_in" });
 }

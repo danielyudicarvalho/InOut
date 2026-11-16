@@ -1,68 +1,74 @@
 import {
-  createCipheriv,
-  createDecipheriv,
+  createHmac,
   createHash,
   randomBytes,
+  timingSafeEqual,
 } from "node:crypto";
 
-export type BffSession = {
-  accessToken: string;
-  refreshToken: string;
-  expiresAt: number;
-  csrf: string;
-  user: { id: string; email: string; emailConfirmed: boolean } | null;
-  recoveryTicket?: string;
-  recoveryExpiresAt?: number;
-};
+export function sessionCookieName(
+  env: NodeJS.ProcessEnv = process.env,
+): string {
+  return env.NODE_ENV === "production"
+    ? "__Host-inout_session"
+    : "inout_session";
+}
+
+export function csrfCookieName(env: NodeJS.ProcessEnv = process.env): string {
+  return env.NODE_ENV === "production" ? "__Host-inout_csrf" : "inout_csrf";
+}
+
+export function sessionKeys(env: NodeJS.ProcessEnv = process.env): Buffer[] {
+  const keys: Buffer[] = [];
+  if (env.BFF_SESSION_KEY) keys.push(decodeKey(env.BFF_SESSION_KEY));
+  else if (env.NODE_ENV === "production") {
+    throw new Error("BFF_SESSION_KEY is required in production.");
+  } else {
+    keys.push(createHash("sha256").update("dev-only-bff-session-key").digest());
+  }
+  if (env.BFF_SESSION_KEY_PREVIOUS) {
+    keys.push(decodeKey(env.BFF_SESSION_KEY_PREVIOUS));
+  }
+  return keys;
+}
 
 export function sessionKey(env: NodeJS.ProcessEnv = process.env): Buffer {
-  const raw = env.BFF_SESSION_KEY;
-  if (raw) {
-    const key = Buffer.from(raw, "base64");
-    if (key.length !== 32) {
-      throw new Error("BFF_SESSION_KEY must be 32 bytes encoded as base64.");
-    }
-    return key;
-  }
-  if (env.NODE_ENV === "production") {
-    throw new Error("BFF_SESSION_KEY is required in production.");
-  }
-  return createHash("sha256").update("dev-only-bff-session-key").digest();
+  return sessionKeys(env)[0];
 }
 
-export function seal(value: BffSession, key: Buffer): string {
-  const iv = randomBytes(12);
-  const cipher = createCipheriv("aes-256-gcm", key, iv);
-  const ciphertext = Buffer.concat([
-    cipher.update(JSON.stringify(value), "utf8"),
-    cipher.final(),
-  ]);
-  return [iv, cipher.getAuthTag(), ciphertext]
-    .map((part) => part.toString("base64url"))
-    .join(".");
+function decodeKey(raw: string): Buffer {
+  const key = Buffer.from(raw, "base64");
+  if (key.length !== 32) {
+    throw new Error("BFF_SESSION_KEY must be 32 bytes encoded as base64.");
+  }
+  return key;
 }
 
-export function open(value: string, key: Buffer): BffSession | null {
-  const [iv, tag, ciphertext] = value.split(".");
-  if (!iv || !tag || !ciphertext) return null;
-  try {
-    const decipher = createDecipheriv(
-      "aes-256-gcm",
-      key,
-      Buffer.from(iv, "base64url"),
+export function sealSessionId(sessionId: string, key: Buffer): string {
+  const mac = createHmac("sha256", key).update(sessionId).digest("base64url");
+  return `${sessionId}.${mac}`;
+}
+
+export function openSessionId(
+  value: string,
+  keys: Buffer[] = sessionKeys(),
+): string | null {
+  const dot = value.lastIndexOf(".");
+  if (dot <= 0) return null;
+  const sessionId = value.slice(0, dot);
+  const mac = value.slice(dot + 1);
+  const actual = Buffer.from(mac);
+  for (const key of keys) {
+    const expected = Buffer.from(
+      createHmac("sha256", key).update(sessionId).digest("base64url"),
     );
-    decipher.setAuthTag(Buffer.from(tag, "base64url"));
-    const json = Buffer.concat([
-      decipher.update(Buffer.from(ciphertext, "base64url")),
-      decipher.final(),
-    ]).toString("utf8");
-    const parsed = JSON.parse(json) as Partial<BffSession>;
-    if (!parsed.accessToken || !parsed.refreshToken || !parsed.csrf)
-      return null;
-    return parsed as BffSession;
-  } catch {
-    return null;
+    if (
+      actual.length === expected.length &&
+      timingSafeEqual(actual, expected)
+    ) {
+      return sessionId;
+    }
   }
+  return null;
 }
 
 export function newCsrf(): string {
@@ -87,5 +93,25 @@ export function verifySameOrigin(request: Request): boolean {
       return false;
     }
   }
+  if (!origin && secFetchSite !== "same-origin" && secFetchSite !== "none") {
+    return false;
+  }
   return true;
+}
+
+export function verifyCsrf(request: Request, expected: string | null): boolean {
+  if (!expected) return false;
+  const header =
+    request.headers.get("x-csrf-token") ??
+    request.headers.get("x-xsrf-token") ??
+    "";
+  const authorization = request.headers.get("authorization") ?? "";
+  const bearer = authorization.startsWith("Bearer ")
+    ? authorization.slice("Bearer ".length)
+    : "";
+  const provided = header || bearer;
+  if (!provided) return false;
+  const left = Buffer.from(provided);
+  const right = Buffer.from(expected);
+  return left.length === right.length && timingSafeEqual(left, right);
 }

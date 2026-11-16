@@ -16,6 +16,10 @@ public sealed class EmailChallenge
 
     public string CodeHash { get; set; } = "";
 
+    public string SecurityStamp { get; set; } = "";
+
+    public int FailedAttempts { get; set; }
+
     public DateTimeOffset ExpiresAt { get; set; }
 
     public DateTimeOffset CreatedAt { get; set; }
@@ -33,9 +37,55 @@ public sealed class LoginTicket
 
     public string TokenHash { get; set; } = "";
 
+    public string SecurityStamp { get; set; } = "";
+
+    public int FailedAttempts { get; set; }
+
     public DateTimeOffset ExpiresAt { get; set; }
 
     public DateTimeOffset? ConsumedAt { get; set; }
+}
+
+public sealed class AuthAttempt
+{
+    public string Key { get; set; } = "";
+
+    public long WindowStart { get; set; }
+
+    public int Count { get; set; }
+}
+
+public sealed class BrowserSession
+{
+    public Guid Id { get; set; }
+
+    public string SessionHash { get; set; } = "";
+
+    public Guid UserId { get; set; }
+
+    public string Purpose { get; set; } = "";
+
+    public string CsrfHash { get; set; } = "";
+
+    public string? AccessTokenProtected { get; set; }
+
+    public string? RefreshTokenProtected { get; set; }
+
+    public string? PendingTicketProtected { get; set; }
+
+    public DateTimeOffset CreatedAt { get; set; }
+
+    public DateTimeOffset ExpiresAt { get; set; }
+
+    public DateTimeOffset? AccessExpiresAt { get; set; }
+
+    public DateTimeOffset? RefreshClaimedAt { get; set; }
+
+    public DateTimeOffset? RevokedAt { get; set; }
+
+    public string? ReplacedByHash { get; set; }
+
+    public string SecurityStamp { get; set; } = "";
 }
 
 public sealed class IdentityImportBatch
@@ -59,6 +109,10 @@ public sealed class IdentityDbContext(DbContextOptions<IdentityDbContext> option
 
     public DbSet<LoginTicket> LoginTickets => Set<LoginTicket>();
 
+    public DbSet<AuthAttempt> AuthAttempts => Set<AuthAttempt>();
+
+    public DbSet<BrowserSession> BrowserSessions => Set<BrowserSession>();
+
     public DbSet<IdentityImportBatch> ImportBatches => Set<IdentityImportBatch>();
 
     protected override void OnModelCreating(ModelBuilder builder)
@@ -73,6 +127,7 @@ public sealed class IdentityDbContext(DbContextOptions<IdentityDbContext> option
         {
             entity.ToTable("users");
             entity.Property(user => user.DisplayName).HasMaxLength(100);
+            entity.Property(user => user.LastTotpStep);
         });
         builder.Entity<IdentityRole<Guid>>().ToTable("roles");
         builder.Entity<IdentityUserRole<Guid>>().ToTable("user_roles");
@@ -88,6 +143,7 @@ public sealed class IdentityDbContext(DbContextOptions<IdentityDbContext> option
             entity.HasKey(item => item.Id);
             entity.Property(item => item.Purpose).HasMaxLength(32).IsRequired();
             entity.Property(item => item.CodeHash).HasMaxLength(64).IsRequired();
+            entity.Property(item => item.SecurityStamp).HasMaxLength(128).IsRequired();
             UseInstant(entity.Property(item => item.CreatedAt));
             UseInstant(entity.Property(item => item.ExpiresAt));
             UseInstant(entity.Property(item => item.ConsumedAt));
@@ -99,9 +155,31 @@ public sealed class IdentityDbContext(DbContextOptions<IdentityDbContext> option
             entity.HasKey(item => item.Id);
             entity.Property(item => item.Purpose).HasMaxLength(32).IsRequired();
             entity.Property(item => item.TokenHash).HasMaxLength(64).IsRequired();
+            entity.Property(item => item.SecurityStamp).HasMaxLength(128).IsRequired();
             UseInstant(entity.Property(item => item.ExpiresAt));
             UseInstant(entity.Property(item => item.ConsumedAt));
             entity.HasIndex(item => item.TokenHash).IsUnique();
+        });
+        builder.Entity<AuthAttempt>(entity =>
+        {
+            entity.ToTable("auth_attempts");
+            entity.HasKey(item => new { item.Key, item.WindowStart });
+            entity.Property(item => item.Key).HasMaxLength(128).IsRequired();
+        });
+        builder.Entity<BrowserSession>(entity =>
+        {
+            entity.ToTable("browser_sessions");
+            entity.HasKey(item => item.Id);
+            entity.Property(item => item.SessionHash).HasMaxLength(64).IsRequired();
+            entity.Property(item => item.Purpose).HasMaxLength(32).IsRequired();
+            entity.Property(item => item.CsrfHash).HasMaxLength(64).IsRequired();
+            entity.Property(item => item.SecurityStamp).HasMaxLength(128).IsRequired();
+            entity.HasIndex(item => item.SessionHash).IsUnique();
+            UseInstant(entity.Property(item => item.CreatedAt));
+            UseInstant(entity.Property(item => item.ExpiresAt));
+            UseInstant(entity.Property(item => item.AccessExpiresAt));
+            UseInstant(entity.Property(item => item.RefreshClaimedAt));
+            UseInstant(entity.Property(item => item.RevokedAt));
         });
         builder.Entity<IdentityImportBatch>(entity =>
         {
