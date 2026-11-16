@@ -24,7 +24,11 @@
       }
     },
     {
-      "files": ["app/styles/**/*.css"],
+      "files": [
+        "app/styles/**/*.css",
+        "app/globals.css",
+        "components/**/*.css"
+      ],
       "rules": {
         "color-no-hex": [
           true,
@@ -48,6 +52,14 @@
               "/^0 /",
               "/ 0$/"
             ]
+          },
+          {
+            "severity": "warning"
+          }
+        ],
+        "declaration-property-value-disallowed-list": [
+          {
+            "outline": ["none", "0"]
           },
           {
             "severity": "warning"

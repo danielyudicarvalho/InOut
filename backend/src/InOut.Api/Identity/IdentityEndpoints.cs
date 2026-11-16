@@ -38,9 +38,11 @@ public static class IdentityEndpoints
         app.MapMethods("/connect/authorize", [HttpMethods.Get, HttpMethods.Post], Authorize)
             .RequireRateLimiting("identity");
         app.MapPost("/connect/token", Token).RequireRateLimiting("identity");
-        app.MapMethods("/connect/userinfo", [HttpMethods.Get, HttpMethods.Post], UserInfo);
-        app.MapMethods("/connect/logout", [HttpMethods.Get, HttpMethods.Post], EndSession)
+        app.MapMethods("/connect/userinfo", [HttpMethods.Get, HttpMethods.Post], UserInfo)
             .RequireRateLimiting("identity");
+        app.MapGet("/connect/logout", () => Results.StatusCode(StatusCodes.Status405MethodNotAllowed))
+            .RequireRateLimiting("identity");
+        app.MapPost("/connect/logout", EndSession).RequireRateLimiting("identity");
         app.MapAccountPages();
         return app;
     }
@@ -154,7 +156,7 @@ public static class IdentityEndpoints
             return Results.Unauthorized();
         }
 
-        return Result(await accounts.StartMfaReenrollmentAsync(body.Ticket, cancellationToken));
+        return Result(await accounts.StartMfaReenrollmentAsync(body.Ticket, body.Password, cancellationToken));
     }
 
     private static async Task<IResult> MfaConfirm(
@@ -191,13 +193,12 @@ public static class IdentityEndpoints
         BrowserSessionService sessions,
         CancellationToken cancellationToken)
     {
-        if (!AuthorizeClient(http) || body.UserId is null)
+        if (!AuthorizeClient(http))
         {
             return Results.Unauthorized();
         }
 
         var created = await sessions.CreateAuthenticatedAsync(
-            body.UserId.Value,
             body.AccessToken,
             body.RefreshToken,
             cancellationToken);
@@ -243,9 +244,15 @@ public static class IdentityEndpoints
             current.AccessExpiresAt is not null &&
             current.AccessExpiresAt < TimeProvider.System.GetUtcNow().AddMinutes(1))
         {
+            if (!await sessions.TryClaimRefreshAsync(body.SessionId, cancellationToken))
+            {
+                return SessionResult(current);
+            }
+
             var user = await users.FindByIdAsync(current.User.Id.ToString());
             if (user is null)
             {
+                await sessions.RevokeAsync(body.SessionId, cancellationToken);
                 return Results.Json(new { code = "session_missing" }, statusCode: StatusCodes.Status401Unauthorized);
             }
 
@@ -256,7 +263,7 @@ public static class IdentityEndpoints
                 return Results.Json(new { code = "session_missing" }, statusCode: StatusCodes.Status401Unauthorized);
             }
 
-            current = await sessions.ReplaceTokensAsync(
+            current = await sessions.CompleteRefreshAsync(
                 body.SessionId,
                 minted.Value.Access,
                 minted.Value.Refresh,
@@ -282,7 +289,16 @@ public static class IdentityEndpoints
             return Results.Unauthorized();
         }
 
-        var completed = await sessions.CompleteMfaAsync(body.SessionId, body.Code, cancellationToken);
+        if (!await sessions.CsrfMatchesAsync(body.SessionId, body.Csrf, cancellationToken))
+        {
+            return Results.BadRequest();
+        }
+
+        var completed = await sessions.CompleteMfaAsync(
+            body.SessionId,
+            body.Code,
+            body.Password,
+            cancellationToken);
         return completed is null ? Results.BadRequest() : SessionResult(completed);
     }
 
@@ -295,6 +311,11 @@ public static class IdentityEndpoints
         if (!AuthorizeClient(http))
         {
             return Results.Unauthorized();
+        }
+
+        if (!await sessions.CsrfMatchesAsync(body.SessionId, body.Csrf, cancellationToken))
+        {
+            return Results.BadRequest();
         }
 
         var rotated = await sessions.RotateAsync(body.SessionId, cancellationToken);
@@ -312,14 +333,30 @@ public static class IdentityEndpoints
             return Results.Unauthorized();
         }
 
+        if (!string.IsNullOrEmpty(body.Csrf) &&
+            !await sessions.CsrfMatchesAsync(body.SessionId, body.Csrf, cancellationToken))
+        {
+            return Results.BadRequest();
+        }
+
         await sessions.RevokeAsync(body.SessionId, cancellationToken);
         return Results.Json(new { code = "signed_out" });
     }
 
     private static async Task<IResult> EndSession(HttpContext http, SignInManager<InOutUser> signIn, IIdentityAccounts accounts)
     {
+        if (!HttpMethods.IsPost(http.Request.Method))
+        {
+            return Results.StatusCode(StatusCodes.Status405MethodNotAllowed);
+        }
+
+        var logoutAll = http.Request.HasFormContentType &&
+            string.Equals(
+                (await http.Request.ReadFormAsync(http.RequestAborted))["logout_all"].ToString(),
+                "1",
+                StringComparison.Ordinal);
         var user = await signIn.UserManager.GetUserAsync(http.User);
-        if (user is not null)
+        if (user is not null && logoutAll)
         {
             await accounts.RevokeSessionsAsync(user.Id, http.RequestAborted);
         }
@@ -548,4 +585,6 @@ public sealed record SessionCommand(
     string Ticket = "",
     string Purpose = "",
     string SessionId = "",
-    string Code = "");
+    string Code = "",
+    string Csrf = "",
+    string Password = "");

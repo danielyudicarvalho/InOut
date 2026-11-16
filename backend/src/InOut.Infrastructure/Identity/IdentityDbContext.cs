@@ -127,6 +127,7 @@ public sealed class IdentityDbContext(DbContextOptions<IdentityDbContext> option
         {
             entity.ToTable("users");
             entity.Property(user => user.DisplayName).HasMaxLength(100);
+            entity.Property(user => user.LastTotpStep);
         });
         builder.Entity<IdentityRole<Guid>>().ToTable("roles");
         builder.Entity<IdentityUserRole<Guid>>().ToTable("user_roles");

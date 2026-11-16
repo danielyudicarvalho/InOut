@@ -1,7 +1,10 @@
 using System.Security.Cryptography;
 using System.Text;
+using InOut.Application.Identity;
 using InOut.Infrastructure.Identity;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
 using Testcontainers.PostgreSql;
 using Xunit;
@@ -102,21 +105,57 @@ public sealed class IdentityPostgresTests : IAsyncLifetime
     }
 
     [DockerFact]
+    public async Task ParallelServiceRedeemLoginTicketConsumesOnce()
+    {
+        var userId = Guid.NewGuid();
+        const string ticket = "service-shared-ticket";
+        var hash = IdentityAccountService.TicketHash(IdentityAccountService.LoginPurpose, ticket);
+        await using (var db = CreateDb())
+        {
+            db.Users.Add(new InOutUser
+            {
+                Id = userId,
+                UserName = "race@example.com",
+                NormalizedUserName = "RACE@EXAMPLE.COM",
+                Email = "race@example.com",
+                NormalizedEmail = "RACE@EXAMPLE.COM",
+                SecurityStamp = "stamp",
+                EmailConfirmed = true
+            });
+            db.LoginTickets.Add(new LoginTicket
+            {
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                Purpose = IdentityAccountService.LoginPurpose,
+                TokenHash = hash,
+                SecurityStamp = "stamp",
+                ExpiresAt = DateTimeOffset.UtcNow.AddMinutes(2)
+            });
+            await db.SaveChangesAsync();
+        }
+
+        async Task<bool> RedeemAsync()
+        {
+            await using var db = CreateDb();
+            var accounts = CreateAccounts(db);
+            return await accounts.TryRedeemLoginTicketAsync(ticket, CancellationToken.None);
+        }
+
+        var results = await Task.WhenAll(RedeemAsync(), RedeemAsync(), RedeemAsync());
+        Assert.Equal(1, results.Count(item => item));
+        Assert.Equal(2, results.Count(item => !item));
+    }
+
+    [DockerFact]
     public async Task AuthAttemptBudgetIsSharedAcrossConnections()
     {
-        var options = new DbContextOptionsBuilder<IdentityDbContext>()
-            .UseNpgsql(connectionString, npgsql => npgsql.MigrationsHistoryTable("__ef_migrations", "identity"))
-            .Options;
-        await using var left = new IdentityDbContext(options);
-        await using var right = new IdentityDbContext(options);
         var clock = TimeProvider.System;
-        var first = new AuthAttemptBudget(left, clock);
-        var second = new AuthAttemptBudget(right, clock);
         var key = "ip:203.0.113.9";
         var allowed = 0;
-        var tasks = Enumerable.Range(0, AuthAttemptBudget.NetworkLimit + 4).Select(async index =>
+        var tasks = Enumerable.Range(0, AuthAttemptBudget.NetworkLimit + 4).Select(async _ =>
         {
-            var budget = index % 2 == 0 ? first : second;
+            await using var db = CreateDb();
+            var budget = new AuthAttemptBudget(db, clock);
             if (await budget.TryAsync(key, AuthAttemptBudget.NetworkLimit, AuthAttemptBudget.NetworkWindow, CancellationToken.None))
             {
                 Interlocked.Increment(ref allowed);
@@ -130,4 +169,27 @@ public sealed class IdentityPostgresTests : IAsyncLifetime
         new(new DbContextOptionsBuilder<IdentityDbContext>()
             .UseNpgsql(connectionString, npgsql => npgsql.MigrationsHistoryTable("__ef_migrations", "identity"))
             .Options);
+
+    private static IdentityAccountService CreateAccounts(IdentityDbContext db)
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddSingleton(TimeProvider.System);
+        services.AddSingleton(db);
+        services.AddScoped(_ => db);
+        services.AddIdentityCore<InOutUser>()
+            .AddEntityFrameworkStores<IdentityDbContext>()
+            .AddDefaultTokenProviders();
+        services.AddOpenIddict()
+            .AddCore(options => options.UseEntityFrameworkCore().UseDbContext<IdentityDbContext>());
+        services.AddSingleton<IIdentityMail, NoopMail>();
+        services.AddScoped<AuthAttemptBudget>();
+        services.AddScoped<IdentityAccountService>();
+        return services.BuildServiceProvider().GetRequiredService<IdentityAccountService>();
+    }
+
+    private sealed class NoopMail : IIdentityMail
+    {
+        public Task SendAsync(IdentityMail message, CancellationToken cancellationToken) => Task.CompletedTask;
+    }
 }

@@ -10,7 +10,7 @@ import {
 export async function POST(request: Request) {
   const rejected = await guardMutation(request, true);
   if (rejected) return rejected;
-  const session = await resolveSession();
+  const session = await resolveSession(request);
   if (
     (session?.purpose !== "recovery" && session?.purpose !== "mfa-enroll") ||
     !session.pendingTicket
@@ -32,12 +32,12 @@ export async function POST(request: Request) {
       { status: result.status },
     );
   }
-  await revokeStoredSession();
+  await revokeStoredSession(request);
   if (
     result.payload.code === "mfa_reenrollment_required" &&
     result.payload.ticket
   ) {
-    await pendingSession(result.payload.ticket, "mfa-enroll");
+    await pendingSession(request, result.payload.ticket, "mfa-enroll");
     return NextResponse.json({ code: "mfa_reenrollment_required" });
   }
   return NextResponse.json({ code: "signed_in" });

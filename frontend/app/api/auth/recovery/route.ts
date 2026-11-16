@@ -27,6 +27,6 @@ export async function POST(request: Request) {
     result.payload.code === "mfa_reenrollment_required"
       ? "mfa-enroll"
       : "recovery";
-  await pendingSession(result.payload.ticket, purpose);
+  await pendingSession(request, result.payload.ticket, purpose);
   return NextResponse.json({ code: result.payload.code ?? "signed_in" });
 }

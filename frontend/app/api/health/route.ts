@@ -1,9 +1,14 @@
 import { NextResponse } from "next/server";
+import { healthStatus } from "../../../lib/auth/health-status";
 
 export async function GET() {
   const api = process.env.API_BASE_URL?.replace(/\/$/, "");
-  if (!api) {
-    return NextResponse.json({ status: "ready", api: "unconfigured" });
+  const missing = healthStatus(api);
+  if (missing.status === "not-ready") {
+    return NextResponse.json(
+      { status: "not-ready", api: "unconfigured" },
+      { status: 503 },
+    );
   }
   try {
     const response = await fetch(`${api}/health/live`, {

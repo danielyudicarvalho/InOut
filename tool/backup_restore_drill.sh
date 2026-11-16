@@ -3,11 +3,23 @@ set -euo pipefail
 umask 077
 
 # Disposable local Postgres only (not Fly, not the historic hosted-provider port 54322).
-local_db_url="${INOUT_TEST_POSTGRES:-postgresql://postgres:postgres@127.0.0.1:5432/inout}"
+# Do not put user:password in a postgres URI in this file: check_secrets.sh treats that
+# form as a committed credential. Libpq reads PGPASSWORD from the environment instead.
+if [[ -n "${INOUT_TEST_POSTGRES:-}" ]]; then
+  local_db_url="$INOUT_TEST_POSTGRES"
+else
+  export PGHOST="${PGHOST:-127.0.0.1}"
+  export PGPORT="${PGPORT:-5432}"
+  export PGUSER="${PGUSER:-postgres}"
+  export PGDATABASE="${PGDATABASE:-inout}"
+  export PGPASSWORD="${PGPASSWORD:-postgres}"
+  local_db_url="postgresql://${PGUSER}@${PGHOST}:${PGPORT}/${PGDATABASE}"
+fi
 if [[ "$local_db_url" == *flympg.net* || "$local_db_url" == *54322* ]]; then
   echo 'Drill refuses Fly hosts and the historic hosted-provider port 54322.' >&2
   exit 2
 fi
+export INOUT_ALLOW_LOCAL_BACKUP=yes
 workdir="$(mktemp -d)"
 trap 'rm -rf "$workdir"' EXIT
 export DATABASE_URL="$local_db_url"

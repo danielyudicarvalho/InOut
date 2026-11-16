@@ -3,15 +3,14 @@ set -euo pipefail
 umask 077
 
 # Restore into an empty isolated database as a non-superuser owner of public/identity.
-# Never against a live Fly cluster. Requires schema create rights, not SUPERUSER.
+# Never against a live Fly cluster. Production backup/restore path is pending Daniel.
+# shellcheck source=refuse_fly_database_url.sh
+source "$(dirname "${BASH_SOURCE[0]}")/refuse_fly_database_url.sh"
 if [[ $# -ne 1 || -z "${RESTORE_DATABASE_URL:-}" || -z "${BACKUP_PASSPHRASE:-}" || "${CONFIRM_ISOLATED_TARGET:-}" != yes ]]; then
   echo 'Usage: RESTORE_DATABASE_URL=... BACKUP_PASSPHRASE=... CONFIRM_ISOLATED_TARGET=yes restore_database.sh BACKUP.gpg' >&2
   exit 2
 fi
-if [[ "$RESTORE_DATABASE_URL" == *flympg.net* || "$RESTORE_DATABASE_URL" == *fly.dev* ]]; then
-  echo 'Refusing to restore onto a Fly hostname from this script.' >&2
-  exit 2
-fi
+refuse_fly_database_url "$RESTORE_DATABASE_URL" RESTORE_DATABASE_URL || exit 2
 
 workdir="$(mktemp -d)"
 trap 'rm -rf "$workdir"' EXIT

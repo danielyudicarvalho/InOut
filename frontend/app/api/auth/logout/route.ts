@@ -7,6 +7,6 @@ import {
 export async function POST(request: Request) {
   const rejected = await guardMutation(request, true);
   if (rejected) return rejected;
-  await revokeStoredSession();
+  await revokeStoredSession(request);
   return NextResponse.json({ code: "signed_out" });
 }

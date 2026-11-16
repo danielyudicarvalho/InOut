@@ -57,6 +57,11 @@ public interface IIdentityAccounts
 
     Task<IdentityCommandResult> StartMfaReenrollmentAsync(
         string ticket,
+        string password,
+        CancellationToken cancellationToken);
+
+    Task<IdentityCommandResult> ReadMfaEnrollmentAsync(
+        string ticket,
         CancellationToken cancellationToken);
 
     Task<IdentityCommandResult> ConfirmMfaReenrollmentAsync(

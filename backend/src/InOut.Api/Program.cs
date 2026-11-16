@@ -49,8 +49,14 @@ builder.Services.AddHealthChecks()
 builder.Services.AddInOutIdentity(builder.Configuration, builder.Environment);
 builder.Services.AddAntiforgery(options =>
 {
-    options.Cookie.Name = "inout_antiforgery";
+    options.Cookie.Name = builder.Environment.IsProduction()
+        ? "__Host-inout_antiforgery"
+        : "inout_antiforgery";
     options.Cookie.HttpOnly = true;
+    options.Cookie.Path = "/";
+    options.Cookie.SecurePolicy = builder.Environment.IsProduction()
+        ? CookieSecurePolicy.Always
+        : CookieSecurePolicy.SameAsRequest;
     options.Cookie.SameSite = SameSiteMode.Lax;
     options.HeaderName = "X-CSRF-TOKEN";
 });

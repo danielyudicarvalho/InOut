@@ -35,17 +35,28 @@ public sealed class BrowserSessionService(
     private readonly IDataProtector protector = protection.CreateProtector("InOut.BrowserSession.v1");
 
     public async Task<BrowserSessionIssue?> CreateAuthenticatedAsync(
-        Guid userId,
         string accessToken,
         string refreshToken,
         CancellationToken cancellationToken)
     {
+        var access = await tokens.FindByReferenceIdAsync(accessToken, cancellationToken);
+        var refresh = await tokens.FindByReferenceIdAsync(refreshToken, cancellationToken);
+        var subject = access is null ? null : await tokens.GetSubjectAsync(access, cancellationToken);
+        var refreshSubject = refresh is null ? null : await tokens.GetSubjectAsync(refresh, cancellationToken);
+        if (string.IsNullOrEmpty(subject) ||
+            !string.Equals(subject, refreshSubject, StringComparison.Ordinal) ||
+            !Guid.TryParse(subject, out var userId))
+        {
+            return null;
+        }
+
         var user = await users.FindByIdAsync(userId.ToString());
         if (user is null)
         {
             return null;
         }
 
+        await RevokeActiveSessionsAsync(userId, cancellationToken);
         return await CreateAsync(user, AuthenticatedPurpose, pendingTicket: null, accessToken, refreshToken, cancellationToken);
     }
 
@@ -93,6 +104,7 @@ public sealed class BrowserSessionService(
     public async Task<BrowserSessionIssue?> CompleteMfaAsync(
         string sessionId,
         string code,
+        string password,
         CancellationToken cancellationToken)
     {
         var row = await FindAsync(sessionId, cancellationToken);
@@ -102,9 +114,21 @@ public sealed class BrowserSessionService(
         }
 
         var ticket = protector.Unprotect(row.PendingTicketProtected);
-        var result = row.Purpose == MfaPurpose
-            ? await accounts.VerifyMfaAsync(ticket, code, cancellationToken)
-            : await accounts.ConfirmMfaReenrollmentAsync(ticket, code, cancellationToken);
+        IdentityCommandResult result;
+        if (row.Purpose == MfaPurpose)
+        {
+            result = await accounts.VerifyMfaAsync(ticket, code, cancellationToken);
+        }
+        else
+        {
+            var started = await accounts.StartMfaReenrollmentAsync(ticket, password, cancellationToken);
+            if (!started.Succeeded)
+            {
+                return null;
+            }
+
+            result = await accounts.ConfirmMfaReenrollmentAsync(ticket, code, cancellationToken);
+        }
         if (!result.Succeeded || result.Ticket is null || result.User is null)
         {
             return null;
@@ -201,12 +225,7 @@ public sealed class BrowserSessionService(
             Unprotect(row.RefreshTokenProtected));
     }
 
-    public async Task<BrowserSessionIssue?> ReplaceTokensAsync(
-        string sessionId,
-        string accessToken,
-        string refreshToken,
-        DateTimeOffset accessExpiresAt,
-        CancellationToken cancellationToken)
+    public async Task<bool> TryClaimRefreshAsync(string sessionId, CancellationToken cancellationToken)
     {
         var now = clock.GetUtcNow();
         var hash = Hash(sessionId);
@@ -218,11 +237,16 @@ public sealed class BrowserSessionService(
             .ExecuteUpdateAsync(
                 updates => updates.SetProperty(item => item.RefreshClaimedAt, now),
                 cancellationToken);
-        if (claimed != 1)
-        {
-            return await GetAsync(sessionId, cancellationToken);
-        }
+        return claimed == 1;
+    }
 
+    public async Task<BrowserSessionIssue?> CompleteRefreshAsync(
+        string sessionId,
+        string accessToken,
+        string refreshToken,
+        DateTimeOffset accessExpiresAt,
+        CancellationToken cancellationToken)
+    {
         var row = await FindAsync(sessionId, cancellationToken);
         if (row is null)
         {
@@ -276,6 +300,23 @@ public sealed class BrowserSessionService(
         row.RefreshTokenProtected = null;
         row.PendingTicketProtected = null;
         await db.SaveChangesAsync(cancellationToken);
+    }
+
+    private async Task RevokeActiveSessionsAsync(Guid userId, CancellationToken cancellationToken)
+    {
+        var now = clock.GetUtcNow();
+        await db.BrowserSessions
+            .Where(item => item.UserId == userId && item.RevokedAt == null)
+            .ExecuteUpdateAsync(
+                updates => updates.SetProperty(item => item.RevokedAt, now),
+                cancellationToken);
+        await db.LoginTickets
+            .Where(item => item.UserId == userId &&
+                           item.Purpose == IdentityAccountService.LoginPurpose &&
+                           item.ConsumedAt == null)
+            .ExecuteUpdateAsync(
+                updates => updates.SetProperty(item => item.ConsumedAt, now),
+                cancellationToken);
     }
 
     private async Task<BrowserSessionIssue> CreateAsync(

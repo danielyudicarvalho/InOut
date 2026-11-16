@@ -46,6 +46,7 @@ public sealed class AuthAttemptBudget(IdentityDbContext db, TimeProvider clock)
             AddParameter(command, "key", key);
             AddParameter(command, "window", windowStart);
             var scalar = await command.ExecuteScalarAsync(cancellationToken);
+            await PruneAsync(cancellationToken);
             return Convert.ToInt32(scalar, System.Globalization.CultureInfo.InvariantCulture) <= limit;
         }
 
@@ -54,12 +55,22 @@ public sealed class AuthAttemptBudget(IdentityDbContext db, TimeProvider clock)
         {
             db.AuthAttempts.Add(new AuthAttempt { Key = key, WindowStart = windowStart, Count = 1 });
             await db.SaveChangesAsync(cancellationToken);
+            await PruneAsync(cancellationToken);
             return limit >= 1;
         }
 
         existing.Count++;
         await db.SaveChangesAsync(cancellationToken);
+        await PruneAsync(cancellationToken);
         return existing.Count <= limit;
+    }
+
+    public Task PruneAsync(CancellationToken cancellationToken)
+    {
+        var cutoffWindow = (clock.GetUtcNow().ToUnixTimeSeconds() / (long)AccountWindow.TotalSeconds) - 8;
+        return db.AuthAttempts
+            .Where(item => item.WindowStart < cutoffWindow)
+            .ExecuteDeleteAsync(cancellationToken);
     }
 
     private static void AddParameter(DbCommand command, string name, object value)

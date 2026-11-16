@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { readCsrf, resolveSession } from "../../../../lib/auth/bff-server";
 
-export async function GET() {
-  const session = await resolveSession();
+export async function GET(request: Request) {
+  const session = await resolveSession(request);
   const csrf = await readCsrf();
   if (!session || session.purpose !== "authenticated") {
     return NextResponse.json(

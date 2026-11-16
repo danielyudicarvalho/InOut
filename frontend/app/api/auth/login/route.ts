@@ -20,7 +20,7 @@ export async function POST(request: Request) {
     request,
   );
   if (result.payload.code === "mfa_required" && result.payload.ticket) {
-    await pendingSession(result.payload.ticket, "mfa");
+    await pendingSession(request, result.payload.ticket, "mfa");
     return NextResponse.json({ code: "mfa_required" }, { status: 403 });
   }
   if (result.payload.code === "mfa_recovery_required") {
@@ -30,7 +30,11 @@ export async function POST(request: Request) {
     );
   }
   if (result.payload.ticket) {
-    await sessionFromTicket(result.payload.ticket, result.payload.user ?? null);
+    await sessionFromTicket(
+      request,
+      result.payload.ticket,
+      result.payload.user ?? null,
+    );
   }
   return commandResponse(result.status, result.payload);
 }

@@ -3,6 +3,7 @@ using System.Text;
 using InOut.Infrastructure.Identity;
 using InOut.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
 
 namespace InOut.Api.Identity;
@@ -39,6 +40,11 @@ public static class SchemaMigrator
         files.Add(Path.Combine(root, "db", "fly", "9010_runtime_grants.sql"));
         await using var connection = new NpgsqlConnection(builder.ConnectionString);
         await connection.OpenAsync();
+        await using (var timeout = new NpgsqlCommand("set lock_timeout = '15s'", connection))
+        {
+            await timeout.ExecuteNonQueryAsync();
+        }
+
         await using var advisory = new NpgsqlCommand("select pg_advisory_lock(88112010)", connection);
         await advisory.ExecuteScalarAsync();
         try
@@ -112,6 +118,32 @@ public static class SchemaMigrator
                 record.Parameters.AddWithValue(hash);
                 await record.ExecuteNonQueryAsync();
                 await transaction.CommitAsync();
+            }
+
+            await using (var prune = new NpgsqlCommand(
+                """
+                delete from identity.auth_attempts
+                where window_start < (extract(epoch from now())::bigint / 900) - 8
+                """,
+                connection))
+            {
+                await prune.ExecuteNonQueryAsync();
+            }
+
+            var services = new ServiceCollection();
+            services.AddLogging();
+            services.AddDbContext<IdentityDbContext>(options =>
+                options.UseNpgsql(connection, npgsql =>
+                    npgsql.MigrationsHistoryTable("__ef_migrations", "identity")));
+            services.AddOpenIddict()
+                .AddCore(options => options.UseEntityFrameworkCore().UseDbContext<IdentityDbContext>());
+            await using (var provider = services.BuildServiceProvider())
+            await using (var scope = provider.CreateAsyncScope())
+            {
+                await IdentityHosting.SyncClientsAsync(
+                    scope.ServiceProvider,
+                    configuration,
+                    production);
             }
 
             _ = args;

@@ -1,11 +1,22 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  csrfCookieName,
   openSessionId,
   sealSessionId,
+  sessionCookieName,
   sessionKey,
   verifySameOrigin,
 } from "../lib/auth/session-cookie.ts";
+
+test("production session cookies use the __Host- prefix", () => {
+  assert.equal(
+    sessionCookieName({ NODE_ENV: "production" }),
+    "__Host-inout_session",
+  );
+  assert.equal(csrfCookieName({ NODE_ENV: "production" }), "__Host-inout_csrf");
+  assert.equal(sessionCookieName({ NODE_ENV: "test" }), "inout_session");
+});
 
 test("production refuses an ephemeral session key and tampering fails closed", () => {
   assert.throws(() => sessionKey({ NODE_ENV: "production" }));

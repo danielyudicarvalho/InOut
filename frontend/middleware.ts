@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { sessionCookieName } from "./lib/auth/session-cookie";
 import { safeNextPath } from "./lib/auth/safe-next";
 
 const PROTECTED_PREFIXES = [
@@ -35,7 +36,7 @@ function isAnonymousOnlyPath(pathname: string): boolean {
 
 export function middleware(req: NextRequest) {
   const { pathname, search } = req.nextUrl;
-  const isAuthenticated = Boolean(req.cookies.get("inout_session")?.value);
+  const isAuthenticated = Boolean(req.cookies.get(sessionCookieName())?.value);
 
   if (isProtectedPath(pathname)) {
     if (!isAuthenticated) {

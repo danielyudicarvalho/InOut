@@ -29,5 +29,6 @@ public sealed class IdentityIpBudgetMiddleware(RequestDelegate next)
         path.StartsWith("/account", StringComparison.OrdinalIgnoreCase) ||
         path.StartsWith("/connect/token", StringComparison.OrdinalIgnoreCase) ||
         path.StartsWith("/connect/authorize", StringComparison.OrdinalIgnoreCase) ||
+        path.StartsWith("/connect/userinfo", StringComparison.OrdinalIgnoreCase) ||
         path.StartsWith("/connect/logout", StringComparison.OrdinalIgnoreCase);
 }

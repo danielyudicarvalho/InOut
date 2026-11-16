@@ -18,7 +18,11 @@ export async function POST(request: Request) {
     request,
   );
   if (result.payload.ticket) {
-    await sessionFromTicket(result.payload.ticket, result.payload.user ?? null);
+    await sessionFromTicket(
+      request,
+      result.payload.ticket,
+      result.payload.user ?? null,
+    );
   }
   return commandResponse(result.status, result.payload);
 }

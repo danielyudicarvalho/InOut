@@ -41,15 +41,19 @@ public static class AccountPages
         string mfaFields;
         if (path == "/account/mfa" && !string.IsNullOrEmpty(http.Request.Cookies["inout_mfa_enroll"]))
         {
-            var started = await accounts.StartMfaReenrollmentAsync(
+            var started = await accounts.ReadMfaEnrollmentAsync(
                 http.Request.Cookies["inout_mfa_enroll"]!,
                 cancellationToken);
             var secret = WebUtility.HtmlEncode(started.AuthenticatorKey ?? "");
+            var passwordField = string.IsNullOrEmpty(started.AuthenticatorKey)
+                ? """<label>Senha atual<input name="password" type="password" required></label>"""
+                : "";
             mfaFields = $"""
                 <p>Cadastre este autenticador novo. O fator importado não é revelado.</p>
                 <p><code>{secret}</code></p>
                 <input type="hidden" name="returnUrl" value="{WebUtility.HtmlEncode(returnUrl)}">
-                <label>Código do autenticador<input name="code" inputmode="numeric" required autocomplete="one-time-code"></label>
+                {passwordField}
+                <label>Código do autenticador<input name="code" inputmode="numeric" autocomplete="one-time-code"></label>
                 """;
         }
         else
@@ -71,8 +75,9 @@ public static class AccountPages
                 <label>E-mail<input name="email" type="email" value="{WebUtility.HtmlEncode(query["email"])}" required></label>
                 <label>Código<input name="code" inputmode="numeric" required></label>
                 """),
-            "/account/forgot" => Fields("Esqueci a senha", path, token.RequestToken!, """
+            "/account/forgot" => Fields("Esqueci a senha", path, token.RequestToken!, $"""
                 <p>A reposição do autenticador exige este e-mail. A senha sozinha não substitui um fator importado.</p>
+                <input type="hidden" name="returnUrl" value="{WebUtility.HtmlEncode(returnUrl)}">
                 <label>E-mail<input name="email" type="email" required></label>
                 """),
             "/account/reset" => Fields("Nova senha", path, token.RequestToken!, $"""
@@ -96,7 +101,8 @@ public static class AccountPages
         var postLogout = LocalPostLogout(http.Request.Query["post_logout_redirect_uri"]);
         var body = Fields("Sair", "/account/logout", token.RequestToken!, $"""
             <input type="hidden" name="post_logout_redirect_uri" value="{WebUtility.HtmlEncode(postLogout)}">
-            <p>Encerrar a sessão neste dispositivo e no servidor de contas.</p>
+            <p>Encerrar a sessão neste dispositivo. Marque para sair de todos os aparelhos.</p>
+            <label><input type="checkbox" name="logout_all" value="1"> Encerrar todas as sessões</label>
             """);
         return Results.Content(Page(body), "text/html; charset=utf-8");
     }
@@ -114,7 +120,7 @@ public static class AccountPages
         var result = await accounts.LoginAsync(form["email"].ToString(), form["password"].ToString(), cancellationToken);
         if (result.Code == IdentityCodes.MfaRecoveryRequired)
         {
-            return Results.Redirect("/account/forgot?mfa=1");
+            return Results.Redirect("/account/forgot?mfa=1&returnUrl=" + Uri.EscapeDataString(returnUrl));
         }
 
         if (result.Code == IdentityCodes.MfaRequired)
@@ -181,8 +187,11 @@ public static class AccountPages
     {
         await antiforgery.ValidateRequestAsync(http);
         var form = await http.Request.ReadFormAsync(cancellationToken);
+        var returnUrl = LocalReturn(form["returnUrl"].ToString());
         await accounts.RequestPasswordResetAsync(form["email"].ToString(), cancellationToken);
-        return Results.Redirect("/account/reset?sent=1&email=" + Uri.EscapeDataString(form["email"].ToString()));
+        return Results.Redirect(
+            "/account/reset?sent=1&email=" + Uri.EscapeDataString(form["email"].ToString())
+            + "&returnUrl=" + Uri.EscapeDataString(returnUrl));
     }
 
     private static async Task<IResult> Reset(
@@ -193,13 +202,14 @@ public static class AccountPages
     {
         await antiforgery.ValidateRequestAsync(http);
         var form = await http.Request.ReadFormAsync(cancellationToken);
+        var returnUrl = LocalReturn(form["returnUrl"].ToString());
         var exchange = await accounts.ExchangeRecoveryCodeAsync(
             form["email"].ToString(),
             form["code"].ToString(),
             cancellationToken);
         if (!exchange.Succeeded || exchange.Ticket is null)
         {
-            return Results.Redirect("/account/reset?error=invalid_token");
+            return Results.Redirect("/account/reset?error=invalid_token&returnUrl=" + Uri.EscapeDataString(returnUrl));
         }
 
         if (exchange.Code == IdentityCodes.MfaReenrollmentRequired)
@@ -212,7 +222,7 @@ public static class AccountPages
                 MaxAge = TimeSpan.FromMinutes(15),
                 Path = "/account"
             });
-            return Results.Redirect("/account/mfa?enroll=1");
+            return Results.Redirect("/account/mfa?enroll=1&returnUrl=" + Uri.EscapeDataString(returnUrl));
         }
 
         var reset = await accounts.ResetPasswordAsync(exchange.Ticket, form["password"].ToString(), cancellationToken);
@@ -226,7 +236,7 @@ public static class AccountPages
                 MaxAge = TimeSpan.FromMinutes(15),
                 Path = "/account"
             });
-            return Results.Redirect("/account/mfa?enroll=1");
+            return Results.Redirect("/account/mfa?enroll=1&returnUrl=" + Uri.EscapeDataString(returnUrl));
         }
 
         return Results.Redirect(reset.Succeeded ? "/account/login?reset=1" : "/account/reset?error=invalid_token");
@@ -246,9 +256,29 @@ public static class AccountPages
         var ticket = enroll
             ? http.Request.Cookies["inout_mfa_enroll"] ?? ""
             : http.Request.Cookies["inout_mfa"] ?? "";
-        var result = enroll
-            ? await accounts.ConfirmMfaReenrollmentAsync(ticket, form["code"].ToString(), cancellationToken)
-            : await accounts.VerifyMfaAsync(ticket, form["code"].ToString(), cancellationToken);
+        IdentityCommandResult result;
+        if (enroll)
+        {
+            if (!string.IsNullOrEmpty(form["password"].ToString()))
+            {
+                var started = await accounts.StartMfaReenrollmentAsync(
+                    ticket,
+                    form["password"].ToString(),
+                    cancellationToken);
+                if (!started.Succeeded)
+                {
+                    return Results.Redirect(
+                        "/account/mfa?error=" + Uri.EscapeDataString(started.Code)
+                        + "&returnUrl=" + Uri.EscapeDataString(returnUrl));
+                }
+            }
+
+            result = await accounts.ConfirmMfaReenrollmentAsync(ticket, form["code"].ToString(), cancellationToken);
+        }
+        else
+        {
+            result = await accounts.VerifyMfaAsync(ticket, form["code"].ToString(), cancellationToken);
+        }
         if (!result.Succeeded || result.User is null)
         {
             return Results.Redirect("/account/mfa?error=invalid_token&returnUrl=" + Uri.EscapeDataString(returnUrl));
@@ -276,7 +306,8 @@ public static class AccountPages
         await antiforgery.ValidateRequestAsync(http);
         var form = await http.Request.ReadFormAsync(cancellationToken);
         var user = await signIn.UserManager.GetUserAsync(http.User);
-        if (user is not null)
+        if (user is not null &&
+            string.Equals(form["logout_all"].ToString(), "1", StringComparison.Ordinal))
         {
             await accounts.RevokeSessionsAsync(user.Id, cancellationToken);
         }

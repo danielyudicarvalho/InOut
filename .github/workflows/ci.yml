@@ -53,7 +53,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Set up .NET
-        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
+        uses: actions/setup-dotnet@c2fa09f4bde5ebb9d1777cf28262a3eb3db3ced7 # v5.2.0
         with:
           global-json-file: backend/global.json
 
@@ -63,6 +63,24 @@ jobs:
           ConnectionStrings__InOutDirect: Host=localhost;Port=5432;Database=inout;Username=postgres;Password=postgres
           Database__AllowInsecureLocalTransport: "true"
         run: dotnet run --project src/InOut.Api -- migrate
+
+      - name: Re-apply schema to confirm migrator is idempotent
+        working-directory: backend
+        env:
+          ConnectionStrings__InOutDirect: Host=localhost;Port=5432;Database=inout;Username=postgres;Password=postgres
+          Database__AllowInsecureLocalTransport: "true"
+        run: dotnet run --project src/InOut.Api -- migrate
+
+      - name: Install psql
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Test schema grants and household RLS
+        env:
+          PGPASSWORD: postgres
+        run: >
+          psql --no-psqlrc --set ON_ERROR_STOP=1
+          --host localhost --port 5432 --username postgres --dbname inout
+          --file db/fly/tests/rls_and_schema.sql
 
   images:
     name: Docker build (no push)
@@ -109,4 +127,12 @@ jobs:
       - uses: github/codeql-action/init@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
         with:
           languages: csharp, javascript
+      - uses: actions/setup-dotnet@c2fa09f4bde5ebb9d1777cf28262a3eb3db3ced7 # v5.2.0
+        with:
+          global-json-file: backend/global.json
+      - name: Build C# for CodeQL
+        working-directory: backend
+        run: |
+          dotnet restore InOut.sln --locked-mode
+          dotnet build InOut.sln --configuration Release --no-restore
       - uses: github/codeql-action/analyze@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3

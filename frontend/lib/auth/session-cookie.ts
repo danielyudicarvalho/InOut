@@ -5,6 +5,18 @@ import {
   timingSafeEqual,
 } from "node:crypto";
 
+export function sessionCookieName(
+  env: NodeJS.ProcessEnv = process.env,
+): string {
+  return env.NODE_ENV === "production"
+    ? "__Host-inout_session"
+    : "inout_session";
+}
+
+export function csrfCookieName(env: NodeJS.ProcessEnv = process.env): string {
+  return env.NODE_ENV === "production" ? "__Host-inout_csrf" : "inout_csrf";
+}
+
 export function sessionKeys(env: NodeJS.ProcessEnv = process.env): Buffer[] {
   const keys: Buffer[] = [];
   if (env.BFF_SESSION_KEY) keys.push(decodeKey(env.BFF_SESSION_KEY));

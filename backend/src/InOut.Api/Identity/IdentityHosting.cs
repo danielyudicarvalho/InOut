@@ -104,8 +104,9 @@ public static class IdentityHosting
             options.ValidationInterval = TimeSpan.Zero);
         services.ConfigureApplicationCookie(options =>
         {
-            options.Cookie.Name = "inout_identity";
+            options.Cookie.Name = production ? "__Host-inout_identity" : "inout_identity";
             options.Cookie.HttpOnly = true;
+            options.Cookie.Path = "/";
             options.Cookie.SecurePolicy = production
                 ? CookieSecurePolicy.Always
                 : CookieSecurePolicy.SameAsRequest;
@@ -159,6 +160,16 @@ public static class IdentityHosting
                     options.AddEncryptionCertificate(LoadCertificate(
                         configuration["Auth:EncryptionCertificatePem"]!,
                         configuration["Auth:EncryptionCertificateKey"]!));
+                    AddOptionalCertificate(
+                        configuration,
+                        "Auth:SigningCertificateNextPem",
+                        "Auth:SigningCertificateNextKey",
+                        certificate => options.AddSigningCertificate(certificate));
+                    AddOptionalCertificate(
+                        configuration,
+                        "Auth:EncryptionCertificateNextPem",
+                        "Auth:EncryptionCertificateNextKey",
+                        certificate => options.AddEncryptionCertificate(certificate));
                 }
 
                 var aspnet = options.UseAspNetCore()
@@ -243,12 +254,14 @@ public static class IdentityHosting
         if (string.Equals(app.Configuration["Database:Provider"], "sqlite", StringComparison.OrdinalIgnoreCase))
         {
             await db.Database.EnsureCreatedAsync();
+            await SyncClientsAsync(scope.ServiceProvider, app.Configuration, app.Environment.IsProduction());
         }
-
-        await SyncClientsAsync(scope.ServiceProvider, app.Configuration, app.Environment);
     }
 
-    public static string WebClientSecret(IConfiguration configuration, IWebHostEnvironment environment)
+    public static string WebClientSecret(IConfiguration configuration, IWebHostEnvironment environment) =>
+        WebClientSecret(configuration, environment.IsProduction());
+
+    public static string WebClientSecret(IConfiguration configuration, bool production)
     {
         var secret = configuration["Auth:WebClientSecret"];
         if (!string.IsNullOrWhiteSpace(secret))
@@ -256,7 +269,7 @@ public static class IdentityHosting
             return secret;
         }
 
-        if (environment.IsProduction())
+        if (production)
         {
             throw new InvalidOperationException("Auth:WebClientSecret is required.");
         }
@@ -320,10 +333,10 @@ public static class IdentityHosting
         }
     }
 
-    private static async Task SyncClientsAsync(
+    public static async Task SyncClientsAsync(
         IServiceProvider services,
         IConfiguration configuration,
-        IWebHostEnvironment environment)
+        bool production)
     {
         var manager = services.GetRequiredService<IOpenIddictApplicationManager>();
         var mobile = Mobile(configuration);
@@ -343,7 +356,7 @@ public static class IdentityHosting
         await UpsertAsync(
             manager,
             web,
-            WebClientSecret(configuration, environment),
+            WebClientSecret(configuration, production),
             configuration.GetValue("Auth:RotateWebClientSecret", false));
     }
 
@@ -405,8 +418,19 @@ public static class IdentityHosting
         var current = await manager.FindByClientIdAsync(descriptor.ClientId!);
         if (current is null)
         {
-            await manager.CreateAsync(descriptor);
-            return;
+            try
+            {
+                await manager.CreateAsync(descriptor);
+                return;
+            }
+            catch (Exception)
+            {
+                current = await manager.FindByClientIdAsync(descriptor.ClientId!);
+                if (current is null)
+                {
+                    throw;
+                }
+            }
         }
 
         var existing = new OpenIddictApplicationDescriptor();
@@ -454,6 +478,20 @@ public static class IdentityHosting
         }
 
         return uris;
+    }
+
+    private static void AddOptionalCertificate(
+        IConfiguration configuration,
+        string pemKey,
+        string keyKey,
+        Action<X509Certificate2> add)
+    {
+        var pem = configuration[pemKey];
+        var key = configuration[keyKey];
+        if (!string.IsNullOrWhiteSpace(pem) && !string.IsNullOrWhiteSpace(key))
+        {
+            add(LoadCertificate(pem, key));
+        }
     }
 
     private static X509Certificate2 LoadCertificate(string certificatePem, string keyPem)

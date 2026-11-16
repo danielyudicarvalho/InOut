@@ -250,6 +250,10 @@ namespace InOut.Infrastructure.Identity.Migrations
                         .HasColumnType("boolean")
                         .HasColumnName("mfa_reenrollment_required");
 
+                    b.Property<long?>("LastTotpStep")
+                        .HasColumnType("bigint")
+                        .HasColumnName("last_totp_step");
+
                     b.Property<string>("NormalizedEmail")
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)")
