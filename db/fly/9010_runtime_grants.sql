@@ -24,4 +24,7 @@ revoke all on schema private from public;
 revoke all on schema extensions from public;
 
 grant usage on schema extensions to inout_api_runtime;
-grant execute on all functions in schema extensions to inout_api_runtime;
+revoke execute on all functions in schema extensions from inout_api_runtime;
+grant execute on function extensions.gen_random_bytes(integer) to inout_api_runtime;
+grant execute on function extensions.digest(text, text) to inout_api_runtime;
+grant execute on function extensions.digest(bytea, text) to inout_api_runtime;

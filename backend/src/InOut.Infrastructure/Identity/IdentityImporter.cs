@@ -87,7 +87,7 @@ public sealed class IdentityImporter(IdentityDbContext db, UserManager<InOutUser
 
                 user.PasswordHash = planned.PasswordHash;
                 user.SecurityStamp = Stamp();
-                await users.UpdateAsync(user);
+                EnsureSucceeded(await users.UpdateAsync(user), "import-update " + planned.Id);
             }
             else
             {
@@ -102,7 +102,7 @@ public sealed class IdentityImporter(IdentityDbContext db, UserManager<InOutUser
                     user.PasswordHash = planned.PasswordHash;
                 }
 
-                await users.UpdateAsync(user);
+                EnsureSucceeded(await users.UpdateAsync(user), "import-update " + planned.Id);
             }
 
             foreach (var login in planned.Logins)
@@ -111,7 +111,9 @@ public sealed class IdentityImporter(IdentityDbContext db, UserManager<InOutUser
                 var known = await users.FindByLoginAsync(provider, login.Subject);
                 if (known is null)
                 {
-                    await users.AddLoginAsync(user, new UserLoginInfo(provider, login.Subject, login.Provider));
+                    EnsureSucceeded(
+                        await users.AddLoginAsync(user, new UserLoginInfo(provider, login.Subject, login.Provider)),
+                        "import-login " + planned.Id);
                 }
                 else if (known.Id != user.Id)
                 {
@@ -136,6 +138,17 @@ public sealed class IdentityImporter(IdentityDbContext db, UserManager<InOutUser
     {
         var hash = SHA256.HashData(Encoding.UTF8.GetBytes(canonicalJson));
         return Convert.ToHexString(hash).ToLowerInvariant();
+    }
+
+    public static void EnsureSucceeded(IdentityResult result, string operation)
+    {
+        if (result.Succeeded)
+        {
+            return;
+        }
+
+        var detail = string.Join("; ", result.Errors.Select(error => error.Code + " " + error.Description));
+        throw new InvalidOperationException($"Identity {operation} failed: {detail}");
     }
 
     private static string Stamp() =>

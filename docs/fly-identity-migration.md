@@ -14,10 +14,10 @@ Review-only. This change does not provision Fly, export live data, deploy, or cu
 | --- | --- | --- |
 | Email/password sign-in, sign-up, confirm, resend, recovery | Yes, client SDK | ASP.NET Core Identity `<Guid>` inside the existing API |
 | Bearer access token to the API | Yes | OpenIddict reference access and refresh tokens |
-| Web cookie/SSR session | No | Next BFF, HttpOnly AES-GCM cookie, CSRF, tokens stay on the server |
+| Web cookie/SSR session | No | Next BFF, opaque HMAC `inout_session` cookie, server-side `identity.browser_sessions`, CSRF, tokens stay on the server |
 | Mobile token storage | AsyncStorage | System browser, authorization code, S256 PKCE, SecureStore, no native secret |
 | OAuth providers | Not used by the clients | Not implemented; provider issuer+subject can be imported |
-| MFA | Not used by the clients | Re-enrollment blocks password-only login when a factor is imported |
+| MFA | Not used by the clients | Imported factors require emailed recovery before TOTP re-enroll; enrolled TOTP is a second web/mobile step |
 | Storage buckets | Disabled | No replacement; none was in use |
 | Edge functions | None | None |
 | Realtime client subscriptions | Publication existed; no client subscriber | Not replaced; no client caller |
@@ -28,8 +28,11 @@ Review-only. This change does not provision Fly, export live data, deploy, or cu
 
 - Identity owns membership, login and recovery. OpenIddict is only the protocol machinery.
 - Web confidential client `inout-web`. Mobile public client `inout-mobile`.
-- Access tokens last 10 minutes. Refresh tokens last 14 days, roll, and are revoked by security stamp on reset or explicit revocation.
-- Data Protection keys are stored in `identity.data_protection_keys`. Production signing and encryption certificates come from PEM environment variables. Development certificates are refused in production.
+- Access tokens last 10 minutes. Refresh tokens last 14 days, roll, and are revoked by security stamp on reset or explicit revocation. Browser sessions have an absolute 14-day cap and a single-flight refresh claim.
+- Login tickets and email codes are consumed with one `UPDATE ... WHERE consumed_at IS NULL ... RETURNING` (EF `ExecuteUpdate` on SQLite tests). Security stamps bind tickets and challenges to the current user.
+- Rate limits for `/api/v1/identity`, `/account`, and `/connect/{authorize,token,logout}` are stored in `identity.auth_attempts` (IP and per-account). The BFF forwards `x-inout-client-ip` with an HMAC of `Auth:BffIpKey`. `fly-client-ip` is not trusted from the public internet. KnownProxies are not opened.
+- Data Protection keys are stored in `identity.data_protection_keys` and encrypted at rest with `Auth:DataProtectionCertificatePem` outside Development. Signing, encryption, and Data Protection certificates are required in Production and Staging. Development ephemeral certificates stay Development-only. `DisableTransportSecurityRequirement` is not configurable outside Development. Fly private HTTP is treated as HTTPS only for `Auth:InternalHttpHosts` from loopback or Fly 6PN (`fdaa:`).
+- OpenIddict clients are created if missing and updated only when the descriptor changed (`Auth:RotateWebClientSecret` to rotate the web secret).
 - Session pooling is required. Transaction pooling throws at startup. Direct URL is required for migrations. Client lifetimes are 600 seconds and idle lifetime 300 seconds (`ConnectionLifetime` and `ConnectionIdleLifetime`).
 - `gru` in `fly.toml` is an unapproved candidate. Production refuses to start until `Deployment:RegionApproved` is true and machine count plus cluster client limit are set. No latency sample was measured.
 
@@ -46,9 +49,10 @@ Review-only. This change does not provision Fly, export live data, deploy, or cu
 - `IdentityImport:Mode` must be `rehearsal` or `approved-cutover`. Any other value, including empty, refuses the import. `rehearsal` also refuses the Production environment. `approved-cutover` revokes sessions for the imported users; rehearsal does not.
 - The planner aborts on duplicate ids, invalid email, normalized-email collision, missing provider subject, issuer+subject collision and row-count mismatch. It does not drop rows. A repeated import of the same file hash returns the stored plan.
 - `$2a$` and `$2b$` bcrypt hashes verify and return `SuccessRehashNeeded`. `$2y$`, argon2 and Firebase scrypt stay stored and require reset. A banned account with an unsupported hash gets `account_unavailable` rather than a reset prompt. Passwords longer than 72 UTF-8 bytes do not match. Identity hashes that already start with `AQAAAA` are not replaced by an older bcrypt hash.
-- MFA factors set `MfaReenrollmentRequired` and do not persist the old secret. Password alone does not mint a token.
+- MFA factors set `MfaReenrollmentRequired` and do not persist the old secret. Password alone does not mint a token and does not issue an enroll ticket. Re-enrollment starts from an emailed recovery code (or the recovery ticket after reset). TOTP failures increment `failed_attempts` and burn the ticket after five tries. Web BFF `/api/auth/mfa` completes the second factor; hosted `/account/mfa` keeps the ticket in an HttpOnly cookie, not the query string.
 - Existing sessions and pending links are not copied. They are revoked only when the import mode is `approved-cutover`. This build does not accept the old issuer. Pointing clients here still requires a separate approval.
-- Rollback is restore of the direct-endpoint `pg_dump` taken before import, then point clients back. Do not delete the source project as part of this review.
+- Rollback is a Fly Managed Postgres restore (or an encrypted logical dump taken through `fly proxy` / an in-Fly job), then point clients back. GitHub Actions must not dump a public database URL or upload PII artifacts. `tool/backup_database.sh` refuses Fly hostnames and encrypts with `BACKUP_PASSPHRASE`. Restore does not require SUPERUSER. The drill uses local port 5432, never 54322. Do not run any of this against live data from this review.
+- `fly.toml` `[deploy] release_command = 'migrate'` runs `dotnet InOut.Api.dll migrate`, which takes `pg_advisory_lock(88112010)` on the direct connection before EF and `db/fly` files. The API image copies `db/` and forwards `migrate`/`import` through `backend/docker-entrypoint.sh`. Container logs are not teed to an uncapped file. `/health/live` is process liveness; `/health/ready` selects `1` from Postgres. `/metrics` is loopback/6PN only.
 - The synthetic rehearsal file is `backend/tests/InOut.Api.Tests/Fixtures/synthetic-identity.json`. It is not a live export.
 
 ## Database rehearsal
@@ -61,17 +65,16 @@ A local session as `inout_api_runtime`, with `set_config('request.jwt.claim.sub'
 
 ## Verified here
 
-- `dotnet test InOut.sln --filter "FullyQualifiedName!~EfLedgerStore"`: Domain 98 passed, Architecture 3 passed, API 49 passed, 0 failed. The API count includes legacy bcrypt/`$2b$`/`$2y$`/argon/Firebase/72-byte/Unicode checks, the import planner, register/confirm/reset/refresh/revocation, MFA re-enrollment, mobile PKCE, pool settings, and the synthetic fixture rehearsal.
-- `dotnet format InOut.sln --verify-no-changes`: formatted 0 files.
-- `cd frontend && npm run check`: prettier, eslint and `next typegen && tsc --noEmit` succeeded. `npm test`: 114 passed.
-- `cd mobile && npm run check`: prettier, eslint and `tsc --noEmit` succeeded. `npm test`: 112 passed.
+- See the pull request description for the commands actually run in this review (dotnet test, frontend tests, owed scans).
 - `bash tool/check_no_hosted_auth_runtime.sh`: no hosted-auth runtime references outside historic docs, including lockfiles.
-- Local PostgreSQL 16.15 migration and the two-subject RLS check above.
+- Local PostgreSQL 16.15 migration and the two-subject RLS check above remain the last disposable-DB rehearsal; this review did not reconnect to that database.
 
 ## Blocked / unverified
 
 - No Fly organization, Managed Postgres cluster, region capacity, SMTP, or production certificates were available. Startup is fail-closed without them. `gru` remains an unapproved candidate.
 - No staging request was sent. No region sample, and no warm or cold p50/p95, is reported.
 - Live row counts were not exported or compared. No production cutover was performed.
-- Docker is not available here, so `EfLedgerStoreIntegrationTests` (Testcontainers) did not run. Domain tests cover the invite rules in memory. The local RLS check covers household select and forged `created_by` only.
-- Web and mobile screens were not exercised in a browser or on a device. Typecheck, lint and unit tests passed.
+- Docker is not available in the review agent, so Testcontainers (`EfLedgerStoreIntegrationTests`, `IdentityPostgresTests` parallel UPDATE RETURNING / shared `auth_attempts`) did not run here. CI `database` and `images` jobs are the intended hosts. Domain tests cover invite rules in memory.
+- Secret scanning, NuGet vulnerability restore (`CheckSdkVulnerabilities`), CodeQL, and Trivy image scans are wired in CI. They are not a substitute for a paid scanner subscription.
+- Base image digest pins and a live Fly MPG backup/restore drill were not executed. Missing Fly org, SMTP, and production certificates remain startup blockers.
+- Web and mobile screens were not exercised in a browser or on a device. Typecheck, lint and unit tests are the local evidence.

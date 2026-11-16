@@ -24,7 +24,7 @@ using InOut.Infrastructure.Security;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.HttpOverrides;
 
-if (args is ["migrate"])
+if (args is [var command, ..] && string.Equals(command, "migrate", StringComparison.OrdinalIgnoreCase))
 {
     Environment.ExitCode = await InOut.Api.Identity.SchemaMigrator.RunAsync(args);
     return;
@@ -44,7 +44,8 @@ builder.Services.AddExceptionHandler<UnhandledExceptionHandler>();
 builder.Services.Configure<ExceptionHandlerOptions>(options =>
     options.SuppressDiagnosticsCallback = _ => true);
 builder.Services.AddOpenApi();
-builder.Services.AddHealthChecks();
+builder.Services.AddHealthChecks()
+    .AddCheck<InOut.Api.Identity.DatabaseReadyCheck>("db");
 builder.Services.AddInOutIdentity(builder.Configuration, builder.Environment);
 builder.Services.AddAntiforgery(options =>
 {
@@ -58,9 +59,7 @@ builder.Services.AddRateLimiter(options =>
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
     options.AddPolicy("identity", httpContext =>
     {
-        var clientIp = httpContext.Request.Headers["fly-client-ip"].FirstOrDefault()
-            ?? httpContext.Connection.RemoteIpAddress?.ToString()
-            ?? "local";
+        var clientIp = InOut.Api.Identity.ClientIp.Resolve(httpContext);
         return System.Threading.RateLimiting.RateLimitPartition.GetFixedWindowLimiter(
             clientIp,
             _ => new System.Threading.RateLimiting.FixedWindowRateLimiterOptions
@@ -74,10 +73,15 @@ builder.Services.AddRateLimiter(options =>
 builder.Services.AddHouseholdAuthorization();
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
-    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
     options.ForwardLimit = 1;
-    options.KnownIPNetworks.Clear();
-    options.KnownProxies.Clear();
+    if (builder.Configuration.GetValue<bool>("Deployment:TrustFlyProxy"))
+    {
+        options.ForwardedHeaders = ForwardedHeaders.XForwardedProto;
+    }
+    else
+    {
+        options.ForwardedHeaders = ForwardedHeaders.None;
+    }
 });
 builder.Services.AddCors(options => options.AddDefaultPolicy(policy =>
     policy.WithOrigins(
@@ -149,7 +153,15 @@ var app = builder.Build();
 await app.PrepareIdentityAsync();
 
 app.UseForwardedHeaders();
+app.UseMiddleware<InOut.Api.Identity.FlyHttpsSchemeMiddleware>();
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHsts();
+}
+
+app.UseMiddleware<InOut.Api.Identity.SecurityHeadersMiddleware>();
 app.UseMiddleware<CorrelationIdMiddleware>();
+app.UseMiddleware<InOut.Api.Identity.IdentityIpBudgetMiddleware>();
 app.UseExceptionHandler();
 app.UseCors();
 app.UseRateLimiter();
@@ -190,8 +202,24 @@ app.MapHealthChecks(
     ApiContract.Routes.Liveness,
     new HealthCheckOptions { Predicate = _ => false });
 
-app.MapHealthChecks(ApiContract.Routes.Readiness);
+app.MapHealthChecks(
+    ApiContract.Routes.Readiness,
+    new HealthCheckOptions { Predicate = check => check.Name == "db" });
 
+app.UseWhen(
+    context => context.Request.Path.Equals("/metrics", StringComparison.OrdinalIgnoreCase),
+    branch => branch.Use(async (context, next) =>
+    {
+        var remote = context.Connection.RemoteIpAddress;
+        if (!InOut.Api.Identity.ClientIp.IsLoopback(remote) &&
+            !InOut.Api.Identity.ClientIp.IsFlyPrivateNetwork(remote))
+        {
+            context.Response.StatusCode = StatusCodes.Status404NotFound;
+            return;
+        }
+
+        await next();
+    }));
 app.UseOpenTelemetryPrometheusScrapingEndpoint();
 
 app.Run();

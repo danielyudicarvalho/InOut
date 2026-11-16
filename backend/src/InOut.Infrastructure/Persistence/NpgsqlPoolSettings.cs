@@ -1,3 +1,4 @@
+using System.Net;
 using Npgsql;
 
 namespace InOut.Infrastructure.Persistence;
@@ -57,18 +58,61 @@ public static class NpgsqlPoolSettings
         }
     }
 
-    public static void RejectDisabledTransport(string connectionString, bool production)
+    public static void RejectDisabledTransport(string connectionString, bool production) =>
+        RequireAuthenticatedTransport(connectionString, production, allowLocalInsecure: !production);
+
+    public static void RequireAuthenticatedTransport(
+        string connectionString,
+        bool production,
+        bool allowLocalInsecure,
+        IReadOnlyCollection<string>? localTestHosts = null)
     {
-        if (!production)
+        var builder = new NpgsqlConnectionStringBuilder(connectionString);
+        var host = builder.Host ?? "";
+        var local = IsLocalTestHost(host, localTestHosts);
+        if (allowLocalInsecure && local && !production)
         {
             return;
         }
 
-        if (connectionString.Contains("SSL Mode=Disable", StringComparison.OrdinalIgnoreCase) ||
-            connectionString.Contains("SSLMode=Disable", StringComparison.OrdinalIgnoreCase))
+        if (production && allowLocalInsecure)
         {
-            throw new InvalidOperationException("Production database connections cannot disable SSL.");
+            throw new InvalidOperationException(
+                "Database:AllowInsecureLocalTransport is refused in production.");
         }
+
+        var mode = builder.SslMode;
+        if (mode is SslMode.VerifyFull or SslMode.VerifyCA)
+        {
+            return;
+        }
+
+        throw new InvalidOperationException(
+            "Database connections must use Ssl Mode=VerifyFull or VerifyCA. Disable, Allow, Prefer, and Require without certificate authentication are refused. A local-test exception exists only for loopback (or Database:LocalTestHosts) when Database:AllowInsecureLocalTransport is true outside production.");
+    }
+
+    public static bool IsLocalTestHost(string? host, IReadOnlyCollection<string>? localTestHosts = null)
+    {
+        if (string.IsNullOrWhiteSpace(host))
+        {
+            return false;
+        }
+
+        if (string.Equals(host, "localhost", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(host, "127.0.0.1", StringComparison.Ordinal) ||
+            string.Equals(host, "::1", StringComparison.Ordinal) ||
+            string.Equals(host, "[::1]", StringComparison.Ordinal))
+        {
+            return true;
+        }
+
+        if (IPAddress.TryParse(host, out var address) && IPAddress.IsLoopback(address))
+        {
+            return true;
+        }
+
+        return localTestHosts is not null &&
+               localTestHosts.Any(item => string.Equals(item, host, StringComparison.OrdinalIgnoreCase));
     }
 
     public static void RejectPoolerForDirect(string connectionString)

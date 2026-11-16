@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { safeNextPath } from "./lib/auth/safe-next";
 
-// Routes that strictly require authentication
 const PROTECTED_PREFIXES = [
   "/inicio",
   "/lancamentos",
@@ -21,7 +21,6 @@ const PROTECTED_PREFIXES = [
   "/conta-pronta",
 ];
 
-// Routes for anonymous users only (e.g. login/signup)
 const ANONYMOUS_ONLY_ROUTES = ["/entrar", "/comecar"];
 
 function isProtectedPath(pathname: string): boolean {
@@ -36,43 +35,21 @@ function isAnonymousOnlyPath(pathname: string): boolean {
 
 export function middleware(req: NextRequest) {
   const { pathname, search } = req.nextUrl;
+  const isAuthenticated = Boolean(req.cookies.get("inout_session")?.value);
 
-  // Retrieve session token from HttpOnly cookie or Supabase project cookie fallback
-  const sessionCookie =
-    req.cookies.get("inout-session")?.value ||
-    req.cookies
-      .getAll()
-      .find((c) => c.name.startsWith("sb-") && c.name.endsWith("-auth-token"))
-      ?.value;
-
-  const isAuthenticated = Boolean(sessionCookie);
-
-  // 1. Protected routes: If not authenticated, redirect to /entrar with 'next' parameter
   if (isProtectedPath(pathname)) {
     if (!isAuthenticated) {
       const loginUrl = new URL("/entrar", req.url);
-      const returnUrl = `${pathname}${search}`;
-
-      // Avoid open-redirect vulnerabilities: must start with single slash
-      if (returnUrl.startsWith("/") && !returnUrl.startsWith("//")) {
-        loginUrl.searchParams.set("next", returnUrl);
-      }
-
+      const next = safeNextPath(`${pathname}${search}`);
+      if (next) loginUrl.searchParams.set("next", next);
       return NextResponse.redirect(loginUrl);
     }
   }
 
-  // 2. Anonymous-only routes: If already authenticated, redirect to destination or /inicio
-  if (isAnonymousOnlyPath(pathname)) {
-    if (isAuthenticated) {
-      const nextParam = req.nextUrl.searchParams.get("next");
-      const validNext =
-        nextParam && nextParam.startsWith("/") && !nextParam.startsWith("//")
-          ? nextParam
-          : "/inicio";
-
-      return NextResponse.redirect(new URL(validNext, req.url));
-    }
+  if (isAnonymousOnlyPath(pathname) && isAuthenticated) {
+    const next =
+      safeNextPath(req.nextUrl.searchParams.get("next")) ?? "/inicio";
+    return NextResponse.redirect(new URL(next, req.url));
   }
 
   return NextResponse.next();
@@ -80,13 +57,6 @@ export function middleware(req: NextRequest) {
 
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except for:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico, images, svg, icons
-     * - API routes (/api/*)
-     */
     "/((?!_next/static|_next/image|favicon.ico|images/|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };

@@ -4,6 +4,7 @@ import { useRef, useState, type FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { authMessage } from "@inout/identity";
 import { getAuth, rememberEmail } from "../../lib/auth/composition";
+import { safeNextPath } from "../../lib/auth/safe-next";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -18,13 +19,10 @@ export function LoginScreen() {
   const [notice, setNotice] = useState("");
   const router = useRouter();
   const searchParams = useSearchParams();
-  const nextParam = searchParams?.get("next");
-  const validNext =
-    nextParam && nextParam.startsWith("/") && !nextParam.startsWith("//")
-      ? nextParam
-      : null;
+  const validNext = safeNextPath(searchParams?.get("next"));
 
   const [busy, setBusy] = useState(false);
+  const [mfa, setMfa] = useState(false);
   const running = useRef(false);
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -35,7 +33,14 @@ export function LoginScreen() {
     setBusy(true);
     setNotice("");
     try {
-      await getAuth().signIn({ email, password: String(data.get("password")) });
+      if (mfa) {
+        await getAuth().confirmMfa(String(data.get("code")));
+      } else {
+        await getAuth().signIn({
+          email,
+          password: String(data.get("password")),
+        });
+      }
       rememberEmail(email);
       if (validNext) {
         router.replace(validNext);
@@ -44,7 +49,17 @@ export function LoginScreen() {
       }
     } catch (error) {
       rememberEmail(email);
-      setNotice(authMessage(error));
+      if (
+        error &&
+        typeof error === "object" &&
+        "code" in error &&
+        error.code === "mfa_required"
+      ) {
+        setMfa(true);
+        setNotice(authMessage(error));
+      } else {
+        setNotice(authMessage(error));
+      }
     } finally {
       running.current = false;
       setBusy(false);
@@ -97,29 +112,40 @@ export function LoginScreen() {
               required
               iconStart={<EnvelopeSimple size={21} />}
             />
-            <Input
-              id="password"
-              label="Senha"
-              name="password"
-              type={visible ? "text" : "password"}
-              autoComplete="current-password"
-              required
-              iconStart={<LockSimple size={21} />}
-              trailing={
-                <button
-                  type="button"
-                  aria-label={visible ? "Ocultar senha" : "Mostrar senha"}
-                  aria-pressed={visible}
-                  onClick={() => setVisible(!visible)}
-                >
-                  {visible ? (
-                    <EyeSlash size={21} aria-hidden="true" />
-                  ) : (
-                    <Eye size={21} aria-hidden="true" />
-                  )}
-                </button>
-              }
-            />
+            {mfa ? (
+              <Input
+                id="code"
+                label="Código do autenticador"
+                name="code"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                required
+              />
+            ) : (
+              <Input
+                id="password"
+                label="Senha"
+                name="password"
+                type={visible ? "text" : "password"}
+                autoComplete="current-password"
+                required
+                iconStart={<LockSimple size={21} />}
+                trailing={
+                  <button
+                    type="button"
+                    aria-label={visible ? "Ocultar senha" : "Mostrar senha"}
+                    aria-pressed={visible}
+                    onClick={() => setVisible(!visible)}
+                  >
+                    {visible ? (
+                      <EyeSlash size={21} aria-hidden="true" />
+                    ) : (
+                      <Eye size={21} aria-hidden="true" />
+                    )}
+                  </button>
+                }
+              />
+            )}
             <Link href="/esqueci-senha" className="signin-forgot">
               Esqueci minha senha
             </Link>

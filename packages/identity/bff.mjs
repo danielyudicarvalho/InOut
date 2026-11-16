@@ -8,21 +8,34 @@ export function createBffAuthRepository({
   now = () => Date.now(),
 }) {
   const listeners = new Set();
+  let csrf = null;
   function notify() {
     for (const listener of listeners) listener();
     channel?.postMessage?.("changed");
   }
+  async function loadCsrf() {
+    const response = await fetch(new URL("/api/auth/session", origin), {
+      credentials: "same-origin",
+      headers: { accept: "application/json" },
+    });
+    const payload = await response.json().catch(() => ({}));
+    csrf = payload.csrf ?? null;
+    return payload;
+  }
   async function send(path, body, method = "POST") {
+    const headers = {
+      accept: "application/json",
+      ...(body ? { "content-type": "application/json" } : {}),
+    };
+    if (csrf) headers["x-csrf-token"] = csrf;
     const response = await fetch(new URL(path, origin), {
       method,
       credentials: "same-origin",
-      headers: {
-        accept: "application/json",
-        ...(body ? { "content-type": "application/json" } : {}),
-      },
+      headers,
       body: body ? JSON.stringify(body) : undefined,
     });
     const payload = await response.json().catch(() => ({}));
+    if (payload.csrf) csrf = payload.csrf;
     if (!response.ok) throw new AuthFailure(payload.code || "provider_error");
     return payload;
   }
@@ -41,6 +54,15 @@ export function createBffAuthRepository({
         email: credentials.email,
         password: credentials.password,
       });
+      csrf = null;
+      await loadCsrf();
+      notify();
+    },
+    async confirmMfa(code) {
+      if (!csrf) await loadCsrf();
+      await send("/api/auth/mfa", { code });
+      csrf = null;
+      await loadCsrf();
       notify();
     },
     async signUp({ name, email, password }) {
@@ -49,14 +71,9 @@ export function createBffAuthRepository({
       return result.confirmationRequired === false ? "signedIn" : "confirmationRequired";
     },
     async currentUser() {
-      const response = await fetch(new URL("/api/auth/session", origin), {
-        credentials: "same-origin",
-        headers: { accept: "application/json" },
-      });
-      if (response.status === 401) return null;
-      const payload = await response.json().catch(() => ({}));
-      if (!response.ok) throw new AuthFailure(payload.code || "provider_error");
-      return payload.user ?? null;
+      const payload = await loadCsrf();
+      if (!payload.user) return null;
+      return payload.user;
     },
     resend: (email) => send("/api/auth/resend", { email }),
     async confirm(email, code) {
@@ -71,24 +88,24 @@ export function createBffAuthRepository({
       const [email, code] = String(value).split(" ");
       if (!email || !code) throw new AuthFailure("recovery_required");
       await send("/api/auth/recovery", { email, code });
+      csrf = null;
+      await loadCsrf();
       notify();
     },
     async canResetPassword() {
-      const response = await fetch(new URL("/api/auth/session", origin), {
-        credentials: "same-origin",
-        headers: { accept: "application/json" },
-      });
-      if (!response.ok) return false;
-      const payload = await response.json().catch(() => ({}));
-      return payload.canReset === true && (payload.recoveryExpiresAt ?? 0) > now();
+      const payload = await loadCsrf();
+      return payload.canReset === true;
     },
     async resetPassword(password) {
+      if (!csrf) await loadCsrf();
       await send("/api/auth/reset", { password });
       notify();
       return "signedOut";
     },
     async signOut() {
+      if (!csrf) await loadCsrf();
       await send("/api/auth/logout", {});
+      csrf = null;
       notify();
     },
   };

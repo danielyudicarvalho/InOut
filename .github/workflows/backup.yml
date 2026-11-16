@@ -1,43 +1,25 @@
-name: Encrypted database backup
+name: Fly backup reminder
 
 on:
-  schedule:
-    - cron: '17 4 * * *'
   workflow_dispatch:
 
 permissions:
   contents: read
 
-concurrency:
-  group: production-backup
-  cancel-in-progress: false
-
+# Protected environment is required. This job does not dump the database,
+# does not upload PII, and must not be given a public DATABASE_URL.
 jobs:
-  backup:
+  remind:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    environment: production-backup
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Install Postgres client
-        run: sudo apt-get update && sudo apt-get install -y postgresql-client
-      - name: Require backup credentials
-        env:
-          DATABASE_URL: ${{ secrets.INOUT_BACKUP_DATABASE_URL }}
-          BACKUP_PASSPHRASE: ${{ secrets.INOUT_BACKUP_PASSPHRASE }}
+      - name: Refuse GitHub-runner dumps
         run: |
-          test -n "$DATABASE_URL" && test -n "$BACKUP_PASSPHRASE" || {
-            echo 'Configure the database URL and backup passphrase as repository secrets.' >&2
+          echo 'Use Fly Managed Postgres backups and, if a logical dump is required, a fly proxy or Machine job.'
+          echo 'tool/backup_database.sh refuses Fly hostnames. Artifacts with PII are not uploaded from CI.'
+          test -z "${INOUT_BACKUP_DATABASE_URL:-}" || {
+            echo 'Do not inject a live database URL into this workflow.' >&2
             exit 1
           }
-      - name: Dump and encrypt
-        env:
-          DATABASE_URL: ${{ secrets.INOUT_BACKUP_DATABASE_URL }}
-          BACKUP_PASSPHRASE: ${{ secrets.INOUT_BACKUP_PASSPHRASE }}
-        run: bash tool/backup_database.sh inout-backup.gpg
-      - name: Store encrypted backup for seven days
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: inout-database-${{ github.run_id }}
-          path: inout-backup.gpg
-          if-no-files-found: error
-          retention-days: 7

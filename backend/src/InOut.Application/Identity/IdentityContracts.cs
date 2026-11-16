@@ -8,6 +8,8 @@ public static class IdentityCodes
     public const string InvalidCredentials = "invalid_credentials";
     public const string InvalidToken = "invalid_token";
     public const string MfaReenrollmentRequired = "mfa_reenrollment_required";
+    public const string MfaRequired = "mfa_required";
+    public const string MfaRecoveryRequired = "mfa_recovery_required";
     public const string PasswordResetRequired = "password_reset_required";
     public const string RateLimited = "over_email_send_rate_limit";
     public const string SignedIn = "signed_in";
@@ -58,6 +60,11 @@ public interface IIdentityAccounts
         CancellationToken cancellationToken);
 
     Task<IdentityCommandResult> ConfirmMfaReenrollmentAsync(
+        string ticket,
+        string code,
+        CancellationToken cancellationToken);
+
+    Task<IdentityCommandResult> VerifyMfaAsync(
         string ticket,
         string code,
         CancellationToken cancellationToken);

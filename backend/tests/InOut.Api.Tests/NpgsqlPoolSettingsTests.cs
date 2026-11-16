@@ -23,4 +23,29 @@ public sealed class NpgsqlPoolSettingsTests
         Assert.Throws<InvalidOperationException>(() =>
             NpgsqlPoolSettings.RejectPoolerForDirect(builder.ConnectionString));
     }
+
+    [Theory]
+    [InlineData("Disable")]
+    [InlineData("Allow")]
+    [InlineData("Prefer")]
+    [InlineData("Require")]
+    public void RefusesUnauthenticatedSslModes(string mode)
+    {
+        var connection =
+            $"Host=pg.example.flympg.net;Database=inout;Username=app;SSL Mode={mode}";
+        var exception = Assert.Throws<InvalidOperationException>(() =>
+            NpgsqlPoolSettings.RequireAuthenticatedTransport(connection, production: true, allowLocalInsecure: false));
+        Assert.Contains("VerifyFull", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AllowsLoopbackOnlyWhenInsecureTransportIsExplicit()
+    {
+        const string local = "Host=127.0.0.1;Database=inout;Username=postgres;SSL Mode=Disable";
+        NpgsqlPoolSettings.RequireAuthenticatedTransport(local, production: false, allowLocalInsecure: true);
+        Assert.Throws<InvalidOperationException>(() =>
+            NpgsqlPoolSettings.RequireAuthenticatedTransport(local, production: false, allowLocalInsecure: false));
+        Assert.Throws<InvalidOperationException>(() =>
+            NpgsqlPoolSettings.RequireAuthenticatedTransport(local, production: true, allowLocalInsecure: true));
+    }
 }

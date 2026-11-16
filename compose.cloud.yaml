@@ -4,7 +4,7 @@ services:
       context: .
       dockerfile: backend/Dockerfile
     environment:
-      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_ENVIRONMENT: Production
       ConnectionStrings__InOut: ${INOUT_CLOUD_DATABASE_URL:?Set the runtime connection in .env.cloud}
       ConnectionStrings__InOutDirect: ${INOUT_CLOUD_DIRECT_URL:?Set the direct connection in .env.cloud}
       Auth__Issuer: ${AUTH_ISSUER:?Set the public issuer}

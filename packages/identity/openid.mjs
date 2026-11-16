@@ -2,11 +2,48 @@ import { AuthFailure, hostedAccountPath } from "./index.mjs";
 
 const sessionKey = "inout.openid.session";
 const pkceKey = "inout.openid.pkce";
+const usedStateKey = "inout.openid.used";
+const callbackMaxAgeMs = 10 * 60 * 1000;
 
 function base64url(bytes) {
   let binary = "";
   for (const byte of bytes) binary += String.fromCharCode(byte);
   return btoa(binary).replace(/=+$/g, "").replace(/\+/g, "-").replace(/\//g, "_");
+}
+
+export function readCallbackParams(url, expectedRedirectUri) {
+  const returned = typeof url === "string" ? new URL(url) : url;
+  const expected = new URL(expectedRedirectUri);
+  if (returned.href.split("?")[0] !== expected.href.split("?")[0])
+    throw new AuthFailure("invalid_token");
+  return {
+    code: returned.searchParams.get("code") ?? "",
+    state: returned.searchParams.get("state") ?? "",
+    error: returned.searchParams.get("error") ?? "",
+  };
+}
+
+export async function completeAuthorizationCallback({
+  url,
+  expectedRedirectUri,
+  pending,
+  now,
+  markUsed,
+}) {
+  if (!pending?.verifier || !pending?.state || !pending?.redirectUri)
+    throw new AuthFailure("bad_code_verifier");
+  if (pending.redirectUri !== expectedRedirectUri)
+    throw new AuthFailure("invalid_token");
+  if (
+    pending.createdAt != null &&
+    now() - pending.createdAt > callbackMaxAgeMs
+  )
+    throw new AuthFailure("invalid_token");
+  const params = readCallbackParams(url, expectedRedirectUri);
+  if (params.error || !params.code) throw new AuthFailure("invalid_token");
+  if (params.state !== pending.state) throw new AuthFailure("invalid_token");
+  if (await markUsed(params.state)) throw new AuthFailure("invalid_token");
+  return { code: params.code, verifier: pending.verifier, redirectUri: pending.redirectUri };
 }
 
 /** Public client. No client secret. Tokens stay in the injected store (SecureStore in the app). */
@@ -24,6 +61,13 @@ export function createOpenIdAuthRepository({
   async function read(key) {
     const raw = await storage.getItem(key);
     return raw ? JSON.parse(raw) : null;
+  }
+  async function markUsed(state) {
+    const used = (await read(usedStateKey)) ?? { states: [] };
+    if (used.states.includes(state)) return true;
+    used.states = [...used.states, state].slice(-20);
+    await storage.setItem(usedStateKey, JSON.stringify(used));
+    return false;
   }
   async function tokens() {
     const current = await read(sessionKey);
@@ -78,6 +122,18 @@ export function createOpenIdAuthRepository({
     );
     await storage.deleteItem(pkceKey);
   }
+  async function revoke(token, hint) {
+    if (!token) return;
+    await fetch(new URL("/connect/revoke", issuer), {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        client_id: clientId,
+        token,
+        token_type_hint: hint,
+      }),
+    }).catch(() => undefined);
+  }
   return {
     subscribe(listener) {
       return () => {
@@ -91,7 +147,10 @@ export function createOpenIdAuthRepository({
       const verifier = base64url(await randomBytes(32));
       const challenge = base64url(await sha256(verifier));
       const state = base64url(await randomBytes(16));
-      await storage.setItem(pkceKey, JSON.stringify({ verifier, state, redirectUri }));
+      await storage.setItem(
+        pkceKey,
+        JSON.stringify({ verifier, state, redirectUri, createdAt: now() }),
+      );
       const url = new URL("/connect/authorize", issuer);
       url.searchParams.set("client_id", clientId);
       url.searchParams.set("redirect_uri", redirectUri);
@@ -101,11 +160,15 @@ export function createOpenIdAuthRepository({
       url.searchParams.set("code_challenge_method", "S256");
       url.searchParams.set("state", state);
       const result = await openBrowser(url.toString(), redirectUri);
-      const returned = result?.url ? new URL(result.url) : null;
-      const code = returned?.searchParams.get("code");
-      if (!returned || returned.searchParams.get("state") !== state || !code)
-        throw new AuthFailure("invalid_token");
-      await exchange(code, verifier, redirectUri);
+      if (!result?.url) throw new AuthFailure("invalid_token");
+      const completed = await completeAuthorizationCallback({
+        url: result.url,
+        expectedRedirectUri: redirectUri,
+        pending: { verifier, state, redirectUri, createdAt: now() },
+        now,
+        markUsed,
+      });
+      await exchange(completed.code, completed.verifier, completed.redirectUri);
     },
     async openHostedAccount(path) {
       await openBrowser(new URL(hostedAccountPath(path), issuer).toString());
@@ -134,10 +197,18 @@ export function createOpenIdAuthRepository({
     async confirm() {
       throw new AuthFailure("browser_sign_in_required");
     },
-    async exchangeCode(code) {
+    async exchangeCode(code, state, callbackUrl = redirectUri) {
       const pending = await read(pkceKey);
-      if (!pending?.verifier) throw new AuthFailure("bad_code_verifier");
-      await exchange(code, pending.verifier, pending.redirectUri);
+      const completed = await completeAuthorizationCallback({
+        url: callbackUrl.includes("?")
+          ? callbackUrl
+          : `${redirectUri}?code=${encodeURIComponent(code)}${state ? `&state=${encodeURIComponent(state)}` : ""}`,
+        expectedRedirectUri: redirectUri,
+        pending,
+        now,
+        markUsed,
+      });
+      await exchange(completed.code, completed.verifier, completed.redirectUri);
     },
     async requestPasswordReset() {
       await openBrowser(new URL("/account/forgot", issuer).toString());
@@ -151,21 +222,18 @@ export function createOpenIdAuthRepository({
     async resetPassword() {
       throw new AuthFailure("browser_sign_in_required");
     },
-    async signOut() {
+    async signOut(mode = "local") {
       const current = await read(sessionKey);
-      if (current?.refreshToken) {
-        await fetch(new URL("/connect/revoke", issuer), {
-          method: "POST",
-          headers: { "content-type": "application/x-www-form-urlencoded" },
-          body: new URLSearchParams({
-            client_id: clientId,
-            token: current.refreshToken,
-            token_type_hint: "refresh_token",
-          }),
-        }).catch(() => undefined);
-      }
+      await revoke(current?.accessToken, "access_token");
+      await revoke(current?.refreshToken, "refresh_token");
       await storage.deleteItem(sessionKey);
       await storage.deleteItem(pkceKey);
+      if (mode === "sso" || mode === "switch") {
+        const logout = new URL("/connect/logout", issuer);
+        logout.searchParams.set("client_id", clientId);
+        logout.searchParams.set("post_logout_redirect_uri", redirectUri);
+        await openBrowser(logout.toString(), redirectUri);
+      }
     },
     async accessToken() {
       return (await tokens())?.accessToken ?? null;

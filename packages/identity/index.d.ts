@@ -8,15 +8,16 @@ export interface AuthRepository {
   currentUser(): Promise<AuthUser | null>;
   resend(email: string): Promise<void>;
   confirm(email: string, token: string): Promise<void>;
-  exchangeCode(code: string): Promise<void>;
+  exchangeCode(code: string, state?: string, callbackUrl?: string): Promise<void>;
   requestPasswordReset(email: string): Promise<void>;
   exchangeRecoveryCode(code: string): Promise<void>;
   canResetPassword(): Promise<boolean>;
   resetPassword(password: string): Promise<"signedOut" | "signOutRequired">;
-  signOut(): Promise<void>;
+  signOut(mode?: "local" | "sso" | "switch"): Promise<void>;
   subscribe(listener: () => void): () => void;
   beginBrowserSignIn?(): Promise<void>;
   openHostedAccount?(path: string): Promise<void>;
+  confirmMfa?(code: string): Promise<void>;
 }
 export class AuthFailure extends Error {
   readonly code: string;
@@ -29,7 +30,7 @@ export function createAuthService(repository: AuthRepository): {
   currentUser(): Promise<AuthUser | null>;
   resend(email: string): Promise<void>;
   confirm(email: string, token: string): Promise<void>;
-  exchangeCode(code: string): Promise<void>;
+  exchangeCode(code: string, state?: string, callbackUrl?: string): Promise<void>;
   requestPasswordReset(email: string): Promise<void>;
   exchangeRecoveryCode(code: string): Promise<void>;
   canResetPassword(): Promise<boolean>;
@@ -37,10 +38,11 @@ export function createAuthService(repository: AuthRepository): {
     password: string;
     confirmation: string;
   }): Promise<"signedOut" | "signOutRequired">;
-  signOut(): Promise<void>;
+  signOut(mode?: "local" | "sso" | "switch"): Promise<void>;
   subscribe(listener: () => void): () => void;
   beginBrowserSignIn(): Promise<void>;
   openHostedAccount(path: string): Promise<void>;
+  confirmMfa(code: string): Promise<void>;
 };
 
 export function requireIssuer(url: string | undefined): string;

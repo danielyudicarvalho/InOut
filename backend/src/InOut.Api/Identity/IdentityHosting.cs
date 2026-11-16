@@ -34,7 +34,11 @@ public static class IdentityHosting
         NpgsqlPoolSettings.EnsureSessionPooling(configuration["Database:PoolMode"] ?? NpgsqlPoolSettings.SessionPoolMode);
         var runtimeConnection = configuration.GetConnectionString(ApiContract.Configuration.DatabaseConnection)
             ?? throw new InvalidOperationException("ConnectionStrings:InOut is required.");
-        NpgsqlPoolSettings.RejectDisabledTransport(runtimeConnection, production);
+        NpgsqlPoolSettings.RequireAuthenticatedTransport(
+            runtimeConnection,
+            production,
+            configuration.GetValue("Database:AllowInsecureLocalTransport", !production),
+            configuration.GetSection("Database:LocalTestHosts").Get<string[]>() ?? ["db"]);
         var maxPool = configuration.GetValue("Database:MaxPoolSize", 10);
         if (production)
         {
@@ -92,9 +96,12 @@ public static class IdentityHosting
         services.AddAuthentication()
             .AddPolicyScheme("inout-auth", "inout-auth", options =>
                 options.ForwardDefaultSelector = context =>
+                    context.Request.Path.StartsWithSegments("/api") ||
                     context.Request.Headers.ContainsKey("Authorization")
                         ? OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme
                         : IdentityConstants.ApplicationScheme);
+        services.Configure<SecurityStampValidatorOptions>(options =>
+            options.ValidationInterval = TimeSpan.Zero);
         services.ConfigureApplicationCookie(options =>
         {
             options.Cookie.Name = "inout_identity";
@@ -128,6 +135,7 @@ public static class IdentityHosting
                 options.SetAuthorizationEndpointUris("/connect/authorize")
                     .SetTokenEndpointUris("/connect/token")
                     .SetRevocationEndpointUris("/connect/revoke")
+                    .SetEndSessionEndpointUris("/connect/logout")
                     .SetUserInfoEndpointUris("/connect/userinfo");
                 options.AllowAuthorizationCodeFlow()
                     .AllowRefreshTokenFlow()
@@ -138,7 +146,12 @@ public static class IdentityHosting
                 options.SetRefreshTokenLifetime(TimeSpan.FromDays(14));
                 options.UseReferenceAccessTokens();
                 options.UseReferenceRefreshTokens();
-                if (production)
+                if (environment.IsDevelopment())
+                {
+                    options.AddDevelopmentSigningCertificate();
+                    options.AddDevelopmentEncryptionCertificate();
+                }
+                else
                 {
                     options.AddSigningCertificate(LoadCertificate(
                         configuration["Auth:SigningCertificatePem"]!,
@@ -147,17 +160,13 @@ public static class IdentityHosting
                         configuration["Auth:EncryptionCertificatePem"]!,
                         configuration["Auth:EncryptionCertificateKey"]!));
                 }
-                else
-                {
-                    options.AddDevelopmentSigningCertificate();
-                    options.AddDevelopmentEncryptionCertificate();
-                }
 
                 var aspnet = options.UseAspNetCore()
                     .EnableAuthorizationEndpointPassthrough()
                     .EnableTokenEndpointPassthrough()
-                    .EnableUserInfoEndpointPassthrough();
-                if (!production || configuration.GetValue<bool>("Auth:DisableTransportSecurityRequirement"))
+                    .EnableUserInfoEndpointPassthrough()
+                    .EnableEndSessionEndpointPassthrough();
+                if (environment.IsDevelopment())
                 {
                     aspnet.DisableTransportSecurityRequirement();
                 }
@@ -168,9 +177,27 @@ public static class IdentityHosting
                 options.UseAspNetCore();
             });
 
-        services.AddDataProtection()
+        var dataProtection = services.AddDataProtection()
             .PersistKeysToDbContext<IdentityDbContext>()
             .SetApplicationName("InOut");
+        if (!environment.IsDevelopment())
+        {
+            dataProtection.ProtectKeysWithCertificate(LoadCertificate(
+                configuration["Auth:DataProtectionCertificatePem"]
+                    ?? throw new InvalidOperationException("Auth:DataProtectionCertificatePem is required."),
+                configuration["Auth:DataProtectionCertificateKey"]
+                    ?? throw new InvalidOperationException("Auth:DataProtectionCertificateKey is required.")));
+            var previousPem = configuration["Auth:DataProtectionPreviousCertificatePem"];
+            var previousKey = configuration["Auth:DataProtectionPreviousCertificateKey"];
+            if (!string.IsNullOrWhiteSpace(previousPem) && !string.IsNullOrWhiteSpace(previousKey))
+            {
+                dataProtection.UnprotectKeysWithAnyCertificate(LoadCertificate(previousPem, previousKey));
+            }
+        }
+
+        services.AddScoped<AuthAttemptBudget>();
+        services.AddScoped<BrowserSessionService>();
+        services.AddScoped<IdentityTokenIssuer>();
         var delivery = configuration["Auth:Email:Delivery"] ?? (production ? "" : "capture");
         if (production && delivery is not "smtp")
         {
@@ -265,12 +292,25 @@ public static class IdentityHosting
                 $"Aggregate database connections {total} exceed the cluster client limit {limit}.");
         }
 
+        if (string.IsNullOrWhiteSpace(configuration["Auth:BffIpKey"]))
+        {
+            throw new InvalidOperationException("Auth:BffIpKey is required so the BFF can authenticate forwarded client IPs.");
+        }
+
+        if (!configuration.GetValue<bool>("Deployment:TrustFlyProxy"))
+        {
+            throw new InvalidOperationException(
+                "Deployment:TrustFlyProxy is required so X-Forwarded-Proto is taken only from Fly.");
+        }
+
         foreach (var name in new[]
         {
             "Auth:SigningCertificatePem",
             "Auth:SigningCertificateKey",
             "Auth:EncryptionCertificatePem",
-            "Auth:EncryptionCertificateKey"
+            "Auth:EncryptionCertificateKey",
+            "Auth:DataProtectionCertificatePem",
+            "Auth:DataProtectionCertificateKey"
         })
         {
             if (string.IsNullOrWhiteSpace(configuration[name]))
@@ -290,6 +330,7 @@ public static class IdentityHosting
         foreach (var uri in Redirects(configuration, "Auth:MobileRedirectUris", mobile: true))
         {
             mobile.RedirectUris.Add(uri);
+            mobile.PostLogoutRedirectUris.Add(uri);
         }
 
         var web = Web(configuration);
@@ -298,8 +339,12 @@ public static class IdentityHosting
             web.RedirectUris.Add(uri);
         }
 
-        await UpsertAsync(manager, mobile, secret: null);
-        await UpsertAsync(manager, web, WebClientSecret(configuration, environment));
+        await UpsertAsync(manager, mobile, secret: null, rotateSecret: false);
+        await UpsertAsync(
+            manager,
+            web,
+            WebClientSecret(configuration, environment),
+            configuration.GetValue("Auth:RotateWebClientSecret", false));
     }
 
     private static OpenIddictApplicationDescriptor Mobile(IConfiguration configuration) => new()
@@ -314,6 +359,7 @@ public static class IdentityHosting
             Permissions.Endpoints.Authorization,
             Permissions.Endpoints.Token,
             Permissions.Endpoints.Revocation,
+            Permissions.Endpoints.EndSession,
             Permissions.GrantTypes.AuthorizationCode,
             Permissions.GrantTypes.RefreshToken,
             Permissions.ResponseTypes.Code,
@@ -335,6 +381,7 @@ public static class IdentityHosting
         {
             Permissions.Endpoints.Token,
             Permissions.Endpoints.Revocation,
+            Permissions.Endpoints.EndSession,
             Permissions.GrantTypes.RefreshToken,
             Permissions.Prefixes.GrantType + TicketGrant,
             Permissions.Scopes.Email,
@@ -347,7 +394,8 @@ public static class IdentityHosting
     private static async Task UpsertAsync(
         IOpenIddictApplicationManager manager,
         OpenIddictApplicationDescriptor descriptor,
-        string? secret)
+        string? secret,
+        bool rotateSecret)
     {
         if (secret is not null)
         {
@@ -361,14 +409,24 @@ public static class IdentityHosting
             return;
         }
 
-        await manager.PopulateAsync(descriptor, current);
-        if (secret is not null)
+        var existing = new OpenIddictApplicationDescriptor();
+        await manager.PopulateAsync(existing, current);
+        if (SameClient(existing, descriptor) && !rotateSecret)
         {
-            descriptor.ClientSecret = secret;
+            return;
         }
 
         await manager.UpdateAsync(current, descriptor);
     }
+
+    private static bool SameClient(OpenIddictApplicationDescriptor left, OpenIddictApplicationDescriptor right) =>
+        left.ClientId == right.ClientId &&
+        left.ClientType == right.ClientType &&
+        left.DisplayName == right.DisplayName &&
+        left.RedirectUris.SetEquals(right.RedirectUris) &&
+        left.PostLogoutRedirectUris.SetEquals(right.PostLogoutRedirectUris) &&
+        left.Permissions.SetEquals(right.Permissions) &&
+        left.Requirements.SetEquals(right.Requirements);
 
     public static IReadOnlyList<Uri> Redirects(IConfiguration configuration, string key, bool mobile)
     {

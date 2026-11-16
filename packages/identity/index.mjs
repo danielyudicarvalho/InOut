@@ -16,6 +16,9 @@ const messages = {
     "Defina uma nova senha antes de entrar. A senha anterior não pode ser reutilizada.",
   mfa_reenrollment_required:
     "Confirme o autenticador antes de entrar. A senha sozinha não abre a conta.",
+  mfa_required: "Informe o código do autenticador para continuar.",
+  mfa_recovery_required:
+    "A senha sozinha não substitui o autenticador. Abra o e-mail de recuperação para cadastrar um fator novo.",
   invalid_email: "Informe um e-mail válido.",
   invalid_name: "Informe seu nome (até 100 caracteres).",
   weak_password: "Use uma senha com pelo menos 8 caracteres.",
@@ -78,9 +81,9 @@ export function createAuthService(repository) {
         throw new AuthFailure("invalid_token");
       await repository.confirm(email(value), token.trim());
     },
-    async exchangeCode(code) {
+    async exchangeCode(code, state, callbackUrl) {
       if (!code || code.length > 4096) throw new AuthFailure("invalid_token");
-      await repository.exchangeCode(code);
+      await repository.exchangeCode(code, state, callbackUrl);
     },
     async requestPasswordReset(value) {
       await repository.requestPasswordReset(email(value));
@@ -96,8 +99,15 @@ export function createAuthService(repository) {
       if (password !== confirmation) throw new AuthFailure("password_mismatch");
       return repository.resetPassword(password);
     },
-    signOut: () => repository.signOut(),
+    signOut: (mode) => repository.signOut(mode),
     subscribe: (listener) => repository.subscribe(listener),
+    async confirmMfa(code) {
+      if (typeof repository.confirmMfa !== "function")
+        throw new AuthFailure("configuration");
+      if (!/^\d{6,8}$/.test(String(code).replace(/\s/g, "")))
+        throw new AuthFailure("invalid_token");
+      await repository.confirmMfa(String(code).replace(/\s/g, ""));
+    },
     async beginBrowserSignIn() {
       if (typeof repository.beginBrowserSignIn !== "function")
         throw new AuthFailure("configuration");
@@ -118,6 +128,7 @@ const hostedAccountPaths = new Set([
   "/account/forgot",
   "/account/reset",
   "/account/mfa",
+  "/account/logout",
 ]);
 
 /** Public issuer only. No client secret, userinfo, or privileged key is accepted. */

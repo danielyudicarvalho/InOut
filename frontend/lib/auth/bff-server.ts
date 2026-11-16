@@ -1,15 +1,35 @@
+import { createHmac } from "node:crypto";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import {
-  newCsrf,
-  open,
-  seal,
+  openSessionId,
+  sealSessionId,
   sessionKey,
-  type BffSession,
+  sessionKeys,
+  verifyCsrf,
+  verifySameOrigin,
 } from "./session-cookie";
 
 const sessionCookie = "inout_session";
 const csrfCookie = "inout_csrf";
+
+type IdentityPayload = {
+  code?: string;
+  ticket?: string;
+  user?: { id: string; email: string; emailConfirmed: boolean };
+  authenticatorKey?: string;
+};
+
+type StoredSession = {
+  sessionId: string;
+  csrf: string;
+  purpose: string;
+  user: IdentityPayload["user"] | null;
+  expiresAt?: string;
+  accessToken?: string | null;
+  loginTicket?: string | null;
+  pendingTicket?: string | null;
+};
 
 function apiBase(): string {
   const value = process.env.API_BASE_URL;
@@ -26,6 +46,29 @@ function webSecret(): string {
   return "dev-only-web-client-secret";
 }
 
+function clientIpHeaders(request?: Request): Record<string, string> {
+  if (!request) return {};
+  const ip =
+    request.headers.get("fly-client-ip") ??
+    request.headers.get("x-real-ip") ??
+    "";
+  const key = process.env.BFF_IP_KEY;
+  if (!ip || !key) return {};
+  return {
+    "x-inout-client-ip": ip,
+    "x-inout-client-ip-mac": createHmac("sha256", key).update(ip).digest("hex"),
+  };
+}
+
+function apiHeaders(request?: Request): Record<string, string> {
+  return {
+    authorization: `Basic ${Buffer.from(`inout-web:${webSecret()}`).toString("base64")}`,
+    "content-type": "application/json",
+    accept: "application/json",
+    ...clientIpHeaders(request),
+  };
+}
+
 function cookieOptions() {
   return {
     httpOnly: true,
@@ -35,22 +78,18 @@ function cookieOptions() {
   };
 }
 
-export async function identityCommand(path: string, body: unknown) {
+export async function identityCommand(
+  path: string,
+  body: unknown,
+  request?: Request,
+) {
   const response = await fetch(`${apiBase()}${path}`, {
     method: "POST",
     cache: "no-store",
-    headers: {
-      authorization: `Basic ${Buffer.from(`inout-web:${webSecret()}`).toString("base64")}`,
-      "content-type": "application/json",
-      accept: "application/json",
-    },
+    headers: apiHeaders(request),
     body: JSON.stringify(body),
   });
-  const payload = (await response.json().catch(() => ({}))) as {
-    code?: string;
-    ticket?: string;
-    user?: { id: string; email: string; emailConfirmed: boolean };
-  };
+  const payload = (await response.json().catch(() => ({}))) as IdentityPayload;
   return { status: response.status, payload };
 }
 
@@ -74,30 +113,14 @@ async function grant(form: Record<string, string>) {
   return payload;
 }
 
-export async function writeSession(
-  tokens: { access_token: string; refresh_token: string; expires_in?: number },
-  user: BffSession["user"],
-  recovery?: { ticket: string; expiresAt: number },
-) {
-  const current = await readSession();
-  const session: BffSession = {
-    accessToken: tokens.access_token,
-    refreshToken: tokens.refresh_token,
-    expiresAt: Date.now() + Number(tokens.expires_in ?? 600) * 1000,
-    csrf: current?.csrf ?? newCsrf(),
-    user,
-    recoveryTicket: recovery?.ticket,
-    recoveryExpiresAt: recovery?.expiresAt,
-  };
+export async function writeOpaqueSession(sessionId: string, csrf: string) {
   const jar = await cookies();
-  jar.set(sessionCookie, seal(session, sessionKey()), cookieOptions());
-  jar.set(csrfCookie, session.csrf, cookieOptions());
-}
-
-export async function readSession(): Promise<BffSession | null> {
-  const jar = await cookies();
-  const raw = jar.get(sessionCookie)?.value;
-  return raw ? open(raw, sessionKey()) : null;
+  jar.set(
+    sessionCookie,
+    sealSessionId(sessionId, sessionKey()),
+    cookieOptions(),
+  );
+  jar.set(csrfCookie, csrf, cookieOptions());
 }
 
 export async function clearSession() {
@@ -106,9 +129,34 @@ export async function clearSession() {
   jar.set(csrfCookie, "", { ...cookieOptions(), maxAge: 0 });
 }
 
+export async function readSessionId(): Promise<string | null> {
+  const jar = await cookies();
+  const raw = jar.get(sessionCookie)?.value;
+  return raw ? openSessionId(raw, sessionKeys()) : null;
+}
+
+export async function readCsrf(): Promise<string | null> {
+  const jar = await cookies();
+  return jar.get(csrfCookie)?.value ?? null;
+}
+
+async function apiSession(path: string, body: Record<string, unknown>) {
+  const response = await fetch(`${apiBase()}${path}`, {
+    method: "POST",
+    cache: "no-store",
+    headers: apiHeaders(),
+    body: JSON.stringify(body),
+  });
+  const payload = (await response.json().catch(() => ({}))) as StoredSession & {
+    code?: string;
+  };
+  if (!response.ok) return null;
+  return payload;
+}
+
 export async function sessionFromTicket(
   ticket: string | undefined,
-  user: BffSession["user"],
+  user: IdentityPayload["user"],
 ) {
   if (!ticket || !user) return false;
   const tokens = await grant({
@@ -119,60 +167,103 @@ export async function sessionFromTicket(
     scope: "openid email profile offline_access",
   });
   if (!tokens?.access_token || !tokens.refresh_token) return false;
-  await writeSession(
-    {
-      access_token: tokens.access_token,
-      refresh_token: tokens.refresh_token,
-      expires_in: tokens.expires_in,
-    },
-    user,
-  );
+  const stored = await apiSession("/api/v1/identity/sessions", {
+    userId: user.id,
+    accessToken: tokens.access_token,
+    refreshToken: tokens.refresh_token,
+  });
+  if (!stored?.sessionId || !stored.csrf) return false;
+  await writeOpaqueSession(stored.sessionId, stored.csrf);
   return true;
 }
 
-export async function refreshedSession(): Promise<BffSession | null> {
-  const current = await readSession();
-  if (!current) return null;
-  if (
-    current.accessToken === "recovery" ||
-    current.expiresAt - 30_000 > Date.now()
-  )
-    return current;
-  const tokens = await grant({
-    grant_type: "refresh_token",
-    client_id: "inout-web",
-    client_secret: webSecret(),
-    refresh_token: current.refreshToken,
+export async function pendingSession(ticket: string, purpose: string) {
+  const stored = await apiSession("/api/v1/identity/sessions/pending", {
+    ticket,
+    purpose,
   });
-  if (!tokens?.access_token || !tokens.refresh_token) {
+  if (!stored?.sessionId || !stored.csrf) return false;
+  await writeOpaqueSession(stored.sessionId, stored.csrf);
+  return true;
+}
+
+export async function resolveSession(): Promise<StoredSession | null> {
+  const sessionId = await readSessionId();
+  if (!sessionId) return null;
+  const stored = await apiSession("/api/v1/identity/sessions/resolve", {
+    sessionId,
+  });
+  if (!stored?.sessionId) {
     await clearSession();
     return null;
   }
-  await writeSession(
-    {
-      access_token: tokens.access_token,
-      refresh_token: tokens.refresh_token,
-      expires_in: tokens.expires_in,
-    },
-    current.user,
-    current.recoveryTicket
-      ? {
-          ticket: current.recoveryTicket,
-          expiresAt: current.recoveryExpiresAt ?? 0,
-        }
-      : undefined,
-  );
-  return readSession();
+  return { ...stored, csrf: (await readCsrf()) ?? stored.csrf };
 }
 
-export function commandResponse(status: number, payload: { code?: string }) {
+export async function completeMfa(code: string) {
+  const sessionId = await readSessionId();
+  if (!sessionId) return null;
+  const completed = await apiSession("/api/v1/identity/sessions/mfa", {
+    sessionId,
+    code,
+  });
+  if (!completed?.loginTicket || !completed.user) return null;
+  if (!(await sessionFromTicket(completed.loginTicket, completed.user)))
+    return null;
+  return completed;
+}
+
+export async function rotateSession() {
+  const sessionId = await readSessionId();
+  if (!sessionId) return null;
+  const rotated = await apiSession("/api/v1/identity/sessions/rotate", {
+    sessionId,
+  });
+  if (!rotated?.sessionId || !rotated.csrf) return null;
+  await writeOpaqueSession(rotated.sessionId, rotated.csrf);
+  return rotated;
+}
+
+export async function revokeStoredSession() {
+  const sessionId = await readSessionId();
+  if (sessionId) {
+    await apiSession("/api/v1/identity/sessions/revoke", { sessionId });
+  }
+  await clearSession();
+}
+
+export async function guardMutation(request: Request, requireCsrf = false) {
+  if (!verifySameOrigin(request)) {
+    return NextResponse.json({ code: "csrf_rejected" }, { status: 403 });
+  }
+  if (requireCsrf) {
+    const csrf = await readCsrf();
+    if (!verifyCsrf(request, csrf)) {
+      return NextResponse.json({ code: "csrf_rejected" }, { status: 403 });
+    }
+  } else if (await readSessionId()) {
+    const csrf = await readCsrf();
+    if (!verifyCsrf(request, csrf)) {
+      return NextResponse.json({ code: "csrf_rejected" }, { status: 403 });
+    }
+  }
+  return null;
+}
+
+export function commandResponse(
+  status: number,
+  payload: { code?: string; confirmationRequired?: boolean },
+) {
   return NextResponse.json(
-    { code: payload.code ?? "provider_error", confirmationRequired: true },
+    {
+      code: payload.code ?? "provider_error",
+      confirmationRequired: payload.confirmationRequired ?? true,
+    },
     { status: status === 200 ? 200 : status },
   );
 }
 
-export { verifySameOrigin } from "./session-cookie";
+export { verifySameOrigin, verifyCsrf } from "./session-cookie";
 
 export async function proxyApi(request: Request, path: string[]) {
   if (
@@ -186,14 +277,21 @@ export async function proxyApi(request: Request, path: string[]) {
   ) {
     return NextResponse.json({ code: "invalid_path" }, { status: 400 });
   }
-  const session = await refreshedSession();
-  const jar = await cookies();
-  const csrf = jar.get(csrfCookie)?.value;
+  const rejected = await guardMutation(
+    request,
+    request.method !== "GET" && request.method !== "HEAD",
+  );
+  if (rejected && request.method !== "GET" && request.method !== "HEAD") {
+    return rejected;
+  }
+  const session = await resolveSession();
+  const csrf = await readCsrf();
   const authorization = request.headers.get("authorization");
   if (
     !session ||
+    session.purpose !== "authenticated" ||
+    !session.accessToken ||
     !csrf ||
-    csrf !== session.csrf ||
     authorization !== `Bearer ${csrf}`
   ) {
     return NextResponse.json({ code: "session_missing" }, { status: 401 });

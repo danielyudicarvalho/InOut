@@ -2,7 +2,11 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { createHash, randomBytes } from "node:crypto";
 import { AuthFailure, createAuthService } from "./index.mjs";
-import { createOpenIdAuthRepository, createOpenIdSession } from "./openid.mjs";
+import {
+  completeAuthorizationCallback,
+  createOpenIdAuthRepository,
+  createOpenIdSession,
+} from "./openid.mjs";
 
 function memory() {
   const values = new Map();
@@ -93,10 +97,90 @@ test("refresh replaces the access token and a failed refresh drops the session",
   assert.equal((await createOpenIdSession(failing.repo).auth.getSession()).data.session, null);
 });
 
+test("local logout revokes tokens without opening the hosted session, sso does", async () => {
+  const storage = memory();
+  await storage.setItem(
+    "inout.openid.session",
+    JSON.stringify({ accessToken: "access", refreshToken: "refresh", expiresAt: Date.now() + 60_000 }),
+  );
+  const local = repository(() => ({ body: {} }), storage);
+  await local.repo.signOut("local");
+  assert.equal(local.opened.length, 0);
+  assert.equal(
+    local.calls.some((item) => String(item.url).endsWith("/connect/revoke")),
+    true,
+  );
+  await storage.setItem(
+    "inout.openid.session",
+    JSON.stringify({ accessToken: "access", refreshToken: "refresh", expiresAt: Date.now() + 60_000 }),
+  );
+  const sso = repository(() => ({ body: {} }), storage);
+  await sso.repo.signOut("sso");
+  assert.equal(
+    sso.opened.some((url) => String(url).includes("/connect/logout")),
+    true,
+  );
+});
+
 test("hosted account pages are an exact allowlist", async () => {
   const { service, opened } = repository(() => ({ body: {} }));
   await service.openHostedAccount("/account/register");
   assert.equal(opened[0], "https://auth.example/account/register");
   await assert.rejects(service.openHostedAccount("https://evil.example"), AuthFailure);
   await assert.rejects(service.openHostedAccount("/account/../admin"), AuthFailure);
+});
+
+test("authorization callback requires matching state, age, and one-time use", async () => {
+  const used = new Set();
+  const pending = {
+    verifier: "verifier",
+    state: "state-1",
+    redirectUri: "inout://auth/callback",
+    createdAt: 0,
+  };
+  const completed = await completeAuthorizationCallback({
+    url: "inout://auth/callback?code=code-1&state=state-1",
+    expectedRedirectUri: "inout://auth/callback",
+    pending,
+    now: () => 1,
+    markUsed: async (state) => {
+      if (used.has(state)) return true;
+      used.add(state);
+      return false;
+    },
+  });
+  assert.equal(completed.code, "code-1");
+  await assert.rejects(
+    () =>
+      completeAuthorizationCallback({
+        url: "inout://auth/callback?code=code-1&state=state-1",
+        expectedRedirectUri: "inout://auth/callback",
+        pending,
+        now: () => 1,
+        markUsed: async (state) => used.has(state),
+      }),
+    AuthFailure,
+  );
+  await assert.rejects(
+    () =>
+      completeAuthorizationCallback({
+        url: "inout://auth/callback?code=code-1&state=other",
+        expectedRedirectUri: "inout://auth/callback",
+        pending,
+        now: () => 1,
+        markUsed: async () => false,
+      }),
+    AuthFailure,
+  );
+  await assert.rejects(
+    () =>
+      completeAuthorizationCallback({
+        url: "inout://auth/callback?code=code-1&state=state-1",
+        expectedRedirectUri: "inout://auth/callback",
+        pending,
+        now: () => 11 * 60 * 1000,
+        markUsed: async () => false,
+      }),
+    AuthFailure,
+  );
 });

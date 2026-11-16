@@ -19,14 +19,17 @@ public static class SchemaMigrator
         var direct = configuration.GetConnectionString("InOutDirect")
             ?? throw new InvalidOperationException("ConnectionStrings:InOutDirect is required for migrations.");
         NpgsqlPoolSettings.RejectPoolerForDirect(direct);
+        var production = string.Equals(
+            configuration["ASPNETCORE_ENVIRONMENT"] ?? configuration["DOTNET_ENVIRONMENT"],
+            "Production",
+            StringComparison.OrdinalIgnoreCase);
+        NpgsqlPoolSettings.RequireAuthenticatedTransport(
+            direct,
+            production,
+            configuration.GetValue("Database:AllowInsecureLocalTransport", !production),
+            configuration.GetSection("Database:LocalTestHosts").Get<string[]>() ?? ["db"]);
         var builder = new NpgsqlConnectionStringBuilder(direct);
         NpgsqlPoolSettings.ApplyDirectPool(builder);
-        var options = new DbContextOptionsBuilder<IdentityDbContext>()
-            .UseNpgsql(builder.ConnectionString, npgsql =>
-                npgsql.MigrationsHistoryTable("__ef_migrations", "identity"))
-            .Options;
-        await using var identity = new IdentityDbContext(options);
-        await identity.Database.MigrateAsync();
         var root = FindRepoRoot();
         var files = new List<string>
         {
@@ -36,69 +39,89 @@ public static class SchemaMigrator
         files.Add(Path.Combine(root, "db", "fly", "9010_runtime_grants.sql"));
         await using var connection = new NpgsqlConnection(builder.ConnectionString);
         await connection.OpenAsync();
-        await using (var setup = new NpgsqlCommand(
-            """
-            create table if not exists identity.schema_files (
-              filename text primary key,
-              sha256 text not null,
-              applied_at timestamptz not null default now()
-            );
-            """,
-            connection))
+        await using var advisory = new NpgsqlCommand("select pg_advisory_lock(88112010)", connection);
+        await advisory.ExecuteScalarAsync();
+        try
         {
-            await setup.ExecuteNonQueryAsync();
-        }
+            var options = new DbContextOptionsBuilder<IdentityDbContext>()
+                .UseNpgsql(connection, npgsql =>
+                    npgsql.MigrationsHistoryTable("__ef_migrations", "identity"))
+                .Options;
+            await using (var identity = new IdentityDbContext(options))
+            {
+                await identity.Database.MigrateAsync();
+            }
 
-        foreach (var file in files)
+            await using (var setup = new NpgsqlCommand(
+                """
+                create table if not exists identity.schema_files (
+                  filename text primary key,
+                  sha256 text not null,
+                  applied_at timestamptz not null default now()
+                );
+                """,
+                connection))
+            {
+                await setup.ExecuteNonQueryAsync();
+            }
+
+            foreach (var file in files)
+            {
+                var sql = await File.ReadAllTextAsync(file);
+                var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(sql))).ToLowerInvariant();
+                var name = Path.GetFileName(file);
+                await using var existing = new NpgsqlCommand(
+                    "select sha256 from identity.schema_files where filename = $1",
+                    connection);
+                existing.Parameters.AddWithValue(name);
+                var stored = await existing.ExecuteScalarAsync() as string;
+                if (stored == hash)
+                {
+                    continue;
+                }
+
+                if (stored is not null)
+                {
+                    throw new InvalidOperationException($"SQL file {name} changed after it was applied.");
+                }
+
+                if (System.Text.RegularExpressions.Regex.IsMatch(sql, @"(?im)^\s*commit\s*;\s*$"))
+                {
+                    throw new InvalidOperationException(
+                        $"SQL file {name} must not commit its own transaction. The migrator records the file hash in the same transaction.");
+                }
+
+                await using var transaction = await connection.BeginTransactionAsync();
+                await using var command = new NpgsqlCommand(sql, connection, transaction);
+                try
+                {
+                    await command.ExecuteNonQueryAsync();
+                }
+                catch (PostgresException exception)
+                {
+                    throw new InvalidOperationException(
+                        $"SQL file {name} failed: {exception.MessageText}",
+                        exception);
+                }
+
+                await using var record = new NpgsqlCommand(
+                    "insert into identity.schema_files (filename, sha256) values ($1, $2)",
+                    connection,
+                    transaction);
+                record.Parameters.AddWithValue(name);
+                record.Parameters.AddWithValue(hash);
+                await record.ExecuteNonQueryAsync();
+                await transaction.CommitAsync();
+            }
+
+            _ = args;
+            return 0;
+        }
+        finally
         {
-            var sql = await File.ReadAllTextAsync(file);
-            var hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(sql))).ToLowerInvariant();
-            var name = Path.GetFileName(file);
-            await using var existing = new NpgsqlCommand(
-                "select sha256 from identity.schema_files where filename = $1",
-                connection);
-            existing.Parameters.AddWithValue(name);
-            var stored = await existing.ExecuteScalarAsync() as string;
-            if (stored == hash)
-            {
-                continue;
-            }
-
-            if (stored is not null)
-            {
-                throw new InvalidOperationException($"SQL file {name} changed after it was applied.");
-            }
-
-            if (System.Text.RegularExpressions.Regex.IsMatch(sql, @"(?im)^\s*commit\s*;\s*$"))
-            {
-                throw new InvalidOperationException(
-                    $"SQL file {name} must not commit its own transaction. The migrator records the file hash in the same transaction.");
-            }
-
-            await using var transaction = await connection.BeginTransactionAsync();
-            await using var command = new NpgsqlCommand(sql, connection, transaction);
-            try
-            {
-                await command.ExecuteNonQueryAsync();
-            }
-            catch (PostgresException exception)
-            {
-                throw new InvalidOperationException(
-                    $"SQL file {name} failed: {exception.MessageText}",
-                    exception);
-            }
-            await using var record = new NpgsqlCommand(
-                "insert into identity.schema_files (filename, sha256) values ($1, $2)",
-                connection,
-                transaction);
-            record.Parameters.AddWithValue(name);
-            record.Parameters.AddWithValue(hash);
-            await record.ExecuteNonQueryAsync();
-            await transaction.CommitAsync();
+            await using var unlock = new NpgsqlCommand("select pg_advisory_unlock(88112010)", connection);
+            await unlock.ExecuteScalarAsync();
         }
-
-        _ = args;
-        return 0;
     }
 
     private static string FindRepoRoot()
